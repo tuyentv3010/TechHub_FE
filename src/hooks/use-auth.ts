@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { authService, type LoginRequest, type RegisterRequest, type User } from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
 import { toast } from 'sonner';
@@ -30,6 +31,7 @@ export const authQueryKeys = {
 export function useLogin() {
   const { setUser, setLoading } = useAuthStore();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   return useMutation({
     mutationFn: (credentials: LoginRequest) => authService.login(credentials),
@@ -45,8 +47,14 @@ export function useLogin() {
       
       toast.success('Đăng nhập thành công!');
       
-      // Redirect to dashboard
-      window.location.href = '/dashboard';
+      // Redirect based on user role with a small delay for UX
+      setTimeout(() => {
+        if (data.user.role === 'ADMIN') {
+          router.push('/admin/dashboard');
+        } else {
+          router.push('/home');
+        }
+      }, 500);
     },
     onError: (error: unknown) => {
       setLoading(false);
@@ -62,6 +70,7 @@ export function useLogin() {
 export function useRegister() {
   const { setUser, setLoading } = useAuthStore();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   return useMutation({
     mutationFn: (userData: RegisterRequest) => authService.register(userData),
@@ -77,8 +86,10 @@ export function useRegister() {
       
       toast.success('Đăng ký thành công!');
       
-      // Redirect to dashboard
-      window.location.href = '/dashboard';
+      // Redirect to signin page after successful registration
+      setTimeout(() => {
+        router.push('/signin');
+      }, 500);
     },
     onError: (error: unknown) => {
       setLoading(false);
@@ -94,6 +105,7 @@ export function useRegister() {
 export function useLogout() {
   const { logout } = useAuthStore();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   return useMutation({
     mutationFn: () => authService.logout(),
@@ -106,9 +118,9 @@ export function useLogout() {
       toast.success('Đăng xuất thành công!');
       
       // Redirect to home page
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
-      }
+      setTimeout(() => {
+        router.push('/');
+      }, 500);
     },
     onError: (error: unknown) => {
       // Still logout even if API call fails
@@ -117,6 +129,11 @@ export function useLogout() {
       
       const errorMessage = (error as ApiError)?.response?.data?.message || 'Có lỗi khi đăng xuất';
       toast.error(errorMessage);
+      
+      // Redirect even on error
+      setTimeout(() => {
+        router.push('/');
+      }, 500);
     },
   });
 }

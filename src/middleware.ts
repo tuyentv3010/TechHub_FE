@@ -1,18 +1,32 @@
+import createMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Routes that require authentication
-const protectedRoutes = ['/dashboard'];
+// Create the next-intl middleware
+const intlMiddleware = createMiddleware({
+  locales: ['en', 'vi', 'ja'],
+  defaultLocale: 'vi'
+});
 
-// Routes that should redirect authenticated users
+// Routes that require authentication (without locale prefix)
+const protectedRoutes = ['/home', '/admin/dashboard', '/instructor'];
+
+// Routes that should redirect authenticated users (without locale prefix)  
 const authRoutes = ['/signin', '/signup'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // Skip middleware for home page
-  if (pathname === '/') {
-    return NextResponse.next();
+  // Extract locale from pathname
+  const locale = pathname.split('/')[1];
+  const isValidLocale = ['en', 'vi', 'ja'].includes(locale);
+  
+  // Remove locale from pathname for route checking
+  const pathWithoutLocale = isValidLocale ? pathname.slice(3) : pathname;
+  
+  // Skip middleware for home page (with or without locale)
+  if (pathWithoutLocale === '' || pathWithoutLocale === '/') {
+    return intlMiddleware(request);
   }
   
   // Check if user is authenticated (has token)
@@ -20,22 +34,23 @@ export function middleware(request: NextRequest) {
   const isAuthenticated = !!token;
 
   // Handle protected routes
-  if (protectedRoutes.some(route => pathname.startsWith(route))) {
+  if (protectedRoutes.some(route => pathWithoutLocale.startsWith(route))) {
     if (!isAuthenticated) {
-      const signInUrl = new URL('/signin', request.url);
+      const signInUrl = new URL(`/${locale}/signin`, request.url);
       signInUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(signInUrl);
     }
   }
 
-  // Handle auth routes - redirect authenticated users to dashboard
-  if (authRoutes.some(route => pathname.startsWith(route))) {
+  // Handle auth routes - redirect authenticated users based on role
+  if (authRoutes.some(route => pathWithoutLocale.startsWith(route))) {
     if (isAuthenticated) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      return NextResponse.redirect(new URL(`/${locale}/home`, request.url));
     }
   }
 
-  return NextResponse.next();
+  // Apply intl middleware for locale handling
+  return intlMiddleware(request);
 }
 
 export const config = {

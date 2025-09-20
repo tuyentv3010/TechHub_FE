@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Bell, LogOut, User, Settings, Menu, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -15,20 +14,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ThemeToggle } from '@/components/common/theme-toggle';
+import { LanguageSwitcher } from '@/components/common/language-switcher';
 import { useAuthStore } from '@/store/auth-store';
 import { useLogout } from '@/hooks/use-auth';
 import { AnimatedLogo } from '@/components/common/animated-logo';
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const router = useRouter();
   const { user } = useAuthStore();
   const logoutMutation = useLogout();
 
   const handleLogout = async () => {
     try {
       await logoutMutation.mutateAsync();
-      router.push('/signin');
+      // Redirect is handled by useLogout hook
     } catch {
       // Error handled by mutation
     }
@@ -44,15 +43,57 @@ export function Navbar() {
   };
 
   return (
-    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center px-4">
-        <div className="flex items-center space-x-4">
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <AnimatedLogo size="md" />
+    <nav className="border-b border-white/20 dark:border-white/10 bg-white/10 dark:bg-black/20 backdrop-blur-md supports-[backdrop-filter]:bg-white/10 dark:supports-[backdrop-filter]:bg-black/20">
+      <div className="flex h-16 items-center px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          <Link href={user?.role === 'ADMIN' ? '/admin/dashboard' : '/home'} className="flex items-center space-x-2">
+            <AnimatedLogo size="md" showText={true} className="hidden sm:flex" />
+            <AnimatedLogo size="md" showText={false} className="flex sm:hidden" />
           </Link>
         </div>
 
-        <div className="ml-auto flex items-center space-x-4">
+        <div className="ml-auto flex items-center space-x-2 sm:space-x-4">
+          {/* Navigation Links */}
+          {user?.role === 'INSTRUCTOR' && (
+            <div className="hidden md:flex items-center space-x-1">
+              <Button variant="ghost" asChild>
+                <Link href="/home">Khóa học</Link>
+              </Button>
+              <Button variant="ghost" asChild>
+                <Link href="/instructor/courses">Quản lý khóa học</Link>
+              </Button>
+              <Button variant="ghost" asChild>
+                <Link href="/instructor/analytics">Thống kê</Link>
+              </Button>
+            </div>
+          )}
+
+          {user?.role === 'LEARNER' && (
+            <div className="hidden md:flex items-center space-x-1">
+              <Button variant="ghost" asChild>
+                <Link href="/home">Khóa học</Link>
+              </Button>
+              <Button variant="ghost" asChild>
+                <Link href="/my-learning">Học của tôi</Link>
+              </Button>
+            </div>
+          )}
+
+          {user?.role === 'ADMIN' && (
+            <div className="hidden md:flex items-center space-x-1">
+              <Button variant="ghost" asChild>
+                <Link href="/admin/dashboard">Dashboard</Link>
+              </Button>
+              <Button variant="ghost" asChild>
+                <Link href="/admin/users">Người dùng</Link>
+              </Button>
+              <Button variant="ghost" asChild>
+                <Link href="/admin/courses">Khóa học</Link>
+              </Button>
+            </div>
+          )}
+
+          <LanguageSwitcher />
           <ThemeToggle />
           
           <Button variant="ghost" size="icon" className="relative">
