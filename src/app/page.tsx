@@ -1,23 +1,22 @@
-import Header from "@/components/organisms/Header";
-import HeroSection from "@/components/organisms/HeroSection";
-import CompaniesSection from "@/components/organisms/CompaniesSection";
-import FeaturedCoursesSection from "@/components/organisms/FeaturedCoursesSection";
-import CategoriesSection from "@/components/organisms/CategoriesSection";
-import BenefitsSection from "@/components/organisms/BenefitsSection";
-import TopicsSection from "@/components/organisms/TopicsSection";
-import SiteFooter from "@/components/organisms/SiteFooter";
+'use client';
 
-export default function Home() {
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function RootPage() {
+  const router = useRouter();
+  
+  useEffect(() => {
+    // Redirect to Vietnamese locale by default
+    router.replace('/vi');
+  }, [router]);
+
   return (
-    <main className="min-h-screen flex flex-col">
-      <Header />
-      <HeroSection />
-      <CompaniesSection />
-      <FeaturedCoursesSection />
-      <CategoriesSection />
-      <BenefitsSection />
-      <TopicsSection />
-      <SiteFooter />
-    </main>
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+        <p className="mt-2 text-gray-600">Redirecting...</p>
+      </div>
+    </div>
   );
 }

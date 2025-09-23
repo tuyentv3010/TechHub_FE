@@ -1,0 +1,137 @@
+{
+  "common": {
+    "loading": "Đang tải...",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Chỉnh sửa",
+    "search": "Tìm kiếm",
+    "viewAll": "Xem tất cả",
+    "learnNow": "Học ngay",
+    "free": "Miễn phí",
+    "rating": "Đánh giá",
+    "students": "Học viên",
+    "hours": "Giờ",
+    "redirecting": "Đang chuyển hướng..."
+  },
+  "navigation": {
+    "home": "Trang chủ",
+    "courses": "Khóa học",
+    "myLearning": "Học của tôi",
+    "manageCourses": "Quản lý khóa học",
+    "analytics": "Thống kê",
+    "dashboard": "Dashboard",
+    "users": "Người dùng",
+    "profile": "Hồ sơ",
+    "settings": "Cài đặt",
+    "logout": "Đăng xuất"
+  },
+  "homepage": {
+    "subtitle": "Nền tảng học lập trình hiện đại",
+    "description": "Khám phá thế giới lập trình với các khóa học chất lượng cao, giảng viên kinh nghiệm và cộng đồng học tập sôi động.",
+    "startLearning": "Bắt đầu học ngay"
+  },
+  "features": {
+    "qualityCourses": {
+      "title": "Khóa học chất lượng",
+      "description": "Học từ các chuyên gia với kinh nghiệm thực tế trong ngành"
+    },
+    "community": {
+      "title": "Cộng đồng sôi động",
+      "description": "Kết nối với hàng nghìn lập trình viên và chia sẻ kinh nghiệm"
+    },
+    "certificates": {
+      "title": "Chứng chỉ uy tín",
+      "description": "Nhận chứng chỉ được công nhận bởi các doanh nghiệp hàng đầu"
+    }
+  },
+  "auth": {
+    "signIn": "Đăng nhập",
+    "signUp": "Đăng ký",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "name": "Họ và tên",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "signinTitle": "Đăng nhập",
+    "signupTitle": "Đăng ký",
+    "signinDescription": "Nhập email và mật khẩu để truy cập tài khoản",
+    "signupDescription": "Tạo tài khoản mới để bắt đầu học tập",
+    "signinSuccess": "Đăng nhập thành công!",
+    "signupSuccess": "Đăng ký thành công!",
+    "logoutSuccess": "Đăng xuất thành công!",
+    "signinFailed": "Đăng nhập thất bại",
+    "signupFailed": "Đăng ký thất bại",
+    "demoAccounts": "Tài khoản demo"
+  },
+  "homepage": {
+    "welcomeBack": "Xin chào {name}! 👋",
+    "subtitle": "Nền tảng học lập trình hiện đại",
+    "description": "Khám phá thế giới lập trình với các khóa học chất lượng cao, giảng viên kinh nghiệm và cộng đồng học tập sôi động.",
+    "startLearning": "Bắt đầu học ngay",
+    "searchPlaceholder": "Tìm kiếm khóa học...",
+    "searchButton": "Tìm kiếm",
+    "totalCourses": "1000+ Khóa học",
+    "totalStudents": "50k+ Học viên",
+    "totalCertificates": "200+ Chứng chỉ",
+    "popularCategories": "Danh mục phổ biến",
+    "featuredCourses": "Khóa học nổi bật",
+    "trendingCourses": "Khóa học xu hướng",
+    "recommendedCourses": "Khóa học đề xuất cho bạn",
+    "shareKnowledge": "Chia sẻ kiến thức của bạn",
+    "shareKnowledgeDesc": "Tạo khóa học và kiếm thu nhập từ việc dạy học",
+    "createNewCourse": "Tạo khóa học mới",
+    "quickActions": "Hành động nhanh",
+    "joinClass": "Tham gia lớp học",
+    "joinClassDesc": "Vào lớp học trực tuyến",
+    "downloadMaterials": "Tải tài liệu",
+    "downloadMaterialsDesc": "Tải xuống bài giảng",
+    "viewSchedule": "Lịch học",
+    "viewScheduleDesc": "Xem lịch học tuần này"
+  },
+  "features": {
+    "qualityCourses": {
+      "title": "Khóa học chất lượng",
+      "description": "Học từ các chuyên gia với kinh nghiệm thực tế trong ngành"
+    },
+    "community": {
+      "title": "Cộng đồng sôi động",
+      "description": "Kết nối với hàng nghìn lập trình viên và chia sẻ kinh nghiệm"
+    },
+    "certificates": {
+      "title": "Chứng chỉ uy tín",
+      "description": "Nhận chứng chỉ được công nhận bởi các doanh nghiệp hàng đầu"
+    }
+  },
+  "admin": {
+    "dashboardTitle": "Dashboard Quản trị",
+    "welcomeAdmin": "Chào mừng {name}, quản lý và theo dõi hệ thống TechHub",
+    "totalUsers": "Tổng người dùng",
+    "totalCourses": "Tổng khóa học",
+    "monthlyRevenue": "Doanh thu tháng",
+    "completionRate": "Tỷ lệ hoàn thành",
+    "comparedToLastMonth": "so với tháng trước",
+    "quickActions": "Hành động nhanh",
+    "manageUsers": "Quản lý người dùng",
+    "manageUsersDesc": "Xem và quản lý tài khoản người dùng",
+    "manageCourses": "Quản lý khóa học",
+    "manageCoursesDesc": "Duyệt và quản lý khóa học",
+    "financialReports": "Báo cáo tài chính",
+    "financialReportsDesc": "Xem báo cáo doanh thu và tài chính",
+    "systemAnalytics": "Phân tích hệ thống",
+    "systemAnalyticsDesc": "Xem thống kê và phân tích dữ liệu",
+    "recentActivities": "Hoạt động gần đây",
+    "viewAllActivities": "Xem tất cả hoạt động",
+    "exportReport": "Xuất báo cáo",
+    "settings": "Cài đặt"
+  },
+  "course": {
+    "level": "Cấp độ",
+    "beginner": "Cơ bản",
+    "intermediate": "Trung cấp",
+    "advanced": "Nâng cao",
+    "progress": "Tiến độ",
+    "register": "Đăng ký",
+    "preview": "Xem trước",
+    "new": "Mới"
+  }
+}
