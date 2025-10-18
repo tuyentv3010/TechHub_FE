@@ -1,5 +1,5 @@
 import DarkModeToggle from "@/components/dark-mode-toggle";
-import DropdownAvatar from "@/app/manage/dropdown-avatar";
+// import DropdownAvatar from "@/app/manage/dropdown-avatar";
 import NavLinks from "@/app/manage/nav-links";
 import MobileNavLinks from "@/app/manage/mobile-nav-links";
 import { SwitchLanguage } from "@/components/switch-language";
@@ -21,7 +21,7 @@ export default function Layout({
               <DarkModeToggle />
             </div>
           </div>
-          <DropdownAvatar />
+          {/* <DropdownAvatar /> */}
         </header>
         {children}
       </div>
