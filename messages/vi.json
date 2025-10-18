@@ -45,8 +45,12 @@
     "title": "TechHub - Nền tảng học lập trình",
     "defaultTitle": "TechHub - Học lập trình hiệu quả",
     "hero": {
+      "welcomeText": "Chào mừng đến với khóa học trực tuyến TechHub",
       "title": "Đạt Được Ước Mơ Thông Qua Giáo Dục",
-      "subtitle": "Khám phá hàng nghìn khóa học và kỹ năng để thăng tiến sự nghiệp",
+      "subtitle": "Chúng tôi có kinh nghiệm trong nền tảng giáo dục và các chiến lược thành thạo cho sự thành công của việc học trực tuyến.",
+      "buttonText": "Tìm Khóa Học",
+      "instructorCount": "200+",
+      "instructorText": "Giảng viên",
       "searchPlaceholder": "Tìm kiếm khóa học...",
       "searchButton": "Tìm kiếm"
     },
@@ -66,9 +70,16 @@
       "viewAll": "Xem Tất Cả"
     },
     "skillsSection": {
+      "subtitle": "Về Chúng Tôi",
       "title": "Học & Phát Triển Kỹ Năng Từ Mọi Nơi",
-      "description": "Bắt kịp với sự tiến bộ của thế giới số bằng cách học những kỹ năng mới. Cải thiện khả năng và khám phá cơ hội mới với các khóa học được dạy bởi chuyên gia trong ngành.",
-      "learnMore": "Tìm Hiểu Thêm"
+      "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+      "buttonText": "Tìm Hiểu Thêm",
+      "yearsText": "8+",
+      "experienceText": "Năm Kinh Nghiệm",
+      "feature1Title": "Lớp Học Linh Hoạt",
+      "feature1Description": "Suspendisse ultrices gravida dictum fusce placerat orci nulla pellentesque dignissim enim sit.",
+      "feature2Title": "Lớp Học Linh Hoạt", 
+      "feature2Description": "Suspendisse ultrices gravida dictum fusce placerat orci nulla pellentesque dignissim enim sit."
     },
     "callToAction": {
       "phone": "Gọi Để Đăng Ký Cho Con Em",
@@ -84,7 +95,8 @@
       }
     },
     "instructors": {
-      "title": "Gặp Gỡ Giảng Viên Chuyên Gia"
+      "title": "Popular Instructor",
+      "subtitle": "We know the best things for You. Top picks for You."
     },
     "blog": {
       "title": "Khám Phá Lợi Ích Của Bạn",

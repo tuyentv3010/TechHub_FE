@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SwitchLanguage } from "@/components/switch-language";
+import Image from "next/image";
 
 interface MenuItem {
   title: string;
@@ -50,10 +51,7 @@ export function NewHeader() {
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
-          <BookOpen className="h-6 w-6 text-primary" />
-          <span className="hidden font-bold sm:inline-block text-xl">
-            TechHub
-          </span>
+          <Image src="/logo.png" alt="TechHub Logo" width={80} height={80} />
         </Link>
 
         {/* Desktop Navigation */}

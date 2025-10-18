@@ -45,8 +45,12 @@
     "title": "TechHub - Programming Learning Platform", 
     "defaultTitle": "TechHub - Learn Programming Effectively",
     "hero": {
+      "welcomeText": "Welcome to TechHub Online Courses",
       "title": "Achieving Your Dreams Through Education",
-      "subtitle": "Discover thousands of courses and skills to advance your career",
+      "subtitle": "We are experienced in education platform and skilled strategies for the success of our online learning.",
+      "buttonText": "Find Courses",
+      "instructorCount": "200+",
+      "instructorText": "Instructor",
       "searchPlaceholder": "Search for courses...",
       "searchButton": "Search"
     },
@@ -66,9 +70,16 @@
       "viewAll": "View All"
     },
     "skillsSection": {
+      "subtitle": "Our About Us",
       "title": "Learn & Grow Your Skills From Anywhere",
-      "description": "Keep pace with the progress of the digital world by learning new skills. Improve your abilities and explore new opportunities with courses taught by industry experts.",
-      "learnMore": "Learn More"
+      "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+      "buttonText": "Load More",
+      "yearsText": "8+",
+      "experienceText": "Years Of Experiences",
+      "feature1Title": "Flexible Classrooms",
+      "feature1Description": "Suspendisse ultrices gravida dictum fusce placerat orci nulla pellentesque dignissim enim sit.",
+      "feature2Title": "Flexible Classrooms",
+      "feature2Description": "Suspendisse ultrices gravida dictum fusce placerat orci nulla pellentesque dignissim enim sit."
     },
     "callToAction": {
       "phone": "Call To Enroll Your Child",
@@ -84,7 +95,8 @@
       }
     },
     "instructors": {
-      "title": "Meet Our Expert Instructor"
+      "title": "Popular Instructor",
+      "subtitle": "We know the best things for You. Top picks for You."
     },
     "blog": {
       "title": "Discover Your Gain",

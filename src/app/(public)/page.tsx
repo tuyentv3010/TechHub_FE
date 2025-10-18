@@ -8,7 +8,6 @@ import { HeroSection } from "@/components/organisms/HeroSection";
 import { CategoriesSection } from "@/components/organisms/NewCategoriesSection";
 import { CoursesGridSection } from "@/components/organisms/CoursesGridSection";
 import { SkillsSection } from "@/components/organisms/NewSkillsSection";
-import { CallToActionSection } from "@/components/organisms/CallToActionSection";
 import { CommunitySection } from "@/components/organisms/CommunitySectionNew";
 import { InstructorsSection } from "@/components/organisms/InstructorsSection";
 import { BlogSection } from "@/components/organisms/BlogSection";
@@ -42,36 +41,46 @@ export default async function Home() {
 
   const mockCourses = [
     {
-      title: "Complete Web Development Bootcamp",
-      instructor: "John Doe",
-      image: "/course1.jpg",
+      title: "IT Statistics Data Science And Business Analysis",
+      instructor: "Samantha",
+      image: "/courses/data-science.png",
       rating: 4.5,
-      reviews: 1234,
-      price: 99.99,
-      badge: "Bestseller",
-      hours: 40,
+      reviews: 4500,
+      price: 50.00,
+      badge: "Digital Marketing",
+      hours: 19,
       lectures: 120,
+      lessons: 10,
+      students: 20,
+      instructorAvatar: "/avatars/samantha.jpg"
     },
     {
       title: "Advanced React Development",
       instructor: "Jane Smith",
-      image: "/course2.jpg", 
+      image: "/courses/react-course.png", 
       rating: 4.8,
       reviews: 856,
       price: 79.99,
+      badge: "Web Development",
       hours: 30,
       lectures: 85,
+      lessons: 15,
+      students: 50,
+      instructorAvatar: "/avatars/jane.jpg"
     },
     {
       title: "Python for Data Science",
       instructor: "Mike Johnson",
-      image: "/course3.jpg",
+      image: "/courses/python-course.png",
       rating: 4.6,
       reviews: 2341,
       price: 89.99,
-      badge: "Hot",
+      badge: "Data Science",
       hours: 35,
       lectures: 95,
+      lessons: 12,
+      students: 100,
+      instructorAvatar: "/avatars/mike.jpg"
     },
   ];
 
@@ -86,10 +95,12 @@ export default async function Home() {
     <div className="w-full">
       {/* Hero Section */}
       <HeroSection
+        welcomeText={t("hero.welcomeText")}
         title={t("hero.title")}
         subtitle={t("hero.subtitle")}
-        searchPlaceholder={t("hero.searchPlaceholder")}
-        searchButtonText={t("hero.searchButton")}
+        buttonText={t("hero.buttonText")}
+        instructorCount={t("hero.instructorCount")}
+        instructorText={t("hero.instructorText")}
       />
 
       {/* Categories Section */}
@@ -108,15 +119,19 @@ export default async function Home() {
       {/* Skills Section */}
       <SkillsSection
         title={t("skillsSection.title")}
+        subtitle={t("skillsSection.subtitle")}
         description={t("skillsSection.description")}
-        buttonText={t("skillsSection.learnMore")}
+        buttonText={t("skillsSection.buttonText")}
+        yearsText={t("skillsSection.yearsText")}
+        experienceText={t("skillsSection.experienceText")}
+        feature1Title={t("skillsSection.feature1Title")}
+        feature1Description={t("skillsSection.feature1Description")}
+        feature2Title={t("skillsSection.feature2Title")}
+        feature2Description={t("skillsSection.feature2Description")}
       />
 
       {/* Call to Action */}
-      <CallToActionSection
-        phoneText={t("callToAction.phone")}
-        phoneNumber={t("callToAction.phoneNumber")}
-      />
+
 
       {/* Community Section */}
       <CommunitySection
@@ -127,6 +142,7 @@ export default async function Home() {
       {/* Instructors Section */}
       <InstructorsSection
         title={t("instructors.title")}
+        subtitle={t("instructors.subtitle")}
       />
 
       {/* Blog Section */}
