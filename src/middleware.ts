@@ -1,67 +1,53 @@
-import createMiddleware from 'next-intl/middleware';
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { decodeToken } from "@/lib/utils";
+import { Role } from "@/constants/type";
 
-// Create the next-intl middleware
-const intlMiddleware = createMiddleware({
-  locales: ['en', 'vi', 'ja'],
-  defaultLocale: 'vi'
-});
-
-// Routes that require authentication (without locale prefix)
-const protectedRoutes = ['/home', '/admin/dashboard', '/instructor'];
-
-// Routes that should redirect authenticated users (without locale prefix)  
-const authRoutes = ['/signin', '/signup'];
+const guestPath = ["/guest"];
+const unAuthPaths = ["/login"];
+const managePaths = ["/manage"];
+const privatePaths = [...managePaths, ...guestPath];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
-  // Extract locale from pathname
-  const locale = pathname.split('/')[1];
-  const isValidLocale = ['en', 'vi', 'ja'].includes(locale);
-  
-  // Remove locale from pathname for route checking
-  const pathWithoutLocale = isValidLocale ? pathname.slice(3) : pathname;
-  
-  // Skip middleware for home page (with or without locale)
-  if (pathWithoutLocale === '' || pathWithoutLocale === '/') {
-    return intlMiddleware(request);
-  }
-  
-  // Check if user is authenticated (has token)
-  const token = request.cookies.get('auth-token')?.value;
-  const isAuthenticated = !!token;
+  const accessToken = request.cookies.get("accessToken")?.value;
+  const refreshToken = request.cookies.get("refreshToken")?.value;
 
-  // Handle protected routes
-  if (protectedRoutes.some(route => pathWithoutLocale.startsWith(route))) {
-    if (!isAuthenticated) {
-      const signInUrl = new URL(`/${locale}/signin`, request.url);
-      signInUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(signInUrl);
+  // Redirect authenticated users from login page
+  if (refreshToken && unAuthPaths.some((path) => pathname.startsWith(path))) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // Handle private paths
+  if (
+    privatePaths.some((path) => pathname.startsWith(path)) &&
+    !accessToken &&
+    refreshToken
+  ) {
+    const url = new URL("/refresh-token", request.url);
+    url.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Role-based access control
+  if (accessToken) {
+    const decoded = decodeToken(accessToken);
+    const role = decoded.role as RoleType;
+    const isGuestGoToManagePath =
+      role === Role.Guest &&
+      managePaths.some((path) => pathname.startsWith(path));
+    const isNotGuestGoToGuestPath =
+      role !== Role.Guest &&
+      guestPath.some((path) => pathname.startsWith(path));
+
+    if (isGuestGoToManagePath || isNotGuestGoToGuestPath) {
+      return NextResponse.redirect(new URL("/", request.url));
     }
   }
 
-  // Handle auth routes - redirect authenticated users based on role
-  if (authRoutes.some(route => pathWithoutLocale.startsWith(route))) {
-    if (isAuthenticated) {
-      return NextResponse.redirect(new URL(`/${locale}/home`, request.url));
-    }
-  }
-
-  // Apply intl middleware for locale handling
-  return intlMiddleware(request);
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ["/manage/:path*", "/login", "/", "/guest/:path*"],
 };

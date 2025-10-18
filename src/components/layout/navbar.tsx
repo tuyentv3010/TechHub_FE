@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ThemeToggle } from '@/components/common/theme-toggle';
 import { LanguageSwitcher } from '@/components/common/language-switcher';
 import { useAuthStore } from '@/store/auth-store';
-import { useLogout } from '@/hooks/use-auth';
+import { useLogout } from '@/queries/use-auth';
 import { AnimatedLogo } from '@/components/common/animated-logo';
 
 export function Navbar() {

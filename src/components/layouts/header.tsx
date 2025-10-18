@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/common/theme-toggle';
 import { BookOpen, Menu, X } from 'lucide-react';
 import { useState } from 'react';
-import { useAuthStatus } from '@/hooks/use-auth';
+import { useAuthStatus } from '@/queries/use-auth';
 import {
   DropdownMenu,
   DropdownMenuContent,
