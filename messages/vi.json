@@ -26,7 +26,75 @@
     "settings": "Cài đặt",
     "logout": "Đăng xuất"
   },
-  "homepage": {
+  "NavItem": {
+    "home": "Trang chủ",
+    "courses": "Khóa học",
+    "blog": "Blog",
+    "about": "Về chúng tôi",
+    "learningPaths": "Lộ trình học",
+    "contact": "Liên hệ",
+    "signIn": "Đăng nhập",
+    "signUp": "Đăng ký",
+    "dashboard": "Bảng điều khiển",
+    "profile": "Hồ sơ",
+    "myLearning": "Học của tôi",
+    "settings": "Cài đặt",
+    "logout": "Đăng xuất"
+  },
+  "HomePage": {
+    "title": "TechHub - Nền tảng học lập trình",
+    "defaultTitle": "TechHub - Học lập trình hiệu quả",
+    "hero": {
+      "title": "Đạt Được Ước Mơ Thông Qua Giáo Dục",
+      "subtitle": "Khám phá hàng nghìn khóa học và kỹ năng để thăng tiến sự nghiệp",
+      "searchPlaceholder": "Tìm kiếm khóa học...",
+      "searchButton": "Tìm kiếm"
+    },
+    "categories": {
+      "title": "Duyệt Theo Danh Mục",
+      "webDesign": "Thiết Kế Web",
+      "dataScience": "Khoa Học Dữ Liệu",
+      "businessDevelopment": "Phát Triển Kinh Doanh",
+      "personalDevelopment": "Phát Triển Cá Nhân",
+      "itAndSoftware": "CNTT & Phần Mềm",
+      "graphicDesign": "Thiết Kế Đồ Họa",
+      "digitalMarketing": "Marketing Số",
+      "newsAndPhotography": "Tin Tức & Nhiếp Ảnh"
+    },
+    "coursesSection": {
+      "title": "Học Viên Edurate Có Thể Tham Gia Cùng Chúng Tôi.",
+      "viewAll": "Xem Tất Cả"
+    },
+    "skillsSection": {
+      "title": "Học & Phát Triển Kỹ Năng Từ Mọi Nơi",
+      "description": "Bắt kịp với sự tiến bộ của thế giới số bằng cách học những kỹ năng mới. Cải thiện khả năng và khám phá cơ hội mới với các khóa học được dạy bởi chuyên gia trong ngành.",
+      "learnMore": "Tìm Hiểu Thêm"
+    },
+    "callToAction": {
+      "phone": "Gọi Để Đăng Ký Cho Con Em",
+      "phoneNumber": "(+91)956823452"
+    },
+    "community": {
+      "title": "Tạo Cộng Đồng Học Viên Suốt Đời.",
+      "stats": {
+        "totalStudents": "36k+",
+        "totalCourses": "15k+",
+        "totalInstructors": "97k+",
+        "successRate": "100%"
+      }
+    },
+    "instructors": {
+      "title": "Gặp Gỡ Giảng Viên Chuyên Gia"
+    },
+    "blog": {
+      "title": "Khám Phá Lợi Ích Của Bạn",
+      "mostPopular": "Bài Viết Phổ Biến Nhất."
+    },
+    "newsletter": {
+      "title": "Tham Gia Bản Tin",
+      "placeholder": "Nhập email của bạn",
+      "subscribe": "Đăng Ký"
+    },
     "welcomeBack": "Xin chào {name}! 👋",
     "subtitle": "Nền tảng học lập trình hiện đại",
     "description": "Khám phá thế giới lập trình với các khóa học chất lượng cao, giảng viên kinh nghiệm và cộng đồng học tập sôi động.",
@@ -116,5 +184,33 @@
     "reviews": "Đánh giá",
     "addToCart": "Thêm vào giỏ",
     "buyNow": "Mua ngay"
+  },
+  "Footer": {
+    "title": "TechHub",
+    "description": "Nền tảng học tập trực tuyến hàng đầu",
+    "allRightsReserved": "Tất cả quyền được bảo lưu",
+    "privacyPolicy": "Chính sách bảo mật",
+    "termsOfService": "Điều khoản dịch vụ",
+    "ConditionService": "Điều khoản sử dụng",
+    "AboutWe": "Về chúng tôi"
+  },
+  "PrivacyPolicy": {
+    "title": "Chính Sách Bảo Mật",
+    "lastUpdated": "Cập nhật lần cuối"
+  },
+  "Login": {
+    "title": "Đăng nhập",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "forgotPassword": "Quên mật khẩu?",
+    "signIn": "Đăng nhập",
+    "noAccount": "Chưa có tài khoản?",
+    "signUp": "Đăng ký ngay"
+  },
+  "SwitchLanguage": {
+    "title": "Chọn ngôn ngữ",
+    "en": "English",
+    "vi": "Tiếng Việt", 
+    "ja": "日本語"
   }
 }

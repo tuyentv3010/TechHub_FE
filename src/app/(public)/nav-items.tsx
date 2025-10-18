@@ -23,6 +23,12 @@ import {
 } from "@/components/ui/alert-dialog";
 // import { useLogoutMutation } from "@/queries/useAuth";
 
+interface MenuItem {
+  title: string;
+  href: string;
+  role?: RoleType[];
+}
+
 export default function NavItems({ className }: { className?: string }) {
   const t = useTranslations("NavItem");
   const loginT = useTranslations("Login");
@@ -30,19 +36,13 @@ export default function NavItems({ className }: { className?: string }) {
   const router = useRouter();
   // const logoutMutation = useLogoutMutation();
 
-  const menuItems = [
-    { title: t("FindTicket"), href: "/search" },
-    { title: t("BookingInfo"), href: "/booking-info" },
-    { title: t("Promotion"), href: "/promotion" },
-    { title: t("Term&Conditions"), href: "/term-of-service" },
-    { title: t("Contact"), href: "/about" },
-    { title: "AI Assistant", href: "/chatbot" },
-    {
-      title: "Quản lý",
-      href: "/manage/dashboard",
-      role: [Role.Admin, Role.Staff],
-    },
-    { title: t("Blog"), href: "/blog" },
+  const menuItems: MenuItem[] = [
+    { title: t("home"), href: "/" },
+    { title: t("courses"), href: "/courses" },
+    { title: t("learningPaths"), href: "/learning-paths" },
+    { title: t("blog"), href: "/blog" },
+    { title: t("about"), href: "/about" },
+    { title: t("contact"), href: "/contact" },
   ];
 
   return (

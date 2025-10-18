@@ -26,7 +26,75 @@
     "settings": "Settings",
     "logout": "Logout"
   },
-  "homepage": {
+  "NavItem": {
+    "home": "Home",
+    "courses": "Courses", 
+    "blog": "Blog",
+    "about": "About Us",
+    "learningPaths": "Learning Paths",
+    "contact": "Contact",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "myLearning": "My Learning",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "HomePage": {
+    "title": "TechHub - Programming Learning Platform", 
+    "defaultTitle": "TechHub - Learn Programming Effectively",
+    "hero": {
+      "title": "Achieving Your Dreams Through Education",
+      "subtitle": "Discover thousands of courses and skills to advance your career",
+      "searchPlaceholder": "Search for courses...",
+      "searchButton": "Search"
+    },
+    "categories": {
+      "title": "Browse By Categories",
+      "webDesign": "Web Design",
+      "dataScience": "Data Science",
+      "businessDevelopment": "Business Development",
+      "personalDevelopment": "Personal Development",
+      "itAndSoftware": "IT & Software",
+      "graphicDesign": "Graphic Design",
+      "digitalMarketing": "Digital Marketing",
+      "newsAndPhotography": "News & Photography"
+    },
+    "coursesSection": {
+      "title": "Edurate Course Student Can Join With Us.",
+      "viewAll": "View All"
+    },
+    "skillsSection": {
+      "title": "Learn & Grow Your Skills From Anywhere",
+      "description": "Keep pace with the progress of the digital world by learning new skills. Improve your abilities and explore new opportunities with courses taught by industry experts.",
+      "learnMore": "Learn More"
+    },
+    "callToAction": {
+      "phone": "Call To Enroll Your Child",
+      "phoneNumber": "(+91)956823452"
+    },
+    "community": {
+      "title": "Creating A Community Of Life Long Learners.",
+      "stats": {
+        "totalStudents": "36k+",
+        "totalCourses": "15k+",
+        "totalInstructors": "97k+",
+        "successRate": "100%"
+      }
+    },
+    "instructors": {
+      "title": "Meet Our Expert Instructor"
+    },
+    "blog": {
+      "title": "Discover Your Gain",
+      "mostPopular": "Most Popular Post."
+    },
+    "newsletter": {
+      "title": "Join Our Newsletter",
+      "placeholder": "Enter your email",
+      "subscribe": "Subscribe"
+    },
     "welcomeBack": "Welcome back {name}! 👋",
     "subtitle": "Modern Programming Learning Platform",
     "description": "Discover the world of programming with high-quality courses, experienced instructors, and a vibrant learning community.",
@@ -116,5 +184,33 @@
     "reviews": "Reviews",
     "addToCart": "Add to Cart",
     "buyNow": "Buy Now"
+  },
+  "Footer": {
+    "title": "TechHub",
+    "description": "Leading online learning platform",
+    "allRightsReserved": "All rights reserved",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "ConditionService": "Terms of Service",
+    "AboutWe": "About Us"
+  },
+  "PrivacyPolicy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated"
+  },
+  "Login": {
+    "title": "Sign In",
+    "email": "Email",
+    "password": "Password", 
+    "forgotPassword": "Forgot password?",
+    "signIn": "Sign In",
+    "noAccount": "Don't have an account?",
+    "signUp": "Sign up now"
+  },
+  "SwitchLanguage": {
+    "title": "Select language",
+    "en": "English",
+    "vi": "Tiếng Việt",
+    "ja": "日本語"
   }
 }

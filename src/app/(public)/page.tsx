@@ -1,18 +1,24 @@
-import {
-  formatCurrency,
-  generateSlugUrl,
-  htmlToTextForDescription,
-} from "@/lib/utils";
-import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { Metadata } from "next";
 import envConfig from "@/config";
+import { htmlToTextForDescription } from "@/lib/utils";
+
+// Import new components
+import { HeroSection } from "@/components/organisms/HeroSection";
+import { CategoriesSection } from "@/components/organisms/NewCategoriesSection";
+import { CoursesGridSection } from "@/components/organisms/CoursesGridSection";
+import { SkillsSection } from "@/components/organisms/NewSkillsSection";
+import { CallToActionSection } from "@/components/organisms/CallToActionSection";
+import { CommunitySection } from "@/components/organisms/CommunitySectionNew";
+import { InstructorsSection } from "@/components/organisms/InstructorsSection";
+import { BlogSection } from "@/components/organisms/BlogSection";
+import { NewsletterSection } from "@/components/organisms/NewsletterSection";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("HomePage");
   return {
-    title: t("title"),
-    description: htmlToTextForDescription(t("description")),
+    title: t("hero.title"),
+    description: htmlToTextForDescription(t("hero.subtitle")),
     alternates: {
       canonical: envConfig.NEXT_PUBLIC_URL,
     },
@@ -21,57 +27,120 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Home() {
   const t = await getTranslations("HomePage");
+  
+  // Mock data - in real app, this would come from API
+  const categories = [
+    { title: t("categories.webDesign"), icon: "🎨", bgColor: "bg-blue-100" },
+    { title: t("categories.dataScience"), icon: "📊", bgColor: "bg-green-100" },
+    { title: t("categories.businessDevelopment"), icon: "💼", bgColor: "bg-purple-100" },
+    { title: t("categories.personalDevelopment"), icon: "🧠", bgColor: "bg-yellow-100" },
+    { title: t("categories.itAndSoftware"), icon: "💻", bgColor: "bg-red-100" },
+    { title: t("categories.graphicDesign"), icon: "🎭", bgColor: "bg-indigo-100" },
+    { title: t("categories.digitalMarketing"), icon: "📱", bgColor: "bg-pink-100" },
+    { title: t("categories.newsAndPhotography"), icon: "📷", bgColor: "bg-orange-100" },
+  ];
+
+  const mockCourses = [
+    {
+      title: "Complete Web Development Bootcamp",
+      instructor: "John Doe",
+      image: "/course1.jpg",
+      rating: 4.5,
+      reviews: 1234,
+      price: 99.99,
+      badge: "Bestseller",
+      hours: 40,
+      lectures: 120,
+    },
+    {
+      title: "Advanced React Development",
+      instructor: "Jane Smith",
+      image: "/course2.jpg", 
+      rating: 4.8,
+      reviews: 856,
+      price: 79.99,
+      hours: 30,
+      lectures: 85,
+    },
+    {
+      title: "Python for Data Science",
+      instructor: "Mike Johnson",
+      image: "/course3.jpg",
+      rating: 4.6,
+      reviews: 2341,
+      price: 89.99,
+      badge: "Hot",
+      hours: 35,
+      lectures: 95,
+    },
+  ];
+
+  const communityStats = {
+    totalStudents: t("community.stats.totalStudents"),
+    totalCourses: t("community.stats.totalCourses"), 
+    totalInstructors: t("community.stats.totalInstructors"),
+    successRate: t("community.stats.successRate"),
+  };
+
   return (
-    <div className="w-full space-y-4">
-      {/* Banner Section */}
-      <div className="relative z-10 min-h-[450px]">
-        <span className="absolute top-0 left-0 w-full h-full bg-black opacity-10 z-10"></span>
-        <Image
-          src="/banner3.png"
-          width={900}
-          height={300}
-          quality={100}
-          alt="Banner"
-          className="absolute top-0 w-full h-full object-cover opacity-80"
-        />
-        <div className="z-20 relative py-10 md:py-20 px-4 sm:px-10 md:px-20">
-          <h1 className="text-center text-xl sm:text-2xl md:text-4xl lg:text-5xl font-bold text-white">
-            {t("title")}
-          </h1>
-          <p className="text-center text-sm sm:text-base mt-4 text-white">
-            {t("description")}
-          </p>
-        </div>
-        <div className="absolute bottom-[0px] left-0 w-full z-30 bg-white/30 h-[70px]">
-          <div className="w-full py-4">
-          </div>
-        </div>
-      </div>
+    <div className="w-full">
+      {/* Hero Section */}
+      <HeroSection
+        title={t("hero.title")}
+        subtitle={t("hero.subtitle")}
+        searchPlaceholder={t("hero.searchPlaceholder")}
+        searchButtonText={t("hero.searchButton")}
+      />
 
-      {/* Grid Section */}
-      <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-4">
-        <div className="w-full border rounded-lg bg-white shadow-md p-4">
-        </div>
-        <div className="col-span-2 border rounded-lg bg-white shadow-md p-4">
-          <div className="text-sm font-medium">
-            <Image
-              src="/banner2.jpg"
-              width={1000}
-              height={1000}
-              quality={100}
-              alt="Train Head"
-              className="w-full h-auto"
-            />
-          </div>
-        </div>
-        <div className="w-full border rounded-lg bg-white shadow-md p-4">
-        </div>
-      </div>
+      {/* Categories Section */}
+      <CategoriesSection
+        title={t("categories.title")}
+        categories={categories}
+      />
 
-      <section className="space-y-10 py-16">
-        <div className="max-w-7xl mx-auto px-4">
-        </div>
-      </section>
+      {/* Courses Section */}
+      <CoursesGridSection
+        title={t("coursesSection.title")}
+        viewAllText={t("coursesSection.viewAll")}
+        courses={mockCourses}
+      />
+
+      {/* Skills Section */}
+      <SkillsSection
+        title={t("skillsSection.title")}
+        description={t("skillsSection.description")}
+        buttonText={t("skillsSection.learnMore")}
+      />
+
+      {/* Call to Action */}
+      <CallToActionSection
+        phoneText={t("callToAction.phone")}
+        phoneNumber={t("callToAction.phoneNumber")}
+      />
+
+      {/* Community Section */}
+      <CommunitySection
+        title={t("community.title")}
+        stats={communityStats}
+      />
+
+      {/* Instructors Section */}
+      <InstructorsSection
+        title={t("instructors.title")}
+      />
+
+      {/* Blog Section */}
+      <BlogSection
+        title={t("blog.title")}
+        subtitle={t("blog.mostPopular")}
+      />
+
+      {/* Newsletter Section */}
+      <NewsletterSection
+        title={t("newsletter.title")}
+        placeholder={t("newsletter.placeholder")}
+        buttonText={t("newsletter.subscribe")}
+      />
     </div>
   );
 }
