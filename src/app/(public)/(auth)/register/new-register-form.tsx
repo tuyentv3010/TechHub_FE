@@ -40,7 +40,7 @@ const googleOauthUrl = getOauthGoogleUrl();
 
 export default function NewRegisterForm() {
   const t = useTranslations("Register");
-  const errorMessageT = useTranslations("ErrorMessage");
+  const errorMessageT = useTranslations("ValidationErrors");
   const registerMutation = useRegisterMutation();
   const router = useRouter();
 

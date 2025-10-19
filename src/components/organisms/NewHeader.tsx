@@ -185,7 +185,7 @@ export function NewHeader() {
                 <DropdownMenuSeparator />
                 {role === "ADMIN" && (
                   <DropdownMenuItem asChild>
-                    <Link href="/manage/dashboard" className="cursor-pointer">
+                    <Link href="/manage/accounts" className="cursor-pointer">
                       <BarChart3 className="mr-2 h-4 w-4" />
                       {t("dashboard") || "Dashboard"}
                     </Link>

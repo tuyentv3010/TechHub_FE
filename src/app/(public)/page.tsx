@@ -12,6 +12,7 @@ import { CommunitySection } from "@/components/organisms/CommunitySectionNew";
 import { InstructorsSection } from "@/components/organisms/InstructorsSection";
 import { BlogSection } from "@/components/organisms/BlogSection";
 import { NewsletterSection } from "@/components/organisms/NewsletterSection";
+import Footer from "@/components/footer";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("HomePage");
@@ -157,6 +158,8 @@ export default async function Home() {
         placeholder={t("newsletter.placeholder")}
         buttonText={t("newsletter.subscribe")}
       />
+      <Footer />
+
     </div>
   );
 }

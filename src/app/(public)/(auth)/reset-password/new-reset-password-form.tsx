@@ -29,7 +29,7 @@ interface OTPFormData {
 
 export default function NewResetPasswordForm() {
   const t = useTranslations("ResetPassword");
-  const errorMessageT = useTranslations("ErrorMessage");
+  const errorMessageT = useTranslations("ValidationErrors");
   const resetPasswordMutation = useResetPasswordMutation();
   const router = useRouter();
   const searchParams = useSearchParams();

@@ -21,7 +21,7 @@ import { useState } from "react";
 
 export default function NewForgotPasswordForm() {
   const t = useTranslations("ForgotPassword");
-  const errorMessageT = useTranslations("ErrorMessage");
+  const errorMessageT = useTranslations("ValidationErrors");
   const forgotPasswordMutation = useForgotPasswordMutation();
   const router = useRouter();
   const [emailSent, setEmailSent] = useState(false);
