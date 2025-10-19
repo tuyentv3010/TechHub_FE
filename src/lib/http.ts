@@ -274,9 +274,12 @@ const request = async <Response>(
 
     if (isClient) {
       const normalizeUrl = normalizePath(url);
-      if (["api/v1/auth/login"].includes(normalizeUrl)) {
-        const { access_token } = (payload as LoginResType).data;
-        localStorage.setItem("accessToken", access_token);
+      if (["api/proxy/auth/login", "api/v1/auth/login"].includes(normalizeUrl)) {
+        if (payload.success && payload.data) {
+          const { accessToken, refreshToken } = payload.data;
+          localStorage.setItem("accessToken", accessToken);
+          localStorage.setItem("refreshToken", refreshToken);
+        }
       } else if ("api/v1/auth/token" === normalizeUrl) {
         const { accessToken, refreshToken } = payload as {
           accessToken: string;
@@ -284,9 +287,10 @@ const request = async <Response>(
         };
         localStorage.setItem("accessToken", accessToken);
         localStorage.setItem("refreshToken", refreshToken);
-      } else if (["api/v1/auth/logout"].includes(normalizeUrl)) {
+      } else if (["api/proxy/auth/logout", "api/v1/auth/logout"].includes(normalizeUrl)) {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
+        localStorage.removeItem("userInfo");
       }
     }
 

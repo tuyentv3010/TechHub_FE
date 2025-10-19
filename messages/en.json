@@ -39,7 +39,10 @@
     "profile": "Profile",
     "myLearning": "My Learning",
     "settings": "Settings",
-    "logout": "Logout"
+    "logout": "Logout",
+    "logoutSuccess": "Logout Successful",
+    "logoutSuccessMessage": "You have been logged out",
+    "loggingOut": "Logging out..."
   },
   "HomePage": {
     "title": "TechHub - Programming Learning Platform", 
@@ -212,17 +215,98 @@
   },
   "Login": {
     "title": "Sign In",
+    "description": "Enter your email and password to sign in to the system",
     "email": "Email",
     "password": "Password", 
     "forgotPassword": "Forgot password?",
     "signIn": "Sign In",
-    "noAccount": "Don't have an account?",
-    "signUp": "Sign up now"
+    "noAlreadyHaveAccount": "Don't have an account?",
+    "Register": "Sign Up",
+    "googleLogin": "Sign in with Google",
+    "loginSuccess": "Login Successful",
+    "loginError": "Login Failed",
+    "loginErrorMessage": "Please check your credentials",
+    "welcomeBack": "Welcome back",
+    "accountNotActive": "Account Not Active",
+    "VerificationRequired": "Please verify your email to activate your account"
   },
-  "SwitchLanguage": {
+  "ForgotPassword": {
+    "title": "Forgot Password",
+    "description": "Enter your email to receive OTP code for password reset",
+    "email": "Email",
+    "sendEmail": "Send Email",
+    "emailSent": "Email Sent",
+    "success": "Success",
+    "error": "Error",
+    "checkEmail": "Please check your email to receive OTP code",
+    "errorMessage": "An error occurred, please try again",
+    "backToLogin": "Back to Login"
+  },
+  "ResetPassword": {
+    "title": "Reset Password",
+    "description": "Enter OTP code and new password",
+    "otp": "OTP Code (6 digits)",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "resetPassword": "Reset Password",
+    "success": "Success!",
+    "successMessage": "Password has been changed. Redirecting to login...",
+    "successDescription": "Your password has been successfully changed",
+    "error": "Error",
+    "errorMessage": "An error occurred, please try again",
+    "emailRequired": "Email is required",
+    "didNotReceiveCode": "Didn't receive code?",
+    "resendCode": "Resend",
+    "backToLogin": "Back to Login",
+    "goToLogin": "Go to Login"
+  },
+  "VerifyEmail": {
+    "title": "Email Verification",
+    "description": "You have sent code to your Email",
+    "verifyAccount": "Verify Account",
+    "didNotReceiveCode": "Didn't receive code?",
+    "resend": "Resend",
+    "success": "Success",
+    "successMessage": "Email verified successfully",
+    "error": "Error",
+    "errorMessage": "Verification failed"
+  },
+  "ErrorMessage": {
     "title": "Select language",
     "en": "English",
     "vi": "Tiếng Việt",
     "ja": "日本語"
+  },
+  "ErrorMessage": {
+    "Invalid email address": "Invalid email address",
+    "Email is required": "Email is required",
+    "Password is required": "Password is required",
+    "Password must be at least 6 characters": "Password must be at least 6 characters",
+    "Confirm password is required": "Confirm password is required",
+    "Passwords do not match": "Passwords do not match",
+    "Username is required": "Username is required",
+    "Username must be at least 3 characters": "Username must be at least 3 characters",
+    "OTP must be 6 characters": "OTP must be 6 characters",
+    "OTP is required": "OTP is required",
+    "New password is required": "New password is required",
+    "String must contain at least 6 character(s)": "Must be at least 6 characters"
+  },
+  "Register": {
+    "title": "Sign Up",
+    "description": "Create a new account to start learning",
+    "email": "Email",
+    "username": "Username",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "signUp": "Sign Up",
+    "alreadyHaveAccount": "Already have an account?",
+    "login": "Sign In",
+    "googleSignUp": "Sign up with Google",
+    "registerSuccess": "Registration Successful",
+    "registerSuccessMessage": "Please check your email to verify your account",
+    "registerError": "Registration Failed",
+    "registerErrorMessage": "An error occurred, please try again",
+    "emailExists": "Email already exists",
+    "usernameExists": "Username already exists"
   }
 }

@@ -77,7 +77,7 @@ export function CommunitySection({ title, stats }: CommunitySectionProps) {
                 </div>
                 <div className="text-orange-100 font-medium">Success Rate</div>
               </div>
-            </div>
+            </div>  
           </div>
           
           {/* Right image */}
