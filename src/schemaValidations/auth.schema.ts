@@ -3,9 +3,9 @@ import z from "zod";
 export const RegisterBody = z
   .object({
     email: z.string().email("Invalid email address"),
+    username: z.string().min(1, "Username is required"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string().min(6, "Confirm password is required"),
-    fullName: z.string().min(1, "Full name is required"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -13,9 +13,10 @@ export const RegisterBody = z
   });
 
 export type RegisterBodyType = z.infer<typeof RegisterBody>;
+
 export const LoginBody = z
   .object({
-    username: z.string().min(1, { message: "required" }).email({
+    email: z.string().min(1, { message: "required" }).email({
       message: "invalidEmail",
     }),
     password: z.string().min(6, { message: "invalidPassword" }).max(100),
@@ -25,40 +26,25 @@ export const LoginBody = z
 export type LoginBodyType = z.TypeOf<typeof LoginBody>;
 
 export const LoginRes = z.object({
-  statusCode: z.number(),
-  error: z.string().nullable(),
+  success: z.boolean(),
+  status: z.string(),
   message: z.string(),
   data: z.object({
-    access_token: z.string(),
+    accessToken: z.string(),
+    refreshToken: z.string(),
+    tokenType: z.string(),
+    expiresIn: z.number(),
     user: z.object({
-      id: z.number(),
+      id: z.string(),
       email: z.string(),
-      name: z.string(),
-      role: z.object({
-        id: z.number(),
-        name: z.string(),
-        description: z.string(),
-        active: z.boolean(),
-        createdAt: z.string(),
-        updatedAt: z.string().nullable(),
-        createdBy: z.string(),
-        updatedBy: z.string().nullable(),
-        permissions: z.array(
-          z.object({
-            id: z.number(),
-            name: z.string(),
-            apiPath: z.string(),
-            method: z.string(),
-            module: z.string(),
-            createdAt: z.string(),
-            updatedAt: z.string().nullable(),
-            createdBy: z.string(),
-            updatedBy: z.string().nullable(),
-          })
-        ),
-      }),
+      username: z.string(),
+      roles: z.array(z.string()),
+      status: z.string(),
     }),
   }),
+  timestamp: z.string(),
+  path: z.string(),
+  code: z.number(),
 });
 
 export type LoginResType = z.TypeOf<typeof LoginRes>;
@@ -110,6 +96,51 @@ export const VerifyEmailBody = z.object({
 
 export type VerifyCodeBodyType = z.infer<typeof VerifyCodeBody>;
 export type VerifyEmailBodyType = z.infer<typeof VerifyEmailBody>;
+
+// Forgot Password Schema
+export const ForgotPasswordBody = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+export type ForgotPasswordBodyType = z.infer<typeof ForgotPasswordBody>;
+
+export const ForgotPasswordRes = z.object({
+  success: z.boolean(),
+  status: z.string(),
+  message: z.string(),
+  timestamp: z.string(),
+  code: z.number(),
+});
+
+export type ForgotPasswordResType = z.infer<typeof ForgotPasswordRes>;
+
+// Reset Password Schema
+export const ResetPasswordBody = z
+  .object({
+    otp: z.string().length(6, "OTP must be 6 characters"),
+    newPassword: z
+      .string()
+      .min(6, "Password must be at least 6 characters")
+      .max(100, "Password is too long"),
+    confirmPassword: z.string().min(6, "Confirm password is required"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+export type ResetPasswordBodyType = z.infer<typeof ResetPasswordBody>;
+
+export const ResetPasswordRes = z.object({
+  success: z.boolean(),
+  status: z.string(),
+  message: z.string(),
+  timestamp: z.string(),
+  code: z.number(),
+});
+
+export type ResetPasswordResType = z.infer<typeof ResetPasswordRes>;
+
 export interface RegisterResType {
   userId: number;
   email: string;
@@ -120,25 +151,3 @@ export interface RegisterResType {
   createdAt: string;
   codeExpired: string;
 }
-export const ResetPasswordBody = z
-  .object({
-    email: z
-      .string()
-      .email("Invalid email format")
-      .nonempty("Email is required"),
-    verificationCode: z
-      .string()
-      .nonempty("Verification code is required")
-      .min(6, "Verification code must be at least 6 characters"),
-    newPassword: z
-      .string()
-      .nonempty("New password is required")
-      .min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string().nonempty("Confirm password is required"),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
-
-export type ResetPasswordBodyType = z.infer<typeof ResetPasswordBody>;

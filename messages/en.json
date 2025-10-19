@@ -26,7 +26,90 @@
     "settings": "Settings",
     "logout": "Logout"
   },
-  "homepage": {
+  "NavItem": {
+    "home": "Home",
+    "courses": "Courses", 
+    "blog": "Blog",
+    "about": "About Us",
+    "learningPaths": "Learning Paths",
+    "contact": "Contact",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "myLearning": "My Learning",
+    "settings": "Settings",
+    "logout": "Logout",
+    "logoutSuccess": "Logout Successful",
+    "logoutSuccessMessage": "You have been logged out",
+    "loggingOut": "Logging out..."
+  },
+  "HomePage": {
+    "title": "TechHub - Programming Learning Platform", 
+    "defaultTitle": "TechHub - Learn Programming Effectively",
+    "hero": {
+      "welcomeText": "Welcome to TechHub Online Courses",
+      "title": "Achieving Your Dreams Through Education",
+      "subtitle": "We are experienced in education platform and skilled strategies for the success of our online learning.",
+      "buttonText": "Find Courses",
+      "instructorCount": "200+",
+      "instructorText": "Instructor",
+      "searchPlaceholder": "Search for courses...",
+      "searchButton": "Search"
+    },
+    "categories": {
+      "title": "Browse By Categories",
+      "webDesign": "Web Design",
+      "dataScience": "Data Science",
+      "businessDevelopment": "Business Development",
+      "personalDevelopment": "Personal Development",
+      "itAndSoftware": "IT & Software",
+      "graphicDesign": "Graphic Design",
+      "digitalMarketing": "Digital Marketing",
+      "newsAndPhotography": "News & Photography"
+    },
+    "coursesSection": {
+      "title": "Edurate Course Student Can Join With Us.",
+      "viewAll": "View All"
+    },
+    "skillsSection": {
+      "subtitle": "Our About Us",
+      "title": "Learn & Grow Your Skills From Anywhere",
+      "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+      "buttonText": "Load More",
+      "yearsText": "8+",
+      "experienceText": "Years Of Experiences",
+      "feature1Title": "Flexible Classrooms",
+      "feature1Description": "Suspendisse ultrices gravida dictum fusce placerat orci nulla pellentesque dignissim enim sit.",
+      "feature2Title": "Flexible Classrooms",
+      "feature2Description": "Suspendisse ultrices gravida dictum fusce placerat orci nulla pellentesque dignissim enim sit."
+    },
+    "callToAction": {
+      "phone": "Call To Enroll Your Child",
+      "phoneNumber": "(+91)956823452"
+    },
+    "community": {
+      "title": "Creating A Community Of Life Long Learners.",
+      "stats": {
+        "totalStudents": "36k+",
+        "totalCourses": "15k+",
+        "totalInstructors": "97k+",
+        "successRate": "100%"
+      }
+    },
+    "instructors": {
+      "title": "Popular Instructor",
+      "subtitle": "We know the best things for You. Top picks for You."
+    },
+    "blog": {
+      "title": "Discover Your Gain",
+      "mostPopular": "Most Popular Post."
+    },
+    "newsletter": {
+      "title": "Join Our Newsletter",
+      "placeholder": "Enter your email",
+      "subscribe": "Subscribe"
+    },
     "welcomeBack": "Welcome back {name}! 👋",
     "subtitle": "Modern Programming Learning Platform",
     "description": "Discover the world of programming with high-quality courses, experienced instructors, and a vibrant learning community.",
@@ -116,5 +199,120 @@
     "reviews": "Reviews",
     "addToCart": "Add to Cart",
     "buyNow": "Buy Now"
-  }
+  },
+  "Footer": {
+    "title": "TechHub",
+    "description": "Leading online learning platform",
+    "allRightsReserved": "All rights reserved",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "ConditionService": "Terms of Service",
+    "AboutWe": "About Us"
+  },
+  "PrivacyPolicy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated"
+  },
+  "Login": {
+    "title": "Welcome back",
+    "description": "Welcome back! Please enter your details.",
+    "email": "Email",
+    "password": "Password", 
+    "forgotPassword": "Forgot password?",
+    "signIn": "Sign In",
+    "noAlreadyHaveAccount": "Don't have an account?",
+    "Register": "Sign Up",
+    "googleLogin": "Sign in with Google",
+    "loginSuccess": "Login Successful",
+    "loginError": "Login Failed",
+    "loginErrorMessage": "Please check your credentials",
+    "welcomeBack": "Welcome back",
+    "accountNotActive": "Account Not Active",
+    "VerificationRequired": "Please verify your email to activate your account"
+  },
+  "ForgotPassword": {
+    "title": "Forgot Password",
+    "description": "Enter your email to receive OTP code for password reset",
+    "email": "Email",
+    "sendEmail": "Send Email",
+    "emailSent": "Email Sent",
+    "success": "Success",
+    "error": "Error",
+    "checkEmail": "Please check your email to receive OTP code",
+    "errorMessage": "An error occurred, please try again",
+    "backToLogin": "Back to Login"
+  },
+  "ResetPassword": {
+    "title": "Reset Password",
+    "description": "Enter OTP code and new password",
+    "otp": "OTP Code (6 digits)",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "resetPassword": "Reset Password",
+    "success": "Success!",
+    "successMessage": "Password has been changed. Redirecting to login...",
+    "successDescription": "Your password has been successfully changed",
+    "error": "Error",
+    "errorMessage": "An error occurred, please try again",
+    "emailRequired": "Email is required",
+    "didNotReceiveCode": "Didn't receive code?",
+    "resendCode": "Resend",
+    "backToLogin": "Back to Login",
+    "goToLogin": "Go to Login"
+  },
+  "VerifyEmail": {
+    "title": "Email Verification",
+    "description": "You have sent code to your Email",
+    "verifyAccount": "Verify Account",
+    "didNotReceiveCode": "Didn't receive code?",
+    "resend": "Resend",
+    "success": "Success",
+    "successMessage": "Email verified successfully",
+    "error": "Error",
+    "errorMessage": "Verification failed"
+  },
+  "ErrorMessage": {
+    "title": "Select language",
+    "en": "English",
+    "vi": "Tiếng Việt",
+    "ja": "日本語"
+  },
+  "ErrorMessage": {
+    "Invalid email address": "Invalid email address",
+    "Email is required": "Email is required",
+    "Password is required": "Password is required",
+    "Password must be at least 6 characters": "Password must be at least 6 characters",
+    "Confirm password is required": "Confirm password is required",
+    "Passwords do not match": "Passwords do not match",
+    "Username is required": "Username is required",
+    "Username must be at least 3 characters": "Username must be at least 3 characters",
+    "OTP must be 6 characters": "OTP must be 6 characters",
+    "OTP is required": "OTP is required",
+    "New password is required": "New password is required",
+    "String must contain at least 6 character(s)": "Must be at least 6 characters"
+  },
+  "Register": {
+    "title": "Create an account",
+    "description": "Create a new account to start your learning journey",
+    "email": "Email",
+    "username": "Username",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "signUp": "Sign Up",
+    "alreadyHaveAccount": "Already have an account?",
+    "login": "Sign In",
+    "googleSignUp": "Sign up with Google",
+    "registerSuccess": "Registration Successful",
+    "registerSuccessMessage": "Please check your email to verify your account",
+    "registerError": "Registration Failed",
+    "registerErrorMessage": "An error occurred, please try again",
+    "emailExists": "Email already exists",
+    "usernameExists": "Username already exists"
+  },
+    "SwitchLanguage": {
+    "title": "Select language", 
+    "en": "English",
+    "vi": "Tiếng Việt", 
+    "ja": "日本語" 
+    }
 }

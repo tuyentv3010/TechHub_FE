@@ -26,7 +26,87 @@
     "settings": "Cài đặt",
     "logout": "Đăng xuất"
   },
-  "homepage": {
+  "NavItem": {
+    "home": "Trang chủ",
+    "courses": "Khóa học",
+    "blog": "Blog",
+    "about": "Về chúng tôi",
+    "learningPaths": "Lộ trình học",
+    "contact": "Liên hệ",
+    "signIn": "Đăng nhập",
+    "signUp": "Đăng ký",
+    "dashboard": "Bảng điều khiển",
+    "profile": "Hồ sơ",
+    "myLearning": "Học của tôi",
+    "settings": "Cài đặt",
+    "logout": "Đăng xuất"
+  },
+  "HomePage": {
+    "title": "TechHub - Nền tảng học lập trình",
+    "defaultTitle": "TechHub - Học lập trình hiệu quả",
+    "hero": {
+      "welcomeText": "Chào mừng đến với khóa học trực tuyến TechHub",
+      "title": "Đạt Được Ước Mơ Thông Qua Giáo Dục",
+      "subtitle": "Chúng tôi có kinh nghiệm trong nền tảng giáo dục và các chiến lược thành thạo cho sự thành công của việc học trực tuyến.",
+      "buttonText": "Tìm Khóa Học",
+      "instructorCount": "200+",
+      "instructorText": "Giảng viên",
+      "searchPlaceholder": "Tìm kiếm khóa học...",
+      "searchButton": "Tìm kiếm"
+    },
+    "categories": {
+      "title": "Duyệt Theo Danh Mục",
+      "webDesign": "Thiết Kế Web",
+      "dataScience": "Khoa Học Dữ Liệu",
+      "businessDevelopment": "Phát Triển Kinh Doanh",
+      "personalDevelopment": "Phát Triển Cá Nhân",
+      "itAndSoftware": "CNTT & Phần Mềm",
+      "graphicDesign": "Thiết Kế Đồ Họa",
+      "digitalMarketing": "Marketing Số",
+      "newsAndPhotography": "Tin Tức & Nhiếp Ảnh"
+    },
+    "coursesSection": {
+      "title": "Học Viên Edurate Có Thể Tham Gia Cùng Chúng Tôi.",
+      "viewAll": "Xem Tất Cả"
+    },
+    "skillsSection": {
+      "subtitle": "Về Chúng Tôi",
+      "title": "Học & Phát Triển Kỹ Năng Từ Mọi Nơi",
+      "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+      "buttonText": "Tìm Hiểu Thêm",
+      "yearsText": "8+",
+      "experienceText": "Năm Kinh Nghiệm",
+      "feature1Title": "Lớp Học Linh Hoạt",
+      "feature1Description": "Suspendisse ultrices gravida dictum fusce placerat orci nulla pellentesque dignissim enim sit.",
+      "feature2Title": "Lớp Học Linh Hoạt", 
+      "feature2Description": "Suspendisse ultrices gravida dictum fusce placerat orci nulla pellentesque dignissim enim sit."
+    },
+    "callToAction": {
+      "phone": "Gọi Để Đăng Ký Cho Con Em",
+      "phoneNumber": "(+91)956823452"
+    },
+    "community": {
+      "title": "Tạo Cộng Đồng Học Viên Suốt Đời.",
+      "stats": {
+        "totalStudents": "36k+",
+        "totalCourses": "15k+",
+        "totalInstructors": "97k+",
+        "successRate": "100%"
+      }
+    },
+    "instructors": {
+      "title": "Popular Instructor",
+      "subtitle": "We know the best things for You. Top picks for You."
+    },
+    "blog": {
+      "title": "Khám Phá Lợi Ích Của Bạn",
+      "mostPopular": "Bài Viết Phổ Biến Nhất."
+    },
+    "newsletter": {
+      "title": "Tham Gia Bản Tin",
+      "placeholder": "Nhập email của bạn",
+      "subscribe": "Đăng Ký"
+    },
     "welcomeBack": "Xin chào {name}! 👋",
     "subtitle": "Nền tảng học lập trình hiện đại",
     "description": "Khám phá thế giới lập trình với các khóa học chất lượng cao, giảng viên kinh nghiệm và cộng đồng học tập sôi động.",
@@ -116,5 +196,120 @@
     "reviews": "Đánh giá",
     "addToCart": "Thêm vào giỏ",
     "buyNow": "Mua ngay"
-  }
+  },
+  "Footer": {
+    "title": "TechHub",
+    "description": "Nền tảng học tập trực tuyến hàng đầu",
+    "allRightsReserved": "Tất cả quyền được bảo lưu",
+    "privacyPolicy": "Chính sách bảo mật",
+    "termsOfService": "Điều khoản dịch vụ",
+    "ConditionService": "Điều khoản sử dụng",
+    "AboutWe": "Về chúng tôi"
+  },
+  "PrivacyPolicy": {
+    "title": "Chính Sách Bảo Mật",
+    "lastUpdated": "Cập nhật lần cuối"
+  },
+  "Login": {
+    "title": "Chào mừng trở lại",
+    "description": "Chào mừng trở lại! Vui lòng nhập thông tin của bạn.",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "forgotPassword": "Quên mật khẩu?",
+    "signIn": "Đăng nhập",
+    "noAlreadyHaveAccount": "Chưa có tài khoản?",
+    "Register": "Đăng ký ngay",
+    "googleLogin": "Đăng nhập bằng Google",
+    "loginSuccess": "Đăng nhập thành công",
+    "loginError": "Đăng nhập thất bại",
+    "loginErrorMessage": "Vui lòng kiểm tra lại thông tin đăng nhập",
+    "welcomeBack": "Chào mừng trở lại",
+    "accountNotActive": "Tài khoản chưa kích hoạt",
+    "VerificationRequired": "Vui lòng xác thực email để kích hoạt tài khoản"
+  },
+  "ForgotPassword": {
+    "title": "Quên mật khẩu",
+    "description": "Nhập email của bạn để nhận mã OTP reset mật khẩu",
+    "email": "Email",
+    "sendEmail": "Gửi email",
+    "emailSent": "Email đã gửi",
+    "success": "Thành công",
+    "error": "Lỗi",
+    "checkEmail": "Vui lòng kiểm tra email để nhận mã OTP",
+    "errorMessage": "Có lỗi xảy ra, vui lòng thử lại",
+    "backToLogin": "Quay lại đăng nhập"
+  },
+  "ResetPassword": {
+    "title": "Đặt lại mật khẩu",
+    "description": "Nhập mã OTP và mật khẩu mới",
+    "otp": "Mã OTP (6 số)",
+    "newPassword": "Mật khẩu mới",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "resetPassword": "Đặt lại mật khẩu",
+    "success": "Thành công!",
+    "successMessage": "Mật khẩu đã được thay đổi. Đang chuyển đến trang đăng nhập...",
+    "successDescription": "Mật khẩu của bạn đã được thay đổi thành công",
+    "error": "Lỗi",
+    "errorMessage": "Có lỗi xảy ra, vui lòng thử lại",
+    "emailRequired": "Email không được để trống",
+    "didNotReceiveCode": "Không nhận được mã?",
+    "resendCode": "Gửi lại",
+    "backToLogin": "Quay lại đăng nhập",
+    "goToLogin": "Đi đến đăng nhập"
+  },
+  "VerifyEmail": {
+    "title": "Xác thực Email",
+    "description": "Mã xác thực đã được gửi đến Email của bạn",
+    "verifyAccount": "Xác thực tài khoản",
+    "didNotReceiveCode": "Không nhận được mã?",
+    "resend": "Gửi lại",
+    "success": "Thành công",
+    "successMessage": "Email đã được xác thực thành công",
+    "error": "Lỗi",
+    "errorMessage": "Xác thực thất bại"
+  },
+  "ErrorMessage": {
+    "title": "Chọn ngôn ngữ",
+    "en": "English",
+    "vi": "Tiếng Việt", 
+    "ja": "日本語"
+  },
+  "ErrorMessage": {
+    "Invalid email address": "Email không hợp lệ",
+    "Email is required": "Email không được để trống",
+    "Password is required": "Mật khẩu không được để trống",
+    "Password must be at least 6 characters": "Mật khẩu phải có ít nhất 6 ký tự",
+    "Confirm password is required": "Xác nhận mật khẩu không được để trống",
+    "Passwords do not match": "Mật khẩu không khớp",
+    "Username is required": "Tên đăng nhập không được để trống",
+    "Username must be at least 3 characters": "Tên đăng nhập phải có ít nhất 3 ký tự",
+    "OTP must be 6 characters": "Mã OTP phải có 6 ký tự",
+    "OTP is required": "Mã OTP không được để trống",
+    "New password is required": "Mật khẩu mới không được để trống",
+    "String must contain at least 6 character(s)": "Phải có ít nhất 6 ký tự"
+  },
+  "Register": {
+    "title": "Tạo tài khoản",
+    "description": "Tạo tài khoản mới để bắt đầu hành trình học tập",
+    "email": "Email",
+    "username": "Tên đăng nhập",
+    "password": "Mật khẩu",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "signUp": "Đăng ký",
+    "alreadyHaveAccount": "Đã có tài khoản?",
+    "login": "Đăng nhập ngay",
+    "googleSignUp": "Đăng ký bằng Google",
+    "registerSuccess": "Đăng ký thành công",
+    "registerSuccessMessage": "Vui lòng kiểm tra email để xác thực tài khoản",
+    "registerError": "Đăng ký thất bại",
+    "registerErrorMessage": "Có lỗi xảy ra, vui lòng thử lại",
+    "emailExists": "Email đã tồn tại",
+    "usernameExists": "Tên đăng nhập đã tồn tại"
+  } ,
+    "SwitchLanguage": {
+    "title": "Chọn ngôn ngữ",
+    "en": "English",
+    "vi": "Tiếng Việt",
+    "ja": "日本語"
+  } 
 }
