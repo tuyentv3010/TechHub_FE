@@ -25,14 +25,7 @@ interface Permission {
 
 // Mapping of href to module for permission checking
 const hrefToModuleMap: Record<string, string> = {
-  "/manage/dashboard": "REVENUE",
-  "/manage/bookings": "BOOKINGS",
-  "/manage/trains": "TRAINS",
-  "/manage/carriages": "CARRIAGES",
-  "/manage/stations": "STATIONS",
-  "/manage/trainTrips": "TRAIN_TRIPS",
-  "/manage/promotions": "PROMOTIONS",
-  "/manage/articles": "ARTICLES",
+
   "/manage/accounts": "USERS",
   "/manage/roles": "ROLES",
   "/manage/permissions": "PERMISSIONS",
@@ -42,19 +35,15 @@ export default function NavLinks() {
   const pathname = usePathname();
   const { data, isLoading, isError, error } = useAccountProfile();
   console.log(">>>>", data); // Log data for debugging
-  const account = data?.data?.user;
-  const userPermissions = account?.role?.permissions as
-    | Permission[]
-    | undefined;
+  const account = data?.payload?.data;
+  const userRoles = account?.roles as string[] | undefined;
 
-  // Filter menu items based on permissions
+  // Filter menu items based on roles (simplified)
+  // TODO: Implement proper role-to-permission mapping if needed
   const accessibleMenuItems = menuItems.filter((item: any) => {
-    if (isLoading || isError || !userPermissions) return true; // Show all during loading or if permissions are unavailable
-    const requiredModule = hrefToModuleMap[item.href];
-    return (
-      !requiredModule ||
-      userPermissions.some((permission) => permission.module === requiredModule)
-    );
+    if (isLoading || isError || !userRoles) return true; // Show all during loading or if roles are unavailable
+    // For now, show all items to ADMIN, or implement specific role checks
+    return userRoles.includes("ADMIN") || userRoles.includes("INSTRUCTOR");
   });
 
   if (isLoading) {

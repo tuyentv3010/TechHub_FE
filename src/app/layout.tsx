@@ -55,7 +55,7 @@ export default async function RootLayout({
               disableTransitionOnChange
             >
               {children}
-              <Footer />
+              {/* <Footer /> */}
               <Toaster />
             </ThemeProvider>
           </AppProvider>
