@@ -136,8 +136,8 @@
     "loggingOut": "ログアウト中..."
   },
   "Login": {
-    "title": "サインイン",
-    "description": "メールアドレスとパスワードを入力してシステムにサインインしてください",
+    "title": "お帰りなさい",
+    "description": "お帰りなさい！詳細を入力してください。",
     "email": "メール",
     "password": "パスワード",
     "forgotPassword": "パスワードをお忘れですか？",
@@ -153,8 +153,8 @@
     "VerificationRequired": "アカウントを有効化するにはメールを確認してください"
   },
   "Register": {
-    "title": "サインアップ",
-    "description": "学習を始めるために新しいアカウントを作成",
+    "title": "アカウント作成",
+    "description": "学習の旅を始めるために新しいアカウントを作成",
     "email": "メール",
     "username": "ユーザー名",
     "password": "パスワード",

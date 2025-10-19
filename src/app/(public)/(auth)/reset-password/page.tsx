@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
-import ResetPasswordForm from "./reset-password-form";
+import NewResetPasswordForm from "./new-reset-password-form";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("ResetPassword");
@@ -13,9 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function ResetPasswordPage() {
   return (
     <Suspense>
-      <div className="min-h-screen flex items-center justify-center">
-        <ResetPasswordForm />
-      </div>
+      <NewResetPasswordForm />
     </Suspense>
   );
 }

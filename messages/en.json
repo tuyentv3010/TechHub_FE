@@ -214,8 +214,8 @@
     "lastUpdated": "Last updated"
   },
   "Login": {
-    "title": "Sign In",
-    "description": "Enter your email and password to sign in to the system",
+    "title": "Welcome back",
+    "description": "Welcome back! Please enter your details.",
     "email": "Email",
     "password": "Password", 
     "forgotPassword": "Forgot password?",
@@ -292,8 +292,8 @@
     "String must contain at least 6 character(s)": "Must be at least 6 characters"
   },
   "Register": {
-    "title": "Sign Up",
-    "description": "Create a new account to start learning",
+    "title": "Create an account",
+    "description": "Create a new account to start your learning journey",
     "email": "Email",
     "username": "Username",
     "password": "Password",
@@ -308,5 +308,11 @@
     "registerErrorMessage": "An error occurred, please try again",
     "emailExists": "Email already exists",
     "usernameExists": "Username already exists"
-  }
+  },
+    "SwitchLanguage": {
+    "title": "Select language", 
+    "en": "English",
+    "vi": "Tiếng Việt", 
+    "ja": "日本語" 
+    }
 }

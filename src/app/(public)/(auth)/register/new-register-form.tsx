@@ -83,19 +83,12 @@ export default function NewRegisterForm() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <div className="mb-8">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xl">T</span>
-              </div>
-              <span className="text-xl font-semibold">TechHub.</span>
-            </Link>
-          </div>
+      
 
           {/* Title */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome back, James
+              Welcome back
             </h1>
             <p className="text-gray-600">
               Welcome back! Please enter your details.

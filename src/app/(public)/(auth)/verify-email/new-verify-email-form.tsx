@@ -129,14 +129,6 @@ export default function NewVerifyEmailForm() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <div className="mb-8">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xl">T</span>
-              </div>
-              <span className="text-xl font-semibold">TechHub.</span>
-            </Link>
-          </div>
 
           {/* Title */}
           <div className="mb-8">
@@ -212,7 +204,7 @@ export default function NewVerifyEmailForm() {
         <div className="absolute inset-0 flex items-center justify-center p-12">
           <div className="relative w-full h-full max-w-2xl">
             <Image
-              src="/hero/student-learning.jpg"
+              src="/hero/student-learning.png"
               alt="Student learning"
               fill
               className="rounded-2xl object-cover shadow-2xl"

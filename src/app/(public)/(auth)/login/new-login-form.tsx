@@ -124,22 +124,15 @@ export default function NewLoginForm() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <div className="mb-8">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xl">T</span>
-              </div>
-              <span className="text-xl font-semibold">TechHub.</span>
-            </Link>
-          </div>
+   
 
           {/* Title */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome back
+              {t("title")}
             </h1>
             <p className="text-gray-600">
-              Welcome back! Please enter your details.
+              {t("description")}
             </p>
           </div>
 
@@ -171,7 +164,7 @@ export default function NewLoginForm() {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
-                  Log in with Google
+                  {t("googleLogin")}
                 </Button>
               </Link>
 
@@ -192,7 +185,7 @@ export default function NewLoginForm() {
                 render={({ field, formState: { errors } }) => (
                   <FormItem>
                     <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                      Email
+                      {t("email")}
                     </Label>
                     <Input
                       id="email"
@@ -216,7 +209,7 @@ export default function NewLoginForm() {
                 render={({ field, formState: { errors } }) => (
                   <FormItem>
                     <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                      Password
+                      {t("password")}
                     </Label>
                     <Input
                       id="password"
@@ -251,7 +244,7 @@ export default function NewLoginForm() {
                   href="/forgot-password"
                   className="text-sm font-medium text-gray-900 hover:text-blue-600"
                 >
-                  Forgot password
+                  {t("forgotPassword")}
                 </Link>
               </div>
 
@@ -264,14 +257,14 @@ export default function NewLoginForm() {
                 {loginMutation.isPending && (
                   <LoaderCircle className="animate-spin mr-2" size={20} />
                 )}
-                Log in
+                {t("signIn")}
               </Button>
 
               {/* Sign up link */}
               <div className="text-center text-sm text-gray-600">
-                Don&apos;t have an account?{" "}
+                {t("noAlreadyHaveAccount")}{" "}
                 <Link href="/register" className="font-medium text-gray-900 hover:text-blue-600">
-                  Sign up for free
+                  {t("Register")}
                 </Link>
               </div>
             </form>

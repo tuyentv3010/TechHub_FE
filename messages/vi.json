@@ -211,8 +211,8 @@
     "lastUpdated": "Cập nhật lần cuối"
   },
   "Login": {
-    "title": "Đăng nhập",
-    "description": "Nhập email và mật khẩu để đăng nhập vào hệ thống",
+    "title": "Chào mừng trở lại",
+    "description": "Chào mừng trở lại! Vui lòng nhập thông tin của bạn.",
     "email": "Email",
     "password": "Mật khẩu",
     "forgotPassword": "Quên mật khẩu?",
@@ -289,8 +289,8 @@
     "String must contain at least 6 character(s)": "Phải có ít nhất 6 ký tự"
   },
   "Register": {
-    "title": "Đăng ký",
-    "description": "Tạo tài khoản mới để bắt đầu học tập",
+    "title": "Tạo tài khoản",
+    "description": "Tạo tài khoản mới để bắt đầu hành trình học tập",
     "email": "Email",
     "username": "Tên đăng nhập",
     "password": "Mật khẩu",
@@ -305,5 +305,11 @@
     "registerErrorMessage": "Có lỗi xảy ra, vui lòng thử lại",
     "emailExists": "Email đã tồn tại",
     "usernameExists": "Tên đăng nhập đã tồn tại"
-  }
+  } ,
+    "SwitchLanguage": {
+    "title": "Chọn ngôn ngữ",
+    "en": "English",
+    "vi": "Tiếng Việt",
+    "ja": "日本語"
+  } 
 }
