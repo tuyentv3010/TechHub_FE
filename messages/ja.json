@@ -313,7 +313,9 @@
     "Deldes": "アカウントを削除してもよろしいですか",
     "DelDes2": "？この操作は元に戻せません。",
     "NoRoleSelected": "役割が選択されていません",
-    "RoleNote": "役割を変更するには管理者に連絡してください"
+    "RoleNote": "役割を変更するには管理者に連絡してください",
+    "FilterEmails": "メールで絞り込み",
+    "FilterName": "名前で絞り込み"
   },
   "DropdownAvatar": {
     "UnknownUser": "不明なユーザー",

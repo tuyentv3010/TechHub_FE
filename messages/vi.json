@@ -355,7 +355,9 @@
     "Deldes": "Bạn có chắc chắn muốn xóa tài khoản",
     "DelDes2": "? Hành động này không thể hoàn tác.",
     "NoRoleSelected": "Chưa chọn vai trò",
-    "RoleNote": "Liên hệ quản trị viên để thay đổi vai trò"
+    "RoleNote": "Liên hệ quản trị viên để thay đổi vai trò",
+    "FilterEmails": "Lọc theo email",
+    "FilterName": "Lọc theo tên" 
   },
   "DropdownAvatar": {
     "UnknownUser": "Người dùng không xác định",

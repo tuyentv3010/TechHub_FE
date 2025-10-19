@@ -103,7 +103,7 @@ export default function NewLoginForm() {
 
       // Redirect based on role
       if (userRole === "ADMIN") {
-        router.push("/manage/dashboard");
+        router.push("/manage/accounts");
       } else {
         router.push("/");
       }

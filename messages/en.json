@@ -358,7 +358,9 @@
     "Deldes": "Are you sure you want to delete account",
     "DelDes2": "? This action cannot be undone.",
     "NoRoleSelected": "No role selected",
-    "RoleNote": "Contact administrator to change role"
+    "RoleNote": "Contact administrator to change role",
+    "FilterEmails": "Filter by email",
+    "FilterName": "Filter by name"
   },
   "DropdownAvatar": {
     "UnknownUser": "Unknown User",
