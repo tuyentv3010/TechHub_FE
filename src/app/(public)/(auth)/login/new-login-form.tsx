@@ -38,7 +38,7 @@ const googleOauthUrl = getOauthGoogleUrl();
 
 export default function NewLoginForm() {
   const t = useTranslations("Login");
-  const errorMessageT = useTranslations("ErrorMessage");
+  const errorMessageT = useTranslations("ValidationErrors");
   const loginMutation = useLoginMutation();
   const router = useRouter();
   const { setIsAuth, setRole } = useAppContext();
