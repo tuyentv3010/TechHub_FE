@@ -1,131 +1,104 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import blogApiRequest from "@/apiRequests/blog";
 import {
-  BlogCommentBody,
-  BlogCommentResponse,
-  BlogFilters,
-  BlogMutationResponse,
-  BlogResponse,
-  CreateBlogBody,
-  UpdateBlogBody,
-} from "@/types/blog.types";
+  CreateBlogBodyType,
+  UpdateBlogBodyType,
+} from "@/schemaValidations/blog.schema";
+import type { BlogFilters } from "@/types/blog.types";
 
-const buildBlogListQueryKey = (filters: BlogFilters = {}) => [
-  "blogs",
-  filters.page ?? 1,
-  filters.size ?? 10,
-  filters.keyword ?? "",
-  filters.includeDrafts ?? false,
-  (filters.tags ?? []).slice().sort().join("|"),
-];
-
-export const useBlogs = (filters: BlogFilters = {}) => {
+export const useGetBlogList = (page: number, pageSize: number) => {
   return useQuery({
-    queryKey: buildBlogListQueryKey(filters),
+    queryKey: ["blog-list", page, pageSize],
+    queryFn: () => blogApiRequest.getBlogList(page, pageSize),
+  });
+};
+
+export const useGetBlog = ({ id, enabled }: { id: string; enabled: boolean }) => {
+  return useQuery({
+    queryKey: ["blog", id],
+    queryFn: () => blogApiRequest.getBlogById(id),
+    enabled: enabled && !!id,
+  });
+};
+
+// Public list with filters used on client Blog listing page
+export const useBlogs = (filters: BlogFilters) => {
+  return useQuery({
+    queryKey: ["blogs", filters],
     queryFn: () => blogApiRequest.getBlogs(filters),
-    keepPreviousData: true,
   });
 };
 
-export const useBlog = (blogId?: string, enabled: boolean = true) => {
+// Public blog detail
+export const useBlog = (id?: string, enabled: boolean = true) => {
   return useQuery({
-    queryKey: ["blog", blogId],
-    queryFn: () => blogApiRequest.getBlog(blogId as string),
-    enabled: enabled && Boolean(blogId),
+    queryKey: ["blog-public", id],
+    queryFn: () => blogApiRequest.getBlogById(id as string),
+    enabled: enabled && !!id,
   });
 };
 
+// Tags
 export const useBlogTags = () => {
   return useQuery({
     queryKey: ["blog-tags"],
     queryFn: () => blogApiRequest.getTags(),
-    staleTime: 5 * 60 * 1000,
   });
 };
 
+// Comments
 export const useBlogComments = (blogId?: string, enabled: boolean = true) => {
   return useQuery({
     queryKey: ["blog-comments", blogId],
     queryFn: () => blogApiRequest.getComments(blogId as string),
-    enabled: enabled && Boolean(blogId),
+    enabled: enabled && !!blogId,
+  });
+};
+
+export const useAddBlogCommentMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      blogId,
+      body,
+    }: {
+      blogId: string;
+      body: { content: string; parentId?: string | null };
+    }) => blogApiRequest.addComment(blogId, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["blog-comments", variables.blogId] });
+    },
   });
 };
 
 export const useCreateBlogMutation = () => {
   const queryClient = useQueryClient();
-
-  return useMutation<BlogResponse, unknown, CreateBlogBody>({
-    mutationFn: (body) => blogApiRequest.createBlog(body),
+  return useMutation({
+    mutationFn: (body: CreateBlogBodyType) => blogApiRequest.createBlog(body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["blogs"] });
-      queryClient.invalidateQueries({ queryKey: ["blog-tags"] });
+      queryClient.invalidateQueries({ queryKey: ["blog-list"] });
     },
   });
 };
 
 export const useUpdateBlogMutation = () => {
   const queryClient = useQueryClient();
-
-  return useMutation<
-    BlogResponse,
-    unknown,
-    { blogId: string; body: UpdateBlogBody }
-  >({
-    mutationFn: ({ blogId, body }) =>
-      blogApiRequest.updateBlog(blogId, body),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["blogs"] });
-      queryClient.invalidateQueries({ queryKey: ["blog", variables.blogId] });
-      queryClient.invalidateQueries({ queryKey: ["blog-tags"] });
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateBlogBodyType }) =>
+      blogApiRequest.updateBlog(id, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["blog-list"] });
+      queryClient.invalidateQueries({ queryKey: ["blog", variables.id] });
     },
   });
 };
 
 export const useDeleteBlogMutation = () => {
   const queryClient = useQueryClient();
-
-  return useMutation<BlogMutationResponse, unknown, string>({
-    mutationFn: (blogId) => blogApiRequest.deleteBlog(blogId),
-    onSuccess: (_, blogId) => {
-      queryClient.invalidateQueries({ queryKey: ["blogs"] });
-      queryClient.invalidateQueries({ queryKey: ["blog-tags"] });
-      queryClient.removeQueries({ queryKey: ["blog", blogId] });
-      queryClient.removeQueries({ queryKey: ["blog-comments", blogId] });
-    },
-  });
-};
-
-export const useAddBlogCommentMutation = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<
-    BlogCommentResponse,
-    unknown,
-    { blogId: string; body: BlogCommentBody }
-  >({
-    mutationFn: ({ blogId, body }) => blogApiRequest.addComment(blogId, body),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["blog-comments", variables.blogId],
-      });
-    },
-  });
-};
-
-export const useDeleteBlogCommentMutation = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<
-    BlogMutationResponse,
-    unknown,
-    { blogId: string; commentId: string }
-  >({
-    mutationFn: ({ blogId, commentId }) =>
-      blogApiRequest.deleteComment(blogId, commentId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["blog-comments", variables.blogId],
-      });
+  return useMutation({
+    mutationFn: (id: string) => blogApiRequest.deleteBlog(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["blog-list"] });
     },
   });
 };

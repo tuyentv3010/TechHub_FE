@@ -1,43 +1,87 @@
 import { z } from "zod";
 
-export const BlogStatusEnum = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
+// Status enum used by API
+export const BlogStatusEnum = z.enum(["DRAFT", "PUBLISHED"]);
 
+// Attachment schema used in blog content
 export const BlogAttachmentSchema = z.object({
-  type: z.enum(["image", "pdf"]),
-  url: z.string().url().max(2048, "URL is too long"),
-  caption: z
-    .string()
-    .max(255, "Caption cannot exceed 255 characters")
-    .nullable()
-    .optional(),
-  altText: z
-    .string()
-    .max(255, "Alt text cannot exceed 255 characters")
-    .nullable()
-    .optional(),
+  type: z.string(), // e.g. "image", "pdf"
+  url: z.string().url(),
+  caption: z.string().nullable().optional(),
+  altText: z.string().nullable().optional(),
 });
 
-export const BlogAttachmentInputSchema = z.object({
-  type: z.enum(["image", "pdf"]),
-  url: z.string().url("Attachment URL is invalid"),
-  caption: z.string().max(255).optional().or(z.literal("")),
-  altText: z.string().max(255).optional().or(z.literal("")),
-});
+// Input attachment is same shape for now
+export const BlogAttachmentInputSchema = BlogAttachmentSchema;
 
 export const BlogSchema = z.object({
-  id: z.string().uuid(),
-  title: z.string(),
-  content: z.string(),
+  id: z.string(), // UUID
+  title: z.string().min(1, "Title is required"),
+  content: z.string().default(""), // HTML content
   status: BlogStatusEnum,
-  tags: z.array(z.string()),
-  attachments: z.array(BlogAttachmentSchema),
-  authorId: z.string().uuid(),
+  tags: z.array(z.string()).default([]),
+  attachments: z.array(BlogAttachmentSchema).default([]),
+  authorId: z.string(),
   created: z.string(),
   updated: z.string(),
-  active: z.boolean().optional(),
+  active: z.boolean().default(true),
 });
 
 export type BlogType = z.infer<typeof BlogSchema>;
+
+export const CreateBlogBody = z.object({
+  title: z.string().min(1, "Title is required"),
+  content: z.string().default(""),
+  status: BlogStatusEnum.default("DRAFT"),
+  tags: z.array(z.string()).default([]),
+  attachments: z.array(BlogAttachmentInputSchema).default([]),
+});
+
+export type CreateBlogBodyType = z.infer<typeof CreateBlogBody>;
+
+export const UpdateBlogBody = z.object({
+  title: z.string().min(1, "Title is required"),
+  content: z.string().default(""),
+  status: BlogStatusEnum,
+  tags: z.array(z.string()).default([]),
+  attachments: z.array(BlogAttachmentInputSchema).default([]),
+});
+
+export type UpdateBlogBodyType = z.infer<typeof UpdateBlogBody>;
+
+// Recursive comment schema
+export const BlogCommentSchema: z.ZodType<any> = z.lazy(() =>
+  z.object({
+    id: z.string(),
+    content: z.string(),
+    userId: z.string(),
+    parentId: z.string().nullable().optional(),
+    created: z.string(),
+    replies: z.array(BlogCommentSchema).default([]),
+  })
+);
+
+export type BlogCommentType = z.infer<typeof BlogCommentSchema>;
+
+export const BlogCommentBodySchema = z.object({
+  content: z.string().min(1, "Content is required"),
+  parentId: z.string().optional().nullable(),
+});
+
+export type BlogCommentBodyType = z.infer<typeof BlogCommentBodySchema>;
+
+// Response wrappers
+export const BlogResponseSchema = z.object({
+  success: z.boolean(),
+  status: z.string(),
+  message: z.string(),
+  data: BlogSchema,
+  timestamp: z.string(),
+  path: z.string(),
+  code: z.number(),
+});
+
+export type BlogResponseType = z.infer<typeof BlogResponseSchema>;
 
 export const BlogListResponseSchema = z.object({
   success: z.boolean(),
@@ -55,43 +99,23 @@ export const BlogListResponseSchema = z.object({
     hasPrevious: z.boolean(),
   }),
   timestamp: z.string(),
-  path: z.string().optional(),
+  path: z.string(),
   code: z.number(),
 });
 
 export type BlogListResponseType = z.infer<typeof BlogListResponseSchema>;
 
-export const BlogResponseSchema = z.object({
-  success: z.boolean(),
-  status: z.string(),
-  message: z.string(),
-  data: BlogSchema,
-  timestamp: z.string(),
+export const BlogTagsResponseSchema = z.object({
+  success: z.boolean().optional(),
+  status: z.string().optional(),
+  message: z.string().optional(),
+  data: z.array(z.string()),
+  timestamp: z.string().optional(),
   path: z.string().optional(),
-  code: z.number(),
+  code: z.number().optional(),
 });
 
-export type BlogResponseType = z.infer<typeof BlogResponseSchema>;
-
-export type BlogCommentType = {
-  id: string;
-  content: string;
-  userId: string;
-  parentId?: string | null;
-  created: string;
-  replies: BlogCommentType[];
-};
-
-export const BlogCommentSchema: z.ZodType<BlogCommentType> = z.lazy(() =>
-  z.object({
-    id: z.string().uuid(),
-    content: z.string(),
-    userId: z.string().uuid(),
-    parentId: z.string().uuid().nullable().optional(),
-    created: z.string(),
-    replies: z.array(BlogCommentSchema),
-  })
-);
+export type BlogTagsResponseType = z.infer<typeof BlogTagsResponseSchema>;
 
 export const BlogCommentListResponseSchema = z.object({
   success: z.boolean(),
@@ -99,7 +123,7 @@ export const BlogCommentListResponseSchema = z.object({
   message: z.string(),
   data: z.array(BlogCommentSchema),
   timestamp: z.string(),
-  path: z.string().optional(),
+  path: z.string(),
   code: z.number(),
 });
 
@@ -113,7 +137,7 @@ export const BlogCommentResponseSchema = z.object({
   message: z.string(),
   data: BlogCommentSchema,
   timestamp: z.string(),
-  path: z.string().optional(),
+  path: z.string(),
   code: z.number(),
 });
 
@@ -121,56 +145,5 @@ export type BlogCommentResponseType = z.infer<
   typeof BlogCommentResponseSchema
 >;
 
-export const BlogMutationResponseSchema = z.object({
-  success: z.boolean(),
-  status: z.string(),
-  message: z.string(),
-  data: z.null().optional(),
-  timestamp: z.string(),
-  path: z.string().optional(),
-  code: z.number(),
-});
-
-export type BlogMutationResponseType = z.infer<
-  typeof BlogMutationResponseSchema
->;
-
-export const CreateBlogBodySchema = z.object({
-  title: z
-    .string()
-    .min(1, "Tiêu đề không được để trống")
-    .max(255, "Tiêu đề tối đa 255 ký tự"),
-  content: z.string().min(1, "Nội dung không được để trống"),
-  status: BlogStatusEnum.default("DRAFT"),
-  tags: z.array(z.string()).default([]),
-  attachments: z.array(BlogAttachmentInputSchema).default([]),
-});
-
-export const UpdateBlogBodySchema = CreateBlogBodySchema.extend({
-  status: BlogStatusEnum,
-});
-
-export type CreateBlogBodyType = z.infer<typeof CreateBlogBodySchema>;
-export type UpdateBlogBodyType = z.infer<typeof UpdateBlogBodySchema>;
-
-export const BlogCommentBodySchema = z.object({
-  content: z
-    .string()
-    .min(1, "Nội dung bình luận không được để trống")
-    .max(2000, "Nội dung bình luận tối đa 2000 ký tự"),
-  parentId: z.string().uuid().nullable().optional(),
-});
-
-export type BlogCommentBodyType = z.infer<typeof BlogCommentBodySchema>;
-
-export const BlogTagsResponseSchema = z.object({
-  success: z.boolean(),
-  status: z.string(),
-  message: z.string(),
-  data: z.array(z.string()),
-  timestamp: z.string(),
-  path: z.string().optional(),
-  code: z.number(),
-});
-
-export type BlogTagsResponseType = z.infer<typeof BlogTagsResponseSchema>;
+// Mutation response alias
+export type BlogMutationResponseType = BlogResponseType;

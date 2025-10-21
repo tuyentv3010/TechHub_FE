@@ -10,13 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { useBlogTags, useBlogs } from "@/queries/useBlog";
 import {
   estimateReadingTime,
   getExcerptFromContent,
   normalizeTags,
 } from "@/lib/blog";
 import type { Blog } from "@/types/blog.types";
+import { useBlogs, useBlogTags } from "@/queries/useBlog";
 
 const PAGE_SIZE = 6;
 

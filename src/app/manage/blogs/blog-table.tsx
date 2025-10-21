@@ -1,10 +1,26 @@
 "use client";
-
-import { useMemo, useState } from "react";
-import { format } from "date-fns";
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-
+import { CaretSortIcon, DotsHorizontalIcon } from "@radix-ui/react-icons";
+import {
+  ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -14,357 +30,375 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
-  AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogContent,
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/components/ui/use-toast";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { toast } from "@/components/ui/use-toast";
+import { handleErrorApi } from "@/lib/utils";
+import TableSkeleton from "@/components/Skeleton";
 import {
-  useBlogTags,
-  useBlogs,
-  useCreateBlogMutation,
-  useDeleteBlogMutation,
-  useUpdateBlogMutation,
-} from "@/queries/useBlog";
-import BlogEditorDialog from "@/components/blog/BlogEditorDialog";
-import type {
-  Blog,
-  BlogStatus,
-  CreateBlogBody,
-  UpdateBlogBody,
-} from "@/types/blog.types";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { BlogListResponseType, BlogType } from "@/schemaValidations/blog.schema";
+import { useDeleteBlogMutation, useGetBlogList } from "@/queries/useBlog";
+import AddBlog from "./add-blog";
+import EditBlog from "./edit-blog";
+
+type BlogItem = BlogListResponseType["data"][0];
+
+const BlogTableContext = createContext<{
+  setBlogIdEdit: (value: string | undefined) => void;
+  blogIdEdit: string | undefined;
+  blogDelete: BlogItem | null;
+  setBlogDelete: (value: BlogItem | null) => void;
+}>({
+  setBlogIdEdit: () => {},
+  blogIdEdit: undefined,
+  blogDelete: null,
+  setBlogDelete: () => {},
+});
+
+function AlertDialogDeleteBlog({
+  blogDelete,
+  setBlogDelete,
+  onSuccess,
+}: {
+  blogDelete: BlogItem | null;
+  setBlogDelete: (value: BlogItem | null) => void;
+  onSuccess?: () => void;
+}) {
+  const t = useTranslations("ManageBlog");
+  const { mutateAsync } = useDeleteBlogMutation();
+
+  const deleteBlog = async () => {
+    if (blogDelete) {
+      try {
+        await mutateAsync(blogDelete.id);
+        setBlogDelete(null);
+        toast({
+          title: t("DeleteSuccess"),
+          description: t("BlogDeleted", { blogId: blogDelete.id }),
+        });
+        onSuccess?.();
+      } catch (error) {
+        handleErrorApi({ error });
+      }
+    }
+  };
+
+  return (
+    <AlertDialog
+      open={Boolean(blogDelete)}
+      onOpenChange={(value) => {
+        if (!value) setBlogDelete(null);
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("Del")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("Deldes")} {" "}
+            <span className="bg-foreground text-primary-foreground rounded px-1">
+              {blogDelete?.title}
+            </span>{" "}
+            {t("DelDes2")}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
+          <AlertDialogAction onClick={deleteBlog}>
+            {t("Continue")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 const PAGE_SIZE = 10;
 
-const statusLabels: Record<BlogStatus, string> = {
-  DRAFT: "Draft",
-  PUBLISHED: "Published",
-  ARCHIVED: "Archived",
-};
-
-const statusBadgeVariant: Record<
-  BlogStatus,
-  "outline" | "secondary" | "default"
-> = {
-  DRAFT: "outline",
-  PUBLISHED: "default",
-  ARCHIVED: "secondary",
-};
-
 export default function BlogTable() {
-  const { toast } = useToast();
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editorMode, setEditorMode] = useState<"create" | "edit">("create");
-  const [selectedBlog, setSelectedBlog] = useState<Blog | undefined>();
-  const [pendingDelete, setPendingDelete] = useState<Blog | undefined>();
+  const t = useTranslations("ManageBlog");
+  const paginationT = useTranslations("Pagination");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const page = searchParams.get("page") ? Number(searchParams.get("page")) : 1;
+  const pageIndex = page - 1;
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
 
-  const filters = useMemo(
-    () => ({
-      page,
-      size: PAGE_SIZE,
-      keyword: search.trim() || undefined,
-      includeDrafts: true,
-    }),
-    [page, search]
-  );
+  const [blogIdEdit, setBlogIdEdit] = useState<string | undefined>();
+  const [blogDelete, setBlogDelete] = useState<BlogItem | null>(null);
 
-  const { data: blogPage, isLoading, isFetching } = useBlogs(filters);
-  const blogs = blogPage?.data ?? [];
-  const pagination = blogPage?.pagination;
+  const blogListQuery = useGetBlogList(page, pageSize);
+  const data = blogListQuery.data?.payload.data ?? [];
+  const totalItems = blogListQuery.data?.payload.pagination?.totalElements ?? 0;
+  const totalPages = blogListQuery.data?.payload.pagination?.totalPages ?? 1;
 
-  const { data: tagResponse } = useBlogTags();
-  const availableTags = tagResponse?.data ?? [];
-
-  const createMutation = useCreateBlogMutation();
-  const updateMutation = useUpdateBlogMutation();
-  const deleteMutation = useDeleteBlogMutation();
-
-  const openCreateDialog = () => {
-    setEditorMode("create");
-    setSelectedBlog(undefined);
-    setEditorOpen(true);
-  };
-
-  const openEditDialog = (blog: Blog) => {
-    setEditorMode("edit");
-    setSelectedBlog(blog);
-    setEditorOpen(true);
-  };
-
-  const closeEditor = () => {
-    if (createMutation.isPending || updateMutation.isPending) {
-      return;
-    }
-    setEditorOpen(false);
-    setSelectedBlog(undefined);
-  };
-
-  const handleCreate = (payload: CreateBlogBody) => {
-    createMutation.mutate(payload, {
-      onSuccess: () => {
-        toast({
-          title: "Article created",
-          description: "The new blog post has been saved successfully.",
-        });
-        closeEditor();
+  const columns: ColumnDef<BlogType>[] = [
+    {
+      accessorKey: "id",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          {t("ID")}
+          <CaretSortIcon className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+    },
+    {
+      accessorKey: "title",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          {t("TitleLabel")}
+          <CaretSortIcon className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => <div className="font-medium">{row.getValue("title")}</div>,
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          {t("Status")}
+          <CaretSortIcon className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+    },
+    {
+      accessorKey: "tags",
+      header: t("Tags"),
+      cell: ({ row }) => {
+        const tags = (row.getValue("tags") as string[]) || [];
+        return <div className="text-xs text-muted-foreground">{tags.join(", ") || "-"}</div>;
       },
-      onError: () =>
-        toast({
-          title: "Could not create the article",
-          description: "Please review the information and try again.",
-          variant: "destructive",
-        }),
-    });
-  };
-
-  const handleUpdate = (id: string, payload: UpdateBlogBody) => {
-    updateMutation.mutate(
-      { blogId: id, body: payload },
-      {
-        onSuccess: () => {
-          toast({
-            title: "Article updated",
-            description: "Your changes have been saved.",
-          });
-          closeEditor();
-        },
-        onError: () =>
-          toast({
-            title: "Could not update the article",
-            description: "Please try again later.",
-            variant: "destructive",
-          }),
-      }
-    );
-  };
-
-  const confirmDelete = (blog: Blog) => {
-    setPendingDelete(blog);
-  };
-
-  const handleDelete = () => {
-    if (!pendingDelete) {
-      return;
-    }
-    deleteMutation.mutate(pendingDelete.id, {
-      onSuccess: () => {
-        toast({
-          title: "Article deleted",
-          description: `${pendingDelete.title} has been removed.`,
-        });
-        setPendingDelete(undefined);
+    },
+    {
+      accessorKey: "created",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          {t("Created")}
+          <CaretSortIcon className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const value = row.getValue("created") as string;
+        const date = value ? new Date(value) : null;
+        return <div>{date ? date.toLocaleString() : "-"}</div>;
       },
-      onError: () =>
-        toast({
-          title: "Could not delete the article",
-          description: "Please try again later.",
-          variant: "destructive",
-        }),
-    });
-  };
+    },
+    {
+      id: "actions",
+      header: t("Action"),
+      enableHiding: false,
+      cell: function Actions({ row }) {
+        const { setBlogIdEdit, setBlogDelete } = useContext(BlogTableContext);
+        const openEdit = () => setBlogIdEdit(row.original.id);
+        const openDelete = () => setBlogDelete(row.original as BlogItem);
+        return (
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <DotsHorizontalIcon className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{t("Action")}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={openEdit}>{t("Edit")}</DropdownMenuItem>
+              <DropdownMenuItem onClick={openDelete}>{t("Delete")}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
 
-  const editorSubmitting =
-    editorMode === "create"
-      ? createMutation.isPending
-      : updateMutation.isPending;
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
+
+  const table = useReactTable({
+    data,
+    columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+      pagination: { pageIndex, pageSize },
+    },
+    pageCount: totalPages,
+    manualPagination: true,
+  });
+
+  useEffect(() => {
+    table.setPageIndex(pageIndex);
+  }, [table, pageIndex]);
+
+  const goToPage = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", newPage.toString());
+      router.push(`${pathname}?${params.toString()}`);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <Input
-          placeholder="Search by title..."
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(1);
-          }}
-          className="md:max-w-sm"
+    <BlogTableContext.Provider
+      value={{ blogIdEdit, setBlogIdEdit, blogDelete, setBlogDelete }}
+    >
+      <div className="w-full">
+        {blogIdEdit !== undefined && (
+          <EditBlog
+            id={blogIdEdit}
+            setId={setBlogIdEdit}
+            onSubmitSuccess={() => {
+              setBlogIdEdit(undefined);
+              blogListQuery.refetch();
+            }}
+          />
+        )}
+        <AlertDialogDeleteBlog
+          blogDelete={blogDelete}
+          setBlogDelete={setBlogDelete}
+          onSuccess={blogListQuery.refetch}
         />
-        <div className="flex items-center gap-2">
-          {isFetching && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Refreshing data…</span>
-            </div>
-          )}
-          <Button onClick={openCreateDialog} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New article
-          </Button>
-        </div>
-      </div>
 
-      <Separator />
-
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Updated</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: PAGE_SIZE }).map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <div className="h-3 w-48 animate-pulse rounded bg-muted/60" />
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-3 w-16 animate-pulse rounded bg-muted/50" />
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-3 w-20 animate-pulse rounded bg-muted/50" />
-                  </TableCell>
-                  <TableCell>
-                    <div className="h-3 w-28 animate-pulse rounded bg-muted/50" />
-                  </TableCell>
-                  <TableCell />
-                </TableRow>
-              ))
-            ) : blogs.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="py-10 text-center text-sm text-muted-foreground"
-                >
-                  No blog posts yet. Create the first article for the team.
-                </TableCell>
-              </TableRow>
-            ) : (
-              blogs.map((blog) => (
-                <TableRow key={blog.id}>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <p className="font-medium">{blog.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Created on {format(new Date(blog.created), "dd/MM/yyyy")}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={statusBadgeVariant[blog.status]}
-                      className="capitalize"
-                    >
-                      {statusLabels[blog.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {format(new Date(blog.updated), "HH:mm dd/MM/yyyy")}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
-                      {blog.tags?.length ? blog.tags.map((tag) => `#${tag}`) : "—"}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-2"
-                        onClick={() => openEditDialog(blog)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-2 text-destructive hover:text-destructive"
-                        onClick={() => confirmDelete(blog)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {pagination && blogs.length > 0 && (
-        <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between">
-          <p className="text-sm text-muted-foreground">
-            Page {pagination.page + 1} of {pagination.totalPages}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              disabled={!pagination.hasPrevious || page === 1}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                setPage((prev) => (pagination.hasNext ? prev + 1 : prev))
-              }
-              disabled={!pagination.hasNext}
-            >
-              Next
-            </Button>
+        {blogListQuery.isLoading ? (
+          <TableSkeleton />
+        ) : blogListQuery.error ? (
+          <div className="text-red-500">
+            {t("Error")}: {(blogListQuery.error as any).message}
           </div>
-        </div>
-      )}
-
-      <BlogEditorDialog
-        open={editorOpen}
-        mode={editorMode}
-        availableTags={availableTags}
-        initialBlog={selectedBlog}
-        isSubmitting={editorSubmitting}
-        onClose={closeEditor}
-        onCreate={handleCreate}
-        onUpdate={handleUpdate}
-      />
-
-      <AlertDialog
-        open={Boolean(pendingDelete)}
-        onOpenChange={(value) => !value && setPendingDelete(undefined)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete article</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              <span className="font-semibold">{pendingDelete?.title}</span>? This
-              action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        ) : (
+          <>
+            <div className="flex items-center py-4 gap-5">
+              <Input
+                placeholder={t("FilterTitle")}
+                value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
+                onChange={(e) => table.getColumn("title")?.setFilterValue(e.target.value)}
+                className="max-w-sm w-[200px]"
+              />
+              <Input
+                placeholder={t("FilterStatus")}
+                value={(table.getColumn("status")?.getFilterValue() as string) ?? ""}
+                onChange={(e) => table.getColumn("status")?.setFilterValue(e.target.value)}
+                className="max-w-sm w-[160px]"
+              />
+              <div className="ml-auto flex items-center gap-2">
+                <AddBlog />
+              </div>
+            </div>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows?.length ? (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="h-24 text-center">
+                        {t("NoResults")}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex items-center justify-between py-4">
+              <div className="text-xs text-muted-foreground">
+                {paginationT("Pagi1")} <strong>{table.getRowModel().rows.length}</strong>{" "}
+                {paginationT("Pagi2")} <strong>{totalItems}</strong>{" "}
+                {paginationT("Pagi3")}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(page - 1)}
+                  disabled={page === 1}
+                >
+                  {paginationT("Previous")}
+                </Button>
+                <span>
+                  {paginationT("Page")} {page} {paginationT("Of")} {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(page + 1)}
+                  disabled={page === totalPages}
+                >
+                  {paginationT("Next")}
+                </Button>
+                <Select
+                  value={pageSize.toString()}
+                  onValueChange={(value) => {
+                    setPageSize(Number(value));
+                    goToPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue placeholder={paginationT("RowsPerPage")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </BlogTableContext.Provider>
   );
 }
