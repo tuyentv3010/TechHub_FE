@@ -405,12 +405,15 @@
     "TitleLabel": "Title",
     "Status": "Status",
     "Tags": "Tags",
+    "Content": "Content",
     "Created": "Created",
     "Action": "Actions",
     "CreateBlog": "Create Blog",
     "UpdateBlog": "Update Blog",
     "AddDes": "Add a new blog post",
     "Add": "Add",
+    "Edit": "Edit",
+    "Delete": "Delete",
     "Submitting": "Submitting...",
     "DeleteSuccess": "Deleted successfully",
     "BlogDeleted": "Blog has been deleted",
@@ -431,8 +434,8 @@
     "NoResults": "No results",
     "FilterTitle": "Filter by title",
     "FilterStatus": "Filter by status",
-    "TitlePlaceholder": "Enter title",
-    "TagsPlaceholder": "Comma separated tags",
-    "ContentPlaceholder": "Write content (HTML allowed)"
+    "TitlePlaceholder": "Enter blog title",
+    "TagsPlaceholder": "Type and press Enter to add tags",
+    "ContentPlaceholder": "Start writing your blog content... (supports images, videos, code blocks)"
   }
 }

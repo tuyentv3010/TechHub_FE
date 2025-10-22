@@ -360,12 +360,15 @@
     "TitleLabel": "タイトル",
     "Status": "ステータス",
     "Tags": "タグ",
+    "Content": "内容",
     "Created": "作成日",
     "Action": "操作",
     "CreateBlog": "ブログを作成",
     "UpdateBlog": "ブログを更新",
     "AddDes": "新しいブログ記事を追加",
     "Add": "追加",
+    "Edit": "編集",
+    "Delete": "削除",
     "Submitting": "送信中...",
     "DeleteSuccess": "削除成功",
     "BlogDeleted": "ブログは削除されました",
@@ -386,8 +389,8 @@
     "NoResults": "結果なし",
     "FilterTitle": "タイトルで絞り込み",
     "FilterStatus": "ステータスで絞り込み",
-    "TitlePlaceholder": "タイトルを入力",
-    "TagsPlaceholder": "タグ（カンマ区切り）",
-    "ContentPlaceholder": "内容を入力（HTML可）"
+    "TitlePlaceholder": "ブログタイトルを入力",
+    "TagsPlaceholder": "入力してEnterキーでタグを追加",
+    "ContentPlaceholder": "内容を書き始めてください...（画像、動画、コードブロック対応）"
   }
 }

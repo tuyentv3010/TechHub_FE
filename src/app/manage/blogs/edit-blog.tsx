@@ -14,12 +14,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGetBlog, useUpdateBlogMutation } from "@/queries/useBlog";
 import { UpdateBlogBody, UpdateBlogBodyType } from "@/schemaValidations/blog.schema";
+import dynamic from "next/dynamic";
+import TagInput from "@/components/blog/tag-input";
+
+const RichTextEditor = dynamic(() => import("@/components/blog/block-note-editor"), {
+  ssr: false,
+});
 
 type EditBlogProps = {
   id: string;
@@ -84,7 +89,7 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
         if (!value) reset();
       }}
     >
-      <DialogContent className="sm:max-w-[700px] max-h-screen overflow-auto" onCloseAutoFocus={reset}>
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-auto" onCloseAutoFocus={reset}>
         <DialogHeader>
           <DialogTitle>{t("UpdateBlog")}</DialogTitle>
         </DialogHeader>
@@ -96,12 +101,13 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
               toast({ description: t("ValidationFailed"), variant: "destructive" });
             })}
           >
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6 py-4">
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
                   <FormItem>
+                    <FormLabel>{t("TitleLabel")}</FormLabel>
                     <Input placeholder={t("TitlePlaceholder")} {...field} />
                     <FormMessage />
                   </FormItem>
@@ -112,6 +118,7 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
                 name="status"
                 render={({ field }) => (
                   <FormItem>
+                    <FormLabel>{t("Status")}</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder={t("Status")} />
@@ -130,10 +137,11 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
                 name="tags"
                 render={({ field }) => (
                   <FormItem>
-                    <Input
+                    <FormLabel>{t("Tags")}</FormLabel>
+                    <TagInput
+                      value={field.value || []}
+                      onChange={field.onChange}
                       placeholder={t("TagsPlaceholder")}
-                      value={(field.value || []).join(", ")}
-                      onChange={(e) => field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
                     />
                     <FormMessage />
                   </FormItem>
@@ -144,7 +152,12 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
                 name="content"
                 render={({ field }) => (
                   <FormItem>
-                    <Textarea rows={10} placeholder={t("ContentPlaceholder")} {...field} />
+                    <FormLabel>{t("Content")}</FormLabel>
+                    <RichTextEditor
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder={t("ContentPlaceholder")}
+                    />
                     <FormMessage />
                   </FormItem>
                 )}

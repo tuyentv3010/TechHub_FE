@@ -402,12 +402,15 @@
     "TitleLabel": "Tiêu đề",
     "Status": "Trạng thái",
     "Tags": "Thẻ",
+    "Content": "Nội dung",
     "Created": "Ngày tạo",
     "Action": "Thao tác",
     "CreateBlog": "Tạo bài viết",
     "UpdateBlog": "Cập nhật bài viết",
     "AddDes": "Thêm bài viết mới",
     "Add": "Thêm",
+    "Edit": "Sửa",
+    "Delete": "Xóa",
     "Submitting": "Đang xử lý...",
     "DeleteSuccess": "Xóa thành công",
     "BlogDeleted": "Bài viết đã được xóa",
@@ -428,8 +431,8 @@
     "NoResults": "Không có dữ liệu",
     "FilterTitle": "Lọc theo tiêu đề",
     "FilterStatus": "Lọc theo trạng thái",
-    "TitlePlaceholder": "Nhập tiêu đề",
-    "TagsPlaceholder": "Các thẻ, cách nhau bởi dấu phẩy",
-    "ContentPlaceholder": "Nhập nội dung (hỗ trợ HTML)"
+    "TitlePlaceholder": "Nhập tiêu đề bài viết",
+    "TagsPlaceholder": "Nhập và nhấn Enter để thêm thẻ",
+    "ContentPlaceholder": "Bắt đầu viết nội dung... (hỗ trợ hình ảnh, video, code blocks)"
   }
 }
