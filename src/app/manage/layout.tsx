@@ -3,6 +3,7 @@ import DarkModeToggle from "@/components/dark-mode-toggle";
 import NavLinks from "@/app/manage/nav-links";
 import MobileNavLinks from "@/app/manage/mobile-nav-links";
 import { SwitchLanguage } from "@/components/switch-language";
+import DropdownAvatar from "./dropdown-avatar";
 
 export default function Layout({
   children,
@@ -21,7 +22,7 @@ export default function Layout({
               <DarkModeToggle />
             </div>
           </div>
-          {/* <DropdownAvatar /> */}
+          <DropdownAvatar />
         </header>
         {children}
       </div>

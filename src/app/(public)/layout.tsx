@@ -1,4 +1,5 @@
 "use client";
+import Footer from "@/components/footer";
 import { NewHeader } from "@/components/organisms/NewHeader";
 
 export default function Layout({
