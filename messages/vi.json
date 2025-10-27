@@ -433,6 +433,6 @@
     "FilterStatus": "Lọc theo trạng thái",
     "TitlePlaceholder": "Nhập tiêu đề bài viết",
     "TagsPlaceholder": "Nhập và nhấn Enter để thêm thẻ",
-    "ContentPlaceholder": "Bắt đầu viết nội dung... (hỗ trợ hình ảnh, video, code blocks)"
+    "ContentPlaceholder": "Bắt đầu viết... (hỗ trợ upload ảnh và video từ máy tính hoặc URL)"
   }
 }

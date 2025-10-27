@@ -436,6 +436,6 @@
     "FilterStatus": "Filter by status",
     "TitlePlaceholder": "Enter blog title",
     "TagsPlaceholder": "Type and press Enter to add tags",
-    "ContentPlaceholder": "Start writing your blog content... (supports images, videos, code blocks)"
+    "ContentPlaceholder": "Start writing your blog content... (supports image and video upload from computer or URL)"
   }
 }

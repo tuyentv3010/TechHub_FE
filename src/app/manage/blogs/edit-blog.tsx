@@ -22,7 +22,7 @@ import { UpdateBlogBody, UpdateBlogBodyType } from "@/schemaValidations/blog.sch
 import dynamic from "next/dynamic";
 import TagInput from "@/components/blog/tag-input";
 
-const RichTextEditor = dynamic(() => import("@/components/blog/block-note-editor"), {
+const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"), {
   ssr: false,
 });
 

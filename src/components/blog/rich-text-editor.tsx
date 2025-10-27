@@ -1,11 +1,14 @@
 "use client";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { common, createLowlight } from "lowlight";
+import { ResizableImage } from "./tiptap-image-extension";
+import { ResizableVideo } from "./tiptap-video-extension";
 import {
   Bold,
   Italic,
@@ -13,6 +16,7 @@ import {
   Code,
   ImageIcon,
   Upload,
+  Video,
   Link as LinkIcon,
   List,
   ListOrdered,
@@ -27,6 +31,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRef, useState } from "react";
 
+const lowlight = createLowlight(common);
+
 type RichTextEditorProps = {
   value?: string;
   onChange?: (value: string) => void;
@@ -34,23 +40,52 @@ type RichTextEditorProps = {
   editable?: boolean;
 };
 
+type FileUploadResponse = {
+  data: {
+    id: number;
+    url: string;
+    publicId: string;
+    originalFilename: string;
+    fileType: string;
+    size: number;
+    format: string;
+    folder: string;
+    uploadedAt: string;
+  };
+  message: string;
+  status: string;
+};
+
 export default function RichTextEditor({
   value = "",
   onChange,
-  placeholder = "Start writing... (supports images from local files or URLs)",
+  placeholder = "Start writing... (supports image and video upload from computer or URL)",
   editable = true,
 }: RichTextEditorProps) {
   const [imageUrl, setImageUrl] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [showImageInput, setShowImageInput] = useState(false);
+  const [showVideoInput, setShowVideoInput] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        codeBlock: false,
+      }),
       Underline,
-      Image,
+      ResizableImage.configure({
+        inline: true,
+        allowBase64: false, // Không dùng base64, upload lên cloud
+      }),
+      ResizableVideo.configure({
+        inline: false,
+        allowBase64: false,
+      }),
       Link.configure({
         openOnClick: false,
       }),
@@ -59,6 +94,9 @@ export default function RichTextEditor({
       }),
       Placeholder.configure({
         placeholder,
+      }),
+      CodeBlockLowlight.configure({
+        lowlight,
       }),
     ],
     content: value,
@@ -89,20 +127,144 @@ export default function RichTextEditor({
     }
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Convert to base64
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        editor.chain().focus().setImage({ src: base64String }).run();
-      };
-      reader.readAsDataURL(file);
+  const addVideoUrl = () => {
+    if (videoUrl) {
+      // Insert as resizable video node
+      editor
+        .chain()
+        .focus()
+        .setVideo({ src: videoUrl, width: 640, height: 360 })
+        .run();
+      setVideoUrl("");
+      setShowVideoInput(false);
     }
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  };
+
+  const handleImageFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image file");
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image size must be less than 10MB");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "blogs");
+
+      const response = await fetch(
+        "http://localhost:8443/app/api/proxy/files/upload",
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include", // Include cookies for authentication
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Upload failed");
+      }
+
+      const result: FileUploadResponse = await response.json();
+      
+      if (result.status === "success" && result.data?.url) {
+        editor.chain().focus().setImage({ src: result.data.url }).run();
+        console.log("Image uploaded successfully:", result.data);
+      } else {
+        throw new Error("Invalid response from server");
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to upload image. Please try again."
+      );
+    } finally {
+      setIsUploading(false);
+      if (imageFileInputRef.current) {
+        imageFileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleVideoFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("video/")) {
+      alert("Please select a valid video file");
+      return;
+    }
+
+    // Validate file size (max 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      alert("Video size must be less than 50MB");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "blogs");
+
+      const response = await fetch(
+        "http://localhost:8443/app/api/proxy/files/upload",
+        {
+          method: "POST",
+          body: formData,
+          credentials: "include", // Include cookies for authentication
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Upload failed");
+      }
+
+      const result: FileUploadResponse = await response.json();
+
+      if (result.status === "success" && result.data?.url) {
+        editor
+          .chain()
+          .focus()
+          .setVideo({ src: result.data.url, width: 640, height: 360 })
+          .run();
+        console.log("Video uploaded successfully:", result.data);
+      } else {
+        throw new Error("Invalid response from server");
+      }
+    } catch (error) {
+      console.error("Error uploading video:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to upload video. Please try again."
+      );
+    } finally {
+      setIsUploading(false);
+      if (videoFileInputRef.current) {
+        videoFileInputRef.current.value = "";
+      }
     }
   };
 
@@ -202,24 +364,33 @@ export default function RichTextEditor({
         >
           <Quote className="h-4 w-4" />
         </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+          className={editor.isActive("codeBlock") ? "bg-muted" : ""}
+        >
+          <Code className="h-4 w-4" />
+        </Button>
         <div className="w-px h-6 bg-border mx-1" />
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          title="Upload image from computer"
+          onClick={() => setShowImageInput(!showImageInput)}
+          title="Insert image from URL or upload from computer"
         >
-          <Upload className="h-4 w-4" />
+          <ImageIcon className="h-4 w-4" />
         </Button>
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => setShowImageInput(!showImageInput)}
-          title="Insert image from URL"
+          onClick={() => setShowVideoInput(!showVideoInput)}
+          title="Insert video from URL or upload from computer"
         >
-          <ImageIcon className="h-4 w-4" />
+          <Video className="h-4 w-4" />
         </Button>
         <Button
           type="button"
@@ -250,12 +421,19 @@ export default function RichTextEditor({
         </Button>
       </div>
 
-      {/* Hidden file input */}
+      {/* Hidden file inputs */}
       <input
-        ref={fileInputRef}
+        ref={imageFileInputRef}
         type="file"
         accept="image/*"
-        onChange={handleFileSelect}
+        onChange={handleImageFileSelect}
+        className="hidden"
+      />
+      <input
+        ref={videoFileInputRef}
+        type="file"
+        accept="video/*"
+        onChange={handleVideoFileSelect}
         className="hidden"
       />
 
@@ -264,19 +442,63 @@ export default function RichTextEditor({
         <div className="flex gap-2 p-2 border-b bg-muted/30">
           <Input
             type="url"
-            placeholder="Enter image URL"
+            placeholder="Enter image URL or upload from computer"
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addImage()}
           />
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() => imageFileInputRef.current?.click()}
+            disabled={isUploading}
+          >
+            <Upload className="h-4 w-4 mr-1" />
+            {isUploading ? "Uploading..." : "Upload"}
+          </Button>
           <Button type="button" size="sm" onClick={addImage}>
-            Add
+            Add URL
           </Button>
           <Button
             type="button"
             size="sm"
             variant="ghost"
             onClick={() => setShowImageInput(false)}
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
+
+      {/* Video URL Input */}
+      {showVideoInput && (
+        <div className="flex gap-2 p-2 border-b bg-muted/30">
+          <Input
+            type="url"
+            placeholder="Enter video URL or upload video from computer"
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addVideoUrl()}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() => videoFileInputRef.current?.click()}
+            disabled={isUploading}
+          >
+            <Upload className="h-4 w-4 mr-1" />
+            {isUploading ? "Uploading..." : "Upload"}
+          </Button>
+          <Button type="button" size="sm" onClick={addVideoUrl}>
+            Add URL
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowVideoInput(false)}
           >
             Cancel
           </Button>

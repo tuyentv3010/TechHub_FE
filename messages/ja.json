@@ -391,6 +391,6 @@
     "FilterStatus": "ステータスで絞り込み",
     "TitlePlaceholder": "ブログタイトルを入力",
     "TagsPlaceholder": "入力してEnterキーでタグを追加",
-    "ContentPlaceholder": "内容を書き始めてください...（画像、動画、コードブロック対応）"
+    "ContentPlaceholder": "内容を書き始めてください...（コンピュータまたはURLから画像と動画アップロード対応）"
   }
 }

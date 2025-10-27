@@ -194,6 +194,19 @@
   margin: 1rem 0;
 }
 
+.ProseMirror video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+.ProseMirror iframe {
+  max-width: 100%;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
 .ProseMirror pre {
   background: #1e1e1e;
   border-radius: 0.5rem;
