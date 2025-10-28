@@ -17,9 +17,9 @@ import {
   Loader2,
   MessageCircle,
   Share2,
-  Smile,
   ThumbsDown,
   ThumbsUp,
+  Smile,
   Twitter,
 } from "lucide-react";
 
@@ -90,7 +90,6 @@ type CommentItemProps = {
   onSubmitReply: (parentId: string, content: string) => void;
   isSubmitting: boolean;
   onCancelReply: () => void;
-  onEmojiClick: (emoji: string) => void;
 };
 
 const CommentUserInfo = ({ userId }: { userId: string }) => {
@@ -142,6 +141,25 @@ const CommentItem = ({
   isSubmitting,
   onCancelReply,
 }: CommentItemProps) => {
+  const localReplyRef = useRef<HTMLTextAreaElement | null>(null);
+  const [showLocalEmoji, setShowLocalEmoji] = useState(false);
+  const insertEmojiToLocalReply = (emoji: string) => {
+    const ref = localReplyRef.current;
+    if (!ref) {
+      // fallback: append
+      setReplyContent(replyContent + emoji);
+      return;
+    }
+    const start = ref.selectionStart ?? ref.value.length;
+    const end = ref.selectionEnd ?? ref.value.length;
+    const newVal = ref.value.slice(0, start) + emoji + ref.value.slice(end);
+    setReplyContent(newVal);
+    requestAnimationFrame(() => {
+      const pos = start + emoji.length;
+      ref.focus();
+      ref.setSelectionRange(pos, pos);
+    });
+  };
   const [showReplies, setShowReplies] = useState(true);
   const hasReplies = comment.replies && comment.replies.length > 0;
   const isReplying = activeReplyId === comment.id;
@@ -190,13 +208,31 @@ const CommentItem = ({
           {/* Reply Input (khi đang trả lời comment này) */}
           {isReplying && (
             <div className="pt-3 space-y-2">
-              <Textarea
-                placeholder="Viết phản hồi..."
-                value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
-                rows={3}
-                className="text-sm"
-              />
+              <div className="relative">
+                <Textarea
+                  placeholder="Viết phản hồi..."
+                  value={replyContent}
+                  onChange={(e) => setReplyContent(e.target.value)}
+                  rows={3}
+                  className="text-sm"
+                  ref={localReplyRef}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowLocalEmoji((s) => !s)}
+                  className="absolute right-2 bottom-2 inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:text-foreground"
+                  title="Chèn emoji"
+                >
+                  <Smile className="h-5 w-5" />
+                </button>
+
+                {showLocalEmoji && (
+                  <div className="absolute right-0 bottom-12 z-50">
+                    <EmojiPicker onEmojiClick={(e: any) => { insertEmojiToLocalReply(e.emoji); setShowLocalEmoji(false); }} />
+                  </div>
+                )}
+              </div>
               <div className="flex justify-end gap-2">
                 <Button
                   variant="ghost"
@@ -289,6 +325,25 @@ export default function BlogDetailPage() {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [showEmojiPickerMain, setShowEmojiPickerMain] = useState(false);
+  const mainTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const insertEmojiAtCursor = (
+    ref: HTMLTextAreaElement | null,
+    emoji: string,
+    setter: (v: string) => void
+  ) => {
+    if (!ref) return;
+    const start = ref.selectionStart ?? ref.value.length;
+    const end = ref.selectionEnd ?? ref.value.length;
+    const newVal = ref.value.slice(0, start) + emoji + ref.value.slice(end);
+    setter(newVal);
+    requestAnimationFrame(() => {
+      const pos = start + emoji.length;
+      ref.focus();
+      ref.setSelectionRange(pos, pos);
+    });
+  };
 
   // Cập nhật document title khi blog được load
   useEffect(() => {
@@ -648,12 +703,30 @@ export default function BlogDetailPage() {
 
               {/* New Comment Input */}
               <div className="space-y-3">
-                <Textarea
-                  placeholder="Chia sẻ cảm nhận của bạn..."
-                  value={commentContent}
-                  onChange={(event) => setCommentContent(event.target.value)}
-                  rows={3}
-                />
+                <div className="relative">
+                  <Textarea
+                    placeholder="Chia sẻ cảm nhận của bạn..."
+                    value={commentContent}
+                    onChange={(event) => setCommentContent(event.target.value)}
+                    rows={3}
+                    ref={mainTextareaRef}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPickerMain((s) => !s)}
+                    className="absolute right-2 bottom-2 inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:text-foreground"
+                    title="Chèn emoji"
+                  >
+                    <Smile className="h-5 w-5" />
+                  </button>
+
+                  {showEmojiPickerMain && (
+                    <div className="absolute right-0 bottom-12 z-50">
+                      <EmojiPicker onEmojiClick={(e: any) => { insertEmojiAtCursor(mainTextareaRef.current, e.emoji, setCommentContent); setShowEmojiPickerMain(false); }} />
+                    </div>
+                  )}
+                </div>
                 <div className="flex justify-end">
                   <Button
                     onClick={handleSubmitComment}
