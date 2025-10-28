@@ -15,7 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, ImageIcon } from "lucide-react";
 import {
   CreateBlogBody,
   CreateBlogBodyType,
@@ -24,8 +24,12 @@ import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateBlogMutation } from "@/queries/useBlog";
+import { useAccountProfile } from "@/queries/useAccount";
 import dynamic from "next/dynamic";
 import TagInput from "@/components/blog/tag-input";
+import MediaLibraryDialog from "@/components/common/media-library-dialog";
+import fileApiRequest from "@/apiRequests/file";
+import { Upload } from "lucide-react";
 
 const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"), {
   ssr: false,
@@ -34,19 +38,79 @@ const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"
 export default function AddBlog() {
   const t = useTranslations("ManageBlog");
   const [open, setOpen] = useState(false);
+  const [showThumbnailLibrary, setShowThumbnailLibrary] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const createBlogMutation = useCreateBlogMutation();
   const submitCountRef = useRef(0);
+  const { data: profileData } = useAccountProfile();
+  const userId = profileData?.payload?.data?.id || '';
 
   const form = useForm<CreateBlogBodyType>({
     resolver: zodResolver(CreateBlogBody),
     defaultValues: {
       title: "",
       content: "",
+      thumbnail: null,
       status: "DRAFT",
       tags: [],
       attachments: [],
     },
   });
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({ 
+        title: t("Error"), 
+        description: "Please select an image file", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ 
+        title: t("Error"), 
+        description: "File size must be less than 10MB", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+      formData.append('altText', file.name);
+      formData.append('caption', 'Blog thumbnail');
+
+      const response = await fileApiRequest.uploadFile(formData);
+      
+      if (response.payload?.data?.cloudinarySecureUrl) {
+        form.setValue('thumbnail', response.payload.data.cloudinarySecureUrl);
+        toast({ description: "Thumbnail uploaded successfully" });
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({ 
+        title: t("Error"), 
+        description: error.message || "Failed to upload thumbnail", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const onSubmit = async (values: CreateBlogBodyType) => {
     submitCountRef.current += 1;
@@ -99,6 +163,57 @@ export default function AddBlog() {
                   <FormItem>
                     <FormLabel>{t("TitleLabel")}</FormLabel>
                     <Input placeholder={t("TitlePlaceholder")} {...field} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="thumbnail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("Thumbnail")}</FormLabel>
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="Enter thumbnail URL or choose from library" 
+                        value={field.value || ''} 
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                      />
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={() => setShowThumbnailLibrary(true)}
+                        disabled={isUploading}
+                      >
+                        <ImageIcon className="w-4 h-4 mr-2" />
+                        Choose
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {isUploading ? "Uploading..." : "Upload"}
+                      </Button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                      />
+                    </div>
+                    {field.value && (
+                      <div className="mt-2 relative w-full h-40 border rounded-md overflow-hidden">
+                        <img 
+                          src={field.value} 
+                          alt="Thumbnail preview" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -161,6 +276,19 @@ export default function AddBlog() {
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Thumbnail Library Dialog */}
+      <MediaLibraryDialog
+        open={showThumbnailLibrary}
+        onOpenChange={setShowThumbnailLibrary}
+        onSelectFile={(file) => {
+          form.setValue('thumbnail', file.cloudinarySecureUrl);
+          setShowThumbnailLibrary(false);
+        }}
+        userId={userId}
+        mediaType="IMAGE"
+        title="Select Thumbnail"
+      />
     </Dialog>
   );
 }

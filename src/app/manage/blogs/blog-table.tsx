@@ -158,6 +158,27 @@ export default function BlogTable() {
           <CaretSortIcon className="ml-2 h-4 w-4" />
         </Button>
       ),
+      cell: ({ row }) => <div className="truncate max-w-[100px]">{row.getValue("id")}</div>,
+    },
+    {
+      accessorKey: "thumbnail",
+      header: t("Thumbnail"),
+      cell: ({ row }) => {
+        const thumbnail = row.getValue("thumbnail") as string | null;
+        return thumbnail ? (
+          <div className="w-16 h-16 relative rounded overflow-hidden">
+            <img 
+              src={thumbnail} 
+              alt="Blog thumbnail" 
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          <div className="w-16 h-16 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">
+            No image
+          </div>
+        );
+      },
     },
     {
       accessorKey: "title",

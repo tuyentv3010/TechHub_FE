@@ -18,6 +18,7 @@ export const BlogSchema = z.object({
   id: z.string(), // UUID
   title: z.string().min(1, "Title is required"),
   content: z.string().default(""), // HTML content
+  thumbnail: z.string().nullable().optional(),
   status: BlogStatusEnum,
   tags: z.array(z.string()).default([]),
   attachments: z.array(BlogAttachmentSchema).default([]),
@@ -32,6 +33,7 @@ export type BlogType = z.infer<typeof BlogSchema>;
 export const CreateBlogBody = z.object({
   title: z.string().min(1, "Title is required"),
   content: z.string().default(""),
+  thumbnail: z.string().nullable().optional(),
   status: BlogStatusEnum.default("DRAFT"),
   tags: z.array(z.string()).default([]),
   attachments: z.array(BlogAttachmentInputSchema).default([]),
@@ -42,6 +44,7 @@ export type CreateBlogBodyType = z.infer<typeof CreateBlogBody>;
 export const UpdateBlogBody = z.object({
   title: z.string().min(1, "Title is required"),
   content: z.string().default(""),
+  thumbnail: z.string().nullable().optional(),
   status: BlogStatusEnum,
   tags: z.array(z.string()).default([]),
   attachments: z.array(BlogAttachmentInputSchema).default([]),
