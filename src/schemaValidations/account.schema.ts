@@ -28,8 +28,6 @@ export const CreateEmployeeAccountBody = z
     username: z.string().min(1, "Username is required"),
     roles: z.array(z.string()).min(1, "At least one role is required"),
     avatar: z.string().optional(),
-    phoneNumber: z.string().optional(),
-    citizenId: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -47,24 +45,22 @@ export const UpdateEmployeeAccountBody = z
     username: z.string().min(1, "Username is required"),
     roles: z.array(z.string()).min(1, "At least one role is required"),
     avatar: z.string().optional(),
-    phoneNumber: z.string().optional(),
-    citizenId: z.string().optional(),
-    changePassword: z.boolean(),
-    password: z
-      .string()
-      .min(6, "Password must be at least 6 characters")
-      .optional(),
-    confirmPassword: z
-      .string()
-      .min(6, "Confirm password must be at least 6 characters")
-      .optional(),
+    changePassword: z.boolean().optional(),
+    password: z.string().optional(),
+    confirmPassword: z.string().optional(),
   })
   .refine(
-    (data) =>
-      !data.changePassword ||
-      (data.password && data.password === data.confirmPassword),
+    (data) => {
+      // Only validate password if changePassword is true
+      if (data.changePassword) {
+        return data.password && 
+               data.password.length >= 6 && 
+               data.password === data.confirmPassword;
+      }
+      return true;
+    },
     {
-      message: "Passwords do not match",
+      message: "Password must be at least 6 characters and match confirmation",
       path: ["confirmPassword"],
     }
   );
@@ -72,6 +68,14 @@ export const UpdateEmployeeAccountBody = z
 export type UpdateEmployeeAccountBodyType = z.TypeOf<
   typeof UpdateEmployeeAccountBody
 >;
+
+// Schema for updating current user profile (simpler, no roles/email change)
+export const UpdateProfileBody = z.object({
+  username: z.string().min(1, "Username is required"),
+  avatar: z.string().nullable().optional(),
+});
+
+export type UpdateProfileBodyType = z.TypeOf<typeof UpdateProfileBody>;
 
 // Schema for single account response
 export const AccountRes = z.object({

@@ -3,6 +3,7 @@ import accountApiRequest from "@/apiRequests/account";
 import {
   CreateEmployeeAccountBodyType,
   UpdateEmployeeAccountBodyType,
+  UpdateProfileBodyType,
 } from "@/schemaValidations/account.schema";
 
 // Get user profile
@@ -101,6 +102,19 @@ export const useDeleteAccountMutation = () => {
     mutationFn: (id: string) => accountApiRequest.deleteAccount(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["account-list"] });
+    },
+  });
+};
+
+// Update current user profile mutation
+export const useUpdateProfileMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: UpdateProfileBodyType) => 
+      accountApiRequest.updateProfile(body as UpdateEmployeeAccountBodyType),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["account-profile"] });
     },
   });
 };

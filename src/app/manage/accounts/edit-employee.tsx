@@ -14,7 +14,7 @@ import { useForm } from "react-hook-form";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Upload, ImageIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
@@ -23,7 +23,9 @@ import {
   UpdateEmployeeAccountBody,
   UpdateEmployeeAccountBodyType,
 } from "@/schemaValidations/account.schema";
-import { useGetAccount, useUpdateAccountMutation } from "@/queries/useAccount";
+import { useGetAccount, useUpdateAccountMutation, useAccountProfile } from "@/queries/useAccount";
+import MediaLibraryDialog from "@/components/common/media-library-dialog";
+import fileApiRequest from "@/apiRequests/file";
 
 type EditEmployeeProps = {
   id: string; // UUID
@@ -38,6 +40,8 @@ export default function EditEmployee({
 }: EditEmployeeProps) {
   const t = useTranslations("ManageAccount");
   const [file, setFile] = useState<File | undefined>(undefined);
+  const [showAvatarLibrary, setShowAvatarLibrary] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedRoleName, setSelectedRoleName] = useState<string>("");
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
@@ -47,6 +51,8 @@ export default function EditEmployee({
     enabled: Boolean(id),
   });
   const updateAccountMutation = useUpdateAccountMutation();
+  const { data: profileData } = useAccountProfile();
+  const userId = profileData?.payload?.data?.id || '';
 
   const form = useForm<UpdateEmployeeAccountBodyType>({
     resolver: zodResolver(UpdateEmployeeAccountBody),
@@ -54,8 +60,6 @@ export default function EditEmployee({
       username: "",
       email: "",
       avatar: undefined,
-      phoneNumber: "",
-      citizenId: "",
       roles: [],
       changePassword: false,
       password: "",
@@ -65,15 +69,12 @@ export default function EditEmployee({
 
   useEffect(() => {
     if (data?.payload?.data) {
-      const { username, email, avatar, phoneNumber, citizenId, roles } =
-        data.payload.data;
+      const { username, email, avatar, roles } = data.payload.data;
       
       form.reset({
         username: username || "",
         email: email || "",
         avatar: avatar ?? undefined,
-        phoneNumber: phoneNumber ?? "",
-        citizenId: citizenId ?? "",
         roles: roles || [],
         changePassword: false,
         password: "",
@@ -124,10 +125,18 @@ export default function EditEmployee({
       console.log("Mutation skipped: isPending is true");
       return;
     }
+    
     try {
+      // If changePassword is false, remove password fields
+      const submitData = { ...values };
+      if (!values.changePassword) {
+        delete submitData.password;
+        delete submitData.confirmPassword;
+      }
+      
       const result = await updateAccountMutation.mutateAsync({
         id,
-        body: values,
+        body: submitData,
         avatarFile: file,
       });
       toast({
@@ -145,6 +154,58 @@ export default function EditEmployee({
         description: t("UpdateFailed"),
         variant: "destructive",
       });
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadFile = event.target.files?.[0];
+    if (!uploadFile) return;
+
+    if (!uploadFile.type.startsWith('image/')) {
+      toast({ 
+        title: t("Error"), 
+        description: "Please select an image file", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (uploadFile.size > 10 * 1024 * 1024) {
+      toast({ 
+        title: t("Error"), 
+        description: "File size must be less than 10MB", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('userId', userId);
+      formData.append('altText', uploadFile.name);
+      formData.append('caption', 'Account avatar');
+
+      const response = await fileApiRequest.uploadFile(formData);
+      
+      if (response.payload?.data?.cloudinarySecureUrl) {
+        form.setValue('avatar', response.payload.data.cloudinarySecureUrl);
+        setFile(undefined);
+        toast({ description: "Avatar uploaded successfully" });
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({ 
+        title: t("Error"), 
+        description: error.message || "Failed to upload avatar", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploading(false);
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = '';
+      }
     }
   };
 
@@ -200,42 +261,31 @@ export default function EditEmployee({
                       </Avatar>
                       <input
                         type="file"
-                        accept="image/png,image/jpeg"
+                        accept="image/*"
                         ref={avatarInputRef}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            if (file.size > 5 * 1024 * 1024) {
-                              toast({
-                                description: t("FileTooLarge"),
-                                variant: "destructive",
-                              });
-                              return;
-                            }
-                            if (
-                              !["image/png", "image/jpeg"].includes(file.type)
-                            ) {
-                              toast({
-                                description: t("InvalidFileType"),
-                                variant: "destructive",
-                              });
-                              return;
-                            }
-                            setFile(file);
-                            field.onChange(URL.createObjectURL(file));
-                          }
-                        }}
+                        onChange={handleFileUpload}
                         className="hidden"
                       />
                       <button
                         className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed"
                         type="button"
                         onClick={() => avatarInputRef.current?.click()}
+                        disabled={isUploading}
                       >
                         <Upload className="h-4 w-4 text-muted-foreground" />
                         <span className="sr-only">{t("UploadAvatar")}</span>
                       </button>
+                      <button
+                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed"
+                        type="button"
+                        onClick={() => setShowAvatarLibrary(true)}
+                        disabled={isUploading}
+                      >
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                        <span className="sr-only">Choose from library</span>
+                      </button>
                     </div>
+                    {isUploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -275,48 +325,6 @@ export default function EditEmployee({
                           className="w-full opacity-50"
                           {...field}
                           readOnly
-                          value={field.value ?? ""}
-                        />
-                        <FormMessage />
-                      </div>
-                    </div>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phoneNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
-                      <Label htmlFor="phoneNumber">{t("PhoneNumber")}</Label>
-                      <div className="col-span-3 w-full space-y-2">
-                        <Input
-                          id="phoneNumber"
-                          placeholder={t("PhoneNumberPlaceholder")}
-                          className="w-full"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
-                        <FormMessage />
-                      </div>
-                    </div>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="citizenId"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
-                      <Label htmlFor="citizenId">{t("CitizenId")}</Label>
-                      <div className="col-span-3 w-full space-y-2">
-                        <Input
-                          id="citizenId"
-                          placeholder={t("CitizenIdPlaceholder")}
-                          className="w-full"
-                          {...field}
                           value={field.value ?? ""}
                         />
                         <FormMessage />
@@ -426,7 +434,7 @@ export default function EditEmployee({
           <Button
             type="submit"
             form="edit-employee-form"
-            disabled={updateAccountMutation.isPending}
+            disabled={updateAccountMutation.isPending || isUploading}
           >
             {updateAccountMutation.isPending ? (
               <>
@@ -439,6 +447,20 @@ export default function EditEmployee({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Media Library Dialog */}
+      <MediaLibraryDialog
+        open={showAvatarLibrary}
+        onOpenChange={setShowAvatarLibrary}
+        onSelectFile={(file) => {
+          form.setValue('avatar', file.cloudinarySecureUrl);
+          setFile(undefined);
+          setShowAvatarLibrary(false);
+        }}
+        userId={userId}
+        mediaType="IMAGE"
+        title="Select Avatar"
+      />
     </Dialog>
   );
 }

@@ -17,24 +17,31 @@ import {
   CreateEmployeeAccountBodyType,
 } from "@/schemaValidations/account.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusCircle, Upload } from "lucide-react";
+import { PlusCircle, Upload, ImageIcon } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAddAccountMutation } from "@/queries/useAccount";
+import { useAccountProfile } from "@/queries/useAccount";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import MediaLibraryDialog from "@/components/common/media-library-dialog";
+import fileApiRequest from "@/apiRequests/file";
 
 export default function AddEmployee() {
   const t = useTranslations("ManageAccount");
   const [file, setFile] = useState<File | undefined>(undefined);
   const [open, setOpen] = useState(false);
+  const [showAvatarLibrary, setShowAvatarLibrary] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const addAccountMutation = useAddAccountMutation();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const submissionRef = useRef<number>(0);
   const fileChangeRef = useRef<number>(0);
+  const { data: profileData } = useAccountProfile();
+  const userId = profileData?.payload?.data?.id || '';
 
   const form = useForm<CreateEmployeeAccountBodyType>({
     resolver: zodResolver(CreateEmployeeAccountBody),
@@ -44,8 +51,6 @@ export default function AddEmployee() {
       avatar: undefined,
       password: "",
       confirmPassword: "",
-      phoneNumber: "",
-      citizenId: "",
       roles: ["LEARNER"], // Default role
     },
   });
@@ -144,6 +149,58 @@ export default function AddEmployee() {
     }
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadFile = event.target.files?.[0];
+    if (!uploadFile) return;
+
+    if (!uploadFile.type.startsWith('image/')) {
+      toast({ 
+        title: t("Error"), 
+        description: "Please select an image file", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (uploadFile.size > 10 * 1024 * 1024) {
+      toast({ 
+        title: t("Error"), 
+        description: "File size must be less than 10MB", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('userId', userId);
+      formData.append('altText', uploadFile.name);
+      formData.append('caption', 'Account avatar');
+
+      const response = await fileApiRequest.uploadFile(formData);
+      
+      if (response.payload?.data?.cloudinarySecureUrl) {
+        form.setValue('avatar', response.payload.data.cloudinarySecureUrl);
+        setFile(undefined);
+        toast({ description: "Avatar uploaded successfully" });
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({ 
+        title: t("Error"), 
+        description: error.message || "Failed to upload avatar", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploading(false);
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <Dialog
       onOpenChange={(value) => {
@@ -203,7 +260,7 @@ export default function AddEmployee() {
                         type="file"
                         accept="image/*"
                         ref={avatarInputRef}
-                        onChange={handleFileChange}
+                        onChange={handleFileUpload}
                         className="hidden"
                       />
                       <button
@@ -213,11 +270,22 @@ export default function AddEmployee() {
                           console.log("Avatar upload button clicked");
                           avatarInputRef.current?.click();
                         }}
+                        disabled={isUploading}
                       >
                         <Upload className="h-4 w-4 text-muted-foreground" />
                         <span className="sr-only">Upload</span>
                       </button>
+                      <button
+                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed"
+                        type="button"
+                        onClick={() => setShowAvatarLibrary(true)}
+                        disabled={isUploading}
+                      >
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                        <span className="sr-only">Choose from library</span>
+                      </button>
                     </div>
+                    {isUploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -296,36 +364,6 @@ export default function AddEmployee() {
               />
               <FormField
                 control={form.control}
-                name="phoneNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
-                      <Label htmlFor="phoneNumber">{t("PhoneNumber")}</Label>
-                      <div className="col-span-3 w-full space-y-2">
-                        <Input id="phoneNumber" className="w-full" {...field} />
-                        <FormMessage />
-                      </div>
-                    </div>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="citizenId"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
-                      <Label htmlFor="citizenId">{t("CitizenId")}</Label>
-                      <div className="col-span-3 w-full space-y-2">
-                        <Input id="citizenId" className="w-full" {...field} />
-                        <FormMessage />
-                      </div>
-                    </div>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="roles"
                 render={({ field }) => (
                   <FormItem>
@@ -355,12 +393,26 @@ export default function AddEmployee() {
           <Button
             type="submit"
             form="add-employee-form"
-            disabled={addAccountMutation.isPending}
+            disabled={addAccountMutation.isPending || isUploading}
           >
             {addAccountMutation.isPending ? t("Submitting") : t("Add")}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Media Library Dialog */}
+      <MediaLibraryDialog
+        open={showAvatarLibrary}
+        onOpenChange={setShowAvatarLibrary}
+        onSelectFile={(file) => {
+          form.setValue('avatar', file.cloudinarySecureUrl);
+          setFile(undefined);
+          setShowAvatarLibrary(false);
+        }}
+        userId={userId}
+        mediaType="IMAGE"
+        title="Select Avatar"
+      />
     </Dialog>
   );
 }

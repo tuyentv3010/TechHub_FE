@@ -11,6 +11,10 @@ const accountApiRequest = {
   getProfile: () =>
     http.get<AccountResType>("/app/api/proxy/users/profile"),
 
+  // Update current user profile
+  updateProfile: (body: UpdateEmployeeAccountBodyType) =>
+    http.put<AccountResType>("/app/api/proxy/users/profile", body),
+
   // Get all accounts (with pagination)
   getAccountList: (page: number = 1, size: number = 10) =>
     http.get<AccountListResType>(`/app/api/proxy/users?page=${page - 1}&size=${size}`),
