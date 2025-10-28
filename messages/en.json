@@ -402,6 +402,7 @@
     "Title": "Blog Management",
     "Description": "Manage blogs: create, edit, publish",
     "ID": "ID",
+    "Thumbnail" : "Thumbnail",
     "TitleLabel": "Title",
     "Status": "Status",
     "Tags": "Tags",

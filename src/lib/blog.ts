@@ -1,4 +1,5 @@
 import { TocItem } from "@/types/blog.types";
+import { marked } from "marked";
 
 const DEFAULT_WPM = 200;
 const HEADING_REGEX = /<(h[1-4])([^>]*)>([\s\S]*?)<\/\1>/gi;
@@ -11,6 +12,32 @@ export const slugify = (value: string) => {
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
+};
+
+/**
+ * Tạo slug từ title và id để đảm bảo unique
+ * Format: title-slug-fullId
+ */
+export const createBlogSlug = (title: string, id: string): string => {
+  const titleSlug = slugify(title);
+  // Sử dụng full UUID để đảm bảo có thể query được từ backend
+  return `${titleSlug}-${id}`;
+};
+
+/**
+ * Extract ID từ slug
+ * Format: title-slug-fullId
+ */
+export const extractIdFromSlug = (slug: string): string => {
+  // ID là phần cuối của slug, là UUID đầy đủ
+  const parts = slug.split("-");
+  // UUID có format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (5 parts khi split by -)
+  // Lấy 5 phần cuối và join lại
+  if (parts.length >= 5) {
+    return parts.slice(-5).join("-");
+  }
+  // Fallback: return slug as is nếu không match format
+  return slug;
 };
 
 export const ensureUniqueSlug = (slug: string, used: Set<string>) => {
@@ -163,4 +190,28 @@ export const getExcerptFromContent = (content: string, length = 160) => {
   }
 
   return `${text.slice(0, length).trimEnd()}…`;
+};
+
+/**
+ * Parse markdown content thành HTML
+ * Nếu content đã là HTML thì giữ nguyên
+ */
+export const parseMarkdownToHtml = (content: string): string => {
+  if (!content) return "";
+  
+  // Kiểm tra xem content đã là HTML chưa
+  const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(content);
+  
+  if (hasHtmlTags) {
+    // Đã là HTML, return luôn
+    return content;
+  }
+  
+  // Parse markdown thành HTML
+  try {
+    return marked.parse(content) as string;
+  } catch (error) {
+    console.error("Error parsing markdown:", error);
+    return content;
+  }
 };
