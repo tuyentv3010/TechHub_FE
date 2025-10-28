@@ -29,7 +29,17 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useRef, useState } from "react";
+import fileApiRequest from "@/apiRequests/file";
+import { useAccountProfile } from "@/queries/useAccount";
+import { useGetFilesByUser } from "@/queries/useFile";
+import { FolderOpen, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 
 const lowlight = createLowlight(common);
 
@@ -41,19 +51,18 @@ type RichTextEditorProps = {
 };
 
 type FileUploadResponse = {
-  data: {
-    id: number;
-    url: string;
-    publicId: string;
-    originalFilename: string;
-    fileType: string;
-    size: number;
-    format: string;
-    folder: string;
-    uploadedAt: string;
-  };
-  message: string;
   status: string;
+  payload: {
+    data: {
+      id: string;
+      cloudinarySecureUrl: string;
+      cloudinaryUrl: string;
+      name: string;
+      fileType: string;
+    };
+    status: string;
+    message: string;
+  };
 };
 
 export default function RichTextEditor({
@@ -62,15 +71,29 @@ export default function RichTextEditor({
   placeholder = "Start writing... (supports image and video upload from computer or URL)",
   editable = true,
 }: RichTextEditorProps) {
+  const { data: profileData } = useAccountProfile();
+  const userId = profileData?.payload?.data?.id || '';
   const [imageUrl, setImageUrl] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [showImageInput, setShowImageInput] = useState(false);
   const [showVideoInput, setShowVideoInput] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
+  const [showImageLibrary, setShowImageLibrary] = useState(false);
+  const [showVideoLibrary, setShowVideoLibrary] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
+
+  const pageSize = 12; // 12 items per page (4 columns x 3 rows)
+
+  // Fetch files for library
+  const { data: allFilesData, isLoading: loadingFiles } = useGetFilesByUser(
+    userId,
+    currentPage,
+    pageSize
+  );
 
   const editor = useEditor({
     extensions: [
@@ -110,6 +133,44 @@ export default function RichTextEditor({
   if (!editor) {
     return null;
   }
+
+  // Get files from response
+  const isPageResponse = allFilesData?.payload?.data && typeof allFilesData.payload.data === 'object' && 'content' in allFilesData.payload.data;
+  const allFiles = isPageResponse 
+    ? (allFilesData.payload.data as any).content || []
+    : (Array.isArray(allFilesData?.payload?.data) ? allFilesData.payload.data : []);
+  
+  const totalPages = isPageResponse ? (allFilesData.payload.data as any).totalPages || 1 : 1;
+  
+  // Filter by file type
+  const imageFiles = allFiles.filter((file: any) => file.fileType === 'IMAGE');
+  const videoFiles = allFiles.filter((file: any) => file.fileType === 'VIDEO');
+
+  const handleSelectImageFromLibrary = (file: any) => {
+    editor.chain().focus().setImage({ src: file.cloudinarySecureUrl }).run();
+    setShowImageLibrary(false);
+    setCurrentPage(0);
+  };
+
+  const handleSelectVideoFromLibrary = (file: any) => {
+    editor
+      .chain()
+      .focus()
+      .setVideo({ src: file.cloudinarySecureUrl, width: 640, height: 360 })
+      .run();
+    setShowVideoLibrary(false);
+    setCurrentPage(0);
+  };
+
+  const openImageLibrary = () => {
+    setShowImageLibrary(true);
+    setCurrentPage(0);
+  };
+
+  const openVideoLibrary = () => {
+    setShowVideoLibrary(true);
+    setCurrentPage(0);
+  };
 
   const addImage = () => {
     if (imageUrl) {
@@ -163,27 +224,15 @@ export default function RichTextEditor({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("folder", "blogs");
+      formData.append("userId", userId);
+      formData.append("tags", "blog,image");
+      formData.append("description", "Blog image upload");
 
-      const response = await fetch(
-        "http://localhost:8443/app/api/proxy/files/upload",
-        {
-          method: "POST",
-          body: formData,
-          credentials: "include", // Include cookies for authentication
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Upload failed");
-      }
-
-      const result: FileUploadResponse = await response.json();
+      const result = await fileApiRequest.uploadFile(formData);
       
-      if (result.status === "success" && result.data?.url) {
-        editor.chain().focus().setImage({ src: result.data.url }).run();
-        console.log("Image uploaded successfully:", result.data);
+      if (result.status === 200 && result.payload?.data?.cloudinarySecureUrl) {
+        editor.chain().focus().setImage({ src: result.payload.data.cloudinarySecureUrl }).run();
+        console.log("Image uploaded successfully:", result.payload.data);
       } else {
         throw new Error("Invalid response from server");
       }
@@ -225,31 +274,19 @@ export default function RichTextEditor({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("folder", "blogs");
+      formData.append("userId", userId);
+      formData.append("tags", "blog,video");
+      formData.append("description", "Blog video upload");
 
-      const response = await fetch(
-        "http://localhost:8443/app/api/proxy/files/upload",
-        {
-          method: "POST",
-          body: formData,
-          credentials: "include", // Include cookies for authentication
-        }
-      );
+      const result = await fileApiRequest.uploadFile(formData);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Upload failed");
-      }
-
-      const result: FileUploadResponse = await response.json();
-
-      if (result.status === "success" && result.data?.url) {
+      if (result.status === 200 && result.payload?.data?.cloudinarySecureUrl) {
         editor
           .chain()
           .focus()
-          .setVideo({ src: result.data.url, width: 640, height: 360 })
+          .setVideo({ src: result.payload.data.cloudinarySecureUrl, width: 640, height: 360 })
           .run();
-        console.log("Video uploaded successfully:", result.data);
+        console.log("Video uploaded successfully:", result.payload.data);
       } else {
         throw new Error("Invalid response from server");
       }
@@ -439,69 +476,99 @@ export default function RichTextEditor({
 
       {/* Image URL Input */}
       {showImageInput && (
-        <div className="flex gap-2 p-2 border-b bg-muted/30">
-          <Input
-            type="url"
-            placeholder="Enter image URL or upload from computer"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addImage()}
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => imageFileInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            <Upload className="h-4 w-4 mr-1" />
-            {isUploading ? "Uploading..." : "Upload"}
-          </Button>
-          <Button type="button" size="sm" onClick={addImage}>
-            Add URL
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => setShowImageInput(false)}
-          >
-            Cancel
-          </Button>
+        <div className="space-y-2 p-2 border-b bg-muted/30">
+          <div className="flex gap-2">
+            <Input
+              type="url"
+              placeholder="Enter image URL"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addImage()}
+            />
+            <Button type="button" size="sm" onClick={addImage}>
+              Add URL
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="flex-1"
+              onClick={() => imageFileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              <Upload className="h-4 w-4 mr-1" />
+              {isUploading ? "Uploading..." : "Upload from Computer"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="flex-1"
+              onClick={openImageLibrary}
+            >
+              <FolderOpen className="h-4 w-4 mr-1" />
+              Choose from Library
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowImageInput(false)}
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
       )}
 
       {/* Video URL Input */}
       {showVideoInput && (
-        <div className="flex gap-2 p-2 border-b bg-muted/30">
-          <Input
-            type="url"
-            placeholder="Enter video URL or upload video from computer"
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addVideoUrl()}
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => videoFileInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            <Upload className="h-4 w-4 mr-1" />
-            {isUploading ? "Uploading..." : "Upload"}
-          </Button>
-          <Button type="button" size="sm" onClick={addVideoUrl}>
-            Add URL
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => setShowVideoInput(false)}
-          >
-            Cancel
-          </Button>
+        <div className="space-y-2 p-2 border-b bg-muted/30">
+          <div className="flex gap-2">
+            <Input
+              type="url"
+              placeholder="Enter video URL"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addVideoUrl()}
+            />
+            <Button type="button" size="sm" onClick={addVideoUrl}>
+              Add URL
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="flex-1"
+              onClick={() => videoFileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              <Upload className="h-4 w-4 mr-1" />
+              {isUploading ? "Uploading..." : "Upload from Computer"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="flex-1"
+              onClick={openVideoLibrary}
+            >
+              <FolderOpen className="h-4 w-4 mr-1" />
+              Choose from Library
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowVideoInput(false)}
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
       )}
 
@@ -528,6 +595,170 @@ export default function RichTextEditor({
           </Button>
         </div>
       )}
+
+      {/* Image Library Dialog */}
+      <Dialog open={showImageLibrary} onOpenChange={setShowImageLibrary}>
+        <DialogContent className="max-w-6xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Media Library - Images</DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex flex-col h-[70vh]">
+            {/* Search and filter */}
+            <div className="mb-4">
+              <Input
+                placeholder="Search images..."
+                className="max-w-sm"
+              />
+            </div>
+
+            {/* Files Grid */}
+            <div className="flex-1 overflow-y-auto">
+              {loadingFiles ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : imageFiles.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No images found. Upload some images first.
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-4">
+                  {imageFiles.map((file: any) => (
+                    <div
+                      key={file.id}
+                      className="group relative border rounded-lg overflow-hidden cursor-pointer hover:border-primary transition-all hover:shadow-lg"
+                      onClick={() => handleSelectImageFromLibrary(file)}
+                    >
+                      <div className="aspect-square relative bg-muted">
+                        <img
+                          src={file.cloudinarySecureUrl}
+                          alt={file.name}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                          <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                      <div className="p-2 bg-background">
+                        <p className="text-xs font-medium truncate">{file.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(file.fileSize / 1024).toFixed(2)} KB
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between pt-4 border-t mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage + 1} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={currentPage >= totalPages - 1}
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Video Library Dialog */}
+      <Dialog open={showVideoLibrary} onOpenChange={setShowVideoLibrary}>
+        <DialogContent className="max-w-6xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Media Library - Videos</DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex flex-col h-[70vh]">
+            {/* Search and filter */}
+            <div className="mb-4">
+              <Input
+                placeholder="Search videos..."
+                className="max-w-sm"
+              />
+            </div>
+
+            {/* Files Grid */}
+            <div className="flex-1 overflow-y-auto">
+              {loadingFiles ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : videoFiles.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No videos found. Upload some videos first.
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-4">
+                  {videoFiles.map((file: any) => (
+                    <div
+                      key={file.id}
+                      className="group relative border rounded-lg overflow-hidden cursor-pointer hover:border-primary transition-all hover:shadow-lg"
+                      onClick={() => handleSelectVideoFromLibrary(file)}
+                    >
+                      <div className="aspect-video relative bg-muted">
+                        <video
+                          src={file.cloudinarySecureUrl}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                          <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                      <div className="p-2 bg-background">
+                        <p className="text-xs font-medium truncate">{file.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(file.fileSize / 1024 / 1024).toFixed(2)} MB
+                          {file.duration && ` • ${Math.floor(file.duration / 60)}:${String(file.duration % 60).padStart(2, '0')}`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between pt-4 border-t mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage + 1} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={currentPage >= totalPages - 1}
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Editor Content */}
       <EditorContent
