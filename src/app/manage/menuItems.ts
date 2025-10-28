@@ -7,6 +7,7 @@ import {
   UserCog,
   UserRoundPen,
   Users2,
+  FolderOpen,
 } from "lucide-react";
 
 const menuItems = [
@@ -30,6 +31,12 @@ const menuItems = [
     title: "Bài viết",
     Icon: Newspaper,
     href: "/manage/blogs",
+    roles: [Role.Admin, Role.Staff],
+  },
+  {
+    title: "Quản lý File",
+    Icon: FolderOpen,
+    href: "/manage/files",
     roles: [Role.Admin, Role.Staff],
   },
   {
