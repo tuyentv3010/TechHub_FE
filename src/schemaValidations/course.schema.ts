@@ -157,7 +157,7 @@ export type ChapterItemType = z.TypeOf<typeof ChapterItem>;
 export const CreateChapterBody = z.object({
   title: z.string().min(1, "Title is required").max(255),
   description: z.string().optional(),
-  order: z.number().min(1, "Order must be at least 1"),
+  order: z.number().min(1, "Order must be at least 1").optional(),
 });
 
 export type CreateChapterBodyType = z.TypeOf<typeof CreateChapterBody>;
@@ -203,7 +203,7 @@ export const CreateLessonBody = z.object({
   contentType: ContentType,
   content: z.string().optional(),
   duration: z.number().min(0).optional(),
-  order: z.number().min(1, "Order must be at least 1"),
+  order: z.number().min(1, "Order must be at least 1").optional(),
   isFree: z.boolean().default(false),
 });
 
@@ -245,20 +245,20 @@ export type AssetItemType = z.TypeOf<typeof AssetItem>;
 
 // Create Asset Body
 export const CreateAssetBody = z.object({
-  type: AssetType,
+  assetType: AssetType,
   title: z.string().min(1, "Title is required").max(255),
-  url: z.string().url("Invalid URL"),
-  order: z.number().min(1, "Order must be at least 1"),
+  externalUrl: z.string().url("Invalid URL"),
+  orderIndex: z.number().min(1, "Order must be at least 1").optional(),
 });
 
 export type CreateAssetBodyType = z.TypeOf<typeof CreateAssetBody>;
 
 // Update Asset Body
 export const UpdateAssetBody = z.object({
-  type: AssetType.optional(),
+  assetType: AssetType.optional(),
   title: z.string().min(1).max(255).optional(),
-  url: z.string().url().optional(),
-  order: z.number().min(1).optional(),
+  externalUrl: z.string().url().optional(),
+  orderIndex: z.number().min(1).optional(),
 });
 
 export type UpdateAssetBodyType = z.TypeOf<typeof UpdateAssetBody>;

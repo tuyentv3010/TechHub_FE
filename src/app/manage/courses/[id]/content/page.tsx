@@ -42,7 +42,11 @@ import {
   Lock,
   Unlock,
   PlayCircle,
-  Clock
+  Clock,
+  File,
+  Link as LinkIcon,
+  Image as ImageIcon,
+  Paperclip
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
@@ -54,6 +58,9 @@ import {
   useCreateLessonMutation,
   useUpdateLessonMutation,
   useDeleteLessonMutation,
+  useCreateAssetMutation,
+  useUpdateAssetMutation,
+  useDeleteAssetMutation,
 } from "@/queries/useCourse";
 import {
   CreateChapterBody,
@@ -64,6 +71,10 @@ import {
   CreateLessonBodyType,
   UpdateLessonBody,
   UpdateLessonBodyType,
+  CreateAssetBody,
+  CreateAssetBodyType,
+  UpdateAssetBody,
+  UpdateAssetBodyType,
 } from "@/schemaValidations/course.schema";
 import TableSkeleton from "@/components/Skeleton";
 
@@ -84,6 +95,17 @@ const ContentTypeIcon = ({ type }: { type: string }) => {
   return icons[type as keyof typeof icons] || <FileText className="h-4 w-4" />;
 };
 
+const AssetTypeIcon = ({ type }: { type: string }) => {
+  const icons = {
+    VIDEO: <Video className="h-3 w-3 text-red-500" />,
+    DOCUMENT: <File className="h-3 w-3 text-blue-500" />,
+    LINK: <LinkIcon className="h-3 w-3 text-purple-500" />,
+    IMAGE: <ImageIcon className="h-3 w-3 text-green-500" />,
+    CODE: <Code className="h-3 w-3 text-orange-500" />,
+  };
+  return icons[type as keyof typeof icons] || <Paperclip className="h-3 w-3" />;
+};
+
 export default function CourseContentManagementPage() {
   const params = useParams();
   const courseId = params.id as string;
@@ -96,8 +118,12 @@ export default function CourseContentManagementPage() {
   const createLessonMutation = useCreateLessonMutation();
   const updateLessonMutation = useUpdateLessonMutation();
   const deleteLessonMutation = useDeleteLessonMutation();
+  const createAssetMutation = useCreateAssetMutation();
+  const updateAssetMutation = useUpdateAssetMutation();
+  const deleteAssetMutation = useDeleteAssetMutation();
 
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
+  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
   const [chapterDialog, setChapterDialog] = useState<{ open: boolean; mode: 'create' | 'edit'; data?: any }>({
     open: false,
     mode: 'create',
@@ -107,6 +133,16 @@ export default function CourseContentManagementPage() {
     mode: 'create' | 'edit'; 
     chapterId?: string;
     data?: any 
+  }>({
+    open: false,
+    mode: 'create',
+  });
+  const [assetDialog, setAssetDialog] = useState<{
+    open: boolean;
+    mode: 'create' | 'edit';
+    chapterId?: string;
+    lessonId?: string;
+    data?: any;
   }>({
     open: false,
     mode: 'create',
@@ -122,6 +158,18 @@ export default function CourseContentManagementPage() {
         newSet.delete(chapterId);
       } else {
         newSet.add(chapterId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleLesson = (lessonId: string) => {
+    setExpandedLessons(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(lessonId)) {
+        newSet.delete(lessonId);
+      } else {
+        newSet.add(lessonId);
       }
       return newSet;
     });
@@ -167,11 +215,23 @@ export default function CourseContentManagementPage() {
       for (let i = 0; i < newLessons.length; i++) {
         if (newLessons[i].orderIndex !== i + 1) {
           try {
+            const lesson = newLessons[i];
+            console.log('Updating lesson:', lesson); // Debug
+            console.log('Body to send:', {
+              order: i + 1,
+              contentType: lesson.contentType,
+              isFree: lesson.isFree
+            });
+            
             await updateLessonMutation.mutateAsync({
               courseId,
               chapterId,
-              lessonId: newLessons[i].id,
-              body: { order: i + 1 },
+              lessonId: lesson.id,
+              body: { 
+                order: i + 1,
+                contentType: lesson.contentType,
+                isFree: lesson.isFree
+              },
             });
           } catch (error) {
             handleErrorApi({ error });
@@ -184,7 +244,11 @@ export default function CourseContentManagementPage() {
 
   const handleCreateChapter = async (data: CreateChapterBodyType) => {
     try {
-      await createChapterMutation.mutateAsync({ courseId, body: data });
+      // Auto-calculate next order based on existing chapters
+      const nextOrder = chapters.length + 1;
+      const bodyWithOrder = { ...data, order: nextOrder };
+      
+      await createChapterMutation.mutateAsync({ courseId, body: bodyWithOrder });
       toast({
         title: t("Success"),
         description: t("ChapterCreated", { title: data.title }),
@@ -232,10 +296,15 @@ export default function CourseContentManagementPage() {
   const handleCreateLesson = async (data: CreateLessonBodyType) => {
     if (!lessonDialog.chapterId) return;
     try {
+      // Auto-calculate next order based on existing lessons in chapter
+      const chapter = chapters.find((c: any) => c.id === lessonDialog.chapterId);
+      const nextOrder = (chapter?.lessons?.length || 0) + 1;
+      const bodyWithOrder = { ...data, order: nextOrder };
+      
       await createLessonMutation.mutateAsync({
         courseId,
         chapterId: lessonDialog.chapterId,
-        body: data,
+        body: bodyWithOrder,
       });
       toast({
         title: t("Success"),
@@ -275,6 +344,67 @@ export default function CourseContentManagementPage() {
       toast({
         title: t("Success"),
         description: t("LessonDeleted", { title }),
+      });
+      refetch();
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
+  const handleCreateAsset = async (data: CreateAssetBodyType) => {
+    if (!assetDialog.chapterId || !assetDialog.lessonId) return;
+    try {
+      // Auto-calculate next order based on existing assets in lesson
+      const chapter = chapters.find((c: any) => c.id === assetDialog.chapterId);
+      const lesson = chapter?.lessons?.find((l: any) => l.id === assetDialog.lessonId);
+      const nextOrder = (lesson?.assets?.length || 0) + 1;
+      const bodyWithOrder = { ...data, order: nextOrder };
+      
+      await createAssetMutation.mutateAsync({
+        courseId,
+        chapterId: assetDialog.chapterId,
+        lessonId: assetDialog.lessonId,
+        body: bodyWithOrder,
+      });
+      toast({
+        title: t("Success"),
+        description: t("AssetCreated", { title: data.title }),
+      });
+      setAssetDialog({ open: false, mode: 'create' });
+      refetch();
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
+  const handleUpdateAsset = async (data: UpdateAssetBodyType) => {
+    if (!assetDialog.chapterId || !assetDialog.lessonId || !assetDialog.data?.id) return;
+    try {
+      await updateAssetMutation.mutateAsync({
+        courseId,
+        chapterId: assetDialog.chapterId,
+        lessonId: assetDialog.lessonId,
+        assetId: assetDialog.data.id,
+        body: data,
+      });
+      toast({
+        title: t("Success"),
+        description: t("AssetUpdated", { title: data.title }),
+      });
+      setAssetDialog({ open: false, mode: 'create' });
+      refetch();
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
+  const handleDeleteAsset = async (chapterId: string, lessonId: string, assetId: string, title: string) => {
+    if (!confirm(t("DeleteAssetWarning", { title }))) return;
+    try {
+      await deleteAssetMutation.mutateAsync({ courseId, chapterId, lessonId, assetId });
+      toast({
+        title: t("Success"),
+        description: t("AssetDeleted", { title }),
       });
       refetch();
     } catch (error) {
@@ -337,7 +467,7 @@ export default function CourseContentManagementPage() {
             <div>
               <span className="text-muted-foreground">{t("Status")}: </span>
               <Badge variant={course.status === 'PUBLISHED' ? 'default' : 'secondary'}>
-                {t(`Status.${course.status}`)}
+                {course.status}
               </Badge>
             </div>
           </div>
@@ -365,7 +495,13 @@ export default function CourseContentManagementPage() {
             </div>
           ) : (
             <DragDropContext onDragEnd={handleDragEnd}>
-              <Droppable droppableId="chapters" type="CHAPTER">
+              <Droppable 
+                droppableId="chapters" 
+                type="CHAPTER" 
+                isDropDisabled={false}
+                isCombineEnabled={false}
+                ignoreContainerClipping={false}
+              >
                 {(provided) => (
                   <div
                     {...provided.droppableProps}
@@ -478,6 +614,9 @@ export default function CourseContentManagementPage() {
                                   <Droppable
                                     droppableId={`lessons-${chapter.id}`}
                                     type="LESSON"
+                                    isDropDisabled={false}
+                                    isCombineEnabled={false}
+                                    ignoreContainerClipping={false}
                                   >
                                     {(provided) => (
                                       <div
@@ -495,65 +634,175 @@ export default function CourseContentManagementPage() {
                                               <div
                                                 ref={provided.innerRef}
                                                 {...provided.draggableProps}
-                                                className={`flex items-center gap-3 p-3 border rounded-lg ${
-                                                  snapshot.isDragging ? 'shadow-md bg-background' : 'hover:bg-muted/50'
+                                                className={`border rounded-lg ${
+                                                  snapshot.isDragging ? 'shadow-md bg-background' : ''
                                                 }`}
                                               >
-                                                <div
-                                                  {...provided.dragHandleProps}
-                                                  className="cursor-grab"
-                                                >
-                                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                                </div>
+                                                {/* Lesson Header */}
+                                                <div className={`flex items-center gap-3 p-3 ${
+                                                  snapshot.isDragging ? '' : 'hover:bg-muted/50'
+                                                }`}>
+                                                  <div
+                                                    {...provided.dragHandleProps}
+                                                    className="cursor-grab"
+                                                  >
+                                                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                                  </div>
 
-                                                <ContentTypeIcon type={lesson.contentType} />
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => toggleLesson(lesson.id)}
+                                                  >
+                                                    {expandedLessons.has(lesson.id) ? (
+                                                      <ChevronDown className="h-3 w-3" />
+                                                    ) : (
+                                                      <ChevronRight className="h-3 w-3" />
+                                                    )}
+                                                  </Button>
 
-                                                <div className="flex-1">
-                                                  <div className="flex items-center gap-2">
-                                                    <span className="font-medium text-sm">
-                                                      {lesson.title}
-                                                    </span>
-                                                    {lesson.isFree && (
-                                                      <Badge variant="secondary" className="text-xs">
-                                                        {t("Free")}
-                                                      </Badge>
+                                                  <ContentTypeIcon type={lesson.contentType} />
+
+                                                  <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                      <span className="font-medium text-sm">
+                                                        {lesson.title}
+                                                      </span>
+                                                      {lesson.isFree && (
+                                                        <Badge variant="secondary" className="text-xs">
+                                                          {t("Free")}
+                                                        </Badge>
+                                                      )}
+                                                      {lesson.assets && lesson.assets.length > 0 && (
+                                                        <Badge variant="outline" className="text-xs">
+                                                          <Paperclip className="h-3 w-3 mr-1" />
+                                                          {lesson.assets.length}
+                                                        </Badge>
+                                                      )}
+                                                    </div>
+                                                    {lesson.estimatedDuration && (
+                                                      <div className="flex items-center gap-1 mt-1">
+                                                        <Clock className="h-3 w-3 text-muted-foreground" />
+                                                        <span className="text-xs text-muted-foreground">
+                                                          {formatDuration(lesson.estimatedDuration)}
+                                                        </span>
+                                                      </div>
                                                     )}
                                                   </div>
-                                                  {lesson.estimatedDuration && (
-                                                    <div className="flex items-center gap-1 mt-1">
-                                                      <Clock className="h-3 w-3 text-muted-foreground" />
-                                                      <span className="text-xs text-muted-foreground">
-                                                        {formatDuration(lesson.estimatedDuration)}
-                                                      </span>
-                                                    </div>
-                                                  )}
+
+                                                  <div className="flex items-center gap-1">
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      onClick={() => setAssetDialog({
+                                                        open: true,
+                                                        mode: 'create',
+                                                        chapterId: chapter.id,
+                                                        lessonId: lesson.id,
+                                                      })}
+                                                    >
+                                                      <Plus className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      onClick={() => setLessonDialog({
+                                                        open: true,
+                                                        mode: 'edit',
+                                                        chapterId: chapter.id,
+                                                        data: lesson,
+                                                      })}
+                                                    >
+                                                      <Edit2 className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      onClick={() => handleDeleteLesson(
+                                                        chapter.id,
+                                                        lesson.id,
+                                                        lesson.title
+                                                      )}
+                                                    >
+                                                      <Trash2 className="h-3 w-3 text-destructive" />
+                                                    </Button>
+                                                  </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-1">
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => setLessonDialog({
-                                                      open: true,
-                                                      mode: 'edit',
-                                                      chapterId: chapter.id,
-                                                      data: lesson,
-                                                    })}
-                                                  >
-                                                    <Edit2 className="h-3 w-3" />
-                                                  </Button>
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleDeleteLesson(
-                                                      chapter.id,
-                                                      lesson.id,
-                                                      lesson.title
+                                                {/* Assets List */}
+                                                {expandedLessons.has(lesson.id) && (
+                                                  <div className="px-12 py-3 bg-muted/30 border-t">
+                                                    {(!lesson.assets || lesson.assets.length === 0) ? (
+                                                      <div className="text-center py-4">
+                                                        <p className="text-xs text-muted-foreground mb-2">
+                                                          {t("NoAssets")}
+                                                        </p>
+                                                        <Button
+                                                          variant="outline"
+                                                          size="sm"
+                                                          onClick={() => setAssetDialog({
+                                                            open: true,
+                                                            mode: 'create',
+                                                            chapterId: chapter.id,
+                                                            lessonId: lesson.id,
+                                                          })}
+                                                        >
+                                                          <Plus className="h-3 w-3 mr-1" />
+                                                          {t("AddAsset")}
+                                                        </Button>
+                                                      </div>
+                                                    ) : (
+                                                      <div className="space-y-2">
+                                                        {lesson.assets.map((asset: any) => (
+                                                          <div
+                                                            key={asset.id}
+                                                            className="flex items-center gap-2 p-2 bg-background rounded border text-xs"
+                                                          >
+                                                            <AssetTypeIcon type={asset.assetType} />
+                                                            <div className="flex-1">
+                                                              <div className="font-medium">{asset.title}</div>
+                                                              {asset.externalUrl && (
+                                                                <a
+                                                                  href={asset.externalUrl}
+                                                                  target="_blank"
+                                                                  rel="noopener noreferrer"
+                                                                  className="text-blue-500 hover:underline truncate block"
+                                                                >
+                                                                  {asset.externalUrl}
+                                                                </a>
+                                                              )}
+                                                            </div>
+                                                            <Button
+                                                              variant="ghost"
+                                                              size="sm"
+                                                              onClick={() => setAssetDialog({
+                                                                open: true,
+                                                                mode: 'edit',
+                                                                chapterId: chapter.id,
+                                                                lessonId: lesson.id,
+                                                                data: asset,
+                                                              })}
+                                                            >
+                                                              <Edit2 className="h-3 w-3" />
+                                                            </Button>
+                                                            <Button
+                                                              variant="ghost"
+                                                              size="sm"
+                                                              onClick={() => handleDeleteAsset(
+                                                                chapter.id,
+                                                                lesson.id,
+                                                                asset.id,
+                                                                asset.title
+                                                              )}
+                                                            >
+                                                              <Trash2 className="h-3 w-3 text-destructive" />
+                                                            </Button>
+                                                          </div>
+                                                        ))}
+                                                      </div>
                                                     )}
-                                                  >
-                                                    <Trash2 className="h-3 w-3 text-destructive" />
-                                                  </Button>
-                                                </div>
+                                                  </div>
+                                                )}
                                               </div>
                                             )}
                                           </Draggable>
@@ -596,6 +845,16 @@ export default function CourseContentManagementPage() {
         onClose={() => setLessonDialog({ open: false, mode: 'create' })}
         onCreate={handleCreateLesson}
         onUpdate={handleUpdateLesson}
+      />
+
+      {/* Asset Dialog */}
+      <AssetDialog
+        open={assetDialog.open}
+        mode={assetDialog.mode}
+        data={assetDialog.data}
+        onClose={() => setAssetDialog({ open: false, mode: 'create' })}
+        onCreate={handleCreateAsset}
+        onUpdate={handleUpdateAsset}
       />
     </main>
   );
@@ -679,19 +938,21 @@ function ChapterDialog({
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="order">{t("Order")}</Label>
-            <Input
-              id="order"
-              type="number"
-              {...register("order", { valueAsNumber: true })}
-              placeholder="1"
-              min={1}
-            />
-            {errors.order && (
-              <p className="text-sm text-destructive">{errors.order.message}</p>
-            )}
-          </div>
+          {mode === 'edit' && (
+            <div className="space-y-2">
+              <Label htmlFor="order">{t("Order")}</Label>
+              <Input
+                id="order"
+                type="number"
+                {...register("order", { valueAsNumber: true })}
+                placeholder="1"
+                min={1}
+              />
+              {errors.order && (
+                <p className="text-sm text-destructive">{errors.order.message}</p>
+              )}
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
@@ -830,21 +1091,23 @@ function LessonDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="order">{t("Order")}</Label>
-              <Input
-                id="order"
-                type="number"
-                {...register("order", { valueAsNumber: true })}
-                placeholder="1"
-                min={1}
-              />
-              {errors.order && (
-                <p className="text-sm text-destructive">{errors.order.message}</p>
-              )}
-            </div>
+            {mode === 'edit' && (
+              <div className="space-y-2">
+                <Label htmlFor="order">{t("Order")}</Label>
+                <Input
+                  id="order"
+                  type="number"
+                  {...register("order", { valueAsNumber: true })}
+                  placeholder="1"
+                  min={1}
+                />
+                {errors.order && (
+                  <p className="text-sm text-destructive">{errors.order.message}</p>
+                )}
+              </div>
+            )}
 
-            <div className="flex items-center space-x-2 pt-8">
+            <div className={`flex items-center space-x-2 ${mode === 'create' ? 'col-span-2' : 'pt-8'}`}>
               <Switch
                 id="isFree"
                 checked={isFree}
@@ -852,6 +1115,139 @@ function LessonDialog({
               />
               <Label htmlFor="isFree">{t("IsFreeLesson")}</Label>
             </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              {t("Cancel")}
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? t(mode === 'create' ? "Creating" : "Updating") : t(mode === 'create' ? "Create" : "Update")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Asset Dialog Component
+function AssetDialog({
+  open,
+  mode,
+  data,
+  onClose,
+  onCreate,
+  onUpdate,
+}: {
+  open: boolean;
+  mode: 'create' | 'edit';
+  data?: any;
+  onClose: () => void;
+  onCreate: (data: CreateAssetBodyType) => void;
+  onUpdate: (data: UpdateAssetBodyType) => void;
+}) {
+  const t = useTranslations("ManageCourse");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateAssetBodyType>({
+    resolver: zodResolver(mode === 'create' ? CreateAssetBody : UpdateAssetBody),
+    defaultValues: data || { assetType: 'DOCUMENT' },
+  });
+
+  useEffect(() => {
+    if (open) {
+      reset(data || { assetType: 'DOCUMENT' });
+    }
+  }, [open, data, reset]);
+
+  const onSubmit = (formData: CreateAssetBodyType) => {
+    if (mode === 'create') {
+      onCreate(formData);
+    } else {
+      onUpdate(formData);
+    }
+  };
+
+  const assetType = watch("assetType");
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === 'create' ? t("AddAsset") : t("EditAsset")}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'create' ? t("AddAssetDescription") : t("EditAssetDescription")}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="assetType">{t("AssetTypeLabel")}</Label>
+              <Select
+                value={assetType}
+                onValueChange={(value) => setValue("assetType", value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="VIDEO">{t("AssetType.VIDEO")}</SelectItem>
+                  <SelectItem value="DOCUMENT">{t("AssetType.DOCUMENT")}</SelectItem>
+                  <SelectItem value="LINK">{t("AssetType.LINK")}</SelectItem>
+                  <SelectItem value="IMAGE">{t("AssetType.IMAGE")}</SelectItem>
+                  <SelectItem value="CODE">{t("AssetType.CODE")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {mode === 'edit' && (
+              <div className="space-y-2">
+                <Label htmlFor="orderIndex">{t("Order")}</Label>
+                <Input
+                  id="orderIndex"
+                  type="number"
+                  {...register("orderIndex", { valueAsNumber: true })}
+                  placeholder="1"
+                  min={1}
+                />
+                {errors.orderIndex && (
+                  <p className="text-sm text-destructive">{errors.orderIndex.message}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="title">{t("Title")}</Label>
+            <Input
+              id="title"
+              {...register("title")}
+              placeholder={t("AssetTitlePlaceholder")}
+            />
+            {errors.title && (
+              <p className="text-sm text-destructive">{errors.title.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="externalUrl">{t("URLLabel")}</Label>
+            <Input
+              id="externalUrl"
+              {...register("externalUrl")}
+              placeholder="https://example.com/file.pdf"
+              type="url"
+            />
+            {errors.externalUrl && (
+              <p className="text-sm text-destructive">{errors.externalUrl.message}</p>
+            )}
           </div>
 
           <DialogFooter>

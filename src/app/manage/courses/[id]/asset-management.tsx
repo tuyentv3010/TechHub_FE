@@ -262,7 +262,7 @@ function AddAssetDialog({
   const form = useForm<CreateAssetBodyType>({
     resolver: zodResolver(CreateAssetBody),
     defaultValues: {
-      type: "DOCUMENT",
+      assetType: "DOCUMENT",
       title: "",
       url: "",
       order: nextOrder,
@@ -301,8 +301,8 @@ function AddAssetDialog({
           <div className="space-y-2">
             <Label htmlFor="type">{t("AssetTypeLabel")}</Label>
             <Select
-              value={form.watch("type")}
-              onValueChange={(value: any) => form.setValue("type", value)}
+              value={form.watch("assetType")}
+              onValueChange={(value: any) => form.setValue("assetType", value)}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -400,7 +400,7 @@ function EditAssetDialog({
   const form = useForm<UpdateAssetBodyType>({
     resolver: zodResolver(UpdateAssetBody),
     defaultValues: {
-      type: asset.type,
+      assetType: asset.type,
       title: asset.title,
       url: asset.url,
       order: asset.order,
@@ -439,8 +439,8 @@ function EditAssetDialog({
           <div className="space-y-2">
             <Label htmlFor="type">{t("AssetTypeLabel")}</Label>
             <Select
-              value={form.watch("type")}
-              onValueChange={(value: any) => form.setValue("type", value)}
+              value={form.watch("assetType")}
+              onValueChange={(value: any) => form.setValue("assetType", value)}
             >
               <SelectTrigger>
                 <SelectValue />
