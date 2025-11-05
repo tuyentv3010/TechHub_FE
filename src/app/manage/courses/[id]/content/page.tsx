@@ -176,70 +176,177 @@ export default function CourseContentManagementPage() {
   };
 
   const handleDragEnd = async (result: DropResult) => {
-    if (!result.destination) return;
+    console.log('🎯 === DRAG END ===');
+    console.log('Result:', result);
+    
+    if (!result.destination) {
+      console.log('❌ No destination, drag cancelled');
+      return;
+    }
 
     const { source, destination, type } = result;
+    console.log('📦 Drag type:', type);
+    console.log('📍 Source index:', source.index);
+    console.log('📍 Destination index:', destination.index);
 
     if (type === "CHAPTER") {
-      // Reorder chapters
-      const newChapters = Array.from(chapters);
-      const [removed] = newChapters.splice(source.index, 1);
-      newChapters.splice(destination.index, 0, removed);
+      // Get the chapters BEFORE reordering
+      const sourceChapter = chapters[source.index];
+      const destChapter = chapters[destination.index];
 
-      // Update order for all affected chapters
-      for (let i = 0; i < newChapters.length; i++) {
-        if (newChapters[i].orderIndex !== i + 1) {
-          try {
-            await updateChapterMutation.mutateAsync({
-              courseId,
-              chapterId: newChapters[i].id,
-              body: { order: i + 1 },
-            });
-          } catch (error) {
-            handleErrorApi({ error });
-          }
-        }
+      console.log('📚 Source Chapter:', {
+        id: sourceChapter.id,
+        title: sourceChapter.title,
+        currentOrder: sourceChapter.orderIndex,
+        newOrder: destination.index + 1
+      });
+      console.log('📚 Dest Chapter:', {
+        id: destChapter.id,
+        title: destChapter.title,
+        currentOrder: destChapter.orderIndex,
+        newOrder: source.index + 1
+      });
+
+      try {
+        console.log('🚀 Calling update APIs...');
+        
+        const sourceChapterBody = {
+          title: sourceChapter.title,
+          description: sourceChapter.description || '',
+          orderIndex: destination.index + 1,  // ⚠️ Backend expects "orderIndex", not "order"
+        };
+        
+        const destChapterBody = {
+          title: destChapter.title,
+          description: destChapter.description || '',
+          orderIndex: source.index + 1,  // ⚠️ Backend expects "orderIndex", not "order"
+        };
+        
+        console.log('📤 Source chapter update body:', sourceChapterBody);
+        console.log('📤 Dest chapter update body:', destChapterBody);
+        
+        // ⚠️ IMPORTANT: Update SEQUENTIALLY to avoid unique constraint violation
+        // DB has UNIQUE constraint on (course_id, orderIndex)
+        // Step 1: Move source to temporary position 0 (orderIndex starts from 1)
+        console.log('🔄 Step 1: Moving source chapter to temp position 0...');
+        await updateChapterMutation.mutateAsync({
+          courseId,
+          chapterId: sourceChapter.id,
+          body: { ...sourceChapterBody, orderIndex: 0 },
+        });
+        
+        // Step 2: Move dest to source's original position
+        console.log('🔄 Step 2: Moving dest chapter to source position...');
+        await updateChapterMutation.mutateAsync({
+          courseId,
+          chapterId: destChapter.id,
+          body: destChapterBody,
+        });
+        
+        // Step 3: Move source from temp to final position
+        console.log('🔄 Step 3: Moving source chapter to final position...');
+        await updateChapterMutation.mutateAsync({
+          courseId,
+          chapterId: sourceChapter.id,
+          body: sourceChapterBody,
+        });
+        
+        console.log('✅ Update successful, refetching...');
+        // Refetch to see the changes
+        await refetch();
+        console.log('✅ Refetch complete!');
+      } catch (error) {
+        console.error('❌ Update failed:', error);
+        handleErrorApi({ error });
       }
-      refetch();
     } else if (type === "LESSON") {
-      // Reorder lessons within a chapter
-      const chapterId = result.draggableId.split("-")[0];
+      // Reorder lessons within a chapter - Only update the 2 swapped items
+      // draggableId format: "chapterId-lessonId" where both are UUIDs
+      // We need to extract chapterId from droppableId instead
+      const droppableId = result.source.droppableId; // "lessons-{chapterId}"
+      const chapterId = droppableId.replace('lessons-', '');
+      
+      console.log('📍 DroppableId:', droppableId);
+      console.log('📍 Extracted ChapterId:', chapterId);
+      
       const chapter = chapters.find((c: any) => c.id === chapterId);
-      if (!chapter) return;
-
-      const newLessons = Array.from(chapter.lessons || []);
-      const [removed] = newLessons.splice(source.index, 1);
-      newLessons.splice(destination.index, 0, removed);
-
-      // Update order for all affected lessons
-      for (let i = 0; i < newLessons.length; i++) {
-        if (newLessons[i].orderIndex !== i + 1) {
-          try {
-            const lesson = newLessons[i];
-            console.log('Updating lesson:', lesson); // Debug
-            console.log('Body to send:', {
-              order: i + 1,
-              contentType: lesson.contentType,
-              isFree: lesson.isFree
-            });
-            
-            await updateLessonMutation.mutateAsync({
-              courseId,
-              chapterId,
-              lessonId: lesson.id,
-              body: { 
-                order: i + 1,
-                contentType: lesson.contentType,
-                isFree: lesson.isFree
-              },
-            });
-          } catch (error) {
-            handleErrorApi({ error });
-          }
-        }
+      
+      if (!chapter) {
+        console.log('❌ Chapter not found:', chapterId);
+        return;
       }
-      refetch();
+
+      // Get the lessons BEFORE reordering
+      const sourceLesson = chapter.lessons[source.index];
+      const destLesson = chapter.lessons[destination.index];
+
+      console.log('📝 Source Lesson:', sourceLesson);
+      console.log('📝 Dest Lesson:', destLesson);
+
+      try {
+        console.log('🚀 Calling update APIs...');
+        
+        const sourceUpdateBody = { 
+          title: sourceLesson.title,
+          description: sourceLesson.description || '',
+          contentType: sourceLesson.contentType || 'VIDEO',
+          videoUrl: sourceLesson.videoUrl || '',
+          estimatedDuration: sourceLesson.estimatedDuration || 0,
+          orderIndex: destination.index + 1,  // ⚠️ Backend expects "orderIndex", not "order"
+        };
+        
+        const destUpdateBody = { 
+          title: destLesson.title,
+          description: destLesson.description || '',
+          contentType: destLesson.contentType || 'VIDEO',
+          videoUrl: destLesson.videoUrl || '',
+          estimatedDuration: destLesson.estimatedDuration || 0,
+          orderIndex: source.index + 1,  // ⚠️ Backend expects "orderIndex", not "order"
+        };
+        
+        console.log('� Source update body:', sourceUpdateBody);
+        console.log('📤 Dest update body:', destUpdateBody);
+        
+        // ⚠️ IMPORTANT: Update SEQUENTIALLY to avoid unique constraint violation
+        // DB has UNIQUE constraint on (chapter_id, orderIndex)
+        // Step 1: Move source to temporary position 0 (orderIndex starts from 1)
+        console.log('🔄 Step 1: Moving source to temp position 0...');
+        await updateLessonMutation.mutateAsync({
+          courseId,
+          chapterId,
+          lessonId: sourceLesson.id,
+          body: { ...sourceUpdateBody, orderIndex: 0 },
+        });
+        
+        // Step 2: Move dest to source's original position
+        console.log('🔄 Step 2: Moving dest to source position...');
+        await updateLessonMutation.mutateAsync({
+          courseId,
+          chapterId,
+          lessonId: destLesson.id,
+          body: destUpdateBody,
+        });
+        
+        // Step 3: Move source from temp to final position
+        console.log('🔄 Step 3: Moving source to final position...');
+        await updateLessonMutation.mutateAsync({
+          courseId,
+          chapterId,
+          lessonId: sourceLesson.id,
+          body: sourceUpdateBody,
+        });
+        
+        console.log('✅ Update successful, refetching...');
+        // Refetch to see the changes immediately
+        await refetch();
+        console.log('✅ Refetch complete!');
+      } catch (error) {
+        console.error('❌ Update failed:', error);
+        handleErrorApi({ error });
+      }
     }
+    
+    console.log('🏁 === DRAG END COMPLETE ===\n');
   };
 
   const handleCreateChapter = async (data: CreateChapterBodyType) => {
@@ -1155,8 +1262,8 @@ function AssetDialog({
     watch,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<CreateAssetBodyType>({
-    resolver: zodResolver(mode === 'create' ? CreateAssetBody : UpdateAssetBody),
+  } = useForm<CreateAssetBodyType | UpdateAssetBodyType>({
+    resolver: zodResolver(mode === 'create' ? CreateAssetBody : UpdateAssetBody) as any,
     defaultValues: data || { assetType: 'DOCUMENT' },
   });
 
@@ -1166,11 +1273,11 @@ function AssetDialog({
     }
   }, [open, data, reset]);
 
-  const onSubmit = (formData: CreateAssetBodyType) => {
+  const onSubmit = (formData: CreateAssetBodyType | UpdateAssetBodyType) => {
     if (mode === 'create') {
-      onCreate(formData);
+      onCreate(formData as CreateAssetBodyType);
     } else {
-      onUpdate(formData);
+      onUpdate(formData as UpdateAssetBodyType);
     }
   };
 
