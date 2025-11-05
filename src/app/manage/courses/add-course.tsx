@@ -581,13 +581,20 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               />
             </div>
             {videoPreview && (
-              <div className="relative w-full h-40 border rounded overflow-hidden bg-muted flex items-center justify-center">
-                <Video className="w-8 h-8 text-muted-foreground" />
+              <div className="relative w-full h-40 border rounded overflow-hidden bg-black">
+                <video
+                  src={videoPreview}
+                  controls
+                  className="w-full h-full object-contain"
+                  poster={thumbnailPreview || undefined}
+                >
+                  Your browser does not support the video tag.
+                </video>
                 <Button
                   type="button"
                   variant="destructive"
                   size="icon"
-                  className="absolute top-2 right-2"
+                  className="absolute top-2 right-2 z-10"
                   onClick={() => {
                     setVideoPreview("");
                     form.setValue("introVideo", "");
@@ -595,9 +602,6 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
                 >
                   <X className="w-4 h-4" />
                 </Button>
-                <p className="absolute bottom-2 left-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-                  {videoPreview.split('/').pop()}
-                </p>
               </div>
             )}
           </div>

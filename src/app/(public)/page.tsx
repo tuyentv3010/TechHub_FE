@@ -39,6 +39,7 @@ export default function Home() {
 
   // Transform API data - keep instructorId for fetching
   const coursesWithInstructorIds = coursesData?.payload?.data?.map((course: any) => ({
+    id: course.id, // Add course ID for creating slug
     title: course.title,
     instructorId: course.instructorId, // Keep ID for fetching
     image: course.thumbnail?.secureUrl || course.thumbnail?.url || "/courses/default.png",

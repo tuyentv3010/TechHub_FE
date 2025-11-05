@@ -2,6 +2,7 @@ import { useGetAccount } from "@/queries/useAccount";
 import CourseCard, { Course } from "./CourseCard";
 
 interface CourseWithInstructorId extends Omit<Course, 'instructor' | 'instructorAvatar'> {
+  id: string; // Course ID for creating slug
   instructorId: string;
 }
 
@@ -20,6 +21,7 @@ export default function CourseCardWithInstructor({ course }: CourseCardWithInstr
   // Build the complete course object with instructor info
   const courseWithInstructor: Course = {
     ...course,
+    id: course.id, // Pass course ID
     instructor: isLoading 
       ? "Loading..." 
       : instructor?.username || "Unknown Instructor",
