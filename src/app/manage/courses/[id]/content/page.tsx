@@ -1,0 +1,869 @@
+"use client";
+
+import { useParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { useTranslations } from "next-intl";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { 
+  GripVertical, 
+  Plus, 
+  Edit2, 
+  Trash2,
+  Video,
+  FileText,
+  Code,
+  HelpCircle,
+  ChevronDown,
+  ChevronRight,
+  Lock,
+  Unlock,
+  PlayCircle,
+  Clock
+} from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
+import { handleErrorApi } from "@/lib/utils";
+import {
+  useGetCourseById,
+  useCreateChapterMutation,
+  useUpdateChapterMutation,
+  useDeleteChapterMutation,
+  useCreateLessonMutation,
+  useUpdateLessonMutation,
+  useDeleteLessonMutation,
+} from "@/queries/useCourse";
+import {
+  CreateChapterBody,
+  CreateChapterBodyType,
+  UpdateChapterBody,
+  UpdateChapterBodyType,
+  CreateLessonBody,
+  CreateLessonBodyType,
+  UpdateLessonBody,
+  UpdateLessonBodyType,
+} from "@/schemaValidations/course.schema";
+import TableSkeleton from "@/components/Skeleton";
+
+// Format duration helper
+const formatDuration = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+
+const ContentTypeIcon = ({ type }: { type: string }) => {
+  const icons = {
+    VIDEO: <Video className="h-4 w-4 text-red-500" />,
+    TEXT: <FileText className="h-4 w-4 text-blue-500" />,
+    QUIZ: <HelpCircle className="h-4 w-4 text-purple-500" />,
+    CODING: <Code className="h-4 w-4 text-green-500" />,
+  };
+  return icons[type as keyof typeof icons] || <FileText className="h-4 w-4" />;
+};
+
+export default function CourseContentManagementPage() {
+  const params = useParams();
+  const courseId = params.id as string;
+  const t = useTranslations("ManageCourse");
+
+  const { data: courseData, isLoading, refetch } = useGetCourseById(courseId);
+  const createChapterMutation = useCreateChapterMutation();
+  const updateChapterMutation = useUpdateChapterMutation();
+  const deleteChapterMutation = useDeleteChapterMutation();
+  const createLessonMutation = useCreateLessonMutation();
+  const updateLessonMutation = useUpdateLessonMutation();
+  const deleteLessonMutation = useDeleteLessonMutation();
+
+  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
+  const [chapterDialog, setChapterDialog] = useState<{ open: boolean; mode: 'create' | 'edit'; data?: any }>({
+    open: false,
+    mode: 'create',
+  });
+  const [lessonDialog, setLessonDialog] = useState<{ 
+    open: boolean; 
+    mode: 'create' | 'edit'; 
+    chapterId?: string;
+    data?: any 
+  }>({
+    open: false,
+    mode: 'create',
+  });
+
+  const course = courseData?.payload?.data?.summary;
+  const chapters = courseData?.payload?.data?.chapters || [];
+
+  const toggleChapter = (chapterId: string) => {
+    setExpandedChapters(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(chapterId)) {
+        newSet.delete(chapterId);
+      } else {
+        newSet.add(chapterId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+
+    const { source, destination, type } = result;
+
+    if (type === "CHAPTER") {
+      // Reorder chapters
+      const newChapters = Array.from(chapters);
+      const [removed] = newChapters.splice(source.index, 1);
+      newChapters.splice(destination.index, 0, removed);
+
+      // Update order for all affected chapters
+      for (let i = 0; i < newChapters.length; i++) {
+        if (newChapters[i].orderIndex !== i + 1) {
+          try {
+            await updateChapterMutation.mutateAsync({
+              courseId,
+              chapterId: newChapters[i].id,
+              body: { order: i + 1 },
+            });
+          } catch (error) {
+            handleErrorApi({ error });
+          }
+        }
+      }
+      refetch();
+    } else if (type === "LESSON") {
+      // Reorder lessons within a chapter
+      const chapterId = result.draggableId.split("-")[0];
+      const chapter = chapters.find((c: any) => c.id === chapterId);
+      if (!chapter) return;
+
+      const newLessons = Array.from(chapter.lessons || []);
+      const [removed] = newLessons.splice(source.index, 1);
+      newLessons.splice(destination.index, 0, removed);
+
+      // Update order for all affected lessons
+      for (let i = 0; i < newLessons.length; i++) {
+        if (newLessons[i].orderIndex !== i + 1) {
+          try {
+            await updateLessonMutation.mutateAsync({
+              courseId,
+              chapterId,
+              lessonId: newLessons[i].id,
+              body: { order: i + 1 },
+            });
+          } catch (error) {
+            handleErrorApi({ error });
+          }
+        }
+      }
+      refetch();
+    }
+  };
+
+  const handleCreateChapter = async (data: CreateChapterBodyType) => {
+    try {
+      await createChapterMutation.mutateAsync({ courseId, body: data });
+      toast({
+        title: t("Success"),
+        description: t("ChapterCreated", { title: data.title }),
+      });
+      setChapterDialog({ open: false, mode: 'create' });
+      refetch();
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
+  const handleUpdateChapter = async (data: UpdateChapterBodyType) => {
+    if (!chapterDialog.data?.id) return;
+    try {
+      await updateChapterMutation.mutateAsync({
+        courseId,
+        chapterId: chapterDialog.data.id,
+        body: data,
+      });
+      toast({
+        title: t("Success"),
+        description: t("ChapterUpdated", { title: data.title }),
+      });
+      setChapterDialog({ open: false, mode: 'create' });
+      refetch();
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
+  const handleDeleteChapter = async (chapterId: string, title: string) => {
+    if (!confirm(t("DeleteChapterWarning", { title }))) return;
+    try {
+      await deleteChapterMutation.mutateAsync({ courseId, chapterId });
+      toast({
+        title: t("Success"),
+        description: t("ChapterDeleted", { title }),
+      });
+      refetch();
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
+  const handleCreateLesson = async (data: CreateLessonBodyType) => {
+    if (!lessonDialog.chapterId) return;
+    try {
+      await createLessonMutation.mutateAsync({
+        courseId,
+        chapterId: lessonDialog.chapterId,
+        body: data,
+      });
+      toast({
+        title: t("Success"),
+        description: t("LessonCreated", { title: data.title }),
+      });
+      setLessonDialog({ open: false, mode: 'create' });
+      refetch();
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
+  const handleUpdateLesson = async (data: UpdateLessonBodyType) => {
+    if (!lessonDialog.chapterId || !lessonDialog.data?.id) return;
+    try {
+      await updateLessonMutation.mutateAsync({
+        courseId,
+        chapterId: lessonDialog.chapterId,
+        lessonId: lessonDialog.data.id,
+        body: data,
+      });
+      toast({
+        title: t("Success"),
+        description: t("LessonUpdated", { title: data.title }),
+      });
+      setLessonDialog({ open: false, mode: 'create' });
+      refetch();
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
+  const handleDeleteLesson = async (chapterId: string, lessonId: string, title: string) => {
+    if (!confirm(t("DeleteLessonWarning", { title }))) return;
+    try {
+      await deleteLessonMutation.mutateAsync({ courseId, chapterId, lessonId });
+      toast({
+        title: t("Success"),
+        description: t("LessonDeleted", { title }),
+      });
+      refetch();
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
+  if (isLoading) {
+    return <div className="p-6"><TableSkeleton /></div>;
+  }
+
+  if (!course) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center text-muted-foreground">
+              {t("CourseNotFound")}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <main className="p-4 sm:px-6 sm:py-4 md:p-8 space-y-6">
+      {/* Course Header */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-2xl">{course.title}</CardTitle>
+              <CardDescription className="mt-2">{course.description}</CardDescription>
+            </div>
+            <Button onClick={() => setChapterDialog({ open: true, mode: 'create' })}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t("AddChapter")}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground">{t("Chapters")}: </span>
+              <span className="font-medium">{chapters.length}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">{t("Lessons")}: </span>
+              <span className="font-medium">
+                {chapters.reduce((sum: number, ch: any) => sum + (ch.lessons?.length || 0), 0)}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">{t("Duration")}: </span>
+              <span className="font-medium">
+                {formatDuration(course.estimatedDuration || 0)}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">{t("Status")}: </span>
+              <Badge variant={course.status === 'PUBLISHED' ? 'default' : 'secondary'}>
+                {t(`Status.${course.status}`)}
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Drag & Drop Course Content */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("CourseContent")}</CardTitle>
+          <CardDescription>{t("ManageChaptersLessonsDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {chapters.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <p>{t("NoChaptersYet")}</p>
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => setChapterDialog({ open: true, mode: 'create' })}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {t("AddChapter")}
+              </Button>
+            </div>
+          ) : (
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="chapters" type="CHAPTER">
+                {(provided) => (
+                  <div
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="space-y-2"
+                  >
+                    {chapters.map((chapter: any, index: number) => (
+                      <Draggable
+                        key={chapter.id}
+                        draggableId={chapter.id}
+                        index={index}
+                      >
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`border rounded-lg ${
+                              snapshot.isDragging ? 'shadow-lg bg-background' : ''
+                            }`}
+                          >
+                            {/* Chapter Header */}
+                            <div className="flex items-center gap-3 p-4 bg-muted/30">
+                              <div {...provided.dragHandleProps} className="cursor-grab">
+                                <GripVertical className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                              
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleChapter(chapter.id)}
+                              >
+                                {expandedChapters.has(chapter.id) ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                              </Button>
+
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-semibold">{chapter.title}</h3>
+                                  <Badge variant="outline" className="text-xs">
+                                    {chapter.lessons?.length || 0} {t("Lessons")}
+                                  </Badge>
+                                  {chapter.locked && (
+                                    <Lock className="h-4 w-4 text-muted-foreground" />
+                                  )}
+                                </div>
+                                {chapter.description && (
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    {chapter.description}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setLessonDialog({
+                                    open: true,
+                                    mode: 'create',
+                                    chapterId: chapter.id,
+                                  })}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setChapterDialog({
+                                    open: true,
+                                    mode: 'edit',
+                                    data: chapter,
+                                  })}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteChapter(chapter.id, chapter.title)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Lessons List */}
+                            {expandedChapters.has(chapter.id) && (
+                              <div className="p-4 bg-background">
+                                {(!chapter.lessons || chapter.lessons.length === 0) ? (
+                                  <div className="text-center py-8 text-muted-foreground">
+                                    <p className="text-sm">{t("NoLessons")}</p>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="mt-2"
+                                      onClick={() => setLessonDialog({
+                                        open: true,
+                                        mode: 'create',
+                                        chapterId: chapter.id,
+                                      })}
+                                    >
+                                      <Plus className="h-4 w-4 mr-2" />
+                                      {t("AddLesson")}
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Droppable
+                                    droppableId={`lessons-${chapter.id}`}
+                                    type="LESSON"
+                                  >
+                                    {(provided) => (
+                                      <div
+                                        {...provided.droppableProps}
+                                        ref={provided.innerRef}
+                                        className="space-y-2"
+                                      >
+                                        {chapter.lessons.map((lesson: any, lessonIndex: number) => (
+                                          <Draggable
+                                            key={lesson.id}
+                                            draggableId={`${chapter.id}-${lesson.id}`}
+                                            index={lessonIndex}
+                                          >
+                                            {(provided, snapshot) => (
+                                              <div
+                                                ref={provided.innerRef}
+                                                {...provided.draggableProps}
+                                                className={`flex items-center gap-3 p-3 border rounded-lg ${
+                                                  snapshot.isDragging ? 'shadow-md bg-background' : 'hover:bg-muted/50'
+                                                }`}
+                                              >
+                                                <div
+                                                  {...provided.dragHandleProps}
+                                                  className="cursor-grab"
+                                                >
+                                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                                </div>
+
+                                                <ContentTypeIcon type={lesson.contentType} />
+
+                                                <div className="flex-1">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-sm">
+                                                      {lesson.title}
+                                                    </span>
+                                                    {lesson.isFree && (
+                                                      <Badge variant="secondary" className="text-xs">
+                                                        {t("Free")}
+                                                      </Badge>
+                                                    )}
+                                                  </div>
+                                                  {lesson.estimatedDuration && (
+                                                    <div className="flex items-center gap-1 mt-1">
+                                                      <Clock className="h-3 w-3 text-muted-foreground" />
+                                                      <span className="text-xs text-muted-foreground">
+                                                        {formatDuration(lesson.estimatedDuration)}
+                                                      </span>
+                                                    </div>
+                                                  )}
+                                                </div>
+
+                                                <div className="flex items-center gap-1">
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setLessonDialog({
+                                                      open: true,
+                                                      mode: 'edit',
+                                                      chapterId: chapter.id,
+                                                      data: lesson,
+                                                    })}
+                                                  >
+                                                    <Edit2 className="h-3 w-3" />
+                                                  </Button>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleDeleteLesson(
+                                                      chapter.id,
+                                                      lesson.id,
+                                                      lesson.title
+                                                    )}
+                                                  >
+                                                    <Trash2 className="h-3 w-3 text-destructive" />
+                                                  </Button>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </Draggable>
+                                        ))}
+                                        {provided.placeholder}
+                                      </div>
+                                    )}
+                                  </Droppable>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Chapter Dialog */}
+      <ChapterDialog
+        open={chapterDialog.open}
+        mode={chapterDialog.mode}
+        data={chapterDialog.data}
+        onClose={() => setChapterDialog({ open: false, mode: 'create' })}
+        onCreate={handleCreateChapter}
+        onUpdate={handleUpdateChapter}
+      />
+
+      {/* Lesson Dialog */}
+      <LessonDialog
+        open={lessonDialog.open}
+        mode={lessonDialog.mode}
+        data={lessonDialog.data}
+        onClose={() => setLessonDialog({ open: false, mode: 'create' })}
+        onCreate={handleCreateLesson}
+        onUpdate={handleUpdateLesson}
+      />
+    </main>
+  );
+}
+
+// Chapter Dialog Component
+function ChapterDialog({
+  open,
+  mode,
+  data,
+  onClose,
+  onCreate,
+  onUpdate,
+}: {
+  open: boolean;
+  mode: 'create' | 'edit';
+  data?: any;
+  onClose: () => void;
+  onCreate: (data: CreateChapterBodyType) => void;
+  onUpdate: (data: UpdateChapterBodyType) => void;
+}) {
+  const t = useTranslations("ManageCourse");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateChapterBodyType>({
+    resolver: zodResolver(mode === 'create' ? CreateChapterBody : UpdateChapterBody),
+    defaultValues: data || {},
+  });
+
+  useEffect(() => {
+    if (open) {
+      reset(data || {});
+    }
+  }, [open, data, reset]);
+
+  const onSubmit = (formData: CreateChapterBodyType) => {
+    if (mode === 'create') {
+      onCreate(formData);
+    } else {
+      onUpdate(formData);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === 'create' ? t("AddChapter") : t("EditChapter")}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'create' ? t("AddChapterDescription") : t("EditChapterDescription")}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">{t("Title")}</Label>
+            <Input
+              id="title"
+              {...register("title")}
+              placeholder={t("ChapterTitlePlaceholder")}
+            />
+            {errors.title && (
+              <p className="text-sm text-destructive">{errors.title.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">{t("Description")}</Label>
+            <Textarea
+              id="description"
+              {...register("description")}
+              placeholder={t("ChapterDescriptionPlaceholder")}
+              rows={4}
+            />
+            {errors.description && (
+              <p className="text-sm text-destructive">{errors.description.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="order">{t("Order")}</Label>
+            <Input
+              id="order"
+              type="number"
+              {...register("order", { valueAsNumber: true })}
+              placeholder="1"
+              min={1}
+            />
+            {errors.order && (
+              <p className="text-sm text-destructive">{errors.order.message}</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              {t("Cancel")}
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? t(mode === 'create' ? "Creating" : "Updating") : t(mode === 'create' ? "Create" : "Update")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Lesson Dialog Component
+function LessonDialog({
+  open,
+  mode,
+  data,
+  onClose,
+  onCreate,
+  onUpdate,
+}: {
+  open: boolean;
+  mode: 'create' | 'edit';
+  data?: any;
+  onClose: () => void;
+  onCreate: (data: CreateLessonBodyType) => void;
+  onUpdate: (data: UpdateLessonBodyType) => void;
+}) {
+  const t = useTranslations("ManageCourse");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateLessonBodyType>({
+    resolver: zodResolver(mode === 'create' ? CreateLessonBody : UpdateLessonBody),
+    defaultValues: data || { contentType: 'VIDEO', isFree: false },
+  });
+
+  useEffect(() => {
+    if (open) {
+      reset(data || { contentType: 'VIDEO', isFree: false });
+    }
+  }, [open, data, reset]);
+
+  const onSubmit = (formData: CreateLessonBodyType) => {
+    if (mode === 'create') {
+      onCreate(formData);
+    } else {
+      onUpdate(formData);
+    }
+  };
+
+  const contentType = watch("contentType");
+  const isFree = watch("isFree");
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === 'create' ? t("AddLesson") : t("EditLesson")}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'create' ? t("AddLessonDescription") : t("EditLessonDescription")}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">{t("Title")}</Label>
+            <Input
+              id="title"
+              {...register("title")}
+              placeholder={t("LessonTitlePlaceholder")}
+            />
+            {errors.title && (
+              <p className="text-sm text-destructive">{errors.title.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">{t("Description")}</Label>
+            <Textarea
+              id="description"
+              {...register("description")}
+              placeholder={t("LessonDescriptionPlaceholder")}
+              rows={3}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="contentType">{t("ContentTypeLabel")}</Label>
+              <Select
+                value={contentType}
+                onValueChange={(value) => setValue("contentType", value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="VIDEO">{t("ContentType.VIDEO")}</SelectItem>
+                  <SelectItem value="TEXT">{t("ContentType.TEXT")}</SelectItem>
+                  <SelectItem value="QUIZ">{t("ContentType.QUIZ")}</SelectItem>
+                  <SelectItem value="CODING">{t("ContentType.CODING")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="duration">{t("DurationLabel")} (seconds)</Label>
+              <Input
+                id="duration"
+                type="number"
+                {...register("duration", { valueAsNumber: true })}
+                placeholder="600"
+                min={0}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="content">{t("ContentLabel")}</Label>
+            <Textarea
+              id="content"
+              {...register("content")}
+              placeholder={t("ContentPlaceholder")}
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground">{t("ContentHint")}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="order">{t("Order")}</Label>
+              <Input
+                id="order"
+                type="number"
+                {...register("order", { valueAsNumber: true })}
+                placeholder="1"
+                min={1}
+              />
+              {errors.order && (
+                <p className="text-sm text-destructive">{errors.order.message}</p>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-2 pt-8">
+              <Switch
+                id="isFree"
+                checked={isFree}
+                onCheckedChange={(checked) => setValue("isFree", checked)}
+              />
+              <Label htmlFor="isFree">{t("IsFreeLesson")}</Label>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              {t("Cancel")}
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? t(mode === 'create' ? "Creating" : "Updating") : t(mode === 'create' ? "Create" : "Update")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

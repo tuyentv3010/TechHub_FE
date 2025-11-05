@@ -290,9 +290,9 @@ export default function CourseTable() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>{t("Actions")}</DropdownMenuLabel>
                 <DropdownMenuItem
-                  onClick={() => window.location.href = `/manage/courses/${course.id}`}
+                  onClick={() => window.location.href = `/manage/courses/${course.id}/content`}
                 >
-                  {t("ViewDetails")}
+                  {t("ManageContent")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => navigator.clipboard.writeText(course.id)}

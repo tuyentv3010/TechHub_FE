@@ -23,7 +23,7 @@ export default function CourseDetailPage() {
   const { data: courseData, isLoading: courseLoading } = useGetCourseById(courseId);
   const { data: chaptersData, isLoading: chaptersLoading, refetch: refetchChapters } = useGetChapters(courseId);
 
-  const course = courseData?.payload?.data?.summary;
+  const course = courseData?.payload?.data?.summary;    
   const chapters = (chaptersData?.payload?.data || []) as any[];
 
   if (courseLoading) {
