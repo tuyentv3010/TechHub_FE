@@ -102,8 +102,8 @@ export const CreateCourseBody = z.object({
   tags: z.array(z.string()).optional(),
   objectives: z.array(z.string()).optional(),
   requirements: z.array(z.string()).optional(),
-  thumbnailFileId: z.string().optional(),
-  introVideoFileId: z.string().optional(),
+  thumbnail: z.string().max(500).optional(), // URL string
+  introVideo: z.string().max(500).optional(), // URL string
 });
 
 export type CreateCourseBodyType = z.TypeOf<typeof CreateCourseBody>;
@@ -121,8 +121,8 @@ export const UpdateCourseBody = z.object({
   tags: z.array(z.string()).optional(),
   objectives: z.array(z.string()).optional(),
   requirements: z.array(z.string()).optional(),
-  thumbnailFileId: z.string().optional(),
-  introVideoFileId: z.string().optional(),
+  thumbnail: z.string().max(500).optional(), // URL string
+  introVideo: z.string().max(500).optional(), // URL string
 });
 
 export type UpdateCourseBodyType = z.TypeOf<typeof UpdateCourseBody>;

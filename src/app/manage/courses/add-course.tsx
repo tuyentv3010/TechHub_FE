@@ -20,8 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusCircle, Upload } from "lucide-react";
+import { PlusCircle, Upload, X, ImagePlus, Video } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -32,11 +33,35 @@ import {
   CreateCourseBodyType,
   CreateCourseBody,
 } from "@/schemaValidations/course.schema";
+import MediaLibraryDialog from "@/components/common/media-library-dialog";
+import { useAccountProfile } from "@/queries/useAccount";
+import fileApiRequest from "@/apiRequests/file";
+import { useRef } from "react";
 
 export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   const t = useTranslations("ManageCourse");
   const [open, setOpen] = useState(false);
   const createCourseMutation = useCreateCourseMutation();
+  const { data: profileData } = useAccountProfile();
+  const userId = profileData?.payload?.data?.id || '';
+
+  // Media library states
+  const [showThumbnailLibrary, setShowThumbnailLibrary] = useState(false);
+  const [showVideoLibrary, setShowVideoLibrary] = useState(false);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
+  const [videoPreview, setVideoPreview] = useState<string>("");
+  
+  // Upload states
+  const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const thumbnailFileInputRef = useRef<HTMLInputElement>(null);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Multi-input states
+  const [categoryInput, setCategoryInput] = useState("");
+  const [tagInput, setTagInput] = useState("");
+  const [objectiveInput, setObjectiveInput] = useState("");
+  const [requirementInput, setRequirementInput] = useState("");
 
   const form = useForm<CreateCourseBodyType>({
     resolver: zodResolver(CreateCourseBody),
@@ -52,8 +77,128 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
       tags: [],
       objectives: [],
       requirements: [],
+      thumbnail: "",
+      introVideo: "",
     },
   });
+
+  // Helper functions for array fields
+  const addItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', value: string) => {
+    if (!value.trim()) return;
+    const current = form.getValues(field) || [];
+    if (!current.includes(value.trim())) {
+      form.setValue(field, [...current, value.trim()]);
+    }
+  };
+
+  const removeItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', index: number) => {
+    const current = form.getValues(field) || [];
+    form.setValue(field, current.filter((_, i) => i !== index));
+  };
+
+  const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({ 
+        title: t("Error"), 
+        description: "Please select an image file", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ 
+        title: t("Error"), 
+        description: "File size must be less than 10MB", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsUploadingThumbnail(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+      formData.append('altText', file.name);
+      formData.append('caption', 'Course thumbnail');
+
+      const response = await fileApiRequest.uploadFile(formData);
+      
+      if (response.payload?.data?.cloudinarySecureUrl) {
+        form.setValue('thumbnail', response.payload.data.cloudinarySecureUrl);
+        setThumbnailPreview(response.payload.data.cloudinarySecureUrl);
+        toast({ description: "Thumbnail uploaded successfully" });
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({ 
+        title: t("Error"), 
+        description: error.message || "Failed to upload thumbnail", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploadingThumbnail(false);
+      if (thumbnailFileInputRef.current) {
+        thumbnailFileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/')) {
+      toast({ 
+        title: t("Error"), 
+        description: "Please select a video file", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+      toast({ 
+        title: t("Error"), 
+        description: "File size must be less than 100MB", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsUploadingVideo(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+      formData.append('altText', file.name);
+      formData.append('caption', 'Course intro video');
+
+      const response = await fileApiRequest.uploadFile(formData);
+      
+      if (response.payload?.data?.cloudinarySecureUrl) {
+        form.setValue('introVideo', response.payload.data.cloudinarySecureUrl);
+        setVideoPreview(response.payload.data.cloudinarySecureUrl);
+        toast({ description: "Video uploaded successfully" });
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({ 
+        title: t("Error"), 
+        description: error.message || "Failed to upload video", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploadingVideo(false);
+      if (videoFileInputRef.current) {
+        videoFileInputRef.current.value = '';
+      }
+    }
+  };
 
   const onSubmit = async (data: CreateCourseBodyType) => {
     if (createCourseMutation.isPending) return;
@@ -64,6 +209,8 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
         description: t("CourseCreated"),
       });
       form.reset();
+      setThumbnailPreview("");
+      setVideoPreview("");
       setOpen(false);
       onSuccess?.();
     } catch (error: any) {
@@ -186,6 +333,257 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             </div>
           </div>
 
+          {/* Categories */}
+          <div className="space-y-2">
+            <Label>{t("Categories") || "Categories"}</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder={t("CategoryPlaceholder") || "e.g., javascript, programming"}
+                value={categoryInput}
+                onChange={(e) => setCategoryInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addItem('categories', categoryInput);
+                    setCategoryInput("");
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  addItem('categories', categoryInput);
+                  setCategoryInput("");
+                }}
+              >
+                <PlusCircle className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {form.watch("categories")?.map((cat, idx) => (
+                <Badge key={idx} variant="secondary" className="gap-1">
+                  {cat}
+                  <X
+                    className="w-3 h-3 cursor-pointer"
+                    onClick={() => removeItem('categories', idx)}
+                  />
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div className="space-y-2">
+            <Label>{t("Tags") || "Tags"}</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder={t("TagPlaceholder") || "e.g., frontend, beginner"}
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addItem('tags', tagInput);
+                    setTagInput("");
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  addItem('tags', tagInput);
+                  setTagInput("");
+                }}
+              >
+                <PlusCircle className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {form.watch("tags")?.map((tag, idx) => (
+                <Badge key={idx} variant="secondary" className="gap-1">
+                  {tag}
+                  <X
+                    className="w-3 h-3 cursor-pointer"
+                    onClick={() => removeItem('tags', idx)}
+                  />
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Objectives */}
+          <div className="space-y-2">
+            <Label>{t("Objectives") || "Learning Objectives"}</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder={t("ObjectivePlaceholder") || "e.g., Understand fundamentals"}
+                value={objectiveInput}
+                onChange={(e) => setObjectiveInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addItem('objectives', objectiveInput);
+                    setObjectiveInput("");
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  addItem('objectives', objectiveInput);
+                  setObjectiveInput("");
+                }}
+              >
+                <PlusCircle className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex flex-col gap-1 mt-2">
+              {form.watch("objectives")?.map((obj, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-sm">
+                  <span>• {obj}</span>
+                  <X
+                    className="w-3 h-3 cursor-pointer text-muted-foreground hover:text-destructive"
+                    onClick={() => removeItem('objectives', idx)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Requirements */}
+          <div className="space-y-2">
+            <Label>{t("Requirements") || "Requirements"}</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder={t("RequirementPlaceholder") || "e.g., Basic HTML knowledge"}
+                value={requirementInput}
+                onChange={(e) => setRequirementInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addItem('requirements', requirementInput);
+                    setRequirementInput("");
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  addItem('requirements', requirementInput);
+                  setRequirementInput("");
+                }}
+              >
+                <PlusCircle className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex flex-col gap-1 mt-2">
+              {form.watch("requirements")?.map((req, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-sm">
+                  <span>• {req}</span>
+                  <X
+                    className="w-3 h-3 cursor-pointer text-muted-foreground hover:text-destructive"
+                    onClick={() => removeItem('requirements', idx)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Thumbnail */}
+          <div className="space-y-2">
+            <Label>{t("Thumbnail") || "Course Thumbnail"}</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowThumbnailLibrary(true)}
+                disabled={isUploadingThumbnail}
+              >
+                <ImagePlus className="w-4 h-4 mr-2" />
+                {t("SelectThumbnail") || "Choose from Library"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => thumbnailFileInputRef.current?.click()}
+                disabled={isUploadingThumbnail}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {isUploadingThumbnail ? "Uploading..." : "Upload Image"}
+              </Button>
+              <input
+                ref={thumbnailFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleThumbnailUpload}
+              />
+            </div>
+            {thumbnailPreview && (
+              <div className="relative w-full h-40 border rounded overflow-hidden">
+                <img
+                  src={thumbnailPreview}
+                  alt="Thumbnail preview"
+                  className="w-full h-full object-cover"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2"
+                  onClick={() => {
+                    setThumbnailPreview("");
+                    form.setValue("thumbnail", "");
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Intro Video */}
+          <div className="space-y-2">
+            <Label>{t("IntroVideo") || "Intro Video"}</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowVideoLibrary(true)}
+              >
+                <Video className="w-4 h-4 mr-2" />
+                {t("SelectVideo") || "Select Intro Video"}
+              </Button>
+            </div>
+            {videoPreview && (
+              <div className="relative w-full h-40 border rounded overflow-hidden bg-muted flex items-center justify-center">
+                <Video className="w-8 h-8 text-muted-foreground" />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2"
+                  onClick={() => {
+                    setVideoPreview("");
+                    form.setValue("introVideo", "");
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+                <p className="absolute bottom-2 left-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+                  {videoPreview.split('/').pop()}
+                </p>
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="status">{t("Status")}</Label>
             <Select
@@ -216,6 +614,36 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Media Library Dialogs */}
+      {userId && (
+        <>
+          <MediaLibraryDialog
+            open={showThumbnailLibrary}
+            onOpenChange={setShowThumbnailLibrary}
+            userId={userId}
+            mediaType="IMAGE"
+            title={t("SelectThumbnail") || "Select Thumbnail"}
+            onSelectFile={(file) => {
+              form.setValue("thumbnail", file.cloudinarySecureUrl);
+              setThumbnailPreview(file.cloudinarySecureUrl);
+              setShowThumbnailLibrary(false);
+            }}
+          />
+          <MediaLibraryDialog
+            open={showVideoLibrary}
+            onOpenChange={setShowVideoLibrary}
+            userId={userId}
+            mediaType="VIDEO"
+            title={t("SelectIntroVideo") || "Select Intro Video"}
+            onSelectFile={(file) => {
+              form.setValue("introVideo", file.cloudinarySecureUrl);
+              setVideoPreview(file.cloudinarySecureUrl);
+              setShowVideoLibrary(false);
+            }}
+          />
+        </>
+      )}
     </Dialog>
   );
 }
