@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusCircle, X, ImagePlus, Video } from "lucide-react";
+import { PlusCircle, X, ImagePlus, Video, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
@@ -34,6 +34,7 @@ import {
 } from "@/schemaValidations/course.schema";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { useAccountProfile } from "@/queries/useAccount";
+import fileApiRequest from "@/apiRequests/file";
 
 export default function EditCourse({
   id,
@@ -55,6 +56,12 @@ export default function EditCourse({
   const [showVideoLibrary, setShowVideoLibrary] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
   const [videoPreview, setVideoPreview] = useState<string>("");
+
+  // Upload states
+  const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const thumbnailFileInputRef = useRef<HTMLInputElement>(null);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   // Multi-input states
   const [categoryInput, setCategoryInput] = useState("");
@@ -115,6 +122,110 @@ export default function EditCourse({
   const removeItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', index: number) => {
     const current = form.getValues(field) || [];
     form.setValue(field, current.filter((_, i) => i !== index));
+  };
+
+  const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({ 
+        title: t("InvalidFileType"), 
+        description: t("PleaseSelectImage"), 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ 
+        title: t("FileTooLarge"), 
+        description: t("ImageSizeLimit"), 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsUploadingThumbnail(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+      formData.append('altText', file.name);
+      formData.append('caption', 'Course thumbnail');
+
+      const response = await fileApiRequest.uploadFile(formData);
+      
+      if (response.payload?.data?.cloudinarySecureUrl) {
+        form.setValue('thumbnail', response.payload.data.cloudinarySecureUrl);
+        setThumbnailPreview(response.payload.data.cloudinarySecureUrl);
+        toast({ description: t("ThumbnailUploadSuccess") });
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({ 
+        title: t("Error"), 
+        description: error.message || t("ThumbnailUploadFailed"), 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploadingThumbnail(false);
+      if (thumbnailFileInputRef.current) {
+        thumbnailFileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/')) {
+      toast({ 
+        title: t("InvalidFileType"), 
+        description: t("PleaseSelectVideo"), 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+      toast({ 
+        title: t("FileTooLarge"), 
+        description: t("VideoSizeLimit"), 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsUploadingVideo(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+      formData.append('altText', file.name);
+      formData.append('caption', 'Course intro video');
+
+      const response = await fileApiRequest.uploadFile(formData);
+      
+      if (response.payload?.data?.cloudinarySecureUrl) {
+        form.setValue('introVideo', response.payload.data.cloudinarySecureUrl);
+        setVideoPreview(response.payload.data.cloudinarySecureUrl);
+        toast({ description: t("VideoUploadSuccess") });
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({ 
+        title: t("Error"), 
+        description: error.message || t("VideoUploadFailed"), 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploadingVideo(false);
+      if (videoFileInputRef.current) {
+        videoFileInputRef.current.value = '';
+      }
+    }
   };
 
   const onSubmit = async (data: UpdateCourseBodyType) => {
@@ -232,10 +343,10 @@ export default function EditCourse({
 
           {/* Categories */}
           <div className="space-y-2">
-            <Label>{t("Categories") || "Categories"}</Label>
+            <Label>{t("CategoriesLabel")}</Label>
             <div className="flex gap-2">
               <Input
-                placeholder={t("CategoryPlaceholder") || "e.g., javascript, programming"}
+                placeholder={t("CategoryPlaceholder")}
                 value={categoryInput}
                 onChange={(e) => setCategoryInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -272,10 +383,10 @@ export default function EditCourse({
 
           {/* Tags */}
           <div className="space-y-2">
-            <Label>{t("Tags") || "Tags"}</Label>
+            <Label>{t("TagsLabel")}</Label>
             <div className="flex gap-2">
               <Input
-                placeholder={t("TagPlaceholder") || "e.g., frontend, beginner"}
+                placeholder={t("TagPlaceholder")}
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -312,10 +423,10 @@ export default function EditCourse({
 
           {/* Objectives */}
           <div className="space-y-2">
-            <Label>{t("Objectives") || "Learning Objectives"}</Label>
+            <Label>{t("ObjectivesLabel")}</Label>
             <div className="flex gap-2">
               <Input
-                placeholder={t("ObjectivePlaceholder") || "e.g., Understand fundamentals"}
+                placeholder={t("ObjectivePlaceholder")}
                 value={objectiveInput}
                 onChange={(e) => setObjectiveInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -352,10 +463,10 @@ export default function EditCourse({
 
           {/* Requirements */}
           <div className="space-y-2">
-            <Label>{t("Requirements") || "Requirements"}</Label>
+            <Label>{t("RequirementsLabel")}</Label>
             <div className="flex gap-2">
               <Input
-                placeholder={t("RequirementPlaceholder") || "e.g., Basic HTML knowledge"}
+                placeholder={t("RequirementPlaceholder")}
                 value={requirementInput}
                 onChange={(e) => setRequirementInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -392,17 +503,35 @@ export default function EditCourse({
 
           {/* Thumbnail */}
           <div className="space-y-2">
-            <Label>{t("Thumbnail") || "Course Thumbnail"}</Label>
+            <Label>{t("Thumbnail")}</Label>
             <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="flex-1"
                 onClick={() => setShowThumbnailLibrary(true)}
+                disabled={isUploadingThumbnail}
               >
                 <ImagePlus className="w-4 h-4 mr-2" />
-                {t("SelectThumbnail") || "Select Thumbnail"}
+                {t("SelectThumbnail")}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => thumbnailFileInputRef.current?.click()}
+                disabled={isUploadingThumbnail}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {isUploadingThumbnail ? t("Uploading") : t("UploadThumbnail")}
+              </Button>
+              <input
+                ref={thumbnailFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleThumbnailUpload}
+              />
             </div>
             {thumbnailPreview && (
               <div className="relative w-full h-40 border rounded overflow-hidden">
@@ -429,17 +558,35 @@ export default function EditCourse({
 
           {/* Intro Video */}
           <div className="space-y-2">
-            <Label>{t("IntroVideo") || "Intro Video"}</Label>
+            <Label>{t("IntroVideo")}</Label>
             <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="flex-1"
                 onClick={() => setShowVideoLibrary(true)}
+                disabled={isUploadingVideo}
               >
                 <Video className="w-4 h-4 mr-2" />
-                {t("SelectVideo") || "Select Intro Video"}
+                {t("SelectVideo")}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => videoFileInputRef.current?.click()}
+                disabled={isUploadingVideo}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {isUploadingVideo ? t("Uploading") : t("UploadVideo")}
+              </Button>
+              <input
+                ref={videoFileInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={handleVideoUpload}
+              />
             </div>
             {videoPreview && (
               <div className="relative w-full h-40 border rounded overflow-hidden bg-muted flex items-center justify-center">

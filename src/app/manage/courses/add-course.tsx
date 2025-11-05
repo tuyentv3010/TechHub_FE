@@ -102,8 +102,8 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
     if (!file.type.startsWith('image/')) {
       toast({ 
-        title: t("Error"), 
-        description: "Please select an image file", 
+        title: t("InvalidFileType"), 
+        description: t("PleaseSelectImage"), 
         variant: "destructive" 
       });
       return;
@@ -111,8 +111,8 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
     if (file.size > 10 * 1024 * 1024) {
       toast({ 
-        title: t("Error"), 
-        description: "File size must be less than 10MB", 
+        title: t("FileTooLarge"), 
+        description: t("ImageSizeLimit"), 
         variant: "destructive" 
       });
       return;
@@ -131,13 +131,13 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
       if (response.payload?.data?.cloudinarySecureUrl) {
         form.setValue('thumbnail', response.payload.data.cloudinarySecureUrl);
         setThumbnailPreview(response.payload.data.cloudinarySecureUrl);
-        toast({ description: "Thumbnail uploaded successfully" });
+        toast({ description: t("ThumbnailUploadSuccess") });
       }
     } catch (error: any) {
       console.error('Upload error:', error);
       toast({ 
         title: t("Error"), 
-        description: error.message || "Failed to upload thumbnail", 
+        description: error.message || t("ThumbnailUploadFailed"), 
         variant: "destructive" 
       });
     } finally {
@@ -154,8 +154,8 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
     if (!file.type.startsWith('video/')) {
       toast({ 
-        title: t("Error"), 
-        description: "Please select a video file", 
+        title: t("InvalidFileType"), 
+        description: t("PleaseSelectVideo"), 
         variant: "destructive" 
       });
       return;
@@ -163,8 +163,8 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
     if (file.size > 100 * 1024 * 1024) {
       toast({ 
-        title: t("Error"), 
-        description: "File size must be less than 100MB", 
+        title: t("FileTooLarge"), 
+        description: t("VideoSizeLimit"), 
         variant: "destructive" 
       });
       return;
@@ -183,13 +183,13 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
       if (response.payload?.data?.cloudinarySecureUrl) {
         form.setValue('introVideo', response.payload.data.cloudinarySecureUrl);
         setVideoPreview(response.payload.data.cloudinarySecureUrl);
-        toast({ description: "Video uploaded successfully" });
+        toast({ description: t("VideoUploadSuccess") });
       }
     } catch (error: any) {
       console.error('Upload error:', error);
       toast({ 
         title: t("Error"), 
-        description: error.message || "Failed to upload video", 
+        description: error.message || t("VideoUploadFailed"), 
         variant: "destructive" 
       });
     } finally {
@@ -335,10 +335,10 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
           {/* Categories */}
           <div className="space-y-2">
-            <Label>{t("Categories") || "Categories"}</Label>
+            <Label>{t("CategoriesLabel")}</Label>
             <div className="flex gap-2">
               <Input
-                placeholder={t("CategoryPlaceholder") || "e.g., javascript, programming"}
+                placeholder={t("CategoryPlaceholder")}
                 value={categoryInput}
                 onChange={(e) => setCategoryInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -375,10 +375,10 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
           {/* Tags */}
           <div className="space-y-2">
-            <Label>{t("Tags") || "Tags"}</Label>
+            <Label>{t("TagsLabel")}</Label>
             <div className="flex gap-2">
               <Input
-                placeholder={t("TagPlaceholder") || "e.g., frontend, beginner"}
+                placeholder={t("TagPlaceholder")}
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -415,10 +415,10 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
           {/* Objectives */}
           <div className="space-y-2">
-            <Label>{t("Objectives") || "Learning Objectives"}</Label>
+            <Label>{t("ObjectivesLabel")}</Label>
             <div className="flex gap-2">
               <Input
-                placeholder={t("ObjectivePlaceholder") || "e.g., Understand fundamentals"}
+                placeholder={t("ObjectivePlaceholder")}
                 value={objectiveInput}
                 onChange={(e) => setObjectiveInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -455,10 +455,10 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
           {/* Requirements */}
           <div className="space-y-2">
-            <Label>{t("Requirements") || "Requirements"}</Label>
+            <Label>{t("RequirementsLabel")}</Label>
             <div className="flex gap-2">
               <Input
-                placeholder={t("RequirementPlaceholder") || "e.g., Basic HTML knowledge"}
+                placeholder={t("RequirementPlaceholder")}
                 value={requirementInput}
                 onChange={(e) => setRequirementInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -495,7 +495,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
           {/* Thumbnail */}
           <div className="space-y-2">
-            <Label>{t("Thumbnail") || "Course Thumbnail"}</Label>
+            <Label>{t("Thumbnail")}</Label>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -505,7 +505,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
                 disabled={isUploadingThumbnail}
               >
                 <ImagePlus className="w-4 h-4 mr-2" />
-                {t("SelectThumbnail") || "Choose from Library"}
+                {t("SelectThumbnail")}
               </Button>
               <Button
                 type="button"
@@ -515,7 +515,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
                 disabled={isUploadingThumbnail}
               >
                 <Upload className="w-4 h-4 mr-2" />
-                {isUploadingThumbnail ? "Uploading..." : "Upload Image"}
+                {isUploadingThumbnail ? t("Uploading") : t("UploadThumbnail")}
               </Button>
               <input
                 ref={thumbnailFileInputRef}
@@ -550,17 +550,35 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
           {/* Intro Video */}
           <div className="space-y-2">
-            <Label>{t("IntroVideo") || "Intro Video"}</Label>
+            <Label>{t("IntroVideo")}</Label>
             <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="flex-1"
                 onClick={() => setShowVideoLibrary(true)}
+                disabled={isUploadingVideo}
               >
                 <Video className="w-4 h-4 mr-2" />
-                {t("SelectVideo") || "Select Intro Video"}
+                {t("SelectVideo")}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => videoFileInputRef.current?.click()}
+                disabled={isUploadingVideo}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {isUploadingVideo ? t("Uploading") : t("UploadVideo")}
+              </Button>
+              <input
+                ref={videoFileInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={handleVideoUpload}
+              />
             </div>
             {videoPreview && (
               <div className="relative w-full h-40 border rounded overflow-hidden bg-muted flex items-center justify-center">

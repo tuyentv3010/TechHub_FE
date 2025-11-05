@@ -183,6 +183,60 @@ export default function CourseTable() {
         ),
       },
       {
+        accessorKey: "thumbnail",
+        header: t("ThumbnailColumn"),
+        cell: ({ row }) => {
+          const thumbnail = row.original.thumbnail;
+          return (
+            <div className="flex items-center justify-center">
+              {thumbnail?.url ? (
+                <img
+                  src={thumbnail.url}
+                  alt="Course thumbnail"
+                  className="w-16 h-16 object-cover rounded-md border"
+                />
+              ) : (
+                <div className="w-16 h-16 bg-muted rounded-md flex items-center justify-center text-xs text-muted-foreground">
+                  No image
+                </div>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "introVideo",
+        header: t("IntroVideoColumn"),
+        cell: ({ row }) => {
+          const introVideo = row.original.introVideo;
+          return (
+            <div className="flex items-center justify-center">
+              {introVideo?.url ? (
+                <div className="relative w-16 h-16 bg-black rounded-md overflow-hidden">
+                  <video
+                    src={introVideo.url}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <svg
+                      className="w-8 h-8 text-white"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                    </svg>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-16 h-16 bg-muted rounded-md flex items-center justify-center text-xs text-muted-foreground">
+                  No video
+                </div>
+              )}
+            </div>
+          );
+        },
+      },
+      {
         accessorKey: "status",
         header: t("StatusColumn"),
         cell: ({ row }) => {
