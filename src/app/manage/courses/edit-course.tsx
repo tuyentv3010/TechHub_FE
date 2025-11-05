@@ -260,7 +260,7 @@ export default function EditCourse({
         >
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="title">{t("Title")}</Label>
+              <Label htmlFor="title">{t("TitleLabel")}</Label>
               <Input
                 id="title"
                 placeholder={t("TitlePlaceholder")}
@@ -274,7 +274,7 @@ export default function EditCourse({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="level">{t("Level")}</Label>
+              <Label htmlFor="level">{t("LevelLabel")}</Label>
               <Select
                 value={form.watch("level")}
                 onValueChange={(value: any) => form.setValue("level", value)}
@@ -293,7 +293,7 @@ export default function EditCourse({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">{t("Description")}</Label>
+            <Label htmlFor="description">{t("DescriptionLabel")}</Label>
             <Textarea
               id="description"
               placeholder={t("DescriptionPlaceholder")}
@@ -304,7 +304,7 @@ export default function EditCourse({
 
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="price">{t("Price")}</Label>
+              <Label htmlFor="price">{t("PriceLabel")}</Label>
               <Input
                 id="price"
                 type="number"
@@ -314,7 +314,7 @@ export default function EditCourse({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="discountPrice">{t("DiscountPrice")}</Label>
+              <Label htmlFor="discountPrice">{t("DiscountPriceLabel")}</Label>
               <Input
                 id="discountPrice"
                 type="number"
@@ -324,7 +324,7 @@ export default function EditCourse({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="language">{t("Language")}</Label>
+              <Label htmlFor="language">{t("LanguageLabel")}</Label>
               <Select
                 value={form.watch("language")}
                 onValueChange={(value: any) => form.setValue("language", value)}
@@ -333,9 +333,9 @@ export default function EditCourse({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="VI">Tiếng Việt</SelectItem>
-                  <SelectItem value="EN">English</SelectItem>
-                  <SelectItem value="JA">日本語</SelectItem>
+                  <SelectItem value="VI">{t("Language.VI")}</SelectItem>
+                  <SelectItem value="EN">{t("Language.EN")}</SelectItem>
+                  <SelectItem value="JA">{t("Language.JA")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
