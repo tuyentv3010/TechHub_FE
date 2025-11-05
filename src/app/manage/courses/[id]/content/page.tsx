@@ -1,7 +1,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { 
+import {
   GripVertical, 
   Plus, 
   Edit2, 
@@ -46,10 +47,14 @@ import {
   File,
   Link as LinkIcon,
   Image as ImageIcon,
-  Paperclip
+  Paperclip,
+  Upload,
+  FolderOpen
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
+import MediaLibraryDialog from "@/components/common/media-library-dialog";
+import fileApiRequest from "@/apiRequests/file";
 import {
   useGetCourseById,
   useGetLesson,
@@ -78,6 +83,11 @@ import {
   UpdateAssetBodyType,
 } from "@/schemaValidations/course.schema";
 import TableSkeleton from "@/components/Skeleton";
+import { useAccountProfile } from "@/queries/useAccount";
+
+const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"), {
+  ssr: false,
+});
 
 // Format duration helper
 const formatDuration = (seconds: number) => {
@@ -1129,6 +1139,11 @@ function LessonDialog({
   onUpdate: (data: UpdateLessonBodyType) => void;
 }) {
   const t = useTranslations("ManageCourse");
+  const { data: profileData } = useAccountProfile();
+  const userId = profileData?.payload?.data?.id || '';
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   
   // Fetch lesson data when in edit mode
   const { data: lessonData, isLoading, error } = useGetLesson(
@@ -1193,6 +1208,68 @@ function LessonDialog({
     }
   }, [open, mode, lessonData, data, reset, setValue]);
 
+  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('video/')) {
+      toast({ 
+        title: t("Error") || "Error", 
+        description: "Please select a video file", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Validate file size (max 100MB for videos)
+    if (file.size > 100 * 1024 * 1024) {
+      toast({ 
+        title: t("Error") || "Error", 
+        description: "File size must be less than 100MB", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+
+      const response = await fileApiRequest.uploadFile(formData);
+      const videoUrl = response.payload.data.cloudinarySecureUrl;
+      
+      setValue('videoUrl', videoUrl);
+      toast({ 
+        title: t("Success") || "Success", 
+        description: t("VideoUploaded") || "Video uploaded successfully" 
+      });
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({ 
+        title: t("Error") || "Error", 
+        description: error?.message || "Failed to upload video", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleMediaSelect = (fileUrl: string) => {
+    setValue('videoUrl', fileUrl);
+    setShowMediaLibrary(false);
+    toast({ 
+      title: t("Success") || "Success", 
+      description: t("VideoSelected") || "Video selected from library" 
+    });
+  };
+
   const onSubmit = (formData: any) => {
     if (mode === 'create') {
       // Map frontend field names to backend field names for CREATE
@@ -1224,6 +1301,7 @@ function LessonDialog({
 
   const contentType = watch("contentType");
   const isFree = watch("isFree");
+  const videoUrl = watch("videoUrl");
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -1297,11 +1375,10 @@ function LessonDialog({
 
           <div className="space-y-2">
             <Label htmlFor="content">{t("ContentLabel")}</Label>
-            <Textarea
-              id="content"
-              {...register("content")}
-              placeholder={t("ContentPlaceholder")}
-              rows={4}
+            <RichTextEditor
+              value={watch("content") || ""}
+              onChange={(value) => setValue("content", value)}
+              placeholder={t("ContentPlaceholder") || "Write lesson content..."}
             />
             <p className="text-xs text-muted-foreground">{t("ContentHint")}</p>
           </div>
@@ -1310,14 +1387,54 @@ function LessonDialog({
           {contentType === 'VIDEO' && (
             <div className="space-y-2">
               <Label htmlFor="videoUrl">{t("VideoURL")}</Label>
-              <Input
-                id="videoUrl"
-                {...register("videoUrl")}
-                placeholder="https://www.youtube.com/watch?v=..."
-              />
-              <p className="text-xs text-muted-foreground">
-                {t("VideoURLHint") || "Enter YouTube, Vimeo, or direct video URL"}
-              </p>
+              <div className="space-y-2">
+                {videoUrl && (
+                  <div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+                    <video 
+                      src={videoUrl} 
+                      controls 
+                      className="h-full w-full object-contain"
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    id="videoUrl"
+                    {...register("videoUrl")}
+                    placeholder="https://www.youtube.com/watch?v=... or upload below"
+                    className="flex-1"
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {isUploading ? t("Uploading") || "Uploading..." : t("Upload") || "Upload"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowMediaLibrary(true)}
+                  >
+                    <FolderOpen className="h-4 w-4 mr-2" />
+                    {t("Library") || "Library"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("VideoURLHint") || "Enter YouTube, Vimeo, or direct video URL, or upload from computer/library"}
+                </p>
+              </div>
             </div>
           )}
 
@@ -1342,6 +1459,16 @@ function LessonDialog({
           </DialogFooter>
         </form>
         )}
+        
+        {/* Media Library Dialog for Video Selection */}
+        <MediaLibraryDialog
+          open={showMediaLibrary}
+          onOpenChange={setShowMediaLibrary}
+          onSelectFile={(file) => handleMediaSelect(file.cloudinarySecureUrl)}
+          userId={userId}
+          mediaType="VIDEO"
+          title={t("SelectVideoFromLibrary") || "Select Video from Library"}
+        />
       </DialogContent>
     </Dialog>
   );
@@ -1364,6 +1491,12 @@ function AssetDialog({
   onUpdate: (data: UpdateAssetBodyType) => void;
 }) {
   const t = useTranslations("ManageCourse");
+  const { data: profileData } = useAccountProfile();
+  const userId = profileData?.payload?.data?.id || '';
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+  
   const {
     register,
     handleSubmit,
@@ -1382,6 +1515,79 @@ function AssetDialog({
     }
   }, [open, data, reset]);
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const assetTypeValue = watch("assetType");
+    
+    // Validate file type based on asset type
+    if (assetTypeValue === 'VIDEO' && !file.type.startsWith('video/')) {
+      toast({ 
+        title: t("Error") || "Error", 
+        description: "Please select a video file", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    if (assetTypeValue === 'IMAGE' && !file.type.startsWith('image/')) {
+      toast({ 
+        title: t("Error") || "Error", 
+        description: "Please select an image file", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Validate file size (max 100MB)
+    if (file.size > 100 * 1024 * 1024) {
+      toast({ 
+        title: t("Error") || "Error", 
+        description: "File size must be less than 100MB", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+
+      const response = await fileApiRequest.uploadFile(formData);
+      const fileUrl = response.payload.data.cloudinarySecureUrl;
+      
+      setValue('externalUrl', fileUrl);
+      toast({ 
+        title: t("Success") || "Success", 
+        description: t("FileUploaded") || "File uploaded successfully" 
+      });
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({ 
+        title: t("Error") || "Error", 
+        description: error?.message || "Failed to upload file", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleMediaSelect = (file: any) => {
+    setValue('externalUrl', file.cloudinarySecureUrl);
+    setShowMediaLibrary(false);
+    toast({ 
+      title: t("Success") || "Success", 
+      description: t("FileSelected") || "File selected from library" 
+    });
+  };
+
   const onSubmit = (formData: CreateAssetBodyType | UpdateAssetBodyType) => {
     if (mode === 'create') {
       onCreate(formData as CreateAssetBodyType);
@@ -1391,6 +1597,7 @@ function AssetDialog({
   };
 
   const assetType = watch("assetType");
+  const externalUrl = watch("externalUrl");
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -1455,15 +1662,90 @@ function AssetDialog({
 
           <div className="space-y-2">
             <Label htmlFor="externalUrl">{t("URLLabel")}</Label>
-            <Input
-              id="externalUrl"
-              {...register("externalUrl")}
-              placeholder="https://example.com/file.pdf"
-              type="url"
-            />
-            {errors.externalUrl && (
-              <p className="text-sm text-destructive">{errors.externalUrl.message}</p>
-            )}
+            <div className="space-y-2">
+              {/* Preview based on asset type */}
+              {externalUrl && assetType === 'VIDEO' && (
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+                  <video 
+                    src={externalUrl} 
+                    controls 
+                    className="h-full w-full object-contain"
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
+              )}
+              {externalUrl && assetType === 'IMAGE' && (
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+                  <img 
+                    src={externalUrl} 
+                    alt="Preview"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              )}
+              {externalUrl && assetType === 'DOCUMENT' && (
+                <div className="p-3 rounded-lg border bg-muted/50">
+                  <a 
+                    href={externalUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-500 hover:underline flex items-center gap-2"
+                  >
+                    <File className="h-4 w-4" />
+                    {externalUrl.split('/').pop() || 'Document'}
+                  </a>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <Input
+                  id="externalUrl"
+                  {...register("externalUrl")}
+                  placeholder="https://example.com/file.pdf or upload below"
+                  className="flex-1"
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={
+                    assetType === 'VIDEO' ? 'video/*' :
+                    assetType === 'IMAGE' ? 'image/*' :
+                    assetType === 'DOCUMENT' ? '.pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx' :
+                    '*'
+                  }
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {isUploading ? t("Uploading") || "Uploading..." : t("Upload") || "Upload"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowMediaLibrary(true)}
+                >
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  {t("Library") || "Library"}
+                </Button>
+              </div>
+              {errors.externalUrl && (
+                <p className="text-sm text-destructive">{errors.externalUrl.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {assetType === 'VIDEO' && (t("VideoAssetHint") || "Upload video file or enter URL")}
+                {assetType === 'IMAGE' && (t("ImageAssetHint") || "Upload image file or enter URL")}
+                {assetType === 'DOCUMENT' && (t("DocumentAssetHint") || "Upload document or enter URL")}
+                {assetType === 'LINK' && (t("LinkAssetHint") || "Enter external link URL")}
+                {assetType === 'CODE' && (t("CodeAssetHint") || "Enter code repository or file URL")}
+              </p>
+            </div>
           </div>
 
           <DialogFooter>
@@ -1475,6 +1757,16 @@ function AssetDialog({
             </Button>
           </DialogFooter>
         </form>
+        
+        {/* Media Library Dialog */}
+        <MediaLibraryDialog
+          open={showMediaLibrary}
+          onOpenChange={setShowMediaLibrary}
+          onSelectFile={handleMediaSelect}
+          userId={userId}
+          mediaType={assetType === 'VIDEO' ? 'VIDEO' : assetType === 'IMAGE' ? 'IMAGE' : 'ALL'}
+          title={t("SelectFile") || "Select File from Library"}
+        />
       </DialogContent>
     </Dialog>
   );

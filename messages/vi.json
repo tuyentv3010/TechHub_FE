@@ -629,6 +629,21 @@
     "CourseNotFound": "Không tìm thấy khóa học",
     "Enrollments": "Số lượng đăng ký",
     "EditCourseDescription": "Cập nhật thông tin khóa học",
-    "AddCourseDescription": "Tạo khóa học mới"
+    "AddCourseDescription": "Tạo khóa học mới",
+    "Upload": "Tải lên",
+    "Library": "Thư viện",
+    "VideoURL": "URL Video",
+    "VideoURLHint": "Nhập URL YouTube, Vimeo hoặc video trực tiếp, hoặc tải lên từ máy tính/thư viện",
+    "VideoUploaded": "Đã tải video lên thành công",
+    "VideoSelected": "Đã chọn video từ thư viện",
+    "SelectVideoFromLibrary": "Chọn Video từ Thư viện",
+    "FileUploaded": "Đã tải tệp lên thành công",
+    "FileSelected": "Đã chọn tệp từ thư viện",
+    "SelectFile": "Chọn Tệp từ Thư viện",
+    "VideoAssetHint": "Tải lên tệp video hoặc nhập URL",
+    "ImageAssetHint": "Tải lên tệp hình ảnh hoặc nhập URL",
+    "DocumentAssetHint": "Tải lên tài liệu hoặc nhập URL",
+    "LinkAssetHint": "Nhập URL liên kết bên ngoài",
+    "CodeAssetHint": "Nhập URL kho mã nguồn hoặc tệp"
   }
 }

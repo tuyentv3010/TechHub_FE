@@ -586,6 +586,21 @@
     "CourseNotFound": "コースが見つかりません",
     "Enrollments": "登録者数",
     "EditCourseDescription": "コース情報を更新",
-    "AddCourseDescription": "新しいコースを作成"
+    "AddCourseDescription": "新しいコースを作成",
+    "Upload": "アップロード",
+    "Library": "ライブラリ",
+    "VideoURL": "動画URL",
+    "VideoURLHint": "YouTube、Vimeo、または直接動画URLを入力するか、コンピュータ/ライブラリからアップロードしてください",
+    "VideoUploaded": "動画のアップロードに成功しました",
+    "VideoSelected": "ライブラリから動画を選択しました",
+    "SelectVideoFromLibrary": "ライブラリから動画を選択",
+    "FileUploaded": "ファイルのアップロードに成功しました",
+    "FileSelected": "ライブラリからファイルを選択しました",
+    "SelectFile": "ライブラリからファイルを選択",
+    "VideoAssetHint": "動画ファイルをアップロードするかURLを入力してください",
+    "ImageAssetHint": "画像ファイルをアップロードするかURLを入力してください",
+    "DocumentAssetHint": "ドキュメントをアップロードするかURLを入力してください",
+    "LinkAssetHint": "外部リンクのURLを入力してください",
+    "CodeAssetHint": "コードリポジトリまたはファイルのURLを入力してください"
   }
 }

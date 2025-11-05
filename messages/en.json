@@ -632,6 +632,21 @@
     "CourseNotFound": "Course not found",
     "Enrollments": "Enrollments",
     "EditCourseDescription": "Update course information",
-    "AddCourseDescription": "Create a new course"
+    "AddCourseDescription": "Create a new course",
+    "Upload": "Upload",
+    "Library": "Library",
+    "VideoURL": "Video URL",
+    "VideoURLHint": "Enter YouTube, Vimeo, or direct video URL, or upload from computer/library",
+    "VideoUploaded": "Video uploaded successfully",
+    "VideoSelected": "Video selected from library",
+    "SelectVideoFromLibrary": "Select Video from Library",
+    "FileUploaded": "File uploaded successfully",
+    "FileSelected": "File selected from library",
+    "SelectFile": "Select File from Library",
+    "VideoAssetHint": "Upload video file or enter URL",
+    "ImageAssetHint": "Upload image file or enter URL",
+    "DocumentAssetHint": "Upload document or enter URL",
+    "LinkAssetHint": "Enter external link URL",
+    "CodeAssetHint": "Enter code repository or file URL"
   }
 }
