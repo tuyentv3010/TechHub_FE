@@ -96,6 +96,10 @@ const courseApiRequest = {
   // LESSON MANAGEMENT
   // ============================================
 
+  // Get lesson by ID
+  getLesson: (courseId: string, chapterId: string, lessonId: string) =>
+    http.get(`/app/api/proxy/courses/${courseId}/chapters/${chapterId}/lessons/${lessonId}/detail`),
+
   // Create lesson
   createLesson: (courseId: string, chapterId: string, body: any) =>
     http.post(`/app/api/proxy/courses/${courseId}/chapters/${chapterId}/lessons`, body),

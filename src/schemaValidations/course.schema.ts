@@ -177,17 +177,18 @@ export type UpdateChapterBodyType = z.TypeOf<typeof UpdateChapterBody>;
 
 export const ContentType = z.enum(["VIDEO", "TEXT", "QUIZ", "CODING"]);
 
-// Lesson Item
+// Lesson Item - Response from backend
 export const LessonItem = z.object({
   id: z.string(),
   chapterId: z.string(),
   title: z.string(),
   description: z.string().nullable(),
   contentType: ContentType,
-  content: z.string().nullable(),
-  duration: z.number().nullable(),
-  order: z.number(),
+  content: z.string().nullable(), // TEXT content for TEXT type lessons
+  estimatedDuration: z.number().nullable(), // Backend uses estimatedDuration
+  orderIndex: z.number(), // Backend uses orderIndex
   isFree: z.boolean(),
+  videoUrl: z.string().nullable().optional(), // For VIDEO type
   created: z.string(),
   updated: z.string(),
   active: z.boolean(),
@@ -196,28 +197,31 @@ export const LessonItem = z.object({
 
 export type LessonItemType = z.TypeOf<typeof LessonItem>;
 
-// Create Lesson Body
+// Create Lesson Body - For creating new lesson
 export const CreateLessonBody = z.object({
   title: z.string().min(1, "Title is required").max(255),
   description: z.string().optional(),
   contentType: ContentType,
-  content: z.string().optional(),
-  duration: z.number().min(0).optional(),
-  order: z.number().min(1, "Order must be at least 1").optional(),
+  content: z.string().optional(), // TEXT content for lesson
+  duration: z.number().min(0).optional(), // Frontend uses 'duration', will map to estimatedDuration
+  orderIndex: z.number().min(0).optional(), // Backend expects orderIndex
   isFree: z.boolean().default(false),
+  videoUrl: z.string().optional(), // For VIDEO type lessons
 });
 
 export type CreateLessonBodyType = z.TypeOf<typeof CreateLessonBody>;
 
-// Update Lesson Body
+// Update Lesson Body - For updating existing lesson
 export const UpdateLessonBody = z.object({
   title: z.string().min(1).max(255).optional(),
-  description: z.string().optional(),
+  description: z.string().optional(), // Lesson description/summary
   contentType: ContentType.optional(),
-  content: z.string().optional(),
-  duration: z.number().min(0).optional(),
-  order: z.number().min(1).optional(),
-  isFree: z.boolean().optional(),
+  content: z.string().optional(), // Full TEXT content
+  duration: z.number().min(0).optional(), // Frontend field (maps to estimatedDuration)
+  estimatedDuration: z.number().min(0).optional(), // Backend field
+  videoUrl: z.string().optional(), // Video URL for VIDEO type
+  orderIndex: z.number().min(0).optional(), // Backend expects orderIndex
+  isFree: z.boolean().optional(), // Free preview lesson flag
 });
 
 export type UpdateLessonBodyType = z.TypeOf<typeof UpdateLessonBody>;

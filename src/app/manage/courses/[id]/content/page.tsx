@@ -52,6 +52,7 @@ import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
 import {
   useGetCourseById,
+  useGetLesson,
   useCreateChapterMutation,
   useUpdateChapterMutation,
   useDeleteChapterMutation,
@@ -124,6 +125,7 @@ export default function CourseContentManagementPage() {
 
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
+  const [isDragging, setIsDragging] = useState(false); // ✅ Track drag state for smooth UI
   const [chapterDialog, setChapterDialog] = useState<{ open: boolean; mode: 'create' | 'edit'; data?: any }>({
     open: false,
     mode: 'create',
@@ -132,6 +134,7 @@ export default function CourseContentManagementPage() {
     open: boolean; 
     mode: 'create' | 'edit'; 
     chapterId?: string;
+    lessonId?: string;
     data?: any 
   }>({
     open: false,
@@ -175,9 +178,15 @@ export default function CourseContentManagementPage() {
     });
   };
 
+  const handleDragStart = () => {
+    setIsDragging(true); // ✅ Start drag state for smooth UI
+  };
+
   const handleDragEnd = async (result: DropResult) => {
     console.log('🎯 === DRAG END ===');
     console.log('Result:', result);
+    
+    setIsDragging(false); // ✅ End drag state
     
     if (!result.destination) {
       console.log('❌ No destination, drag cancelled');
@@ -185,6 +194,13 @@ export default function CourseContentManagementPage() {
     }
 
     const { source, destination, type } = result;
+    
+    // ✅ Skip if dropped in same position
+    if (source.index === destination.index) {
+      console.log('⏭️ Same position, skipping...');
+      return;
+    }
+    
     console.log('📦 Drag type:', type);
     console.log('📍 Source index:', source.index);
     console.log('📍 Destination index:', destination.index);
@@ -210,16 +226,17 @@ export default function CourseContentManagementPage() {
       try {
         console.log('🚀 Calling update APIs...');
         
+        // ✅ SWAP orderIndex from DB, not array index
         const sourceChapterBody = {
           title: sourceChapter.title,
           description: sourceChapter.description || '',
-          orderIndex: destination.index + 1,  // ⚠️ Backend expects "orderIndex", not "order"
+          orderIndex: destChapter.orderIndex,  // ✅ Use dest's orderIndex from DB
         };
         
         const destChapterBody = {
           title: destChapter.title,
           description: destChapter.description || '',
-          orderIndex: source.index + 1,  // ⚠️ Backend expects "orderIndex", not "order"
+          orderIndex: sourceChapter.orderIndex,  // ✅ Use source's orderIndex from DB
         };
         
         console.log('📤 Source chapter update body:', sourceChapterBody);
@@ -286,13 +303,14 @@ export default function CourseContentManagementPage() {
       try {
         console.log('🚀 Calling update APIs...');
         
+        // ✅ SWAP orderIndex from DB, not array index
         const sourceUpdateBody = { 
           title: sourceLesson.title,
           description: sourceLesson.description || '',
           contentType: sourceLesson.contentType || 'VIDEO',
           videoUrl: sourceLesson.videoUrl || '',
           estimatedDuration: sourceLesson.estimatedDuration || 0,
-          orderIndex: destination.index + 1,  // ⚠️ Backend expects "orderIndex", not "order"
+          orderIndex: destLesson.orderIndex,  // ✅ Use dest's orderIndex from DB
         };
         
         const destUpdateBody = { 
@@ -301,7 +319,7 @@ export default function CourseContentManagementPage() {
           contentType: destLesson.contentType || 'VIDEO',
           videoUrl: destLesson.videoUrl || '',
           estimatedDuration: destLesson.estimatedDuration || 0,
-          orderIndex: source.index + 1,  // ⚠️ Backend expects "orderIndex", not "order"
+          orderIndex: sourceLesson.orderIndex,  // ✅ Use source's orderIndex from DB
         };
         
         console.log('� Source update body:', sourceUpdateBody);
@@ -427,11 +445,17 @@ export default function CourseContentManagementPage() {
   const handleUpdateLesson = async (data: UpdateLessonBodyType) => {
     if (!lessonDialog.chapterId || !lessonDialog.data?.id) return;
     try {
+      // ✅ Preserve orderIndex from existing lesson data
+      const updateBody = {
+        ...data,
+        orderIndex: lessonDialog.data.orderIndex, // Keep current order
+      };
+      
       await updateLessonMutation.mutateAsync({
         courseId,
         chapterId: lessonDialog.chapterId,
         lessonId: lessonDialog.data.id,
-        body: data,
+        body: updateBody,
       });
       toast({
         title: t("Success"),
@@ -601,7 +625,10 @@ export default function CourseContentManagementPage() {
               </Button>
             </div>
           ) : (
-            <DragDropContext onDragEnd={handleDragEnd}>
+            <DragDropContext 
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
               <Droppable 
                 droppableId="chapters" 
                 type="CHAPTER" 
@@ -617,8 +644,8 @@ export default function CourseContentManagementPage() {
                   >
                     {chapters.map((chapter: any, index: number) => (
                       <Draggable
-                        key={chapter.id}
-                        draggableId={chapter.id}
+                        key={chapter.id || `chapter-${index}`}
+                        draggableId={String(chapter.id || `chapter-${index}`)}
                         index={index}
                       >
                         {(provided, snapshot) => (
@@ -733,8 +760,8 @@ export default function CourseContentManagementPage() {
                                       >
                                         {chapter.lessons.map((lesson: any, lessonIndex: number) => (
                                           <Draggable
-                                            key={lesson.id}
-                                            draggableId={`${chapter.id}-${lesson.id}`}
+                                            key={lesson.id || `lesson-${lessonIndex}`}
+                                            draggableId={`${chapter.id}-${lesson.id || lessonIndex}`}
                                             index={lessonIndex}
                                           >
                                             {(provided, snapshot) => (
@@ -817,6 +844,7 @@ export default function CourseContentManagementPage() {
                                                         open: true,
                                                         mode: 'edit',
                                                         chapterId: chapter.id,
+                                                        lessonId: lesson.id,
                                                         data: lesson,
                                                       })}
                                                     >
@@ -948,6 +976,9 @@ export default function CourseContentManagementPage() {
       <LessonDialog
         open={lessonDialog.open}
         mode={lessonDialog.mode}
+        courseId={courseId}
+        chapterId={lessonDialog.chapterId}
+        lessonId={lessonDialog.lessonId}
         data={lessonDialog.data}
         onClose={() => setLessonDialog({ open: false, mode: 'create' })}
         onCreate={handleCreateLesson}
@@ -1079,6 +1110,9 @@ function ChapterDialog({
 function LessonDialog({
   open,
   mode,
+  courseId,
+  chapterId,
+  lessonId,
   data,
   onClose,
   onCreate,
@@ -1086,12 +1120,38 @@ function LessonDialog({
 }: {
   open: boolean;
   mode: 'create' | 'edit';
+  courseId: string;
+  chapterId?: string;
+  lessonId?: string;
   data?: any;
   onClose: () => void;
   onCreate: (data: CreateLessonBodyType) => void;
   onUpdate: (data: UpdateLessonBodyType) => void;
 }) {
   const t = useTranslations("ManageCourse");
+  
+  // Fetch lesson data when in edit mode
+  const { data: lessonData, isLoading, error } = useGetLesson(
+    courseId,
+    chapterId || '',
+    lessonId || '',
+  );
+
+  // Debug log
+  useEffect(() => {
+    if (mode === 'edit') {
+      console.log('🔍 GET LESSON DEBUG:', {
+        courseId,
+        chapterId,
+        lessonId,
+        isLoading,
+        hasData: !!lessonData,
+        lessonData: lessonData?.payload?.data,
+        error,
+      });
+    }
+  }, [mode, courseId, chapterId, lessonId, lessonData, isLoading, error]);
+
   const {
     register,
     handleSubmit,
@@ -1099,22 +1159,66 @@ function LessonDialog({
     watch,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<CreateLessonBodyType>({
-    resolver: zodResolver(mode === 'create' ? CreateLessonBody : UpdateLessonBody),
+  } = useForm<CreateLessonBodyType | UpdateLessonBodyType>({
+    resolver: zodResolver(mode === 'create' ? CreateLessonBody : UpdateLessonBody) as any,
     defaultValues: data || { contentType: 'VIDEO', isFree: false },
   });
 
   useEffect(() => {
-    if (open) {
-      reset(data || { contentType: 'VIDEO', isFree: false });
+    if (open && mode === 'edit' && lessonData?.payload?.data) {
+      const backendData = lessonData.payload.data;
+      console.log('✅ Resetting form with fetched data:', backendData);
+      
+      // Map backend fields to form fields
+      const formData = {
+        title: backendData.title || '',
+        description: backendData.description || '',
+        contentType: backendData.contentType || 'VIDEO',
+        content: backendData.content || '',
+        duration: backendData.estimatedDuration || 0, // Backend uses estimatedDuration
+        videoUrl: backendData.videoUrl || '', // Video URL for VIDEO type
+        isFree: backendData.isFree ?? false,
+      };
+      
+      console.log('📝 Mapped form data:', formData);
+      reset(formData);
+      
+      // Force set contentType for Select component
+      setValue('contentType', backendData.contentType || 'VIDEO');
+      setValue('isFree', backendData.isFree ?? false);
+    } else if (open && mode === 'create') {
+      console.log('➕ Resetting form with default values');
+      // Use default values for create mode
+      reset(data || { contentType: 'VIDEO', isFree: false, videoUrl: '' });
     }
-  }, [open, data, reset]);
+  }, [open, mode, lessonData, data, reset, setValue]);
 
-  const onSubmit = (formData: CreateLessonBodyType) => {
+  const onSubmit = (formData: any) => {
     if (mode === 'create') {
-      onCreate(formData);
+      // Map frontend field names to backend field names for CREATE
+      const createData: CreateLessonBodyType = {
+        title: formData.title,
+        description: formData.description,
+        contentType: formData.contentType,
+        content: formData.content,
+        duration: formData.duration, // Frontend uses 'duration', backend maps to 'estimatedDuration'
+        orderIndex: formData.order, // Map 'order' to 'orderIndex'
+        isFree: formData.isFree ?? false,
+        videoUrl: formData.videoUrl,
+      };
+      onCreate(createData);
     } else {
-      onUpdate(formData);
+      // Map frontend field names to backend field names for UPDATE
+      const updateData: UpdateLessonBodyType = {
+        title: formData.title,
+        description: formData.description,
+        contentType: formData.contentType,
+        content: formData.content,
+        estimatedDuration: formData.duration, // Backend expects estimatedDuration
+        isFree: formData.isFree,
+        videoUrl: formData.videoUrl,
+      };
+      onUpdate(updateData);
     }
   };
 
@@ -1132,6 +1236,11 @@ function LessonDialog({
             {mode === 'create' ? t("AddLessonDescription") : t("EditLessonDescription")}
           </DialogDescription>
         </DialogHeader>
+        {mode === 'edit' && isLoading ? (
+          <div className="py-8 text-center">
+            <p className="text-sm text-muted-foreground">{t("Loading")}...</p>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">{t("Title")}</Label>
@@ -1197,23 +1306,22 @@ function LessonDialog({
             <p className="text-xs text-muted-foreground">{t("ContentHint")}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            {mode === 'edit' && (
-              <div className="space-y-2">
-                <Label htmlFor="order">{t("Order")}</Label>
-                <Input
-                  id="order"
-                  type="number"
-                  {...register("order", { valueAsNumber: true })}
-                  placeholder="1"
-                  min={1}
-                />
-                {errors.order && (
-                  <p className="text-sm text-destructive">{errors.order.message}</p>
-                )}
-              </div>
-            )}
+          {/* Video URL field - show only when contentType is VIDEO */}
+          {contentType === 'VIDEO' && (
+            <div className="space-y-2">
+              <Label htmlFor="videoUrl">{t("VideoURL")}</Label>
+              <Input
+                id="videoUrl"
+                {...register("videoUrl")}
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("VideoURLHint") || "Enter YouTube, Vimeo, or direct video URL"}
+              </p>
+            </div>
+          )}
 
+          <div className="grid grid-cols-2 gap-4">
             <div className={`flex items-center space-x-2 ${mode === 'create' ? 'col-span-2' : 'pt-8'}`}>
               <Switch
                 id="isFree"
@@ -1233,6 +1341,7 @@ function LessonDialog({
             </Button>
           </DialogFooter>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

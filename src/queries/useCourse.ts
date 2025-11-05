@@ -129,6 +129,15 @@ export const useDeleteChapterMutation = () => {
 // LESSON HOOKS
 // ============================================
 
+// Get lesson by ID
+export const useGetLesson = (courseId: string, chapterId: string, lessonId: string) => {
+  return useQuery({
+    queryKey: ["lesson", courseId, chapterId, lessonId],
+    queryFn: () => courseApiRequest.getLesson(courseId, chapterId, lessonId),
+    enabled: !!courseId && !!chapterId && !!lessonId,
+  });
+};
+
 // Create lesson
 export const useCreateLessonMutation = () => {
   const queryClient = useQueryClient();
