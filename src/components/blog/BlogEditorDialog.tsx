@@ -62,7 +62,7 @@ type BlogEditorDialogProps = {
   onUpdate: (id: string, payload: UpdateBlogBody) => void;
 };
 
-const statusOptions: BlogStatus[] = ["DRAFT", "PUBLISHED", "ARCHIVED"];
+const statusOptions: BlogStatus[] = ["DRAFT", "PUBLISHED"];
 
 const cleanHtml = (value: string) => value.replace(/<p><\/p>/g, "").trim();
 

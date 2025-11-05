@@ -163,7 +163,6 @@ const CommentItem = ({
   const [showReplies, setShowReplies] = useState(true);
   const hasReplies = comment.replies && comment.replies.length > 0;
   const isReplying = activeReplyId === comment.id;
-
   return (
     <div className="space-y-3">
       <div className={`flex gap-3 ${depth > 0 ? "ml-12" : ""}`}>

@@ -1,5 +1,4 @@
 "use client";
-
 import { Role } from "@/constants/type";
 import {
   Home,
@@ -8,6 +7,7 @@ import {
   UserRoundPen,
   Users2,
   FolderOpen,
+  School
 } from "lucide-react";
 
 const menuItems = [
@@ -43,6 +43,11 @@ const menuItems = [
     title: "Quyền hạn",
     href: "/manage/permissions",
     Icon: UserCog,
+  },
+  {
+    title: "Khóa Học",
+    href: "/manage/courses",
+    Icon: School,
   },
 ];
 
