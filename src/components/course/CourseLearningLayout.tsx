@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { 
   ChevronLeft, 
@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { 
   useLessonComments, 
   useAddLessonCommentMutation 
@@ -50,6 +51,7 @@ export default function CourseLearningLayout({
 }: CourseLearningLayoutProps) {
   const t = useTranslations("ManageCourse");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [showContentDescription, setShowContentDescription] = useState(true);
@@ -83,6 +85,27 @@ export default function CourseLearningLayout({
     ? Math.round((completedLessons / allLessons.length) * 100) 
     : 0;
 
+  // DEBUG: Log progress data from API
+  console.log('=== PROGRESS DEBUG ===');
+  console.log('Course ID:', courseSummary?.id);
+  console.log('Progress Response:', progressResponse);
+  console.log('Progress Data:', progressData);
+  console.log('Completed Lessons Count:', completedLessons);
+  console.log('Total Lessons:', allLessons.length);
+  console.log('Progress Percentage:', progressPercentage);
+  console.log('All Lessons IDs:', allLessons.map(l => l.id));
+  if (progressData?.chapters) {
+    console.log('Completed Lessons from API:');
+    progressData.chapters.forEach((ch: any) => {
+      ch.lessons?.forEach((l: any) => {
+        if (l.completed) {
+          console.log(`  - ${l.lessonId}: completed`);
+        }
+      });
+    });
+  }
+  console.log('=====================');
+
   // Mark lesson complete mutation
   const markCompleteMutation = useMarkLessonCompleteMutation();
 
@@ -97,13 +120,30 @@ export default function CourseLearningLayout({
   // Add lesson comment mutation
   const addCommentMutation = useAddLessonCommentMutation();
 
-  // Check if a lesson is completed
+  // Check if a lesson is completed (only from API/database)
   const isLessonCompleted = (lessonId: string) => {
-    if (!progressData?.chapters) return false;
-    for (const chapter of progressData.chapters) {
-      const lesson = chapter.lessons.find((l: any) => l.lessonId === lessonId);
-      if (lesson) return lesson.completed;
+    console.log(`[isLessonCompleted] Checking lesson ${lessonId}`);
+    
+    if (progressData?.chapters) {
+      console.log('  Searching in chapters...');
+      for (const chapter of progressData.chapters) {
+        console.log('    Chapter ID:', chapter.id, 'lessons:', chapter.lessons);
+        // API returns lesson.id (not lessonId) and lesson.completed (not completed)
+        const lesson = chapter.lessons?.find((l: any) => l.id === lessonId);
+        if (lesson) {
+          console.log('    Found lesson:', lesson);
+          console.log('    Lesson completed status:', lesson.completed);
+          if (lesson.completed === true) {
+            console.log(`  ✓ Lesson ${lessonId} is completed (from API)`);
+            return true;
+          }
+        }
+      }
+    } else {
+      console.log('  No chapters data available');
     }
+    
+    console.log(`  ✗ Lesson ${lessonId} is NOT completed`);
     return false;
   };
 
@@ -143,7 +183,16 @@ export default function CourseLearningLayout({
 
   // Handle mark lesson complete
   const handleMarkComplete = () => {
-    if (!courseSummary?.id || !currentLesson?.id) return;
+    if (!courseSummary?.id || !currentLesson?.id) {
+      console.log('[handleMarkComplete] Missing courseId or lessonId');
+      return;
+    }
+    
+    console.log('[handleMarkComplete] Marking lesson complete:', {
+      courseId: courseSummary.id,
+      lessonId: currentLesson.id,
+      lessonTitle: currentLesson.title
+    });
     
     markCompleteMutation.mutate(
       {
@@ -151,8 +200,15 @@ export default function CourseLearningLayout({
         lessonId: currentLesson.id,
       },
       {
-        onSuccess: () => {
-          // Trigger fireworks!
+        onSuccess: (response) => {
+          console.log('[handleMarkComplete] ✓ Success:', response);
+          
+          // Invalidate and refetch progress data
+          queryClient.invalidateQueries({ 
+            queryKey: ['course-progress', courseSummary.id] 
+          });
+          
+          // Trigger fireworks after successful API call
           triggerFireworks();
           
           toast({
@@ -160,10 +216,12 @@ export default function CourseLearningLayout({
             description: "Bạn đã hoàn thành bài học này!",
           });
         },
-        onError: () => {
+        onError: (error) => {
+          console.error('[handleMarkComplete] ✗ Error:', error);
+          
           toast({
-            title: "Không thể đánh dấu hoàn thành",
-            description: "Vui lòng thử lại sau.",
+            title: "Lỗi",
+            description: "Không thể đánh dấu hoàn thành bài học.",
             variant: "destructive",
           });
         },
@@ -564,6 +622,16 @@ export default function CourseLearningLayout({
                             const isCurrent = globalIndex === currentLessonIndex;
                             const isFirstLesson = globalIndex === 0;
 
+                            // DEBUG: Log lesson render state
+                            console.log(`[Lesson Render] ${lesson.title}:`, {
+                              lessonId: lesson.id,
+                              isCompleted,
+                              isLocked,
+                              isCurrent,
+                              globalIndex,
+                              currentLessonIndex
+                            });
+
                             // Get content type icon (matching manage)
                             let contentIcon = <Video className="h-4 w-4" />;
                             if (lesson.contentType === "TEXT") {
@@ -577,7 +645,7 @@ export default function CourseLearningLayout({
                             return (
                               <button
                                 key={lesson.id}
-                                className={`w-full p-3 rounded-lg border transition-all text-left ${
+                                className={`w-full p-3 rounded-lg border transition-all text-left relative ${
                                   isCurrent
                                     ? "bg-primary/10 border-primary shadow-sm"
                                     : "hover:bg-muted/50 border-transparent"
@@ -586,11 +654,20 @@ export default function CourseLearningLayout({
                                 disabled={isLocked}
                                 id={isFirstLesson ? "first-lesson" : globalIndex === 1 ? "second-lesson-locked" : undefined}
                               >
+                                {/* Completed Badge - Small green checkmark at bottom right */}
+                                {isCompleted && (
+                                  <div className="absolute bottom-2 right-2 flex items-center justify-center w-5 h-5 rounded-full bg-green-600 text-white">
+                                    <CheckCircle2 className="h-3.5 w-3.5" fill="currentColor" />
+                                  </div>
+                                )}
+
                                 <div className="flex items-start gap-3">
                                   {/* Status Icon */}
                                   <div className="flex-shrink-0 mt-0.5">
                                     {isCompleted ? (
-                                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                      <div className="h-5 w-5 rounded-full border-2 border-green-600 flex items-center justify-center bg-green-50 dark:bg-green-900/20">
+                                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                      </div>
                                     ) : isLocked ? (
                                       <Lock className="h-5 w-5 text-muted-foreground" />
                                     ) : (
@@ -601,7 +678,7 @@ export default function CourseLearningLayout({
                                   </div>
                                   
                                   {/* Lesson Info */}
-                                  <div className="flex-1 min-w-0">
+                                  <div className="flex-1 min-w-0 pr-6">
                                     <div className="flex items-start gap-2 mb-1">
                                       <span className="text-xs text-muted-foreground flex-shrink-0">
                                         {lessonIndex + 1}.

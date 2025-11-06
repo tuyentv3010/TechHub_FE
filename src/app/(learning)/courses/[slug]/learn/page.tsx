@@ -22,6 +22,23 @@ export default function CourseLearnPage() {
   const [showTour, setShowTour] = useState(false);
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
 
+  // Load last lesson position from localStorage
+  useEffect(() => {
+    if (courseId) {
+      const savedPosition = localStorage.getItem(`course_position_${courseId}`);
+      if (savedPosition) {
+        setCurrentLessonIndex(parseInt(savedPosition, 10));
+      }
+    }
+  }, [courseId]);
+
+  // Save lesson position when it changes
+  useEffect(() => {
+    if (courseId && currentLessonIndex > 0) {
+      localStorage.setItem(`course_position_${courseId}`, currentLessonIndex.toString());
+    }
+  }, [courseId, currentLessonIndex]);
+
   // Check if user has seen tour before
   useEffect(() => {
     if (course && user) {
