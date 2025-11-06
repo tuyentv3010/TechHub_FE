@@ -140,9 +140,9 @@ export default function LessonManagement({
                   </p>
                 )}
                 <div className="flex gap-3 text-xs text-muted-foreground mt-1">
-                  <span>{t("Order")}: {lesson.order}</span>
-                  {lesson.duration && (
-                    <span>{t("Duration")}: {Math.floor(lesson.duration / 60)}m</span>
+                  <span>{t("Order")}: {lesson.orderIndex}</span>
+                  {lesson.estimatedDuration && (
+                    <span>{t("Duration")}: {Math.floor(lesson.estimatedDuration / 60)}m</span>
                   )}
                 </div>
               </div>
@@ -265,7 +265,7 @@ function AddLessonDialog({
       contentType: "VIDEO",
       content: "",
       duration: 0,
-      order: nextOrder,
+      orderIndex: nextOrder,
       isFree: false,
     },
   });
@@ -364,12 +364,12 @@ function AddLessonDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="order">{t("OrderLabel")}</Label>
+              <Label htmlFor="orderIndex">{t("OrderLabel")}</Label>
               <Input
-                id="order"
+                id="orderIndex"
                 type="number"
                 min={1}
-                {...form.register("order", { valueAsNumber: true })}
+                {...form.register("orderIndex", { valueAsNumber: true })}
               />
             </div>
 
@@ -424,8 +424,8 @@ function EditLessonDialog({
       description: lesson.description || "",
       contentType: lesson.contentType,
       content: lesson.content || "",
-      duration: lesson.duration || 0,
-      order: lesson.order,
+      duration: lesson.estimatedDuration || 0,
+      orderIndex: lesson.orderIndex,
       isFree: lesson.isFree,
     },
   });
@@ -524,12 +524,12 @@ function EditLessonDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="order">{t("OrderLabel")}</Label>
+              <Label htmlFor="orderIndex">{t("OrderLabel")}</Label>
               <Input
-                id="order"
+                id="orderIndex"
                 type="number"
                 min={1}
-                {...form.register("order", { valueAsNumber: true })}
+                {...form.register("orderIndex", { valueAsNumber: true })}
               />
             </div>
 

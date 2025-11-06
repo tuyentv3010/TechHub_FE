@@ -264,8 +264,8 @@ function AddAssetDialog({
     defaultValues: {
       assetType: "DOCUMENT",
       title: "",
-      url: "",
-      order: nextOrder,
+      externalUrl: "",
+      orderIndex: nextOrder,
     },
   });
 
@@ -332,31 +332,31 @@ function AddAssetDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="url">{t("URLLabel")}</Label>
+            <Label htmlFor="externalUrl">{t("URLLabel")}</Label>
             <Input
-              id="url"
+              id="externalUrl"
               type="url"
               placeholder="https://example.com/file.pdf"
-              {...form.register("url")}
+              {...form.register("externalUrl")}
             />
-            {form.formState.errors.url && (
+            {form.formState.errors.externalUrl && (
               <p className="text-sm text-destructive">
-                {form.formState.errors.url.message}
+                {form.formState.errors.externalUrl.message}
               </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="order">{t("OrderLabel")}</Label>
+            <Label htmlFor="orderIndex">{t("OrderLabel")}</Label>
             <Input
-              id="order"
+              id="orderIndex"
               type="number"
               min={1}
-              {...form.register("order", { valueAsNumber: true })}
+              {...form.register("orderIndex", { valueAsNumber: true })}
             />
-            {form.formState.errors.order && (
+            {form.formState.errors.orderIndex && (
               <p className="text-sm text-destructive">
-                {form.formState.errors.order.message}
+                {form.formState.errors.orderIndex.message}
               </p>
             )}
           </div>
@@ -402,8 +402,8 @@ function EditAssetDialog({
     defaultValues: {
       assetType: asset.type,
       title: asset.title,
-      url: asset.url,
-      order: asset.order,
+      externalUrl: asset.url,
+      orderIndex: asset.order,
     },
   });
 
@@ -470,26 +470,26 @@ function EditAssetDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="url">{t("URLLabel")}</Label>
+            <Label htmlFor="externalUrl">{t("URLLabel")}</Label>
             <Input
-              id="url"
+              id="externalUrl"
               type="url"
-              {...form.register("url")}
+              {...form.register("externalUrl")}
             />
-            {form.formState.errors.url && (
+            {form.formState.errors.externalUrl && (
               <p className="text-sm text-destructive">
-                {form.formState.errors.url.message}
+                {form.formState.errors.externalUrl.message}
               </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="order">{t("OrderLabel")}</Label>
+            <Label htmlFor="orderIndex">{t("OrderLabel")}</Label>
             <Input
-              id="order"
+              id="orderIndex"
               type="number"
               min={1}
-              {...form.register("order", { valueAsNumber: true })}
+              {...form.register("orderIndex", { valueAsNumber: true })}
             />
           </div>
 

@@ -2,7 +2,8 @@ import CourseCard, { Course } from "@/components/molecules/CourseCard";
 import CourseCardWithInstructor from "@/components/molecules/CourseCardWithInstructor";
 import { PrimaryButton } from "@/components/atoms/PrimaryButton";
 
-interface CourseWithInstructorId extends Omit<Course, 'instructor' | 'instructorAvatar'> {
+interface CourseWithInstructorId extends Omit<Course, 'instructor' | 'instructorAvatar' | 'id'> {
+  id: string;
   instructorId: string;
 }
 

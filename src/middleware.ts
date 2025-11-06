@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { decodeToken } from "@/lib/utils";
 import { Role } from "@/constants/type";
+import { RoleType } from "@/types/jwt.types";
 
 const guestPath = ["/guest"];
 const unAuthPaths = ["/login"];
@@ -32,12 +33,12 @@ export function middleware(request: NextRequest) {
   // Role-based access control
   if (accessToken) {
     const decoded = decodeToken(accessToken);
-    const role = decoded.role as RoleType;
+    const role = decoded.role;
     const isGuestGoToManagePath =
-      role === Role.Guest &&
+      role === "GUEST" &&
       managePaths.some((path) => pathname.startsWith(path));
     const isNotGuestGoToGuestPath =
-      role !== Role.Guest &&
+      role !== "GUEST" &&
       guestPath.some((path) => pathname.startsWith(path));
 
     if (isGuestGoToManagePath || isNotGuestGoToGuestPath) {

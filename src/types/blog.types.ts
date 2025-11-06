@@ -2,7 +2,6 @@ import { z } from "zod";
 import {
   BlogAttachmentInputSchema,
   BlogAttachmentSchema,
-  BlogCommentBodySchema,
   BlogCommentListResponseType,
   BlogCommentResponseType,
   BlogCommentType,

@@ -1,4 +1,3 @@
-import { url } from "inspector";
 import envConfig from "./config";
 
 export const baseOpenGraph = {

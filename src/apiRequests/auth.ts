@@ -56,6 +56,9 @@ const authApiRequest = {
     refreshToken: string;
   }) =>
     http.post("/app/api/proxy/auth/logout", body),
+
+  sRefreshToken: (body: { refreshToken: string }) =>
+    http.post<LoginResType>("/auth/refresh-token", body),
 };
 
 export default authApiRequest;

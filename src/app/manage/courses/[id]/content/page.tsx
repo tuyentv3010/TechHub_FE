@@ -1031,7 +1031,7 @@ function ChapterDialog({
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CreateChapterBodyType>({
-    resolver: zodResolver(mode === 'create' ? CreateChapterBody : UpdateChapterBody),
+    resolver: zodResolver(CreateChapterBody) as any,
     defaultValues: data || {},
   });
 
@@ -1175,7 +1175,9 @@ function LessonDialog({
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<CreateLessonBodyType | UpdateLessonBodyType>({
-    resolver: zodResolver(mode === 'create' ? CreateLessonBody : UpdateLessonBody) as any,
+    resolver: mode === 'create' 
+      ? (zodResolver(CreateLessonBody) as any)
+      : (zodResolver(UpdateLessonBody) as any),
     defaultValues: data || { contentType: 'VIDEO', isFree: false },
   });
 
