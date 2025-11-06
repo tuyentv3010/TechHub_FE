@@ -19,8 +19,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { useTranslations } from "next-intl";
+import { useToast } from "@/components/ui/use-toast";
+import { 
+  useLessonComments, 
+  useAddLessonCommentMutation 
+} from "@/queries/useCourseComments";
+import { CourseCommentsList } from "./CourseCommentsList";
 
 interface CourseLearningLayoutProps {
   course: any;
@@ -36,9 +41,9 @@ export default function CourseLearningLayout({
   onStartTour,
 }: CourseLearningLayoutProps) {
   const t = useTranslations("ManageCourse");
+  const { toast } = useToast();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showCommentModal, setShowCommentModal] = useState(false);
-  const [commentText, setCommentText] = useState("");
   const [showContentDescription, setShowContentDescription] = useState(true);
   
   const courseSummary = course.summary;
@@ -63,6 +68,89 @@ export default function CourseLearningLayout({
   const progressPercentage = allLessons.length > 0 
     ? Math.round((completedLessons / allLessons.length) * 100) 
     : 0;
+
+  // Fetch lesson comments
+  const { data: commentsResponse, isLoading: isLoadingComments } = useLessonComments(
+    courseSummary?.id,
+    currentLesson?.id,
+    !!courseSummary?.id && !!currentLesson?.id
+  );
+  const comments = commentsResponse?.payload?.data ?? [];
+
+  // Add lesson comment mutation
+  const addCommentMutation = useAddLessonCommentMutation();
+
+  const handleSubmitComment = (content: string) => {
+    if (!courseSummary?.id || !currentLesson?.id) {
+      toast({
+        title: "Không thể gửi bình luận",
+        description: "Vui lòng thử lại.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addCommentMutation.mutate(
+      {
+        courseId: courseSummary.id,
+        lessonId: currentLesson.id,
+        body: {
+          content: content,
+          parentId: undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Đã gửi bình luận",
+          });
+        },
+        onError: () => {
+          toast({
+            title: "Không thể gửi bình luận",
+            description: "Vui lòng đăng nhập và thử lại.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
+  const handleSubmitReply = (parentId: string, content: string) => {
+    if (!courseSummary?.id || !currentLesson?.id) {
+      toast({
+        title: "Không thể gửi phản hồi",
+        description: "Vui lòng thử lại.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addCommentMutation.mutate(
+      {
+        courseId: courseSummary.id,
+        lessonId: currentLesson.id,
+        body: {
+          content: content,
+          parentId: parentId,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Đã gửi phản hồi",
+          });
+        },
+        onError: () => {
+          toast({
+            title: "Không thể gửi phản hồi",
+            description: "Vui lòng đăng nhập và thử lại.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
 
   // Get asset icon
   const getAssetIcon = (type: string) => {
@@ -360,75 +448,15 @@ export default function CourseLearningLayout({
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
-            {/* Comment Input */}
-            <div className="space-y-2">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold flex-shrink-0">
-                  U
-                </div>
-                <div className="flex-1">
-                  <Textarea
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    placeholder="Nhập bình luận của bạn..."
-                    className="min-h-[100px] resize-none"
-                  />
-                  <div className="flex justify-between items-center mt-2">
-                    <p className="text-xs text-muted-foreground">
-                      Nếu thấy bài học hay thì câu bình luận spam, các bạn báo report admin 1 dẫ nhé!
-                    </p>
-                    <Button
-                      onClick={() => {
-                        // TODO: Submit comment
-                        setCommentText("");
-                        setShowCommentModal(false);
-                      }}
-                      disabled={!commentText.trim()}
-                    >
-                      Gửi bình luận
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Comments List */}
-            <ScrollArea className="h-[400px] pr-4">
-              <div className="space-y-4">
-                <p className="text-sm text-center text-muted-foreground py-8">
-                  163 bình luận
-                </p>
-                
-                {/* Sample Comments */}
-                <div className="space-y-4">
-                  <div className="flex gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold flex-shrink-0">
-                      C
-                    </div>
-                    <div className="flex-1">
-                      <div className="bg-muted rounded-lg p-3">
-                        <p className="font-semibold text-sm mb-1">Ca Coon • 3 tháng trước</p>
-                        <div className="text-sm">
-                          <code className="bg-background px-2 py-1 rounded">
-                            &lt;!DOCTYPE html&gt;
-                          </code>
-                        </div>
-                      </div>
-                      <div className="flex gap-4 mt-2">
-                        <button className="text-xs text-muted-foreground hover:text-foreground">
-                          Thích
-                        </button>
-                        <button className="text-xs text-muted-foreground hover:text-foreground">
-                          Phản hồi
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </ScrollArea>
-          </div>
+          <ScrollArea className="max-h-[calc(80vh-120px)] pr-4">
+            <CourseCommentsList
+              comments={comments}
+              isLoading={isLoadingComments}
+              isSubmitting={addCommentMutation.isPending}
+              onSubmitComment={handleSubmitComment}
+              onSubmitReply={handleSubmitReply}
+            />
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>

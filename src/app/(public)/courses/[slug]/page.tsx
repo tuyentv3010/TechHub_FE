@@ -34,6 +34,11 @@ import {
   formatTagLabel,
 } from "@/lib/course";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  useCourseComments, 
+  useAddCourseCommentMutation 
+} from "@/queries/useCourseComments";
+import { CourseCommentsList } from "@/components/course/CourseCommentsList";
 
 export default function CourseDetailPage() {
   const params = useParams();
@@ -50,6 +55,86 @@ export default function CourseDetailPage() {
   const course = courseResponse?.payload?.data;
   const courseSummary = course?.summary;
   const chapters = course?.chapters || [];
+
+  // Fetch course comments
+  const { data: commentsResponse, isLoading: isLoadingComments } = useCourseComments(
+    courseId,
+    !!courseId
+  );
+  const comments = commentsResponse?.payload?.data ?? [];
+
+  // Add course comment mutation
+  const addCommentMutation = useAddCourseCommentMutation();
+
+  const handleSubmitComment = (content: string) => {
+    if (!courseId) {
+      toast({
+        title: "Không thể gửi bình luận",
+        description: "Vui lòng thử lại.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addCommentMutation.mutate(
+      {
+        courseId: courseId,
+        body: {
+          content: content,
+          parentId: undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Đã gửi bình luận",
+          });
+        },
+        onError: () => {
+          toast({
+            title: "Không thể gửi bình luận",
+            description: "Vui lòng đăng nhập và thử lại.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
+
+  const handleSubmitReply = (parentId: string, content: string) => {
+    if (!courseId) {
+      toast({
+        title: "Không thể gửi phản hồi",
+        description: "Vui lòng thử lại.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addCommentMutation.mutate(
+      {
+        courseId: courseId,
+        body: {
+          content: content,
+          parentId: parentId,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Đã gửi phản hồi",
+          });
+        },
+        onError: () => {
+          toast({
+            title: "Không thể gửi phản hồi",
+            description: "Vui lòng đăng nhập và thử lại.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
 
   // Fetch instructor info
   const { data: instructorResponse } = useGetAccount({
@@ -444,6 +529,15 @@ export default function CourseDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Comments Section */}
+            <CourseCommentsList
+              comments={comments}
+              isLoading={isLoadingComments}
+              isSubmitting={addCommentMutation.isPending}
+              onSubmitComment={handleSubmitComment}
+              onSubmitReply={handleSubmitReply}
+            />
           </div>
 
           {/* Right Sidebar */}

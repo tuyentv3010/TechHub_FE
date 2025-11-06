@@ -77,6 +77,25 @@ const courseApiRequest = {
     http.delete(`/app/api/proxy/courses/${courseId}/comments/${commentId}`),
 
   // ============================================
+  // LESSON COMMENTS
+  // ============================================
+
+  // Get lesson comments
+  getLessonComments: (courseId: string, lessonId: string) =>
+    http.get(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/comments`),
+
+  // Add lesson comment
+  addLessonComment: (
+    courseId: string,
+    lessonId: string,
+    body: { content: string; parentId?: string | null }
+  ) => http.post(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/comments`, body),
+
+  // Delete lesson comment
+  deleteLessonComment: (courseId: string, lessonId: string, commentId: string) =>
+    http.delete(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/comments/${commentId}`),
+
+  // ============================================
   // CHAPTER MANAGEMENT
   // ============================================
   
