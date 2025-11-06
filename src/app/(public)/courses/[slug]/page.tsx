@@ -77,6 +77,9 @@ export default function CourseDetailPage() {
         title: "Đăng ký thành công!",
         description: "Bạn đã đăng ký khóa học thành công.",
       });
+      
+      // Redirect to learning page
+      window.location.href = `/courses/${slug}/learn`;
     } catch (error: any) {
       toast({
         title: "Đăng ký thất bại",
@@ -259,11 +262,17 @@ export default function CourseDetailPage() {
 
                     {/* Enroll Button */}
                     <Button
-                      onClick={handleEnroll}
-                      disabled={enrollMutation.isPending || course.enrolled}
+                      onClick={() => {
+                        if (course.enrolled) {
+                          window.location.href = `/courses/${slug}/learn`;
+                        } else {
+                          handleEnroll();
+                        }
+                      }}
+                      disabled={enrollMutation.isPending}
                       className="mb-3 w-full bg-purple-600 py-6 text-lg font-semibold hover:bg-purple-700"
                     >
-                      {course.enrolled ? "Đã đăng ký" : "Đăng ký ngay"}
+                      {course.enrolled ? "Vào học ngay" : "Đăng ký ngay"}
                     </Button>
 
                     {/* Course Info */}
