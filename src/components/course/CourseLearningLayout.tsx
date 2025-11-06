@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import confetti from "canvas-confetti";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -15,7 +16,10 @@ import {
   Image as ImageIcon,
   X,
   PlayCircle,
-  Clock
+  Clock,
+  Award,
+  Video,
+  HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -73,7 +77,11 @@ export default function CourseLearningLayout({
   const { data: progressResponse } = useCourseProgress(courseSummary?.id, !!courseSummary?.id);
   const progressData = progressResponse?.payload?.data;
   const completedLessons = progressData?.completedLessons || 0;
-  const progressPercentage = progressData?.progressPercentage || 0;
+  
+  // Calculate progress percentage
+  const progressPercentage = allLessons.length > 0 
+    ? Math.round((completedLessons / allLessons.length) * 100) 
+    : 0;
 
   // Mark lesson complete mutation
   const markCompleteMutation = useMarkLessonCompleteMutation();
@@ -99,6 +107,40 @@ export default function CourseLearningLayout({
     return false;
   };
 
+  // Fireworks effect
+  const triggerFireworks = () => {
+    const duration = 3000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+    function randomInRange(min: number, max: number) {
+      return Math.random() * (max - min) + min;
+    }
+
+    const interval: any = setInterval(function() {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+      
+      // Shoot from left
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+      });
+      // Shoot from right
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+      });
+    }, 250);
+  };
+
   // Handle mark lesson complete
   const handleMarkComplete = () => {
     if (!courseSummary?.id || !currentLesson?.id) return;
@@ -110,8 +152,11 @@ export default function CourseLearningLayout({
       },
       {
         onSuccess: () => {
+          // Trigger fireworks!
+          triggerFireworks();
+          
           toast({
-            title: "✅ Đã đánh dấu hoàn thành",
+            title: "🎉 Chúc mừng!",
             description: "Bạn đã hoàn thành bài học này!",
           });
         },
@@ -293,7 +338,7 @@ export default function CourseLearningLayout({
             
             {/* Content Description Collapsible */}
             {currentLesson?.content && (
-              <div className="bg-muted/30 rounded-lg p-4">
+              <div className="bg-muted/30 rounded-lg p-4 mb-4">
                 <button 
                   onClick={() => setShowContentDescription(!showContentDescription)}
                   className="flex items-center justify-between w-full text-left font-medium mb-2"
@@ -309,6 +354,39 @@ export default function CourseLearningLayout({
                 }
               </div>
             )}
+
+            {/* Learning Outcomes */}
+            <div className="bg-gradient-to-r from-primary/5 to-cyan-500/5 rounded-lg p-4 border border-primary/20">
+              <div className="flex items-center gap-2 mb-3">
+                <Award className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-base">Bạn sẽ làm được gì sau bài học này?</h3>
+              </div>
+              {courseSummary.outcomes && courseSummary.outcomes.length > 0 ? (
+                <ul className="space-y-2">
+                  {courseSummary.outcomes.slice(0, 3).map((outcome: string, index: number) => (
+                    <li key={index} className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-muted-foreground">{outcome}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground">Hiểu rõ nội dung của bài học</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground">Áp dụng kiến thức vào thực tế</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground">Sẵn sàng cho bài học tiếp theo</span>
+                  </li>
+                </ul>
+              )}
+            </div>
           </div>
 
           {/* Lesson Assets/Resources */}
@@ -342,9 +420,27 @@ export default function CourseLearningLayout({
           <div className="h-32"></div>
         </ScrollArea>
         
-        {/* Hỏi đáp Button - Floating above navigation */}
+        {/* Floating Action Buttons - Above navigation */}
         <div className="sticky bottom-20 left-0 right-0 bg-transparent pointer-events-none">  
-          <div className="px-6 py-3 flex justify-end pointer-events-auto">
+          <div className="px-6 py-3 flex justify-center items-center gap-4 pointer-events-auto">
+            {/* Mark Complete Button */}
+            {isLessonCompleted(currentLesson?.id) ? (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-600 text-white shadow-lg">
+                <CheckCircle2 className="h-5 w-5" />
+                <span className="text-sm font-medium">Đã hoàn thành</span>
+              </div>
+            ) : (
+              <Button
+                onClick={handleMarkComplete}
+                disabled={markCompleteMutation.isPending}
+                className="h-12 px-6 rounded-full bg-green-600 hover:bg-green-700 shadow-lg"
+              >
+                <CheckCircle2 className="h-5 w-5 mr-2" />
+                <span className="font-medium">Hoàn thành</span>
+              </Button>
+            )}
+
+            {/* Hỏi đáp Button */}
             <Button 
               onClick={() => setShowCommentModal(true)}
               variant="default"
@@ -362,28 +458,7 @@ export default function CourseLearningLayout({
           {/* Hỏi đáp Button - Above navigation */}
  
           {/* Navigation Buttons */}
-          <div className="px-6 py-4 border-t space-y-3">
-            {/* Mark Complete Button */}
-            <div className="flex justify-center">
-              {isLessonCompleted(currentLesson?.id) ? (
-                <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
-                  <CheckCircle2 className="h-5 w-5" />
-                  <span>Đã hoàn thành bài học này</span>
-                </div>
-              ) : (
-                <Button
-                  onClick={handleMarkComplete}
-                  disabled={markCompleteMutation.isPending}
-                  variant="outline"
-                  className="border-green-600 text-green-600 hover:bg-green-50"
-                >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Đánh dấu hoàn thành
-                </Button>
-              )}
-            </div>
-
-            {/* Previous/Next Buttons */}
+          <div className="px-6 py-4 border-t">
             <div className="flex items-center justify-between">
               <Button
                 variant="outline"
@@ -484,15 +559,18 @@ export default function CourseLearningLayout({
                               (l) => l.id === lesson.id
                             );
                             const isCompleted = isLessonCompleted(lesson.id);
-                            const isLocked = globalIndex > currentLessonIndex + 1;
+                            // Bài học bị khóa nếu: không phải bài hiện tại, không phải bài kế tiếp, và chưa hoàn thành
+                            const isLocked = !isCompleted && globalIndex > currentLessonIndex + 1;
                             const isCurrent = globalIndex === currentLessonIndex;
                             const isFirstLesson = globalIndex === 0;
 
-                            // Get content type icon
-                            let contentIcon = <PlayCircle className="h-4 w-4" />;
-                            if (lesson.contentType === "READING") {
+                            // Get content type icon (matching manage)
+                            let contentIcon = <Video className="h-4 w-4" />;
+                            if (lesson.contentType === "TEXT") {
                               contentIcon = <FileText className="h-4 w-4" />;
                             } else if (lesson.contentType === "QUIZ") {
+                              contentIcon = <HelpCircle className="h-4 w-4" />;
+                            } else if (lesson.contentType === "CODING") {
                               contentIcon = <Code className="h-4 w-4" />;
                             }
 
