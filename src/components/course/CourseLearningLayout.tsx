@@ -13,18 +13,22 @@ import {
   ExternalLink,
   Code,
   Image as ImageIcon,
-  X
+  X,
+  PlayCircle,
+  Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/use-toast";
 import { 
   useLessonComments, 
   useAddLessonCommentMutation 
 } from "@/queries/useCourseComments";
+import { useCourseProgress, useMarkLessonCompleteMutation } from "@/queries/useCourseProgress";
 import { CourseCommentsList } from "./CourseCommentsList";
 
 interface CourseLearningLayoutProps {
@@ -64,10 +68,15 @@ export default function CourseLearningLayout({
   });
 
   const currentLesson = allLessons[currentLessonIndex];
-  const completedLessons = 0; // TODO: Get from progress API
-  const progressPercentage = allLessons.length > 0 
-    ? Math.round((completedLessons / allLessons.length) * 100) 
-    : 0;
+
+  // Fetch course progress
+  const { data: progressResponse } = useCourseProgress(courseSummary?.id, !!courseSummary?.id);
+  const progressData = progressResponse?.payload?.data;
+  const completedLessons = progressData?.completedLessons || 0;
+  const progressPercentage = progressData?.progressPercentage || 0;
+
+  // Mark lesson complete mutation
+  const markCompleteMutation = useMarkLessonCompleteMutation();
 
   // Fetch lesson comments
   const { data: commentsResponse, isLoading: isLoadingComments } = useLessonComments(
@@ -79,6 +88,43 @@ export default function CourseLearningLayout({
 
   // Add lesson comment mutation
   const addCommentMutation = useAddLessonCommentMutation();
+
+  // Check if a lesson is completed
+  const isLessonCompleted = (lessonId: string) => {
+    if (!progressData?.chapters) return false;
+    for (const chapter of progressData.chapters) {
+      const lesson = chapter.lessons.find((l: any) => l.lessonId === lessonId);
+      if (lesson) return lesson.completed;
+    }
+    return false;
+  };
+
+  // Handle mark lesson complete
+  const handleMarkComplete = () => {
+    if (!courseSummary?.id || !currentLesson?.id) return;
+    
+    markCompleteMutation.mutate(
+      {
+        courseId: courseSummary.id,
+        lessonId: currentLesson.id,
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "✅ Đã đánh dấu hoàn thành",
+            description: "Bạn đã hoàn thành bài học này!",
+          });
+        },
+        onError: () => {
+          toast({
+            title: "Không thể đánh dấu hoàn thành",
+            description: "Vui lòng thử lại sau.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
 
   const handleSubmitComment = (content: string) => {
     if (!courseSummary?.id || !currentLesson?.id) {
@@ -316,23 +362,46 @@ export default function CourseLearningLayout({
           {/* Hỏi đáp Button - Above navigation */}
  
           {/* Navigation Buttons */}
-          <div className="px-6 py-4 flex items-center justify-between border-t">
-            <Button
-              variant="outline"
-              disabled={currentLessonIndex === 0}
-              onClick={() => onLessonChange(currentLessonIndex - 1)}
-            >
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              BÀI TRƯỚC
-            </Button>
-            <Button
-              disabled={currentLessonIndex >= allLessons.length - 1}
-              onClick={() => onLessonChange(currentLessonIndex + 1)}
-              className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
-            >
-              BÀI TIẾP THEO
-              <ChevronRight className="h-4 w-4 ml-2" />
-            </Button>
+          <div className="px-6 py-4 border-t space-y-3">
+            {/* Mark Complete Button */}
+            <div className="flex justify-center">
+              {isLessonCompleted(currentLesson?.id) ? (
+                <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span>Đã hoàn thành bài học này</span>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleMarkComplete}
+                  disabled={markCompleteMutation.isPending}
+                  variant="outline"
+                  className="border-green-600 text-green-600 hover:bg-green-50"
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Đánh dấu hoàn thành
+                </Button>
+              )}
+            </div>
+
+            {/* Previous/Next Buttons */}
+            <div className="flex items-center justify-between">
+              <Button
+                variant="outline"
+                disabled={currentLessonIndex === 0}
+                onClick={() => onLessonChange(currentLessonIndex - 1)}
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                BÀI TRƯỚC
+              </Button>
+              <Button
+                disabled={currentLessonIndex >= allLessons.length - 1}
+                onClick={() => onLessonChange(currentLessonIndex + 1)}
+                className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+              >
+                BÀI TIẾP THEO
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -379,60 +448,116 @@ export default function CourseLearningLayout({
           </div>
 
           <ScrollArea className="flex-1">
-            <div className="p-4 space-y-4">
-              {chapters.map((chapter: any, chapterIndex: number) => (
-                <div key={chapter.id}>
-                  <h4 className="font-semibold text-sm mb-2">
-                    {chapterIndex + 1}. {chapter.title}
-                  </h4>
-                  <div className="space-y-1">
-                    {chapter.lessons?.map((lesson: any, lessonIndex: number) => {
-                      const globalIndex = allLessons.findIndex(
-                        (l) => l.id === lesson.id
-                      );
-                      const isCompleted = false; // TODO: Get from progress
-                      const isLocked = globalIndex > currentLessonIndex + 1;
-                      const isCurrent = globalIndex === currentLessonIndex;
-                      const isFirstLesson = globalIndex === 0;
+            <div className="p-2">
+              <Accordion type="multiple" defaultValue={chapters.map((ch: any) => ch.id)} className="space-y-2">
+                {chapters.map((chapter: any, chapterIndex: number) => {
+                  const chapterLessons = chapter.lessons || [];
+                  const completedCount = chapterLessons.filter((l: any) => 
+                    isLessonCompleted(l.id)
+                  ).length;
 
-                      return (
-                        <Card
-                          key={lesson.id}
-                          className={`p-3 cursor-pointer transition-colors ${
-                            isCurrent
-                              ? "bg-primary/10 border-primary"
-                              : "hover:bg-muted"
-                          } ${isLocked ? "opacity-50" : ""}`}
-                          onClick={() => !isLocked && onLessonChange(globalIndex)}
-                          id={isFirstLesson ? "first-lesson" : globalIndex === 1 ? "second-lesson-locked" : undefined}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex-shrink-0">
-                              {isCompleted ? (
-                                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                              ) : isLocked ? (
-                                <Lock className="h-5 w-5 text-muted-foreground" />
-                              ) : (
-                                <div className="h-5 w-5 rounded-full border-2 border-muted-foreground" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium line-clamp-1">
-                                {lesson.title}
-                              </p>
-                              {lesson.estimatedDuration && (
-                                <p className="text-xs text-muted-foreground">
-                                  {Math.floor(lesson.estimatedDuration / 60)} phút
-                                </p>
-                              )}
-                            </div>
+                  return (
+                    <AccordionItem 
+                      key={chapter.id} 
+                      value={chapter.id}
+                      className="border rounded-lg bg-card"
+                    >
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50 rounded-t-lg">
+                        <div className="flex items-center gap-3 text-left flex-1">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">
+                            {chapterIndex + 1}
                           </div>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-sm line-clamp-1">
+                              {chapter.title}
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                              {completedCount}/{chapterLessons.length} • {Math.round((completedCount / chapterLessons.length) * 100)}%
+                            </p>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-2 pb-2">
+                        <div className="space-y-1 pt-1">
+                          {chapterLessons.map((lesson: any, lessonIndex: number) => {
+                            const globalIndex = allLessons.findIndex(
+                              (l) => l.id === lesson.id
+                            );
+                            const isCompleted = isLessonCompleted(lesson.id);
+                            const isLocked = globalIndex > currentLessonIndex + 1;
+                            const isCurrent = globalIndex === currentLessonIndex;
+                            const isFirstLesson = globalIndex === 0;
+
+                            // Get content type icon
+                            let contentIcon = <PlayCircle className="h-4 w-4" />;
+                            if (lesson.contentType === "READING") {
+                              contentIcon = <FileText className="h-4 w-4" />;
+                            } else if (lesson.contentType === "QUIZ") {
+                              contentIcon = <Code className="h-4 w-4" />;
+                            }
+
+                            return (
+                              <button
+                                key={lesson.id}
+                                className={`w-full p-3 rounded-lg border transition-all text-left ${
+                                  isCurrent
+                                    ? "bg-primary/10 border-primary shadow-sm"
+                                    : "hover:bg-muted/50 border-transparent"
+                                } ${isLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                                onClick={() => !isLocked && onLessonChange(globalIndex)}
+                                disabled={isLocked}
+                                id={isFirstLesson ? "first-lesson" : globalIndex === 1 ? "second-lesson-locked" : undefined}
+                              >
+                                <div className="flex items-start gap-3">
+                                  {/* Status Icon */}
+                                  <div className="flex-shrink-0 mt-0.5">
+                                    {isCompleted ? (
+                                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                    ) : isLocked ? (
+                                      <Lock className="h-5 w-5 text-muted-foreground" />
+                                    ) : (
+                                      <div className="h-5 w-5 rounded-full border-2 border-muted-foreground flex items-center justify-center">
+                                        {isCurrent && <div className="h-2 w-2 rounded-full bg-primary" />}
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Lesson Info */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start gap-2 mb-1">
+                                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                                        {lessonIndex + 1}.
+                                      </span>
+                                      <p className="text-sm font-medium line-clamp-2 flex-1">
+                                        {lesson.title}
+                                      </p>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                      <span className="flex items-center gap-1">
+                                        {contentIcon}
+                                        <span className="capitalize">
+                                          {lesson.contentType?.toLowerCase() || "Video"}
+                                        </span>
+                                      </span>
+                                      {lesson.estimatedDuration && (
+                                        <span className="flex items-center gap-1">
+                                          <Clock className="h-3 w-3" />
+                                          {Math.floor(lesson.estimatedDuration / 60)} phút
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
             </div>
           </ScrollArea>
         </aside>
