@@ -30,7 +30,7 @@ export default function CourseOnboardingTour({
   const locale = useLocale();
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [enableVoice, setEnableVoice] = useState(false);
+  const [enableVoice, setEnableVoice] = useState(true);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // Load voices when component mounts
@@ -83,14 +83,14 @@ export default function CourseOnboardingTour({
       id: 6,
       title: t("step6.title"),
       content: t("step6.content"),
-      targetId: "notes-discussion-area",
-      position: "top",
+      targetId: "add-note-button",
+      position: "bottom",
     },
     {
       id: 7,
       title: t("step7.title"),
       content: t("step7.content"),
-      targetId: "notes-discussion-area",
+      targetId: "qa-button",
       position: "top",
     },
   ];
@@ -117,43 +117,75 @@ export default function CourseOnboardingTour({
     utterance.pitch = 1.5; // Much higher pitch for female voice
     utterance.volume = 1.0;
 
-    // Try to select a female voice - multiple strategies
+    // Try to select a female voice - multiple strategies based on locale
     const voices = window.speechSynthesis.getVoices();
     
-    // Strategy 1: Look for explicitly female Vietnamese voices
-    let selectedVoice = voices.find(
-      (voice) =>
-        voice.lang.startsWith("vi") &&
-        (voice.name.toLowerCase().includes("female") ||
-          voice.name.toLowerCase().includes("woman") ||
-          voice.name.toLowerCase().includes("nữ") ||
-          voice.name.toLowerCase().includes("linh") ||
-          voice.name.toLowerCase().includes("chi"))
-    );
+    // Get language prefix for matching
+    const langPrefix = utterance.lang.split("-")[0]; // vi, en, ja
     
-    // Strategy 2: If no Vietnamese female, use Google Vietnamese (usually female)
-    if (!selectedVoice) {
+    let selectedVoice;
+    
+    if (locale === "vi") {
+      // Vietnamese voice selection
       selectedVoice = voices.find(
         (voice) =>
           voice.lang.startsWith("vi") &&
-          voice.name.toLowerCase().includes("google")
+          (voice.name.toLowerCase().includes("female") ||
+            voice.name.toLowerCase().includes("nữ") ||
+            voice.name.toLowerCase().includes("linh") ||
+            voice.name.toLowerCase().includes("chi"))
       );
-    }
-    
-    // Strategy 3: Any Vietnamese voice
-    if (!selectedVoice) {
-      selectedVoice = voices.find((voice) => voice.lang.startsWith("vi"));
-    }
-    
-    // Strategy 4: Use any female voice from other languages as fallback
-    if (!selectedVoice) {
+      
+      if (!selectedVoice) {
+        selectedVoice = voices.find(
+          (voice) =>
+            voice.lang.startsWith("vi") &&
+            voice.name.toLowerCase().includes("google")
+        );
+      }
+      
+      if (!selectedVoice) {
+        selectedVoice = voices.find((voice) => voice.lang.startsWith("vi"));
+      }
+    } else if (locale === "en") {
+      // English voice selection - prefer natural female voices
       selectedVoice = voices.find(
         (voice) =>
-          voice.name.toLowerCase().includes("female") ||
-          voice.name.toLowerCase().includes("woman") ||
-          voice.name.toLowerCase().includes("samantha") ||
-          voice.name.toLowerCase().includes("fiona") ||
-          voice.name.toLowerCase().includes("zira")
+          voice.lang.startsWith("en") &&
+          (voice.name.toLowerCase().includes("female") ||
+            voice.name.toLowerCase().includes("samantha") ||
+            voice.name.toLowerCase().includes("karen") ||
+            voice.name.toLowerCase().includes("victoria") ||
+            voice.name.toLowerCase().includes("zira"))
+      );
+      
+      if (!selectedVoice) {
+        selectedVoice = voices.find(
+          (voice) =>
+            voice.lang.startsWith("en-US") ||
+            voice.lang.startsWith("en-GB")
+        );
+      }
+    } else if (locale === "ja") {
+      // Japanese voice selection - prefer female voices
+      selectedVoice = voices.find(
+        (voice) =>
+          voice.lang.startsWith("ja") &&
+          (voice.name.toLowerCase().includes("female") ||
+            voice.name.toLowerCase().includes("kyoko") ||
+            voice.name.toLowerCase().includes("haruka") ||
+            voice.name.toLowerCase().includes("misaki"))
+      );
+      
+      if (!selectedVoice) {
+        selectedVoice = voices.find((voice) => voice.lang.startsWith("ja"));
+      }
+    }
+    
+    // Fallback: any voice matching the language
+    if (!selectedVoice) {
+      selectedVoice = voices.find((voice) => 
+        voice.lang.startsWith(langPrefix)
       );
     }
     

@@ -1,23 +1,46 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Lock, CheckCircle2 } from "lucide-react";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Lock, 
+  CheckCircle2, 
+  MessageSquare,
+  BookOpen,
+  FileText,
+  Download,
+  ExternalLink,
+  Code,
+  Image as ImageIcon,
+  X
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useTranslations } from "next-intl";
 
 interface CourseLearningLayoutProps {
   course: any;
   currentLessonIndex: number;
   onLessonChange: (index: number) => void;
+  onStartTour?: () => void;
 }
 
 export default function CourseLearningLayout({
   course,
   currentLessonIndex,
   onLessonChange,
+  onStartTour,
 }: CourseLearningLayoutProps) {
+  const t = useTranslations("ManageCourse");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [showContentDescription, setShowContentDescription] = useState(true);
+  
   const courseSummary = course.summary;
   const chapters = course.chapters || [];
 
@@ -36,11 +59,27 @@ export default function CourseLearningLayout({
   });
 
   const currentLesson = allLessons[currentLessonIndex];
+  const completedLessons = 0; // TODO: Get from progress API
+  const progressPercentage = allLessons.length > 0 
+    ? Math.round((completedLessons / allLessons.length) * 100) 
+    : 0;
+
+  // Get asset icon
+  const getAssetIcon = (type: string) => {
+    switch (type) {
+      case "VIDEO": return <FileText className="h-4 w-4" />;
+      case "DOCUMENT": return <Download className="h-4 w-4" />;
+      case "LINK": return <ExternalLink className="h-4 w-4" />;
+      case "IMAGE": return <ImageIcon className="h-4 w-4" />;
+      case "CODE": return <Code className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
+    }
+  };
 
   return (
     <div className="flex h-screen bg-background">
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col" id="learning-content-area">
+      <div className="flex-1 flex flex-col overflow-hidden" id="learning-content-area">
         {/* Header */}
         <header className="border-b bg-card px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -56,83 +95,156 @@ export default function CourseLearningLayout({
                 {courseSummary.title}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {currentLessonIndex + 1}/{allLessons.length} bài học
+                {completedLessons}/{allLessons.length} bài hoàn thành • {progressPercentage}%
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          >
-            {isSidebarOpen ? "Ẩn" : "Hiện"} danh sách
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onStartTour?.()}
+            >
+              <BookOpen className="h-4 w-4 mr-1" />
+              Hướng dẫn
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              {isSidebarOpen ? "Ẩn" : "Hiện"} danh sách
+            </Button>
+          </div>
         </header>
 
-        {/* Video/Content Player */}
-        <div className="bg-black flex items-center justify-center aspect-video max-h-[500px]" id="video-player-area">
-          {currentLesson?.videoUrl ? (
-            <video
-              src={currentLesson.videoUrl}
-              controls
-              className="w-full h-full"
-              controlsList="nodownload"
-            >
-              Your browser does not support video.
-            </video>
-          ) : (
-            <div className="text-white text-center">
-              <p className="text-xl mb-2">{currentLesson?.title}</p>
-              <p className="text-muted-foreground">
-                {currentLesson?.description || "Nội dung bài học"}
-              </p>
+        {/* Scrollable Content Area */}
+        <ScrollArea className="flex-1">
+          {/* Video/Content Player */}
+          <div className="bg-black flex items-center justify-center w-full max-h-[600px]" id="video-player-area">
+            {currentLesson?.videoUrl ? (
+              <video
+                src={currentLesson.videoUrl}
+                controls
+                className="w-full h-full max-h-[600px] object-contain"
+                controlsList="nodownload"
+              >
+                Your browser does not support video.
+              </video>
+            ) : (
+              <div className="text-white text-center p-8">
+                <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p className="text-xl mb-2">{currentLesson?.title}</p>
+                <p className="text-muted-foreground">
+                  {currentLesson?.description || "Nội dung bài học"}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Lesson Title & Info */}
+          <div className="p-6 border-b">
+            <div className="flex items-start justify-between gap-4 mb-2">
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold mb-2">{currentLesson?.title}</h1>
+                <p className="text-sm text-muted-foreground">
+                  Cập nhật {currentLesson?.created ? new Date(currentLesson.created).toLocaleDateString('vi-VN') : 'N/A'}
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="flex-shrink-0" id="add-note-button">
+                <FileText className="h-4 w-4 mr-2" />
+                Thêm ghi chú tại 01:46
+              </Button>
+            </div>
+            
+            {/* Content Description Collapsible */}
+            {currentLesson?.content && (
+              <div className="bg-muted/30 rounded-lg p-4">
+                <button 
+                  onClick={() => setShowContentDescription(!showContentDescription)}
+                  className="flex items-center justify-between w-full text-left font-medium mb-2"
+                >
+                  <span>Nội dung bài học</span>
+                  <ChevronRight className={`h-4 w-4 transition-transform ${showContentDescription ? 'rotate-90' : ''}`} />
+                </button>
+                {showContentDescription && (  
+                  <div 
+                    className="text-sm text-muted-foreground prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: currentLesson.content }}
+                  />)
+                }
+              </div>
+            )}
+          </div>
+
+          {/* Lesson Assets/Resources */}
+          {currentLesson?.assets && currentLesson.assets.length > 0 && (
+            <div className="p-6 border-b">
+              <h3 className="font-semibold mb-3">Tài liệu & Link</h3>
+              <div className="space-y-2">
+                {currentLesson.assets.map((asset: any) => (
+                  <a
+                    key={asset.id}
+                    href={asset.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted transition-colors"
+                  >
+                    <div className="p-2 rounded bg-primary/10">
+                      {getAssetIcon(asset.assetType)}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{asset.title}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{asset.assetType}</p>
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  </a>
+                ))}
+              </div>
             </div>
           )}
-        </div>
 
-        {/* Lesson Info & Actions */}
-        <div className="border-t bg-card p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold text-lg">{currentLesson?.title}</h2>
-              <p className="text-sm text-muted-foreground">
-                {currentLesson?.chapterTitle}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                disabled={currentLessonIndex === 0}
-                onClick={() => onLessonChange(currentLessonIndex - 1)}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Bài trước
-              </Button>
-              <Button
-                disabled={currentLessonIndex >= allLessons.length - 1}
-                onClick={() => onLessonChange(currentLessonIndex + 1)}
-              >
-                Bài tiếp
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
+          {/* Spacing for sticky navigation */}
+          <div className="h-32"></div>
+        </ScrollArea>
+        
+        {/* Hỏi đáp Button - Floating above navigation */}
+        <div className="sticky bottom-20 left-0 right-0 bg-transparent pointer-events-none">  
+          <div className="px-6 py-3 flex justify-end pointer-events-auto">
+            <Button 
+              onClick={() => setShowCommentModal(true)}
+              variant="default"
+              size="icon"
+              className="h-12 w-12 rounded-full bg-orange-500 hover:bg-orange-600 shadow-lg"
+              id="qa-button"
+            >
+              <MessageSquare className="h-6 w-6" />
+            </Button>
           </div>
         </div>
 
-        {/* Notes & Discussion Tabs */}
-        <div className="border-t bg-card" id="notes-discussion-area">
-          <div className="flex gap-4 px-4 py-2 border-b">
-            <button className="px-4 py-2 text-sm font-medium border-b-2 border-primary">
-              Thảo luận
-            </button>
-            <button className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-              Ghi chú
-            </button>
-          </div>
-          <div className="p-4 h-48 overflow-y-auto">
-            <p className="text-sm text-muted-foreground text-center">
-              Chưa có thảo luận nào. Hãy là người đầu tiên!
-            </p>
+        {/* Navigation Buttons - Sticky at bottom */}
+        <div className="sticky bottom-0 left-0 right-0 bg-background">
+          {/* Hỏi đáp Button - Above navigation */}
+ 
+          {/* Navigation Buttons */}
+          <div className="px-6 py-4 flex items-center justify-between border-t">
+            <Button
+              variant="outline"
+              disabled={currentLessonIndex === 0}
+              onClick={() => onLessonChange(currentLessonIndex - 1)}
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              BÀI TRƯỚC
+            </Button>
+            <Button
+              disabled={currentLessonIndex >= allLessons.length - 1}
+              onClick={() => onLessonChange(currentLessonIndex + 1)}
+              className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+            >
+              BÀI TIẾP THEO
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
           </div>
         </div>
       </div>
@@ -140,14 +252,42 @@ export default function CourseLearningLayout({
       {/* Sidebar - Lesson List */}
       {isSidebarOpen && (
         <aside
-          className="w-96 border-l bg-card flex flex-col"
+          className="w-[45%] min-w-[320px] max-w-[400px] border-l bg-card flex flex-col"
           id="lesson-sidebar"
         >
-          <div className="p-4 border-b">
-            <h3 className="font-semibold">Nội dung khóa học</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              {course.completedLessons || 0}/{allLessons.length} bài hoàn thành
-            </p>
+          {/* Progress Header */}
+          <div className="p-4 border-b space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Nội dung khóa học</h3>
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-1 hover:bg-muted rounded"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            
+            {/* Progress Bar */}
+            <div>
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-muted-foreground">
+                  {completedLessons}/{allLessons.length} bài học
+                </span>
+                <span className="font-bold text-primary">{progressPercentage}%</span>
+              </div>
+              <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-500"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {completedLessons === allLessons.length 
+                  ? "🎉 Đã hoàn thành khóa học!" 
+                  : `Còn ${allLessons.length - completedLessons} bài để hoàn thành`
+                }
+              </p>
+            </div>
           </div>
 
           <ScrollArea className="flex-1">
@@ -209,6 +349,88 @@ export default function CourseLearningLayout({
           </ScrollArea>
         </aside>
       )}
+
+      {/* Comment/Discussion Modal */}
+      <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Hỏi đáp - {currentLesson?.title}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Comment Input */}
+            <div className="space-y-2">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                  U
+                </div>
+                <div className="flex-1">
+                  <Textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Nhập bình luận của bạn..."
+                    className="min-h-[100px] resize-none"
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-xs text-muted-foreground">
+                      Nếu thấy bài học hay thì câu bình luận spam, các bạn báo report admin 1 dẫ nhé!
+                    </p>
+                    <Button
+                      onClick={() => {
+                        // TODO: Submit comment
+                        setCommentText("");
+                        setShowCommentModal(false);
+                      }}
+                      disabled={!commentText.trim()}
+                    >
+                      Gửi bình luận
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Comments List */}
+            <ScrollArea className="h-[400px] pr-4">
+              <div className="space-y-4">
+                <p className="text-sm text-center text-muted-foreground py-8">
+                  163 bình luận
+                </p>
+                
+                {/* Sample Comments */}
+                <div className="space-y-4">
+                  <div className="flex gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                      C
+                    </div>
+                    <div className="flex-1">
+                      <div className="bg-muted rounded-lg p-3">
+                        <p className="font-semibold text-sm mb-1">Ca Coon • 3 tháng trước</p>
+                        <div className="text-sm">
+                          <code className="bg-background px-2 py-1 rounded">
+                            &lt;!DOCTYPE html&gt;
+                          </code>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 mt-2">
+                        <button className="text-xs text-muted-foreground hover:text-foreground">
+                          Thích
+                        </button>
+                        <button className="text-xs text-muted-foreground hover:text-foreground">
+                          Phản hồi
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

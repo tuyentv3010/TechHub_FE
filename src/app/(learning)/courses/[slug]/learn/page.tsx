@@ -50,6 +50,10 @@ export default function CourseLearnPage() {
     }
   };
 
+  const handleStartTour = () => {
+    setShowTour(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -83,6 +87,7 @@ export default function CourseLearnPage() {
         course={course}
         currentLessonIndex={currentLessonIndex}
         onLessonChange={setCurrentLessonIndex}
+        onStartTour={handleStartTour}
       />
       
       {showTour && user && (
