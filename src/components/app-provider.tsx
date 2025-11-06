@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useContext, useState, useEffect } from "react";
-import { RoleType, Permission, DecodedToken } from "@/types/jwt.types";
+import { RoleType, Permission, TokenPayload } from "@/types/jwt.types";
 import { getAccessTokenFromLocalStorage, decodeToken } from "@/lib/utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -36,7 +36,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (token) {
       try {
         setIsAuth(true);
-        const decoded = decodeToken(token) as DecodedToken;
+        const decoded = decodeToken(token);
         setRole(decoded?.role || null);
         // Permissions are fetched separately after login
       } catch (error) {

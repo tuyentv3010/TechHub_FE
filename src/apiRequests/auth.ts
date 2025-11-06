@@ -12,32 +12,32 @@ import {
 
 const authApiRequest = {
   // Client-side methods
-  // Register API - POST /api/proxy/auth/register
+  // Register API - POST /app/api/proxy/auth/register
   register: (body: RegisterBodyType) =>
-    http.post<RegisterResType>("/api/proxy/auth/register", body),
+    http.post<RegisterResType>("/app/api/proxy/auth/register", body),
 
-  // Login API - POST /api/proxy/auth/login
+  // Login API - POST /app/api/proxy/auth/login
   login: (body: LoginBodyType) =>
-    http.post<LoginResType>("/api/proxy/auth/login", body),
+    http.post<LoginResType>("/app/api/proxy/auth/login", body),
 
-  // Forgot Password API - POST /api/proxy/users/forgot-password
+  // Forgot Password API - POST /app/api/proxy/users/forgot-password
   forgotPassword: (body: ForgotPasswordBodyType) =>
-    http.post<ForgotPasswordResType>("/api/proxy/users/forgot-password", body),
+    http.post<ForgotPasswordResType>("/app/api/proxy/users/forgot-password", body),
 
-  // Reset Password API - POST /api/proxy/users/reset-password/:email
+  // Reset Password API - POST /app/api/proxy/users/reset-password/:email
   resetPassword: (email: string, body: ResetPasswordBodyType) =>
-    http.post<ResetPasswordResType>(`/api/proxy/users/reset-password/${email}`, body),
+    http.post<ResetPasswordResType>(`/app/api/proxy/users/reset-password/${email}`, body),
 
   // Set token to cookie (for OAuth flow)
   setTokenToCookie: (body: { accessToken: string; refreshToken: string }) =>
-    http.post("/api/auth/token", body, {
+    http.post("/app/api/auth/token", body, {
       baseUrl: "",
     }),
 
   // Logout
   logout: () =>
     http.post(
-      "/api/auth/logout",
+      "/app/api/auth/logout",
       {},
       {
         baseUrl: "",
@@ -46,16 +46,19 @@ const authApiRequest = {
 
   // Server-side methods (for Next.js API routes)
   sRegister: (body: RegisterBodyType) =>
-    http.post<RegisterResType>("/api/proxy/auth/register", body),
+    http.post<RegisterResType>("/app/api/proxy/auth/register", body),
 
   sLogin: (body: LoginBodyType) =>
-    http.post<LoginResType>("/api/proxy/auth/login", body),
+    http.post<LoginResType>("/app/api/proxy/auth/login", body),
 
   sLogout: (body: {
     accessToken: string;
     refreshToken: string;
   }) =>
-    http.post("/api/proxy/auth/logout", body),
+    http.post("/app/api/proxy/auth/logout", body),
+
+  sRefreshToken: (body: { refreshToken: string }) =>
+    http.post<LoginResType>("/auth/refresh-token", body),
 };
 
 export default authApiRequest;

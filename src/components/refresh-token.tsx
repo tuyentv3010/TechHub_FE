@@ -23,12 +23,12 @@ export default function RefreshToken() {
   useEffect(() => {
     console.log(pathName);
     if (UNAUTHENTICATED_PATH.includes(pathName)) return;
-    let interval: any = null;
+    // const interval: ReturnType<typeof setInterval> | null = null;
     //Phai goi lan dau tien vi interval se chay sau thoi gian time out
     const onRefreshToken = (force?: boolean) => {
       checkAndRefreshToken({
         onError: () => {
-          clearInterval(interval);
+          // clearInterval(interval);
           router.push("/login");
         },
         force,

@@ -58,10 +58,7 @@ export default function Logout() {
 
     const performLogout = async () => {
       try {
-        await logoutMutation.mutateAsync({
-          refreshToken: "", // Refresh token is handled by cookie
-          accessToken: getAccessTokenFromLocalStorage() || "",
-        });
+        await logoutMutation.mutateAsync();
         localStorage.removeItem("accessToken");
         setIsAuth(false);
         setRole(null);

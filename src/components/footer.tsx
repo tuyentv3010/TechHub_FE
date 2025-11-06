@@ -1,10 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { getTranslations } from "next-intl/server";
+import { useTranslations } from "next-intl";
 
-export default async function Footer() {
-  const t = await getTranslations("HomePage");
-  const footerT = await getTranslations("Footer");
+export default function Footer() {
+  const t = useTranslations("HomePage");
+  const footerT = useTranslations("Footer");
 
   return (
     <footer className="bg-slate-900 text-white py-12 px-4 md:px-8">

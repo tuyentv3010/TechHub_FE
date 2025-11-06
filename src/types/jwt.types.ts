@@ -1,4 +1,4 @@
-import { Role, TokenType } from "@/constants/type";
+import { TokenType } from "@/constants/type";
 
 export type TokenTypeValue = (typeof TokenType)[keyof typeof TokenType];
 export interface TokenPayload {

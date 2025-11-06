@@ -204,7 +204,7 @@ export function NewHeader() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/settings" className="cursor-pointer">
+                  <Link href="/manage/setting" className="cursor-pointer">
                     <Settings className="mr-2 h-4 w-4" />
                     {t("settings") || "Settings"}
                   </Link>

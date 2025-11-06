@@ -1,22 +1,13 @@
 "use client";
 import { Role } from "@/constants/type";
-import { useAccountProfile } from "@/queries/useAccount";
 import {
   Home,
-  LineChart,
-  ShoppingCart,
-  Users2,
-  Salad,
-  Table,
-  Caravan,
-  TrainFront,
-  BellElectric,
-  BadgeCent,
   Newspaper,
-  LockKeyholeOpen,
-  UserRoundPen,
   UserCog,
-  TrainFrontTunnel,
+  UserRoundPen,
+  Users2,
+  FolderOpen,
+  School
 } from "lucide-react";
 
 const menuItems = [
@@ -32,14 +23,31 @@ const menuItems = [
     href: "/manage/accounts",
   },
   {
-    title: "Vai Trò",
+    title: "Vai trò",
     Icon: UserRoundPen,
     href: "/manage/roles",
   },
   {
-    title: "Quyền Hạn",
+    title: "Bài viết",
+    Icon: Newspaper,
+    href: "/manage/blogs",
+    roles: [Role.Admin, Role.Staff],
+  },
+  {
+    title: "Quản lý File",
+    Icon: FolderOpen,
+    href: "/manage/files",
+    roles: [Role.Admin, Role.Staff],
+  },
+  {
+    title: "Quyền hạn",
     href: "/manage/permissions",
     Icon: UserCog,
+  },
+  {
+    title: "Khóa Học",
+    href: "/manage/courses",
+    Icon: School,
   },
 ];
 

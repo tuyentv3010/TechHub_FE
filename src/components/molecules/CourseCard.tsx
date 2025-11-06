@@ -1,9 +1,12 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Star, BookOpen, Clock, Users } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
+import { createCourseSlug } from "@/lib/course";
 
 export interface Course {
+  id?: string;
   title: string;
   instructor: string;
   image: string;
@@ -24,8 +27,11 @@ export interface CourseCardProps {
 
 // Enhanced course card for homepage
 const CourseCard = ({ course }: CourseCardProps) => {
+  const courseSlug = course.id ? createCourseSlug(course.title, course.id) : "#";
+  
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700 relative group">
+    <Link href={`/courses/${courseSlug}`}>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700 relative group cursor-pointer">
       {/* Course Image */}
       <div className="relative h-48 overflow-hidden">
         <Image
@@ -148,6 +154,7 @@ const CourseCard = ({ course }: CourseCardProps) => {
         <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white/80 to-transparent dark:from-gray-900/80 pointer-events-none z-20"></div>
       </div>
     </div>
+    </Link>
   );
 };
 

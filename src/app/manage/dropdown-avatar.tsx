@@ -34,10 +34,7 @@ export default function DropdownAvatar() {
     }
 
     try {
-      await logoutMutation.mutateAsync({
-        refreshToken: "", 
-        accessToken: getAccessTokenFromLocalStorage() || "",
-      });
+      await logoutMutation.mutateAsync();
       localStorage.removeItem("accessToken");
       setIsAuth(false);
       setRole(null);

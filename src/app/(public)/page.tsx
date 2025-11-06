@@ -1,7 +1,7 @@
-import { getTranslations } from "next-intl/server";
-import { Metadata } from "next";
-import envConfig from "@/config";
-import { htmlToTextForDescription } from "@/lib/utils";
+"use client";
+
+import { useTranslations } from "next-intl";
+import { useGetCourseList } from "@/queries/useCourse";
 
 // Import new components
 import { HeroSection } from "@/components/organisms/HeroSection";
@@ -13,20 +13,17 @@ import { InstructorsSection } from "@/components/organisms/InstructorsSection";
 import { BlogSection } from "@/components/organisms/BlogSection";
 import { NewsletterSection } from "@/components/organisms/NewsletterSection";
 import Footer from "@/components/footer";
+import { Course } from "@/components/molecules/CourseCard";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("HomePage");
-  return {
-    title: t("hero.title"),
-    description: htmlToTextForDescription(t("hero.subtitle")),
-    alternates: {
-      canonical: envConfig.NEXT_PUBLIC_URL,
-    },
-  };
-}
-
-export default async function Home() {
-  const t = await getTranslations("HomePage");
+export default function Home() {
+  const t = useTranslations("HomePage");
+  
+  // Fetch courses from API (limit to 6 for homepage)
+  const { data: coursesData, isLoading } = useGetCourseList({
+    page: 0,
+    size: 6,
+    status: "PUBLISHED", // Only show published courses
+  });
   
   // Mock data - in real app, this would come from API
   const categories = [
@@ -40,50 +37,21 @@ export default async function Home() {
     { title: t("categories.newsAndPhotography"), icon: "📷", bgColor: "bg-orange-100" },
   ];
 
-  const mockCourses = [
-    {
-      title: "IT Statistics Data Science And Business Analysis",
-      instructor: "Samantha",
-      image: "/courses/data-science.png",
-      rating: 4.5,
-      reviews: 4500,
-      price: 50.00,
-      badge: "Digital Marketing",
-      hours: 19,
-      lectures: 120,
-      lessons: 10,
-      students: 20,
-      instructorAvatar: "/avatars/samantha.jpg"
-    },
-    {
-      title: "Advanced React Development",
-      instructor: "Jane Smith",
-      image: "/courses/react-course.png", 
-      rating: 4.8,
-      reviews: 856,
-      price: 79.99,
-      badge: "Web Development",
-      hours: 30,
-      lectures: 85,
-      lessons: 15,
-      students: 50,
-      instructorAvatar: "/avatars/jane.jpg"
-    },
-    {
-      title: "Python for Data Science",
-      instructor: "Mike Johnson",
-      image: "/courses/python-course.png",
-      rating: 4.6,
-      reviews: 2341,
-      price: 89.99,
-      badge: "Data Science",
-      hours: 35,
-      lectures: 95,
-      lessons: 12,
-      students: 100,
-      instructorAvatar: "/avatars/mike.jpg"
-    },
-  ];
+  // Transform API data - keep instructorId for fetching
+  const coursesWithInstructorIds = coursesData?.payload?.data?.map((course: any) => ({
+    id: course.id, // Add course ID for creating slug
+    title: course.title,
+    instructorId: course.instructorId, // Keep ID for fetching
+    image: course.thumbnail?.secureUrl || course.thumbnail?.url || "/courses/default.png",
+    rating: course.averageRating || 0,
+    reviews: course.ratingCount || 0,
+    price: course.discountPrice || course.price || 0,
+    badge: course.categories?.[0] || "",
+    hours: 0, // Will be calculated from lessons if needed
+    lectures: 0, // Will be calculated from lessons if needed
+    lessons: 0, // Will be calculated from chapters if needed
+    students: course.totalEnrollments || 0,
+  })) || [];
 
   const communityStats = {
     totalStudents: t("community.stats.totalStudents"),
@@ -111,11 +79,45 @@ export default async function Home() {
       />
 
       {/* Courses Section */}
-      <CoursesGridSection
-        title={t("coursesSection.title")}
-        viewAllText={t("coursesSection.viewAll")}
-        courses={mockCourses}
-      />
+      {isLoading ? (
+        <section className="py-16 bg-gray-50 dark:bg-gray-800">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-center mb-12">
+              <div className="h-10 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden">
+                  <div className="h-48 bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                  <div className="p-6 space-y-4">
+                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse" />
+                    <div className="flex gap-2">
+                      <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                      <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : coursesWithInstructorIds.length > 0 ? (
+        <CoursesGridSection
+          title={t("coursesSection.title")}
+          viewAllText={t("coursesSection.viewAll")}
+          coursesWithInstructorIds={coursesWithInstructorIds}
+        />
+      ) : (
+        <section className="py-16 bg-gray-50 dark:bg-gray-800">
+          <div className="container mx-auto px-4">
+            <div className="text-center">
+              <p className="text-gray-600 dark:text-gray-400">No courses available at the moment.</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Skills Section */}
       <SkillsSection

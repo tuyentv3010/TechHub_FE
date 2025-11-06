@@ -4,10 +4,10 @@ import { ResetPasswordBodyType } from "@/schemaValidations/auth.schema";
 
 export async function POST(
   request: Request,
-  { params }: { params: { email: string } }
+  { params }: { params: Promise<{ email: string }> }
 ) {
   try {
-    const { email } = params;
+    const { email } = await params;
     const body = (await request.json()) as ResetPasswordBodyType;
 
     // Forward the request to the backend API
