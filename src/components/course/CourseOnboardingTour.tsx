@@ -5,6 +5,7 @@ import { X, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useTranslations, useLocale } from "next-intl";
 
 interface TourStep {
   id: number;
@@ -25,58 +26,70 @@ export default function CourseOnboardingTour({
   onComplete,
   onSkip,
 }: CourseOnboardingTourProps) {
+  const t = useTranslations("CourseOnboarding");
+  const locale = useLocale();
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [enableVoice, setEnableVoice] = useState(false);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
 
+  // Load voices when component mounts
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+  }, []);
+
   const tourSteps: TourStep[] = [
     {
       id: 1,
-      title: "Chào cậu! 👋",
-      content: `Chào cậu! Mình là Miu - hướng dẫn viên tại F8, mình sẽ đưa cậu đi thăm quan và giới thiệu cho cậu hiểu rõ hơn về F8 nhé. Đi thôi!`,
+      title: t("step1.title"),
+      content: t("step1.content"),
       targetId: "learning-content-area",
       position: "right",
     },
     {
       id: 2,
-      title: "Khu vực học tập 📺",
-      content: `Đây là khu vực trung tâm của màn hình này, toàn bộ nội dung các bài học như là video, hình ảnh, văn bản sẽ được hiển thị ở đây ${userName} nhé ^^`,
+      title: t("step2.title"),
+      content: t("step2.content", { userName }),
       targetId: "video-player-area",
       position: "bottom",
     },
     {
       id: 3,
-      title: "Danh sách bài học 📚",
-      content: `Tiếp theo là khu vực quan trọng không kém, đây là danh sách các bài học tại khóa này. Cậu sẽ rất thường xuyên tương tác tại đây để chuyển bài học và làm bài tập đấy >_<`,
+      title: t("step3.title"),
+      content: t("step3.content"),
       targetId: "lesson-sidebar",
       position: "left",
     },
     {
       id: 4,
-      title: "Bài học đầu tiên ✅",
-      content: `Đây là bài học đầu tiên dành cho cậu, khi học xong bài học này Miu sẽ đánh "Tích xanh" bên cạnh để đánh dấu cậu đã hoàn thành bài học nhé!`,
+      title: t("step4.title"),
+      content: t("step4.content"),
       targetId: "first-lesson",
       position: "left",
     },
     {
       id: 5,
-      title: "Bài học bị khóa 🔒",
-      content: `Đây là bài học số 2, theo mặc định các bài học tại F8 đều bị khóa. Khi cậu hoàn thành bài học phía trước thì bài sau sẽ tự động được mở. Mà lúc học cậu đừng có tua video, vì sẽ không được tính là hoàn thành bài học đâu đấy nhé ^^`,
+      title: t("step5.title"),
+      content: t("step5.content"),
       targetId: "second-lesson-locked",
       position: "left",
     },
     {
       id: 6,
-      title: "Ghi chú & Thảo luận 📝",
-      content: `Tại F8 có một chức năng rất đặc biệt, đó là chức năng "Tạo ghi chú". Khi học sẽ có nhiều lúc cậu muốn ghi chép lại đó, tại F8 cậu sẽ không cần tốn giấy mực để làm việc này đâu. Thả tim nào <3`,
+      title: t("step6.title"),
+      content: t("step6.content"),
       targetId: "notes-discussion-area",
       position: "top",
     },
     {
       id: 7,
-      title: "Khu vực hỏi đáp 💬",
-      content: `Và đây là khu vực dành cho việc hỏi đáp, trao đổi trong mỗi bài học. Nếu có bài học nào hay thì cậu bình luận một lời động viên vào đây cũng được nhé. Miu sẽ rất vui và cảm thấy biết ơn đấy <3`,
+      title: t("step7.title"),
+      content: t("step7.content"),
       targetId: "notes-discussion-area",
       position: "top",
     },
@@ -92,10 +105,64 @@ export default function CourseOnboardingTour({
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "vi-VN";
-    utterance.rate = 1.0;
-    utterance.pitch = 1.2;
+    
+    // Set language based on locale
+    const langMap: Record<string, string> = {
+      vi: "vi-VN",
+      en: "en-US",
+      ja: "ja-JP",
+    };
+    utterance.lang = langMap[locale] || "vi-VN";
+    utterance.rate = 0.9;
+    utterance.pitch = 1.5; // Much higher pitch for female voice
     utterance.volume = 1.0;
+
+    // Try to select a female voice - multiple strategies
+    const voices = window.speechSynthesis.getVoices();
+    
+    // Strategy 1: Look for explicitly female Vietnamese voices
+    let selectedVoice = voices.find(
+      (voice) =>
+        voice.lang.startsWith("vi") &&
+        (voice.name.toLowerCase().includes("female") ||
+          voice.name.toLowerCase().includes("woman") ||
+          voice.name.toLowerCase().includes("nữ") ||
+          voice.name.toLowerCase().includes("linh") ||
+          voice.name.toLowerCase().includes("chi"))
+    );
+    
+    // Strategy 2: If no Vietnamese female, use Google Vietnamese (usually female)
+    if (!selectedVoice) {
+      selectedVoice = voices.find(
+        (voice) =>
+          voice.lang.startsWith("vi") &&
+          voice.name.toLowerCase().includes("google")
+      );
+    }
+    
+    // Strategy 3: Any Vietnamese voice
+    if (!selectedVoice) {
+      selectedVoice = voices.find((voice) => voice.lang.startsWith("vi"));
+    }
+    
+    // Strategy 4: Use any female voice from other languages as fallback
+    if (!selectedVoice) {
+      selectedVoice = voices.find(
+        (voice) =>
+          voice.name.toLowerCase().includes("female") ||
+          voice.name.toLowerCase().includes("woman") ||
+          voice.name.toLowerCase().includes("samantha") ||
+          voice.name.toLowerCase().includes("fiona") ||
+          voice.name.toLowerCase().includes("zira")
+      );
+    }
+    
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      console.log("Selected voice:", selectedVoice.name, selectedVoice.lang);
+    } else {
+      console.log("No suitable voice found, using default");
+    }
 
     utterance.onstart = () => setIsPlaying(true);
     utterance.onend = () => setIsPlaying(false);
@@ -145,11 +212,16 @@ export default function CourseOnboardingTour({
     onSkip();
   };
 
-  const getTooltipPosition = () => {
+  const getTargetRect = () => {
     const target = document.getElementById(currentTourStep.targetId);
-    if (!target) return {};
+    if (!target) return null;
+    return target.getBoundingClientRect();
+  };
 
-    const rect = target.getBoundingClientRect();
+  const getTooltipPosition = () => {
+    const rect = getTargetRect();
+    if (!rect) return {};
+
     const position = currentTourStep.position;
 
     switch (position) {
@@ -182,18 +254,55 @@ export default function CourseOnboardingTour({
     }
   };
 
+  const getHighlightStyle = () => {
+    const rect = getTargetRect();
+    if (!rect) return {};
+
+    return {
+      top: rect.top - 8,
+      left: rect.left - 8,
+      width: rect.width + 16,
+      height: rect.height + 16,
+      borderRadius: "8px",
+    };
+  };
+
   return (
     <>
-      {/* Overlay */}
-      <div className="fixed inset-0 bg-black/60 z-40" />
+      {/* Overlay with cut-out for highlighted element */}
+      <div className="fixed inset-0 z-40 pointer-events-none">
+        <svg width="100%" height="100%" className="absolute inset-0">
+          <defs>
+            <mask id="spotlight-mask">
+              <rect width="100%" height="100%" fill="white" />
+              {getTargetRect() && (
+                <rect
+                  x={getTargetRect()!.left - 8}
+                  y={getTargetRect()!.top - 8}
+                  width={getTargetRect()!.width + 16}
+                  height={getTargetRect()!.height + 16}
+                  rx="8"
+                  fill="black"
+                />
+              )}
+            </mask>
+          </defs>
+          <rect
+            width="100%"
+            height="100%"
+            fill="rgba(0, 0, 0, 0.75)"
+            mask="url(#spotlight-mask)"
+          />
+        </svg>
+      </div>
 
-      {/* Highlight target */}
-      <div
-        className="fixed z-50 pointer-events-none"
-        style={{
-          boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.6)",
-        }}
-      />
+      {/* Highlight border with glow effect */}
+      {getTargetRect() && (
+        <div
+          className="fixed z-50 pointer-events-none border-4 border-white shadow-[0_0_20px_rgba(255,255,255,0.8)] animate-pulse"
+          style={getHighlightStyle()}
+        />
+      )}
 
       {/* Tour Card */}
       <Card
@@ -209,7 +318,7 @@ export default function CourseOnboardingTour({
               <div>
                 <h3 className="font-bold text-lg">{currentTourStep.title}</h3>
                 <p className="text-xs text-muted-foreground">
-                  Bước {currentStep + 1}/{tourSteps.length}
+                  {t("stepOf", { current: currentStep + 1, total: tourSteps.length })}
                 </p>
               </div>
             </div>
@@ -244,7 +353,7 @@ export default function CourseOnboardingTour({
             htmlFor="enable-voice"
             className="text-sm font-medium cursor-pointer flex-1"
           >
-            Nghe giọng Miu &gt;_&lt;
+            {t("enableVoice")}
           </label>
           {enableVoice && (
             <Button
@@ -269,7 +378,7 @@ export default function CourseOnboardingTour({
             onClick={handlePrevious}
             disabled={currentStep === 0}
           >
-            Quay lại
+            {t("previous")}
           </Button>
 
           <div className="flex gap-1">
@@ -288,7 +397,7 @@ export default function CourseOnboardingTour({
             onClick={handleNext}
             className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
           >
-            {currentStep === tourSteps.length - 1 ? "Đi tiếp" : "Bắt đầu"}
+            {currentStep === tourSteps.length - 1 ? t("finish") : t("next")}
           </Button>
         </div>
       </Card>

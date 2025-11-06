@@ -648,5 +648,42 @@
     "DocumentAssetHint": "Upload document or enter URL",
     "LinkAssetHint": "Enter external link URL",
     "CodeAssetHint": "Enter code repository or file URL"
+  },
+  "CourseOnboarding": {
+    "step1": {
+      "title": "Hello! 👋",
+      "content": "Hi there! I'm Miu - your guide at TechHub. I'll take you on a tour and help you understand TechHub better. Let's go!"
+    },
+    "step2": {
+      "title": "Learning Area 📺",
+      "content": "This is the central area of the screen, all lesson content like videos, images, and text will be displayed here {userName} ^^"
+    },
+    "step3": {
+      "title": "Lesson List 📚",
+      "content": "Next is an equally important area, this is the list of lessons in this course. You'll interact here frequently to switch lessons and do exercises >_<"
+    },
+    "step4": {
+      "title": "First Lesson ✅",
+      "content": "This is your first lesson, when you complete this lesson I'll mark it with a \"Green Checkmark\" to indicate you've finished it!"
+    },
+    "step5": {
+      "title": "Locked Lesson 🔒",
+      "content": "This is lesson 2, by default all lessons at TechHub are locked. When you complete the previous lesson, the next one will automatically unlock. Don't skip the video during learning, or it won't count as completed ^^"
+    },
+    "step6": {
+      "title": "Notes & Discussion 📝",
+      "content": "TechHub has a very special feature, which is the \"Create Note\" function. When studying there will be times you want to take notes, at TechHub you won't need paper and ink for this. Give it a heart <3"
+    },
+    "step7": {
+      "title": "Q&A Area 💬",
+      "content": "And this is the area for Q&A and discussion in each lesson. If you find a lesson interesting, feel free to leave a word of encouragement here. I'll be very happy and grateful <3"
+    },
+    "enableVoice": "Listen to Miu's voice >_<",
+    "skipTour": "Skip tour",
+    "previous": "Previous",
+    "next": "Next",
+    "finish": "Finish",
+    "start": "Start",
+    "stepOf": "Step {current}/{total}"
   }
 }

@@ -645,5 +645,42 @@
     "DocumentAssetHint": "Tải lên tài liệu hoặc nhập URL",
     "LinkAssetHint": "Nhập URL liên kết bên ngoài",
     "CodeAssetHint": "Nhập URL kho mã nguồn hoặc tệp"
+  },
+  "CourseOnboarding": {
+    "step1": {
+      "title": "Chào cậu! 👋",
+      "content": "Chào cậu! Mình là Miu - hướng dẫn viên tại TechHub, mình sẽ đưa cậu đi thăm quan và giới thiệu cho cậu hiểu rõ hơn về TechHub nhé. Đi thôi!"
+    },
+    "step2": {
+      "title": "Khu vực học tập 📺",
+      "content": "Đây là khu vực trung tâm của màn hình này, toàn bộ nội dung các bài học như là video, hình ảnh, văn bản sẽ được hiển thị ở đây {userName} nhé ^^"
+    },
+    "step3": {
+      "title": "Danh sách bài học 📚",
+      "content": "Tiếp theo là khu vực quan trọng không kém, đây là danh sách các bài học tại khóa này. Cậu sẽ rất thường xuyên tương tác tại đây để chuyển bài học và làm bài tập đấy >_<"
+    },
+    "step4": {
+      "title": "Bài học đầu tiên ✅",
+      "content": "Đây là bài học đầu tiên dành cho cậu, khi học xong bài học này Miu sẽ đánh \"Tích xanh\" bên cạnh để đánh dấu cậu đã hoàn thành bài học nhé!"
+    },
+    "step5": {
+      "title": "Bài học bị khóa 🔒",
+      "content": "Đây là bài học số 2, theo mặc định các bài học tại TechHub đều bị khóa. Khi cậu hoàn thành bài học phía trước thì bài sau sẽ tự động được mở. Mà lúc học cậu đừng có tua video, vì sẽ không được tính là hoàn thành bài học đâu đấy nhé ^^"
+    },
+    "step6": {
+      "title": "Ghi chú & Thảo luận 📝",
+      "content": "Tại TechHub có một chức năng rất đặc biệt, đó là chức năng \"Tạo ghi chú\". Khi học sẽ có nhiều lúc cậu muốn ghi chép lại đó, tại TechHub cậu sẽ không cần tốn giấy mực để làm việc này đâu. Thả tim nào <3"
+    },
+    "step7": {
+      "title": "Khu vực hỏi đáp 💬",
+      "content": "Và đây là khu vực dành cho việc hỏi đáp, trao đổi trong mỗi bài học. Nếu có bài học nào hay thì cậu bình luận một lời động viên vào đây cũng được nhé. Miu sẽ rất vui và cảm thấy biết ơn đấy <3"
+    },
+    "enableVoice": "Nghe giọng Miu >_<",
+    "skipTour": "Bỏ qua",
+    "previous": "Quay lại",
+    "next": "Tiếp theo",
+    "finish": "Hoàn thành",
+    "start": "Bắt đầu",
+    "stepOf": "Bước {current}/{total}"
   }
 }
