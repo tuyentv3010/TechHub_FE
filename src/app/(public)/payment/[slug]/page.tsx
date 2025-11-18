@@ -25,6 +25,7 @@ import {
   formatDuration,
 } from "@/lib/course";
 import { useToast } from "@/hooks/use-toast";
+import { useCreateVNPayPayment, useCreatePayPalPayment } from "@/queries/usePayment";
 
 type PaymentMethod = "vnpay" | "paypal" | null;
 
@@ -39,6 +40,8 @@ export default function PaymentPage() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { data: courseResponse, isLoading, error } = useGetCourseById(courseId);
+  const createVNPayPayment = useCreateVNPayPayment();
+  const createPayPalPayment = useCreatePayPalPayment();
 
   const course = courseResponse?.payload?.data;
   const courseSummary = course?.summary;
@@ -52,28 +55,108 @@ export default function PaymentPage() {
       return;
     }
 
+    if (!courseSummary?.price) {
+      toast({
+        title: "Không thể xác định giá khóa học",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      // TODO: Gọi API thanh toán tương ứng với method được chọn
-      // Ví dụ: await processPayment(courseId, selectedMethod, finalPrice);
+      // Lưu thông tin khóa học vào localStorage để dùng sau khi thanh toán
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pendingPaymentCourse", JSON.stringify({
+          courseId: courseId,
+          slug: slug,
+          title: courseSummary.title,
+          timestamp: Date.now()
+        }));
+      }
 
-      toast({
-        title: "Đang xử lý thanh toán...",
-        description: `Chuyển hướng đến ${selectedMethod === "vnpay" ? "VNPay" : "PayPal"}`,
-      });
+      if (selectedMethod === "vnpay") {
+        // Tính giá cuối cùng (có giảm giá thì lấy giá giảm)
+        const finalPrice = courseSummary.discountPrice || courseSummary.price;
 
-      // Simulate payment processing
-      setTimeout(() => {
-        // Redirect to payment gateway or success page
         toast({
-          title: "Thanh toán thành công!",
-          description: "Bạn đã đăng ký khóa học thành công.",
+          title: "Đang tạo liên kết thanh toán...",
+          description: "Vui lòng đợi trong giây lát",
         });
-        router.push(`/courses/${slug}/learn`);
-      }, 2000);
+
+        // Gọi API để tạo payment URL
+        const response = await createVNPayPayment.mutateAsync({
+          amount: finalPrice,
+          bankCode: "NCB", // Mã ngân hàng mặc định, có thể để người dùng chọn
+        });
+
+        if (response.payload?.data?.paymentUrl) {
+          // Chuyển hướng đến trang thanh toán VNPay
+          window.location.href = response.payload.data.paymentUrl;
+        } else {
+          throw new Error("Không nhận được URL thanh toán");
+        }
+      } else if (selectedMethod === "paypal") {
+        // Lấy giá cuối cùng (đã là USD từ backend)
+        const finalPrice = courseSummary.discountPrice || courseSummary.price;
+
+        // Debug log để kiểm tra giá
+        console.log("💰 PayPal Payment Debug:", {
+          originalPrice: courseSummary.price,
+          discountPrice: courseSummary.discountPrice,
+          finalPrice: finalPrice,
+          courseSummary: courseSummary
+        });
+
+        if (!finalPrice || finalPrice === 0) {
+          toast({
+            title: "Lỗi giá khóa học",
+            description: "Không thể xác định giá khóa học. Vui lòng thử lại.",
+            variant: "destructive",
+          });
+          setIsProcessing(false);
+          return;
+        }
+
+        // Backend đã lưu giá bằng USD, không cần chuyển đổi
+        const priceInUSD = finalPrice.toFixed(2);
+
+        console.log("💵 PayPal Payment - Price is already in USD:", {
+          priceUSD: priceInUSD,
+          priceAsNumber: parseFloat(priceInUSD)
+        });
+
+        toast({
+          title: "Đang tạo liên kết thanh toán PayPal...",
+          description: "Vui lòng đợi trong giây lát",
+        });
+
+        // Gọi API để tạo PayPal payment
+        const response = await createPayPalPayment.mutateAsync(parseFloat(priceInUSD));
+
+        console.log("✅ PayPal API Response:", response);
+
+        if (response.payload?.links) {
+          // Tìm link "approve" để chuyển hướng người dùng
+          const approveLink = response.payload.links.find(
+            (link) => link.rel === "approve"
+          );
+
+          if (approveLink) {
+            console.log("🔗 Redirecting to PayPal:", approveLink.href);
+            // Chuyển hướng đến trang thanh toán PayPal
+            window.location.href = approveLink.href;
+          } else {
+            throw new Error("Không tìm thấy link thanh toán PayPal");
+          }
+        } else {
+          throw new Error("Không nhận được thông tin thanh toán PayPal");
+        }
+      }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra khi thanh toán.";
+      console.error("Payment error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Có lỗi xảy ra khi tạo thanh toán.";
       toast({
         title: "Thanh toán thất bại",
         description: errorMessage,
