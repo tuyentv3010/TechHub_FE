@@ -59,7 +59,6 @@ const RootNode = ({ data }: any) => {
               {data.description}
             </p>
             <div className="flex gap-2 mt-2">
-              <Badge variant="default">{data.level}</Badge>
               <Badge variant="outline">{data.totalCourses} Courses</Badge>
             </div>
           </div>
@@ -211,7 +210,6 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
           data: {
             title: pathData.payload.data.title,
             description: pathData.payload.data.description,
-            level: pathData.payload.data.level,
             totalCourses: courses.length,
           },
         };
@@ -520,9 +518,6 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
             <div className="flex gap-2 mt-3">
               <Badge variant="outline">
                 {pathData?.payload?.data?.courses?.length || 0} Courses
-              </Badge>
-              <Badge variant="secondary">
-                {pathData?.payload?.data?.level || "N/A"}
               </Badge>
             </div>
           </Card>

@@ -23,12 +23,11 @@ import {
   Filter,
 } from "lucide-react";
 import Link from "next/link";
-import { LearningPathLevelEnum, LearningPathItemType } from "@/schemaValidations/learning-path.schema";
+import { LearningPathItemType } from "@/schemaValidations/learning-path.schema";
 
 export default function LearningPathList() {
   const t = useTranslations("LearningPaths");
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [levelFilter, setLevelFilter] = useState<string>("ALL");
   const [page, setPage] = useState(0);
 
   const { data, isLoading } = useGetLearningPathList({
@@ -45,22 +44,8 @@ export default function LearningPathList() {
     const matchesSearch = 
       path.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
       path.description?.toLowerCase().includes(searchKeyword.toLowerCase());
-    const matchesLevel = levelFilter === "ALL" || path.level === levelFilter;
-    return matchesSearch && matchesLevel;
+    return matchesSearch;
   });
-
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case LearningPathLevelEnum.BEGINNER:
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case LearningPathLevelEnum.INTERMEDIATE:
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case LearningPathLevelEnum.ADVANCED:
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
-    }
-  };
 
   if (isLoading) {
     return (
@@ -83,31 +68,6 @@ export default function LearningPathList() {
             onChange={(e) => setSearchKeyword(e.target.value)}
             className="pl-10"
           />
-        </div>
-        <div className="flex gap-2">
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Select value={levelFilter} onValueChange={setLevelFilter}>
-              <SelectTrigger className="w-[200px] pl-10">
-                <SelectValue placeholder={t("filterLevel")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">{t("allLevels")}</SelectItem>
-                <SelectItem value={LearningPathLevelEnum.BEGINNER}>
-                  {t(`level.${LearningPathLevelEnum.BEGINNER}`)}
-                </SelectItem>
-                <SelectItem value={LearningPathLevelEnum.INTERMEDIATE}>
-                  {t(`level.${LearningPathLevelEnum.INTERMEDIATE}`)}
-                </SelectItem>
-                <SelectItem value={LearningPathLevelEnum.ADVANCED}>
-                  {t(`level.${LearningPathLevelEnum.ADVANCED}`)}
-                </SelectItem>
-                <SelectItem value={LearningPathLevelEnum.ALL_LEVELS}>
-                  {t(`level.${LearningPathLevelEnum.ALL_LEVELS}`)}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
       </div>
 
@@ -135,9 +95,6 @@ export default function LearningPathList() {
               <CardHeader className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 space-y-2">
-                    <Badge className={getLevelColor(path.level)}>
-                      {t(`level.${path.level}`)}
-                    </Badge>
                     <CardTitle className="text-xl line-clamp-2 group-hover:text-primary transition-colors">
                       {path.title}
                     </CardTitle>
@@ -150,19 +107,11 @@ export default function LearningPathList() {
 
               <CardContent className="space-y-4">
                 {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                  <div className="flex items-center gap-2 text-sm">
-                    <BookOpen className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">
-                      {path.courses?.length || 0} {t("courses")}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">
-                      {path.estimatedDuration} {t("hours")}
-                    </span>
-                  </div>
+                <div className="flex items-center gap-2 text-sm pt-4 border-t">
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    {path.courses?.length || 0} {t("courses")}
+                  </span>
                 </div>
 
                 {/* Skills */}

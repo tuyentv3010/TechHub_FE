@@ -53,7 +53,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useGetLearningPathList, useDeleteLearningPathMutation } from "@/queries/useLearningPath";
-import { LearningPathItemType, LearningPathLevelEnum } from "@/schemaValidations/learning-path.schema";
+import { LearningPathItemType } from "@/schemaValidations/learning-path.schema";
 import { useToast } from "@/hooks/use-toast";
 import AddLearningPath from "./add-learning-path";
 import EditLearningPath from "./edit-learning-path";
@@ -74,7 +74,6 @@ export default function LearningPathTable() {
 
   // Filters
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [levelFilter, setLevelFilter] = useState<string>("ALL");
 
   // Query
   const { data, isLoading, refetch } = useGetLearningPathList({
@@ -107,19 +106,6 @@ export default function LearningPathTable() {
     }
   };
 
-  const getLevelBadgeVariant = (level: string) => {
-    switch (level) {
-      case LearningPathLevelEnum.BEGINNER:
-        return "default";
-      case LearningPathLevelEnum.INTERMEDIATE:
-        return "secondary";
-      case LearningPathLevelEnum.ADVANCED:
-        return "destructive";
-      default:
-        return "outline";
-    }
-  };
-
   const columns: ColumnDef<LearningPathItemType>[] = [
     {
       accessorKey: "title",
@@ -136,27 +122,6 @@ export default function LearningPathTable() {
           {row.getValue("description")}
         </div>
       ),
-    },
-    {
-      accessorKey: "level",
-      header: t("TableLevel"),
-      cell: ({ row }) => {
-        const level = row.getValue("level") as string;
-        if (!level) return <Badge variant="outline">N/A</Badge>;
-        return (
-          <Badge variant={getLevelBadgeVariant(level)}>
-            {t(`Level.${level}`)}
-          </Badge>
-        );
-      },
-    },
-    {
-      accessorKey: "estimatedDuration",
-      header: t("TableDuration"),
-      cell: ({ row }) => {
-        const duration = row.getValue("estimatedDuration") as number;
-        return <div>{duration} {t("Hours")}</div>;
-      },
     },
     {
       accessorKey: "courses",
@@ -268,26 +233,6 @@ export default function LearningPathTable() {
           onChange={(e) => setSearchKeyword(e.target.value)}
           className="max-w-sm"
         />
-        <Select value={levelFilter} onValueChange={setLevelFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder={t("FilterLevel")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">{t("AllLevels")}</SelectItem>
-            <SelectItem value={LearningPathLevelEnum.BEGINNER}>
-              {t(`Level.${LearningPathLevelEnum.BEGINNER}`)}
-            </SelectItem>
-            <SelectItem value={LearningPathLevelEnum.INTERMEDIATE}>
-              {t(`Level.${LearningPathLevelEnum.INTERMEDIATE}`)}
-            </SelectItem>
-            <SelectItem value={LearningPathLevelEnum.ADVANCED}>
-              {t(`Level.${LearningPathLevelEnum.ADVANCED}`)}
-            </SelectItem>
-            <SelectItem value={LearningPathLevelEnum.ALL_LEVELS}>
-              {t(`Level.${LearningPathLevelEnum.ALL_LEVELS}`)}
-            </SelectItem>
-          </SelectContent>
-        </Select>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">

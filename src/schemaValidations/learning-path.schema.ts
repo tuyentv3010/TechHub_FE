@@ -1,17 +1,5 @@
 import z from "zod";
 
-// Learning Path Level Enum
-export const LearningPathLevel = z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL_LEVELS"]);
-export type LearningPathLevelType = z.infer<typeof LearningPathLevel>;
-
-// Export enum values for easy access
-export const LearningPathLevelEnum = {
-  BEGINNER: "BEGINNER" as const,
-  INTERMEDIATE: "INTERMEDIATE" as const,
-  ADVANCED: "ADVANCED" as const,
-  ALL_LEVELS: "ALL_LEVELS" as const,
-};
-
 // Course in Path
 export const CourseInPath = z.object({
   courseId: z.string(),
@@ -23,6 +11,7 @@ export const CourseInPath = z.object({
   isCompleted: z.boolean().optional(), // Additional field for UI
   positionX: z.number().optional(), // X coordinate for visual designer
   positionY: z.number().optional(), // Y coordinate for visual designer
+  duration: z.number().optional(), // Course duration in minutes for calculating total
 });
 
 export type CourseInPathType = z.TypeOf<typeof CourseInPath>;
@@ -32,9 +21,6 @@ export const LearningPathItem = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string().nullable(),
-  level: LearningPathLevel,
-  estimatedDuration: z.number(), // in hours
-  duration: z.number().optional(), // Alias for estimatedDuration (for compatibility)
   skills: z.array(z.string()), // JSON array
   creatorId: z.string(),
   creatorName: z.string().optional(),
@@ -92,8 +78,6 @@ export type LearningPathDetailResponseType = z.TypeOf<typeof LearningPathDetailR
 export const CreateLearningPathBody = z.object({
   title: z.string().min(1, "Title is required").max(255),
   description: z.string().optional(),
-  level: LearningPathLevel,
-  estimatedDuration: z.number().min(1, "Estimated duration must be at least 1 hour"),
   skills: z.array(z.string()).min(1, "At least one skill is required"),
   isActive: z.string().default("Y"), // "Y" or "N"
 });
@@ -104,8 +88,6 @@ export type CreateLearningPathBodyType = z.TypeOf<typeof CreateLearningPathBody>
 export const UpdateLearningPathBody = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
-  level: LearningPathLevel.optional(),
-  estimatedDuration: z.number().min(1).optional(),
   skills: z.array(z.string()).optional(),
   isActive: z.string().optional(), // "Y" or "N"
 });

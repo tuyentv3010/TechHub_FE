@@ -13,13 +13,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 
 import { Plus, X } from "lucide-react";
@@ -31,7 +24,6 @@ import { useCreateLearningPathMutation } from "@/queries/useLearningPath";
 import {
   CreateLearningPathBodyType,
   CreateLearningPathBody,
-  LearningPathLevelEnum,
 } from "@/schemaValidations/learning-path.schema";
 import { useToast } from "@/hooks/use-toast";
 
@@ -60,13 +52,9 @@ export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
     defaultValues: {
       title: "",
       description: "",
-      level: LearningPathLevelEnum.BEGINNER,
-      estimatedDuration: 0,
       skills: [],
     },
   });
-
-  const selectedLevel = watch("level");
 
   const handleAddSkill = () => {
     if (skillInput.trim() && !skills.includes(skillInput.trim())) {
@@ -147,52 +135,6 @@ export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
             {errors.description && (
               <p className="text-sm text-red-500">{errors.description.message}</p>
             )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="level">{t("FormLevel")}</Label>
-              <Select
-                value={selectedLevel}
-                onValueChange={(value) =>
-                  setValue("level", value as any)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("FormLevelPlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={LearningPathLevelEnum.BEGINNER}>
-                    {t(`Level.${LearningPathLevelEnum.BEGINNER}`)}
-                  </SelectItem>
-                  <SelectItem value={LearningPathLevelEnum.INTERMEDIATE}>
-                    {t(`Level.${LearningPathLevelEnum.INTERMEDIATE}`)}
-                  </SelectItem>
-                  <SelectItem value={LearningPathLevelEnum.ADVANCED}>
-                    {t(`Level.${LearningPathLevelEnum.ADVANCED}`)}
-                  </SelectItem>
-                  <SelectItem value={LearningPathLevelEnum.ALL_LEVELS}>
-                    {t(`Level.${LearningPathLevelEnum.ALL_LEVELS}`)}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.level && (
-                <p className="text-sm text-red-500">{errors.level.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="estimatedDuration">{t("FormDuration")}</Label>
-              <Input
-                id="estimatedDuration"
-                type="number"
-                placeholder="0"
-                {...register("estimatedDuration", { valueAsNumber: true })}
-              />
-              {errors.estimatedDuration && (
-                <p className="text-sm text-red-500">{errors.estimatedDuration.message}</p>
-              )}
-            </div>
           </div>
 
           <div className="space-y-2">
