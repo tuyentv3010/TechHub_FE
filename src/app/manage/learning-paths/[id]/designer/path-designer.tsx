@@ -90,8 +90,8 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
 
   // Convert courses to nodes
   useEffect(() => {
-    if (pathData?.data) {
-      const courses = pathData.data.courses || [];
+    if (pathData?.payload?.data) {
+      const courses = pathData.payload.data.courses || [];
       
       // Create nodes
       const newNodes: Node[] = courses.map((course: CourseInPathType, index: number) => ({
@@ -133,7 +133,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
       // Build courses array with order
       const courses = courseIds.map((courseId, index) => ({
         courseId,
-        order: (pathData?.data.courses?.length || 0) + index + 1,
+        order: (pathData?.payload?.data?.courses?.length || 0) + index + 1,
         isOptional: "N",
       }));
       
@@ -169,7 +169,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
       await updateMutation.mutateAsync({
         id: pathId,
         body: {
-          ...pathData!.data,
+          ...pathData!.payload!.data,
           courses,
         },
       });
@@ -210,17 +210,17 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
         <Panel position="top-left" className="space-y-2">
           <Card className="p-4">
             <h2 className="font-bold text-lg mb-1">
-              {pathData?.data.title}
+              {pathData?.payload?.data?.title || "Loading..."}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {pathData?.data.description}
+              {pathData?.payload?.data?.description || ""}
             </p>
             <div className="flex gap-2 mt-3">
               <Badge variant="outline">
-                {pathData?.data.courses?.length || 0} Courses
+                {pathData?.payload?.data?.courses?.length || 0} Courses
               </Badge>
               <Badge variant="secondary">
-                {pathData?.data.level}
+                {pathData?.payload?.data?.level || "N/A"}
               </Badge>
             </div>
           </Card>
@@ -246,7 +246,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
         <CourseSelector
           onClose={() => setShowCourseSelector(false)}
           onSelect={handleAddCourses}
-          existingCourseIds={pathData?.data.courses?.map((c: CourseInPathType) => c.courseId) || []}
+          existingCourseIds={pathData?.payload?.data?.courses?.map((c: CourseInPathType) => c.courseId) || []}
         />
       )}
     </div>

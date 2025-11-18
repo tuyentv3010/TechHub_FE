@@ -41,7 +41,7 @@ export default function CourseSelector({
   });
 
   const availableCourses =
-    coursesData?.data.filter(
+    coursesData?.payload?.data?.filter(
       (course: CourseItemResType) => !existingCourseIds.includes(course.id)
     ) || [];
 

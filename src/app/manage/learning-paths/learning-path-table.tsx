@@ -142,6 +142,7 @@ export default function LearningPathTable() {
       header: t("TableLevel"),
       cell: ({ row }) => {
         const level = row.getValue("level") as string;
+        if (!level) return <Badge variant="outline">N/A</Badge>;
         return (
           <Badge variant={getLevelBadgeVariant(level)}>
             {t(`Level.${level}`)}
@@ -236,7 +237,7 @@ export default function LearningPathTable() {
   ];
 
   const table = useReactTable({
-    data: data?.data || [],
+    data: data?.payload?.data || [],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -248,7 +249,7 @@ export default function LearningPathTable() {
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
     manualPagination: true,
-    pageCount: data?.metadata.totalPages ?? -1,
+    pageCount: data?.payload?.pagination?.totalPages ?? -1,
     state: {
       sorting,
       columnFilters,
@@ -377,7 +378,7 @@ export default function LearningPathTable() {
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="flex-1 text-sm text-muted-foreground">
           {t("Page")} {pagination.pageIndex + 1} {t("Of")}{" "}
-          {data?.metadata.totalPages || 1}
+          {data?.payload?.pagination?.totalPages ?? 1}
         </div>
         <div className="space-x-2">
           <Button
