@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   BookOpen, 
   Clock, 
@@ -15,10 +16,17 @@ import {
   Calendar,
   User,
   Target,
+  Network,
+  List,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDateTimeToLocaleString } from "@/lib/utils";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import courseApiRequest from "@/apiRequests/course";
+import { CourseItemResType } from "@/schemaValidations/course.schema";
+import { CourseInPathType } from "@/schemaValidations/learning-path.schema";
+import PathViewer from "./path-viewer";
 
 interface LearningPathDetailProps {
   pathId: string;
@@ -27,6 +35,39 @@ interface LearningPathDetailProps {
 export default function LearningPathDetail({ pathId }: LearningPathDetailProps) {
   const t = useTranslations("LearningPathDetail");
   const { data, isLoading } = useGetLearningPathById(pathId);
+  const [courseDetailsMap, setCourseDetailsMap] = useState<Map<string, CourseItemResType>>(new Map());
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [viewMode, setViewMode] = useState<"diagram" | "list">("diagram");
+
+  // Fetch course details
+  useEffect(() => {
+    if (data?.payload?.data?.courses) {
+      const courses = data.payload.data.courses;
+      
+      const fetchCourseDetails = async () => {
+        setLoadingCourses(true);
+        const detailsMap = new Map<string, CourseItemResType>();
+        
+        await Promise.all(
+          courses.map(async (course: CourseInPathType) => {
+            try {
+              const response = await courseApiRequest.getCourseById(course.courseId);
+              if (response.payload?.data?.summary) {
+                detailsMap.set(course.courseId, response.payload.data.summary);
+              }
+            } catch (error) {
+              console.error(`Failed to fetch course ${course.courseId}:`, error);
+            }
+          })
+        );
+        
+        setCourseDetailsMap(detailsMap);
+        setLoadingCourses(false);
+      };
+      
+      fetchCourseDetails();
+    }
+  }, [data]);
 
   if (isLoading) {
     return (
@@ -115,7 +156,7 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {path.skills.map((skill, idx) => (
+                  {path.skills.map((skill: string, idx: number) => (
                     <Badge key={idx} variant="secondary" className="text-sm py-2 px-4">
                       <CheckCircle2 className="h-4 w-4 mr-2" />
                       {skill}
@@ -126,50 +167,122 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
             </Card>
           )}
 
-          {/* Courses Section */}
+          {/* Courses Section with Tabs */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
-                {t("coursesInPath")}
-              </CardTitle>
-              <CardDescription>
-                {path.courses?.length || 0} {t("coursesTotal")}
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5" />
+                    {t("coursesInPath")}
+                  </CardTitle>
+                  <CardDescription>
+                    {path.courses?.length || 0} {t("coursesTotal")}
+                  </CardDescription>
+                </div>
+                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "diagram" | "list")} className="w-auto">
+                  <TabsList>
+                    <TabsTrigger value="diagram" className="flex items-center gap-2">
+                      <Network className="h-4 w-4" />
+                      {t("diagramView")}
+                    </TabsTrigger>
+                    <TabsTrigger value="list" className="flex items-center gap-2">
+                      <List className="h-4 w-4" />
+                      {t("listView")}
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             </CardHeader>
             <CardContent>
-              {path.courses && path.courses.length > 0 ? (
+              {viewMode === "diagram" ? (
+                <PathViewer pathId={pathId} />
+              ) : loadingCourses ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex gap-4 p-4 border rounded-lg animate-pulse">
+                      <div className="flex-shrink-0 w-48 h-28 bg-muted rounded-md" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-5 bg-muted rounded w-3/4" />
+                        <div className="h-4 bg-muted rounded w-full" />
+                        <div className="h-4 bg-muted rounded w-2/3" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : path.courses && path.courses.length > 0 ? (
                 <div className="space-y-4">
                   {path.courses
-                    .sort((a, b) => a.order - b.order)
-                    .map((course, idx) => (
-                      <div
-                        key={course.courseId}
-                        className="flex items-start gap-4 p-4 border rounded-lg hover:border-primary/50 transition-colors"
-                      >
-                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-primary">
-                          {idx + 1}
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <h4 className="font-semibold">{course.title || `Course ${idx + 1}`}</h4>
-                          {course.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {course.description}
-                            </p>
-                          )}
-                          {course.isOptional === "Y" && (
-                            <Badge variant="outline" className="text-xs">
-                              {t("optional")}
-                            </Badge>
-                          )}
-                        </div>
-                        <Link href={`/courses/${course.courseId}`}>
-                          <Button size="sm" variant="ghost">
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
+                    .sort((a: CourseInPathType, b: CourseInPathType) => a.order - b.order)
+                    .map((course: CourseInPathType, idx: number) => {
+                      const courseDetail = courseDetailsMap.get(course.courseId);
+                      const thumbnail = courseDetail?.thumbnail?.secureUrl || courseDetail?.thumbnail?.url;
+                      
+                      return (
+                        <Link 
+                          key={course.courseId}
+                          href={`/courses/${course.courseId}`}
+                          className="block"
+                        >
+                          <div className="flex gap-4 p-4 border rounded-lg hover:border-primary/50 hover:shadow-md transition-all group">
+                            {/* Order Badge */}
+                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-primary">
+                              {idx + 1}
+                            </div>
+                            
+                            {/* Thumbnail */}
+                            <div className="flex-shrink-0 w-48 h-28 rounded-md overflow-hidden bg-muted">
+                              {thumbnail ? (
+                                <Image
+                                  src={thumbnail}
+                                  alt={courseDetail?.title || course.title || "Course"}
+                                  width={192}
+                                  height={112}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
+                                  <BookOpen className="h-8 w-8 text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Content */}
+                            <div className="flex-1 space-y-2">
+                              <h4 className="font-semibold text-lg group-hover:text-primary transition-colors">
+                                {courseDetail?.title || course.title || `Course ${idx + 1}`}
+                              </h4>
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {courseDetail?.description || course.description || t("noDescription")}
+                              </p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {course.isOptional === "Y" && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {t("optional")}
+                                  </Badge>
+                                )}
+                                {courseDetail?.level && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {courseDetail.level}
+                                  </Badge>
+                                )}
+                                {courseDetail?.totalEnrollments !== undefined && (
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <User className="h-3 w-3" />
+                                    {courseDetail.totalEnrollments} students
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Arrow */}
+                            <div className="flex-shrink-0 flex items-center">
+                              <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                            </div>
+                          </div>
                         </Link>
-                      </div>
-                    ))}
+                      );
+                    })}
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">

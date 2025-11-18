@@ -23,7 +23,7 @@ import {
   Filter,
 } from "lucide-react";
 import Link from "next/link";
-import { LearningPathLevelEnum } from "@/schemaValidations/learning-path.schema";
+import { LearningPathLevelEnum, LearningPathItemType } from "@/schemaValidations/learning-path.schema";
 
 export default function LearningPathList() {
   const t = useTranslations("LearningPaths");
@@ -41,7 +41,7 @@ export default function LearningPathList() {
   const paths = data?.payload?.data || [];
   const pagination = data?.payload?.pagination;
 
-  const filteredPaths = paths.filter((path) => {
+  const filteredPaths = paths.filter((path: LearningPathItemType) => {
     const matchesSearch = 
       path.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
       path.description?.toLowerCase().includes(searchKeyword.toLowerCase());
@@ -127,7 +127,7 @@ export default function LearningPathList() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPaths.map((path) => (
+          {filteredPaths.map((path: LearningPathItemType) => (
             <Card 
               key={path.id} 
               className="group hover:shadow-lg transition-all duration-300 hover:border-primary/50 overflow-hidden"
@@ -173,7 +173,7 @@ export default function LearningPathList() {
                       {t("skills")}
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {path.skills.slice(0, 4).map((skill, idx) => (
+                      {path.skills.slice(0, 4).map((skill: string, idx: number) => (
                         <Badge key={idx} variant="secondary" className="text-xs">
                           {skill}
                         </Badge>
