@@ -21,6 +21,8 @@ export const CourseInPath = z.object({
   title: z.string().optional(), // Additional field for UI
   description: z.string().optional(), // Additional field for UI
   isCompleted: z.boolean().optional(), // Additional field for UI
+  positionX: z.number().optional(), // X coordinate for visual designer
+  positionY: z.number().optional(), // Y coordinate for visual designer
 });
 
 export type CourseInPathType = z.TypeOf<typeof CourseInPath>;
@@ -42,6 +44,10 @@ export const LearningPathItem = z.object({
   createdAt: z.string().optional(), // Alias for created
   courses: z.array(CourseInPath).optional(),
   totalCourses: z.number().optional(),
+  layoutEdges: z.array(z.object({
+    source: z.string(),
+    target: z.string(),
+  })).optional(), // Visual designer edges (stored as JSON in backend)
 });
 
 export type LearningPathItemType = z.TypeOf<typeof LearningPathItem>;
