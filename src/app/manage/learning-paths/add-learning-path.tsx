@@ -31,9 +31,9 @@ import { useCreateLearningPathMutation } from "@/queries/useLearningPath";
 import {
   CreateLearningPathBodyType,
   CreateLearningPathBody,
-  LearningPathLevel,
+  LearningPathLevelEnum,
 } from "@/schemaValidations/learning-path.schema";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface AddLearningPathProps {
   onSuccess?: () => void;
@@ -46,6 +46,7 @@ export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
   const [skills, setSkills] = useState<string[]>([]);
 
   const createMutation = useCreateLearningPathMutation();
+  const { toast } = useToast();
 
   const {
     register,
@@ -59,8 +60,8 @@ export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
     defaultValues: {
       title: "",
       description: "",
-      level: LearningPathLevel.BEGINNER,
-      duration: 0,
+      level: LearningPathLevelEnum.BEGINNER,
+      estimatedDuration: 0,
       skills: [],
     },
   });
@@ -154,24 +155,24 @@ export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
               <Select
                 value={selectedLevel}
                 onValueChange={(value) =>
-                  setValue("level", value as LearningPathLevel)
+                  setValue("level", value as any)
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder={t("FormLevelPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={LearningPathLevel.BEGINNER}>
-                    {t(`Level.${LearningPathLevel.BEGINNER}`)}
+                  <SelectItem value={LearningPathLevelEnum.BEGINNER}>
+                    {t(`Level.${LearningPathLevelEnum.BEGINNER}`)}
                   </SelectItem>
-                  <SelectItem value={LearningPathLevel.INTERMEDIATE}>
-                    {t(`Level.${LearningPathLevel.INTERMEDIATE}`)}
+                  <SelectItem value={LearningPathLevelEnum.INTERMEDIATE}>
+                    {t(`Level.${LearningPathLevelEnum.INTERMEDIATE}`)}
                   </SelectItem>
-                  <SelectItem value={LearningPathLevel.ADVANCED}>
-                    {t(`Level.${LearningPathLevel.ADVANCED}`)}
+                  <SelectItem value={LearningPathLevelEnum.ADVANCED}>
+                    {t(`Level.${LearningPathLevelEnum.ADVANCED}`)}
                   </SelectItem>
-                  <SelectItem value={LearningPathLevel.ALL_LEVELS}>
-                    {t(`Level.${LearningPathLevel.ALL_LEVELS}`)}
+                  <SelectItem value={LearningPathLevelEnum.ALL_LEVELS}>
+                    {t(`Level.${LearningPathLevelEnum.ALL_LEVELS}`)}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -181,15 +182,15 @@ export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="duration">{t("FormDuration")}</Label>
+              <Label htmlFor="estimatedDuration">{t("FormDuration")}</Label>
               <Input
-                id="duration"
+                id="estimatedDuration"
                 type="number"
                 placeholder="0"
-                {...register("duration", { valueAsNumber: true })}
+                {...register("estimatedDuration", { valueAsNumber: true })}
               />
-              {errors.duration && (
-                <p className="text-sm text-red-500">{errors.duration.message}</p>
+              {errors.estimatedDuration && (
+                <p className="text-sm text-red-500">{errors.estimatedDuration.message}</p>
               )}
             </div>
           </div>

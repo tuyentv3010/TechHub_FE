@@ -1,6 +1,16 @@
 import z from "zod";
 
+// Learning Path Level Enum
 export const LearningPathLevel = z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL_LEVELS"]);
+export type LearningPathLevelType = z.infer<typeof LearningPathLevel>;
+
+// Export enum values for easy access
+export const LearningPathLevelEnum = {
+  BEGINNER: "BEGINNER" as const,
+  INTERMEDIATE: "INTERMEDIATE" as const,
+  ADVANCED: "ADVANCED" as const,
+  ALL_LEVELS: "ALL_LEVELS" as const,
+};
 
 // Course in Path
 export const CourseInPath = z.object({
@@ -8,6 +18,9 @@ export const CourseInPath = z.object({
   courseTitle: z.string().optional(),
   order: z.number(),
   isOptional: z.string(), // "Y" or "N"
+  title: z.string().optional(), // Additional field for UI
+  description: z.string().optional(), // Additional field for UI
+  isCompleted: z.boolean().optional(), // Additional field for UI
 });
 
 export type CourseInPathType = z.TypeOf<typeof CourseInPath>;
@@ -19,12 +32,14 @@ export const LearningPathItem = z.object({
   description: z.string().nullable(),
   level: LearningPathLevel,
   estimatedDuration: z.number(), // in hours
+  duration: z.number().optional(), // Alias for estimatedDuration (for compatibility)
   skills: z.array(z.string()), // JSON array
   creatorId: z.string(),
   creatorName: z.string().optional(),
   isActive: z.string(), // "Y" or "N"
   created: z.string(),
   updated: z.string(),
+  createdAt: z.string().optional(), // Alias for created
   courses: z.array(CourseInPath).optional(),
   totalCourses: z.number().optional(),
 });

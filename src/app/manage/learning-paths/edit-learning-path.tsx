@@ -30,10 +30,10 @@ import { useUpdateLearningPathMutation } from "@/queries/useLearningPath";
 import {
   UpdateLearningPathBodyType,
   UpdateLearningPathBody,
-  LearningPathLevel,
+  LearningPathLevelEnum,
   LearningPathItemType,
 } from "@/schemaValidations/learning-path.schema";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface EditLearningPathProps {
   learningPath: LearningPathItemType;
@@ -51,6 +51,7 @@ export default function EditLearningPath({
   const [skills, setSkills] = useState<string[]>(learningPath.skills || []);
 
   const updateMutation = useUpdateLearningPathMutation();
+  const { toast } = useToast();
 
   const {
     register,
@@ -62,9 +63,9 @@ export default function EditLearningPath({
     resolver: zodResolver(UpdateLearningPathBody),
     defaultValues: {
       title: learningPath.title,
-      description: learningPath.description,
+      description: learningPath.description || "",
       level: learningPath.level,
-      duration: learningPath.duration,
+      estimatedDuration: learningPath.estimatedDuration,
       skills: learningPath.skills || [],
     },
   });
@@ -157,24 +158,24 @@ export default function EditLearningPath({
               <Select
                 value={selectedLevel}
                 onValueChange={(value) =>
-                  setValue("level", value as LearningPathLevel)
+                  setValue("level", value as any)
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder={t("FormLevelPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={LearningPathLevel.BEGINNER}>
-                    {t(`Level.${LearningPathLevel.BEGINNER}`)}
+                  <SelectItem value={LearningPathLevelEnum.BEGINNER}>
+                    {t(`Level.${LearningPathLevelEnum.BEGINNER}`)}
                   </SelectItem>
-                  <SelectItem value={LearningPathLevel.INTERMEDIATE}>
-                    {t(`Level.${LearningPathLevel.INTERMEDIATE}`)}
+                  <SelectItem value={LearningPathLevelEnum.INTERMEDIATE}>
+                    {t(`Level.${LearningPathLevelEnum.INTERMEDIATE}`)}
                   </SelectItem>
-                  <SelectItem value={LearningPathLevel.ADVANCED}>
-                    {t(`Level.${LearningPathLevel.ADVANCED}`)}
+                  <SelectItem value={LearningPathLevelEnum.ADVANCED}>
+                    {t(`Level.${LearningPathLevelEnum.ADVANCED}`)}
                   </SelectItem>
-                  <SelectItem value={LearningPathLevel.ALL_LEVELS}>
-                    {t(`Level.${LearningPathLevel.ALL_LEVELS}`)}
+                  <SelectItem value={LearningPathLevelEnum.ALL_LEVELS}>
+                    {t(`Level.${LearningPathLevelEnum.ALL_LEVELS}`)}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -184,15 +185,15 @@ export default function EditLearningPath({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="duration">{t("FormDuration")}</Label>
+              <Label htmlFor="estimatedDuration">{t("FormDuration")}</Label>
               <Input
-                id="duration"
+                id="estimatedDuration"
                 type="number"
                 placeholder="0"
-                {...register("duration", { valueAsNumber: true })}
+                {...register("estimatedDuration", { valueAsNumber: true })}
               />
-              {errors.duration && (
-                <p className="text-sm text-red-500">{errors.duration.message}</p>
+              {errors.estimatedDuration && (
+                <p className="text-sm text-red-500">{errors.estimatedDuration.message}</p>
               )}
             </div>
           </div>

@@ -53,11 +53,11 @@ import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useGetLearningPathList, useDeleteLearningPathMutation } from "@/queries/useLearningPath";
-import { LearningPathItemType, LearningPathLevel } from "@/schemaValidations/learning-path.schema";
-import { toast } from "@/hooks/use-toast";
+import { LearningPathItemType, LearningPathLevelEnum } from "@/schemaValidations/learning-path.schema";
+import { useToast } from "@/hooks/use-toast";
 import AddLearningPath from "./add-learning-path";
 import EditLearningPath from "./edit-learning-path";
-import { formatDate } from "@/lib/utils";
+import { formatDateTimeToLocaleString } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 export default function LearningPathTable() {
@@ -80,11 +80,10 @@ export default function LearningPathTable() {
   const { data, isLoading, refetch } = useGetLearningPathList({
     page: pagination.pageIndex,
     size: pagination.pageSize,
-    keyword: searchKeyword || undefined,
-    level: levelFilter !== "ALL" ? (levelFilter as LearningPathLevel) : undefined,
   });
 
   const deleteMutation = useDeleteLearningPathMutation();
+  const { toast } = useToast();
 
   // Edit state
   const [editingPath, setEditingPath] = useState<LearningPathItemType | null>(null);
@@ -108,13 +107,13 @@ export default function LearningPathTable() {
     }
   };
 
-  const getLevelBadgeVariant = (level: LearningPathLevel) => {
+  const getLevelBadgeVariant = (level: string) => {
     switch (level) {
-      case LearningPathLevel.BEGINNER:
+      case LearningPathLevelEnum.BEGINNER:
         return "default";
-      case LearningPathLevel.INTERMEDIATE:
+      case LearningPathLevelEnum.INTERMEDIATE:
         return "secondary";
-      case LearningPathLevel.ADVANCED:
+      case LearningPathLevelEnum.ADVANCED:
         return "destructive";
       default:
         return "outline";
@@ -142,7 +141,7 @@ export default function LearningPathTable() {
       accessorKey: "level",
       header: t("TableLevel"),
       cell: ({ row }) => {
-        const level = row.getValue("level") as LearningPathLevel;
+        const level = row.getValue("level") as string;
         return (
           <Badge variant={getLevelBadgeVariant(level)}>
             {t(`Level.${level}`)}
@@ -151,10 +150,10 @@ export default function LearningPathTable() {
       },
     },
     {
-      accessorKey: "duration",
+      accessorKey: "estimatedDuration",
       header: t("TableDuration"),
       cell: ({ row }) => {
-        const duration = row.getValue("duration") as number;
+        const duration = row.getValue("estimatedDuration") as number;
         return <div>{duration} {t("Hours")}</div>;
       },
     },
@@ -188,11 +187,11 @@ export default function LearningPathTable() {
       },
     },
     {
-      accessorKey: "createdAt",
+      accessorKey: "created",
       header: t("TableCreatedAt"),
       cell: ({ row }) => {
-        const date = row.getValue("createdAt") as string;
-        return <div className="text-sm text-muted-foreground">{formatDate(date)}</div>;
+        const date = row.getValue("created") as string;
+        return <div className="text-sm text-muted-foreground">{formatDateTimeToLocaleString(date)}</div>;
       },
     },
     {
@@ -274,17 +273,17 @@ export default function LearningPathTable() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">{t("AllLevels")}</SelectItem>
-            <SelectItem value={LearningPathLevel.BEGINNER}>
-              {t(`Level.${LearningPathLevel.BEGINNER}`)}
+            <SelectItem value={LearningPathLevelEnum.BEGINNER}>
+              {t(`Level.${LearningPathLevelEnum.BEGINNER}`)}
             </SelectItem>
-            <SelectItem value={LearningPathLevel.INTERMEDIATE}>
-              {t(`Level.${LearningPathLevel.INTERMEDIATE}`)}
+            <SelectItem value={LearningPathLevelEnum.INTERMEDIATE}>
+              {t(`Level.${LearningPathLevelEnum.INTERMEDIATE}`)}
             </SelectItem>
-            <SelectItem value={LearningPathLevel.ADVANCED}>
-              {t(`Level.${LearningPathLevel.ADVANCED}`)}
+            <SelectItem value={LearningPathLevelEnum.ADVANCED}>
+              {t(`Level.${LearningPathLevelEnum.ADVANCED}`)}
             </SelectItem>
-            <SelectItem value={LearningPathLevel.ALL_LEVELS}>
-              {t(`Level.${LearningPathLevel.ALL_LEVELS}`)}
+            <SelectItem value={LearningPathLevelEnum.ALL_LEVELS}>
+              {t(`Level.${LearningPathLevelEnum.ALL_LEVELS}`)}
             </SelectItem>
           </SelectContent>
         </Select>

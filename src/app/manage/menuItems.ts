@@ -7,7 +7,8 @@ import {
   UserRoundPen,
   Users2,
   FolderOpen,
-  School
+  School,
+  Route
 } from "lucide-react";
 
 const menuItems = [
@@ -48,6 +49,12 @@ const menuItems = [
     title: "Khóa Học",
     href: "/manage/courses",
     Icon: School,
+  },
+  {
+    title: "Lộ trình Học tập",
+    href: "/manage/learning-paths",
+    Icon: Route,
+    roles: [Role.Admin, Role.Staff],
   },
 ];
 

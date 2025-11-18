@@ -17,7 +17,8 @@ import { Card } from "@/components/ui/card";
 import { Search, BookOpen } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useGetCourseListQuery } from "@/queries/useCourse";
+import { useGetCourseList } from "@/queries/useCourse";
+import { CourseItemResType } from "@/schemaValidations/course.schema";
 
 interface CourseSelectorProps {
   onClose: () => void;
@@ -34,15 +35,14 @@ export default function CourseSelector({
   const [searchKeyword, setSearchKeyword] = useState("");
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
 
-  const { data: coursesData, isLoading } = useGetCourseListQuery({
+  const { data: coursesData, isLoading } = useGetCourseList({
     page: 0,
     size: 50,
-    keyword: searchKeyword || undefined,
   });
 
   const availableCourses =
     coursesData?.data.filter(
-      (course) => !existingCourseIds.includes(course.id)
+      (course: CourseItemResType) => !existingCourseIds.includes(course.id)
     ) || [];
 
   const handleToggleCourse = (courseId: string) => {
@@ -93,7 +93,7 @@ export default function CourseSelector({
                 {t("NoCourses")}
               </p>
             ) : (
-              availableCourses.map((course) => (
+              availableCourses.map((course: CourseItemResType) => (
                 <Card
                   key={course.id}
                   className={`p-4 cursor-pointer transition-colors ${
@@ -122,11 +122,6 @@ export default function CourseSelector({
                             <Badge variant="outline" className="text-xs">
                               {course.level}
                             </Badge>
-                            {course.duration && (
-                              <Badge variant="secondary" className="text-xs">
-                                {course.duration}h
-                              </Badge>
-                            )}
                           </div>
                         </div>
                       </div>

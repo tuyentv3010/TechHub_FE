@@ -27,11 +27,11 @@ import {
   useGetLearningPathById,
   useAddCoursesToPathMutation,
   useRemoveCourseFromPathMutation,
-  useReorderCoursesInPathMutation,
+  useUpdateLearningPathMutation,
 } from "@/queries/useLearningPath";
 import { CourseInPathType } from "@/schemaValidations/learning-path.schema";
-import { toast } from "@/hooks/use-toast";
-import CourseSelector from "./course-selector";
+import { useToast } from "@/hooks/use-toast";
+import CourseSelector from "../../course-selector";
 
 interface PathDesignerProps {
   pathId: string;
@@ -79,13 +79,14 @@ const nodeTypes = {
 export default function PathDesigner({ pathId }: PathDesignerProps) {
   const t = useTranslations("PathDesigner");
   const { data: pathData, isLoading, refetch } = useGetLearningPathById(pathId);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [showCourseSelector, setShowCourseSelector] = useState(false);
 
   const addCoursesMutation = useAddCoursesToPathMutation();
   const removeCoursesMutation = useRemoveCourseFromPathMutation();
-  const reorderMutation = useReorderCoursesInPathMutation();
+  const updateMutation = useUpdateLearningPathMutation();
+  const { toast } = useToast();
 
   // Convert courses to nodes
   useEffect(() => {
@@ -98,11 +99,11 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
         type: "courseNode",
         position: { x: 100, y: index * 180 + 50 },
         data: {
-          title: course.title,
+          title: course.courseTitle || course.title || "Untitled Course",
           description: course.description || "",
           order: course.order,
-          isOptional: course.isOptional,
-          isCompleted: course.isCompleted,
+          isOptional: course.isOptional === "Y",
+          isCompleted: course.isCompleted || false,
         },
       }));
 
@@ -129,9 +130,16 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
 
   const handleAddCourses = async (courseIds: string[]) => {
     try {
+      // Build courses array with order
+      const courses = courseIds.map((courseId, index) => ({
+        courseId,
+        order: (pathData?.data.courses?.length || 0) + index + 1,
+        isOptional: "N",
+      }));
+      
       await addCoursesMutation.mutateAsync({
         pathId,
-        courseIds,
+        body: { courses },
       });
       toast({
         title: t("CoursesAdded"),
@@ -151,12 +159,19 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
   const handleSaveLayout = async () => {
     // Extract new order from node positions (sort by Y position)
     const sortedNodes = [...nodes].sort((a, b) => a.position.y - b.position.y);
-    const newOrder = sortedNodes.map((node) => node.id);
+    const courses = sortedNodes.map((node, index) => ({
+      courseId: node.id,
+      order: index + 1,
+      isOptional: node.data.isOptional ? "Y" : "N",
+    }));
 
     try {
-      await reorderMutation.mutateAsync({
-        pathId,
-        courseIds: newOrder,
+      await updateMutation.mutateAsync({
+        id: pathId,
+        body: {
+          ...pathData!.data,
+          courses,
+        },
       });
       toast({
         title: t("LayoutSaved"),
@@ -231,7 +246,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
         <CourseSelector
           onClose={() => setShowCourseSelector(false)}
           onSelect={handleAddCourses}
-          existingCourseIds={pathData?.data.courses?.map((c) => c.courseId) || []}
+          existingCourseIds={pathData?.data.courses?.map((c: CourseInPathType) => c.courseId) || []}
         />
       )}
     </div>
