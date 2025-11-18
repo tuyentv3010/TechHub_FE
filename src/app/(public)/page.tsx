@@ -7,6 +7,7 @@ import { useGetCourseList } from "@/queries/useCourse";
 import { HeroSection } from "@/components/organisms/HeroSection";
 import { CategoriesSection } from "@/components/organisms/NewCategoriesSection";
 import { CoursesGridSection } from "@/components/organisms/CoursesGridSection";
+import { LearningPathsSection } from "@/components/organisms/LearningPathsSection";
 import { SkillsSection } from "@/components/organisms/NewSkillsSection";
 import { CommunitySection } from "@/components/organisms/CommunitySectionNew";
 import { InstructorsSection } from "@/components/organisms/InstructorsSection";
@@ -118,6 +119,9 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* Learning Paths Section */}
+      <LearningPathsSection />
 
       {/* Skills Section */}
       <SkillsSection

@@ -107,6 +107,20 @@
       "placeholder": "Nhập email của bạn",
       "subscribe": "Đăng Ký"
     },
+    "learningPaths": {
+      "badge": "Lộ trình có cấu trúc",
+      "title": "Lộ trình học nổi bật",
+      "subtitle": "Theo dõi lộ trình có cấu trúc của chúng tôi để thành thạo công nghệ từng bước",
+      "viewPath": "Xem lộ trình",
+      "viewAll": "Xem tất cả lộ trình",
+      "noDescription": "Chưa có mô tả",
+      "skills": "kỹ năng",
+      "levels": {
+        "BEGINNER": "Cơ bản",
+        "INTERMEDIATE": "Trung cấp",
+        "ADVANCED": "Nâng cao"
+      }
+    },
     "welcomeBack": "Xin chào {name}! 👋",
     "subtitle": "Nền tảng học lập trình hiện đại",
     "description": "Khám phá thế giới lập trình với các khóa học chất lượng cao, giảng viên kinh nghiệm và cộng đồng học tập sôi động.",
@@ -758,5 +772,58 @@
     "NoCourses": "Không có khóa học nào",
     "Cancel": "Hủy",
     "AddSelected": "Thêm Khóa học đã chọn"
+  },
+  "LearningPaths": {
+    "heroTitle": "Lộ Trình Học Tập Có Cấu Trúc",
+    "heroDescription": "Theo dõi các lộ trình học tập được thiết kế bởi chuyên gia để làm chủ kỹ năng mới từng bước",
+    "loading": "Đang tải lộ trình học tập...",
+    "searchPlaceholder": "Tìm kiếm lộ trình học tập...",
+    "filterLevel": "Lọc theo cấp độ",
+    "allLevels": "Tất cả cấp độ",
+    "level": {
+      "BEGINNER": "Sơ cấp",
+      "INTERMEDIATE": "Trung cấp",
+      "ADVANCED": "Nâng cao",
+      "ALL_LEVELS": "Mọi cấp độ"
+    },
+    "showingResults": "Hiển thị {count} trong tổng số {total} lộ trình",
+    "noResults": "Không tìm thấy lộ trình học tập",
+    "noResultsDescription": "Thử điều chỉnh tìm kiếm hoặc bộ lọc của bạn",
+    "courses": "khóa học",
+    "hours": "giờ",
+    "skills": "Kỹ năng bạn sẽ học",
+    "viewPath": "Xem Lộ Trình",
+    "noDescription": "Chưa có mô tả",
+    "previous": "Trước",
+    "next": "Sau",
+    "page": "Trang",
+    "of": "trong"
+  },
+  "LearningPathDetail": {
+    "loading": "Đang tải...",
+    "notFound": "Không Tìm Thấy Lộ Trình",
+    "notFoundDescription": "Lộ trình học tập bạn đang tìm không tồn tại",
+    "backToList": "Quay lại Danh sách",
+    "learningPaths": "Lộ Trình Học Tập",
+    "courses": "khóa học",
+    "hours": "giờ",
+    "level": {
+      "BEGINNER": "Sơ cấp",
+      "INTERMEDIATE": "Trung cấp",
+      "ADVANCED": "Nâng cao",
+      "ALL_LEVELS": "Mọi cấp độ"
+    },
+    "skillsYouWillLearn": "Kỹ Năng Bạn Sẽ Học",
+    "coursesInPath": "Khóa Học Trong Lộ Trình",
+    "coursesTotal": "khóa học",
+    "optional": "Tùy chọn",
+    "noCoursesYet": "Chưa có khóa học nào trong lộ trình này",
+    "pathInfo": "Thông Tin Lộ Trình",
+    "duration": "Thời lượng",
+    "created": "Ngày tạo",
+    "startLearning": "Bắt Đầu Học",
+    "shareThisPath": "Chia Sẻ Lộ Trình",
+    "shareDescription": "Chia sẻ lộ trình này với người khác",
+    "copyLink": "Sao Chép Liên Kết"
   }
 }

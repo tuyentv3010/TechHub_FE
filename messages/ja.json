@@ -258,7 +258,21 @@
     "description": "高品質なコース、経験豊富な講師、活気のある学習コミュニティでプログラミングの世界を発見しましょう。",
     "startLearning": "今すぐ学習開始",
     "searchPlaceholder": "コースを検索...",
-    "searchButton": "検索"
+    "searchButton": "検索",
+    "learningPaths": {
+      "badge": "構造化学習",
+      "title": "注目の学習パス",
+      "subtitle": "構造化されたロードマップに従って、技術を段階的にマスターしましょう",
+      "viewPath": "パスを見る",
+      "viewAll": "すべての学習パスを見る",
+      "noDescription": "説明がありません",
+      "skills": "スキル",
+      "levels": {
+        "BEGINNER": "初級",
+        "INTERMEDIATE": "中級",
+        "ADVANCED": "上級"
+      }
+    }
   },
   "PrivacyPolicy": {
     "title": "プライバシーポリシー",
@@ -715,5 +729,59 @@
     "NoCourses": "利用可能なコースがありません",
     "Cancel": "キャンセル",
     "AddSelected": "選択したコースを追加"
+  },
+  "LearningPaths": {
+    "heroTitle": "構造化された学習パス",
+    "heroDescription": "エキスパートが設計したキュレーションされた学習パスに従って、段階的に新しいスキルを習得",
+    "loading": "学習パスを読み込み中...",
+    "searchPlaceholder": "学習パスを検索...",
+    "filterLevel": "レベルで絞り込み",
+    "allLevels": "すべてのレベル",
+    "level": {
+      "BEGINNER": "初級",
+      "INTERMEDIATE": "中級",
+      "ADVANCED": "上級",
+      "ALL_LEVELS": "すべてのレベル"
+    },
+    "showingResults": "{total}件中{count}件の学習パスを表示",
+    "noResults": "学習パスが見つかりません",
+    "noResultsDescription": "検索条件またはフィルターを調整してください",
+    "courses": "コース",
+    "hours": "時間",
+    "skills": "習得できるスキル",
+    "viewPath": "学習パスを見る",
+    "noDescription": "説明がありません",
+    "previous": "前へ",
+    "next": "次へ",
+    "page": "ページ",
+    "of": "/"
+  },
+  "LearningPathDetail": {
+    "loading": "読み込み中...",
+    "notFound": "学習パスが見つかりません",
+    "notFoundDescription": "お探しの学習パスは存在しません",
+    "backToList": "一覧に戻る",
+    "learningPaths": "学習パス",
+    "courses": "コース",
+    "hours": "時間",
+    "level": {
+      "BEGINNER": "初級",
+      "INTERMEDIATE": "中級",
+      "ADVANCED": "上級",
+      "ALL_LEVELS": "すべてのレベル"
+    },
+    "skillsYouWillLearn": "習得できるスキル",
+    "coursesInPath": "このパスのコース",
+    "coursesTotal": "コース",
+    "optional": "オプション",
+    "noCoursesYet": "このパスにはまだコースが追加されていません",
+    "pathInfo": "パス情報",
+    "duration": "期間",
+    "created": "作成日",
+    "startLearning": "学習を始める",
+    "shareThisPath": "このパスを共有",
+    "shareDescription": "この学習パスを他の人と共有",
+    "copyLink": "リンクをコピー"
   }
+}
 }

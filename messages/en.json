@@ -110,6 +110,20 @@
       "placeholder": "Enter your email",
       "subscribe": "Subscribe"
     },
+    "learningPaths": {
+      "badge": "Structured Learning",
+      "title": "Featured Learning Paths",
+      "subtitle": "Follow our structured roadmaps to master technologies step by step",
+      "viewPath": "View Path",
+      "viewAll": "View All Learning Paths",
+      "noDescription": "No description available",
+      "skills": "skills",
+      "levels": {
+        "BEGINNER": "Beginner",
+        "INTERMEDIATE": "Intermediate",
+        "ADVANCED": "Advanced"
+      }
+    },
     "welcomeBack": "Welcome back {name}! 👋",
     "subtitle": "Modern Programming Learning Platform",
     "description": "Discover the world of programming with high-quality courses, experienced instructors, and a vibrant learning community.",
@@ -761,5 +775,58 @@
     "NoCourses": "No courses available",
     "Cancel": "Cancel",
     "AddSelected": "Add Selected"
+  },
+  "LearningPaths": {
+    "heroTitle": "Structured Learning Paths",
+    "heroDescription": "Follow curated learning paths designed by experts to master new skills step by step",
+    "loading": "Loading learning paths...",
+    "searchPlaceholder": "Search learning paths...",
+    "filterLevel": "Filter by level",
+    "allLevels": "All levels",
+    "level": {
+      "BEGINNER": "Beginner",
+      "INTERMEDIATE": "Intermediate",
+      "ADVANCED": "Advanced",
+      "ALL_LEVELS": "All Levels"
+    },
+    "showingResults": "Showing {count} of {total} learning paths",
+    "noResults": "No learning paths found",
+    "noResultsDescription": "Try adjusting your search or filters",
+    "courses": "courses",
+    "hours": "hours",
+    "skills": "Skills you'll learn",
+    "viewPath": "View Learning Path",
+    "noDescription": "No description available",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page",
+    "of": "of"
+  },
+  "LearningPathDetail": {
+    "loading": "Loading...",
+    "notFound": "Learning Path Not Found",
+    "notFoundDescription": "The learning path you're looking for doesn't exist",
+    "backToList": "Back to Learning Paths",
+    "learningPaths": "Learning Paths",
+    "courses": "courses",
+    "hours": "hours",
+    "level": {
+      "BEGINNER": "Beginner",
+      "INTERMEDIATE": "Intermediate",
+      "ADVANCED": "Advanced",
+      "ALL_LEVELS": "All Levels"
+    },
+    "skillsYouWillLearn": "Skills You'll Learn",
+    "coursesInPath": "Courses in This Path",
+    "coursesTotal": "courses",
+    "optional": "Optional",
+    "noCoursesYet": "No courses added to this path yet",
+    "pathInfo": "Path Information",
+    "duration": "Duration",
+    "created": "Created",
+    "startLearning": "Start Learning",
+    "shareThisPath": "Share This Path",
+    "shareDescription": "Share this learning path with others",
+    "copyLink": "Copy Link"
   }
 }
