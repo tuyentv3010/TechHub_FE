@@ -126,10 +126,15 @@ export const AddCoursesToPathBody = z.object({
 export type AddCoursesToPathBodyType = z.TypeOf<typeof AddCoursesToPathBody>;
 
 // Reorder Course
-export const ReorderCourseBody = z.object({
-  courseId: z.string(),
-  newOrder: z.number().min(1),
-});
+export const ReorderCourseBody = z.array(
+  z.object({
+    courseId: z.string(),
+    order: z.number().min(1),
+    positionX: z.number().optional(),
+    positionY: z.number().optional(),
+    isOptional: z.string().optional(), // "Y" or "N"
+  })
+);
 
 export type ReorderCourseBodyType = z.TypeOf<typeof ReorderCourseBody>;
 

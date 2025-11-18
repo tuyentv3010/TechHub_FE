@@ -31,6 +31,7 @@ import {
   useAddCoursesToPathMutation,
   useRemoveCourseFromPathMutation,
   useUpdateLearningPathMutation,
+  useReorderCoursesMutation,
 } from "@/queries/useLearningPath";
 import { CourseInPathType } from "@/schemaValidations/learning-path.schema";
 import { useToast } from "@/hooks/use-toast";
@@ -156,6 +157,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
   const addCoursesMutation = useAddCoursesToPathMutation();
   const removeCoursesMutation = useRemoveCourseFromPathMutation();
   const updateMutation = useUpdateLearningPathMutation();
+  const reorderCoursesMutation = useReorderCoursesMutation();
   const { toast } = useToast();
 
   // Fetch course details and convert to nodes
@@ -444,16 +446,26 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
     console.log('🔗 Edges to save:', layoutEdges);
 
     try {
+      // Step 1: Reorder courses with positions
+      console.log('📡 Calling reorderCourses API...');
+      await reorderCoursesMutation.mutateAsync({
+        pathId,
+        body: courses,
+      });
+      console.log('✅ Courses with positions saved successfully');
+      
+      // Step 2: Update learning path with edges
+      console.log('📡 Calling updateLearningPath API for edges...');
       await updateMutation.mutateAsync({
         id: pathId,
         body: {
           ...pathData!.payload!.data,
-          courses,
           layoutEdges,
         },
       });
+      console.log('✅ Layout edges saved successfully');
       
-      console.log('✅ Saved to backend: courses with positions + edges');
+      console.log('✅ All changes saved to backend: courses with positions + edges');
       
       toast({
         title: t("LayoutSaved"),
@@ -461,6 +473,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
       });
       refetch();
     } catch (error: any) {
+      console.error('❌ Save error:', error);
       toast({
         title: t("SaveLayoutError"),
         description: error?.message || "An error occurred",
