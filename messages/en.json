@@ -685,5 +685,21 @@
     "finish": "Finish",
     "start": "Start",
     "stepOf": "Step {current}/{total}"
+  },
+  "ManageDashboard": {
+    "Title": "System Overview",
+    "Description": "View statistics and overall system activity",
+    "TotalCourses": "Total Courses",
+    "TotalCoursesDescription": "All courses in the system",
+    "TotalBlogs": "Total Blogs",
+    "TotalBlogsDescription": "All published blogs",
+    "TotalUsers": "Total Users",
+    "TotalUsersDescription": "Total registered accounts",
+    "TotalEnrollments": "Total Enrollments",
+    "TotalEnrollmentsDescription": "Total course enrollments",
+    "TopCourses": "Top Courses",
+    "TopCoursesDescription": "Courses with the most students",
+    "RecentActivity": "Recent Activity",
+    "RecentActivityDescription": "Latest activities in the system"
   }
 }

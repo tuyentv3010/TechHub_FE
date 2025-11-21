@@ -682,5 +682,21 @@
     "finish": "Hoàn thành",
     "start": "Bắt đầu",
     "stepOf": "Bước {current}/{total}"
+  },
+  "ManageDashboard": {
+    "Title": "Tổng quan hệ thống",
+    "Description": "Xem thống kê và hoạt động tổng quan của hệ thống",
+    "TotalCourses": "Tổng số khóa học",
+    "TotalCoursesDescription": "Tất cả khóa học trong hệ thống",
+    "TotalBlogs": "Tổng số bài viết",
+    "TotalBlogsDescription": "Tất cả bài viết đã xuất bản",
+    "TotalUsers": "Tổng số người dùng",
+    "TotalUsersDescription": "Tổng số tài khoản đã đăng ký",
+    "TotalEnrollments": "Tổng số đăng ký",
+    "TotalEnrollmentsDescription": "Tổng lượt đăng ký khóa học",
+    "TopCourses": "Khóa học hàng đầu",
+    "TopCoursesDescription": "Các khóa học có nhiều học viên nhất",
+    "RecentActivity": "Hoạt động gần đây",
+    "RecentActivityDescription": "Các hoạt động mới nhất trong hệ thống"
   }
 }

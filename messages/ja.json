@@ -639,5 +639,21 @@
     "finish": "完了",
     "start": "開始",
     "stepOf": "ステップ {current}/{total}"
+  },
+  "ManageDashboard": {
+    "Title": "システム概要",
+    "Description": "統計とシステム全体の活動を表示",
+    "TotalCourses": "総コース数",
+    "TotalCoursesDescription": "システム内の全コース",
+    "TotalBlogs": "総ブログ数",
+    "TotalBlogsDescription": "公開済みのすべてのブログ",
+    "TotalUsers": "総ユーザー数",
+    "TotalUsersDescription": "登録アカウントの総数",
+    "TotalEnrollments": "総登録数",
+    "TotalEnrollmentsDescription": "コース登録の総数",
+    "TopCourses": "トップコース",
+    "TopCoursesDescription": "最も多くの学生がいるコース",
+    "RecentActivity": "最近のアクティビティ",
+    "RecentActivityDescription": "システムの最新活動"
   }
 }
