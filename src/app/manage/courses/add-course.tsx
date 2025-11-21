@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusCircle, Upload, X, ImagePlus, Video } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
@@ -37,6 +37,9 @@ import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { useAccountProfile } from "@/queries/useAccount";
 import fileApiRequest from "@/apiRequests/file";
 import { useRef } from "react";
+import { useGetSkills, useGetTags } from "@/queries/useCourse";
+import SkillManager from "./SkillManager";
+import TagManager from "./TagManager";
 
 export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   const t = useTranslations("ManageCourse");
@@ -58,12 +61,19 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   // Multi-input states
-  const [categoryInput, setCategoryInput] = useState("");
-  const [tagInput, setTagInput] = useState("");
+  // inputs removed: using backend suggestions and managers instead
   const [objectiveInput, setObjectiveInput] = useState("");
   const [requirementInput, setRequirementInput] = useState("");
 
-  const form = useForm<CreateCourseBodyType>({
+  // Suggestions from backend (via react-query)
+  const { data: skillsData } = useGetSkills();
+  const skillsOptions = skillsData?.payload?.data ?? [];
+  const { data: tagsData } = useGetTags();
+  const tagsOptions = tagsData?.payload?.data ?? [];
+
+  
+
+  const form = useForm<any>({
     resolver: zodResolver(CreateCourseBody),
     defaultValues: {
       title: "",
@@ -73,7 +83,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
       level: "BEGINNER",
       language: "VI",
       status: "DRAFT",
-      categories: [],
+      skills: [],
       tags: [],
       objectives: [],
       requirements: [],
@@ -83,7 +93,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   });
 
   // Helper functions for array fields
-  const addItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', value: string) => {
+  const addItem = (field: 'skills' | 'tags' | 'objectives' | 'requirements', value: string) => {
     if (!value.trim()) return;
     const current = form.getValues(field) || [];
     if (!current.includes(value.trim())) {
@@ -91,9 +101,19 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
     }
   };
 
-  const removeItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', index: number) => {
+  const toggleItem = (field: 'skills' | 'tags' | 'objectives' | 'requirements', value: string) => {
+    if (!value.trim()) return;
     const current = form.getValues(field) || [];
-    form.setValue(field, current.filter((_, i) => i !== index));
+    if (current.includes(value.trim())) {
+      form.setValue(field, current.filter((v: string) => v !== value.trim()));
+    } else {
+      form.setValue(field, [...current, value.trim()]);
+    }
+  };
+
+  const removeItem = (field: 'skills' | 'tags' | 'objectives' | 'requirements', index: number) => {
+    const current = form.getValues(field) || [];
+    form.setValue(field, current.filter((_: any, i: number) => i !== index));
   };
 
   const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,10 +220,27 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
     }
   };
 
-  const onSubmit = async (data: CreateCourseBodyType) => {
+  const onSubmit = async (data: any) => {
     if (createCourseMutation.isPending) return;
     try {
-      await createCourseMutation.mutateAsync(data);
+      // Backend expects `categories` as list of strings. Map selected skills -> categories (skill names)
+      const payload: CreateCourseBodyType = {
+        title: data.title,
+        description: data.description,
+        price: data.price,
+        discountPrice: data.discountPrice,
+        level: data.level,
+        language: data.language,
+        status: data.status,
+        categories: data.skills ?? [],
+        tags: data.tags ?? [],
+        objectives: data.objectives ?? [],
+        requirements: data.requirements ?? [],
+        thumbnail: data.thumbnail,
+        introVideo: data.introVideo,
+      };
+
+      await createCourseMutation.mutateAsync(payload);
       toast({
         title: t("CreateSuccess"),
         description: t("CourseCreated"),
@@ -217,6 +254,10 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
       handleErrorApi({ error, setError: form.setError });
     }
   };
+
+  // Skill & Tag manager modal state
+  const [showSkillManager, setShowSkillManager] = useState(false);
+  const [showTagManager, setShowTagManager] = useState(false);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -248,7 +289,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               />
               {form.formState.errors.title && (
                 <p className="text-sm text-red-500">
-                  {form.formState.errors.title.message}
+                  {String((form.formState.errors.title as any).message)}
                 </p>
               )}
             </div>
@@ -282,7 +323,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             />
             {form.formState.errors.description && (
               <p className="text-sm text-red-500">
-                {form.formState.errors.description.message}
+                {String((form.formState.errors.description as any).message)}
               </p>
             )}
           </div>
@@ -299,7 +340,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               />
               {form.formState.errors.price && (
                 <p className="text-sm text-red-500">
-                  {form.formState.errors.price.message}
+                  {String((form.formState.errors.price as any).message)}
                 </p>
               )}
             </div>
@@ -333,40 +374,30 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             </div>
           </div>
 
-          {/* Categories */}
+          {/* Skills (select from backend suggestions) */}
           <div className="space-y-2">
-            <Label>{t("CategoriesLabel")}</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder={t("CategoryPlaceholder")}
-                value={categoryInput}
-                onChange={(e) => setCategoryInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addItem('categories', categoryInput);
-                    setCategoryInput("");
-                  }
-                }}
-              />
+            <Label>{t("SkillsLabel")}</Label>
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => {
-                  addItem('categories', categoryInput);
-                  setCategoryInput("");
-                }}
+                variant="ghost"
+                onClick={() => setShowSkillManager(true)}
+                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                <PlusCircle className="w-4 h-4" />
+                {t("ManageSkills") || "Manage"}
               </Button>
             </div>
+
+            {/* Suggestions from backend */}
+            
+
             <div className="flex flex-wrap gap-2 mt-2">
-              {form.watch("categories")?.map((cat, idx) => (
+              {form.watch("skills")?.map((cat: string, idx: number) => (
                 <Badge key={idx} variant="secondary" className="gap-1">
                   {cat}
                   <X
                     className="w-3 h-3 cursor-pointer"
-                    onClick={() => removeItem('categories', idx)}
+                    onClick={() => removeItem('skills', idx)}
                   />
                 </Badge>
               ))}
@@ -376,32 +407,21 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
           {/* Tags */}
           <div className="space-y-2">
             <Label>{t("TagsLabel")}</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder={t("TagPlaceholder")}
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addItem('tags', tagInput);
-                    setTagInput("");
-                  }
-                }}
-              />
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => {
-                  addItem('tags', tagInput);
-                  setTagInput("");
-                }}
+                variant="ghost"
+                onClick={() => setShowTagManager(true)}
+                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                <PlusCircle className="w-4 h-4" />
+                {t("ManageTags") || "Manage tags"}
               </Button>
             </div>
+            {/* Tag suggestions from backend */}
+       
+
             <div className="flex flex-wrap gap-2 mt-2">
-              {form.watch("tags")?.map((tag, idx) => (
+              {form.watch("tags")?.map((tag: string, idx: number) => (
                 <Badge key={idx} variant="secondary" className="gap-1">
                   {tag}
                   <X
@@ -441,7 +461,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               </Button>
             </div>
             <div className="flex flex-col gap-1 mt-2">
-              {form.watch("objectives")?.map((obj, idx) => (
+              {form.watch("objectives")?.map((obj: string, idx: number) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
                   <span>• {obj}</span>
                   <X
@@ -481,7 +501,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               </Button>
             </div>
             <div className="flex flex-col gap-1 mt-2">
-              {form.watch("requirements")?.map((req, idx) => (
+              {form.watch("requirements")?.map((req: string, idx: number) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
                   <span>• {req}</span>
                   <X
@@ -666,6 +686,19 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
           />
         </>
       )}
+      {/* Skill Manager Modal */}
+      <SkillManager
+        open={showSkillManager}
+        onOpenChange={setShowSkillManager}
+        onSelect={(s: any) => toggleItem('skills', s.name)}
+        selectedItems={form.watch('skills') || []}
+      />
+      <TagManager
+        open={showTagManager}
+        onOpenChange={setShowTagManager}
+        onSelect={(t: any) => toggleItem('tags', t.name)}
+        selectedItems={form.watch('tags') || []}
+      />
     </Dialog>
   );
 }

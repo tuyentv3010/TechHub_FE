@@ -28,6 +28,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
 import { useGetCourseById, useUpdateCourseMutation } from "@/queries/useCourse";
+import { useGetSkills, useGetTags } from "@/queries/useCourse";
 import {
   UpdateCourseBodyType,
   UpdateCourseBody,
@@ -35,6 +36,8 @@ import {
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { useAccountProfile } from "@/queries/useAccount";
 import fileApiRequest from "@/apiRequests/file";
+import SkillManager from "./SkillManager";
+import TagManager from "./TagManager";
 
 export default function EditCourse({
   id,
@@ -64,10 +67,16 @@ export default function EditCourse({
   const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   // Multi-input states
-  const [categoryInput, setCategoryInput] = useState("");
-  const [tagInput, setTagInput] = useState("");
+  // inputs removed: using backend suggestions and managers instead
   const [objectiveInput, setObjectiveInput] = useState("");
   const [requirementInput, setRequirementInput] = useState("");
+  const [showSkillManager, setShowSkillManager] = useState(false);
+  const [showTagManager, setShowTagManager] = useState(false);
+
+  const { data: skillsData } = useGetSkills();
+  const skillsOptions = skillsData?.payload?.data ?? [];
+  const { data: tagsData } = useGetTags();
+  const tagsOptions = tagsData?.payload?.data ?? [];
 
   const form = useForm<UpdateCourseBodyType>({
     resolver: zodResolver(UpdateCourseBody),
@@ -119,9 +128,19 @@ export default function EditCourse({
     }
   };
 
+  const toggleItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', value: string) => {
+    if (!value.trim()) return;
+    const current = form.getValues(field) || [];
+    if (current.includes(value.trim())) {
+      form.setValue(field, current.filter((v: string) => v !== value.trim()));
+    } else {
+      form.setValue(field, [...current, value.trim()]);
+    }
+  };
+
   const removeItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', index: number) => {
     const current = form.getValues(field) || [];
-    form.setValue(field, current.filter((_, i) => i !== index));
+    form.setValue(field, current.filter((_: any, i: number) => i !== index));
   };
 
   const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -344,30 +363,16 @@ export default function EditCourse({
           {/* Categories */}
           <div className="space-y-2">
             <Label>{t("CategoriesLabel")}</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder={t("CategoryPlaceholder")}
-                value={categoryInput}
-                onChange={(e) => setCategoryInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addItem('categories', categoryInput);
-                    setCategoryInput("");
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  addItem('categories', categoryInput);
-                  setCategoryInput("");
-                }}
-              >
-                <PlusCircle className="w-4 h-4" />
-              </Button>
-            </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShowSkillManager(true)}
+                  className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  {t("ManageSkills") || "Manage"}
+                </Button>
+              </div>
             <div className="flex flex-wrap gap-2 mt-2">
               {form.watch("categories")?.map((cat, idx) => (
                 <Badge key={idx} variant="secondary" className="gap-1">
@@ -384,28 +389,14 @@ export default function EditCourse({
           {/* Tags */}
           <div className="space-y-2">
             <Label>{t("TagsLabel")}</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder={t("TagPlaceholder")}
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addItem('tags', tagInput);
-                    setTagInput("");
-                  }
-                }}
-              />
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => {
-                  addItem('tags', tagInput);
-                  setTagInput("");
-                }}
+                variant="ghost"
+                onClick={() => setShowTagManager(true)}
+                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                <PlusCircle className="w-4 h-4" />
+                {t("ManageTags") || "Manage tags"}
               </Button>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
@@ -675,6 +666,18 @@ export default function EditCourse({
           />
         </>
       )}
+      <SkillManager
+        open={showSkillManager}
+        onOpenChange={setShowSkillManager}
+        onSelect={(s) => toggleItem('categories', s.name)}
+        selectedItems={form.watch('categories') || []}
+      />
+      <TagManager
+        open={showTagManager}
+        onOpenChange={setShowTagManager}
+        onSelect={(t) => toggleItem('tags', t.name)}
+        selectedItems={form.watch('tags') || []}
+      />
     </Dialog>
   );
 }

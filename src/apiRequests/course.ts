@@ -50,6 +50,24 @@ const courseApiRequest = {
   getChapters: (courseId: string) =>
     http.get(`/app/api/proxy/courses/${courseId}/chapters`),
 
+  // Get all available skills (from course-service)
+  getSkills: () => http.get(`/app/api/proxy/courses/skills`),
+  // Get single skill by id
+  getSkill: (id: string) => http.get(`/app/api/proxy/courses/skills/${id}`),
+
+  // Create/update/delete skill
+  createSkill: (body: any) => http.post(`/app/api/proxy/courses/skills`, body),
+  updateSkill: (id: string, body: any) => http.put(`/app/api/proxy/courses/skills/${id}`, body),
+  deleteSkill: (id: string) => http.delete(`/app/api/proxy/courses/skills/${id}`),
+
+  // Get all available tags (from course-service)
+  getTags: () => http.get(`/app/api/proxy/courses/tags`),
+
+  // Create/update/delete tag
+  createTag: (body: any) => http.post(`/app/api/proxy/courses/tags`, body),
+  updateTag: (id: string, body: any) => http.put(`/app/api/proxy/courses/tags/${id}`, body),
+  deleteTag: (id: string) => http.delete(`/app/api/proxy/courses/tags/${id}`),
+
   // Get course progress
   getProgress: (courseId: string) =>
     http.get(`/app/api/proxy/courses/${courseId}/progress`),

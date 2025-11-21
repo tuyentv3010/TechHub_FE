@@ -86,6 +86,92 @@ export const useGetChapters = (courseId: string) => {
   });
 };
 
+// ============================================
+// SKILL & TAG HOOKS
+// ============================================
+
+// Get all skills
+export const useGetSkills = () => {
+  return useQuery({
+    queryKey: ["skills"],
+    queryFn: () => courseApiRequest.getSkills(),
+  });
+};
+
+// Create skill
+export const useCreateSkillMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: any) => courseApiRequest.createSkill(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["skills"] });
+    },
+  });
+};
+
+// Update skill
+export const useUpdateSkillMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: any }) => courseApiRequest.updateSkill(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["skills"] });
+    },
+  });
+};
+
+// Delete skill
+export const useDeleteSkillMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => courseApiRequest.deleteSkill(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["skills"] });
+    },
+  });
+};
+
+// Get all tags
+export const useGetTags = () => {
+  return useQuery({
+    queryKey: ["tags"],
+    queryFn: () => courseApiRequest.getTags(),
+  });
+};
+
+// Create tag
+export const useCreateTagMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: any) => courseApiRequest.createTag(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tags"] });
+    },
+  });
+};
+
+// Update tag
+export const useUpdateTagMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: any }) => courseApiRequest.updateTag(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tags"] });
+    },
+  });
+};
+
+// Delete tag
+export const useDeleteTagMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => courseApiRequest.deleteTag(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tags"] });
+    },
+  });
+};
+
 // Create chapter
 export const useCreateChapterMutation = () => {
   const queryClient = useQueryClient();
