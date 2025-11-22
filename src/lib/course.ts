@@ -107,9 +107,14 @@ export const formatDuration = (minutes: number): string => {
 
 /**
  * Format tag label
+ * Handles both string and object formats from backend
  */
-export const formatTagLabel = (tag: string) =>
-  tag
+export const formatTagLabel = (tag: string | { name: string } | any): string => {
+  // Extract string value if tag is an object
+  const tagString = typeof tag === 'string' ? tag : (tag?.name || String(tag));
+  
+  return tagString
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+};

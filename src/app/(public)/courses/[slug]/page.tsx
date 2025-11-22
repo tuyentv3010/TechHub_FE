@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useGetCourseById, useEnrollCourseMutation } from "@/queries/useCourse";
+import { useGetCourseById, useEnrollCourseMutation, useGetSkills, useGetTags } from "@/queries/useCourse";
 import { useGetAccount } from "@/queries/useAccount";
 import {
   extractIdFromSlug,
@@ -51,10 +51,40 @@ export default function CourseDetailPage() {
 
   const { data: courseResponse, isLoading, error } = useGetCourseById(courseId);
   const enrollMutation = useEnrollCourseMutation();
+  
+  // Fetch skills and tags from backend
+  const { data: skillsData } = useGetSkills();
+  const { data: tagsData } = useGetTags();
+  const allSkills = skillsData?.payload?.data ?? [];
+  const allTags = tagsData?.payload?.data ?? [];
 
   const course = courseResponse?.payload?.data;
   const courseSummary = course?.summary;
   const chapters = course?.chapters || [];
+
+  // Transform skills/categories from backend format (could be IDs, names, or objects)
+  // Backend may return: skills array (names or objects) OR categories array
+  const rawSkillsOrCategories = courseSummary?.skills || courseSummary?.categories || [];
+  const rawTags = courseSummary?.tags || [];
+  
+  // Map to actual skill/tag names by looking up in the fetched data
+  const skills = rawSkillsOrCategories.map((item: any) => {
+    if (typeof item === 'string') {
+      // Could be ID or name, try to find in allSkills
+      const found = allSkills.find((s: any) => s.id === item || s.name === item);
+      return found?.name || item;
+    }
+    return item?.name || item;
+  }).filter(Boolean);
+
+  const tags = rawTags.map((item: any) => {
+    if (typeof item === 'string') {
+      // Could be ID or name, try to find in allTags
+      const found = allTags.find((t: any) => t.id === item || t.name === item);
+      return found?.name || item;
+    }
+    return item?.name || item;
+  }).filter(Boolean);
 
   // Fetch course comments
   const { data: commentsResponse, isLoading: isLoadingComments } = useCourseComments(
@@ -542,28 +572,28 @@ export default function CourseDetailPage() {
 
           {/* Right Sidebar */}
           <div className="space-y-6 lg:col-span-1">
-            {/* Tags/Categories */}
-            {(courseSummary.categories?.length > 0 || courseSummary.tags?.length > 0) && (
+            {/* Skills & Tags */}
+            {(skills.length > 0 || tags.length > 0) && (
               <Card>
                 <CardContent className="p-6">
-                  {courseSummary.categories && courseSummary.categories.length > 0 && (
+                  {skills.length > 0 && (
                     <div className="mb-4">
-                      <h3 className="mb-2 font-semibold">Danh mục</h3>
+                      <h3 className="mb-2 font-semibold">Kỹ năng</h3>
                       <div className="flex flex-wrap gap-2">
-                        {courseSummary.categories.map((category: string) => (
-                          <Badge key={category} variant="secondary">
-                            {formatTagLabel(category)}
+                        {skills.map((skill: string, idx: number) => (
+                          <Badge key={`${skill}-${idx}`} variant="secondary">
+                            {formatTagLabel(skill)}
                           </Badge>
                         ))}
                       </div>
                     </div>
                   )}
-                  {courseSummary.tags && courseSummary.tags.length > 0 && (
+                  {tags.length > 0 && (
                     <div>
                       <h3 className="mb-2 font-semibold">Thẻ</h3>
                       <div className="flex flex-wrap gap-2">
-                        {courseSummary.tags.map((tag: string) => (
-                          <Badge key={tag} variant="outline">
+                        {tags.map((tag: string, idx: number) => (
+                          <Badge key={`${tag}-${idx}`} variant="outline">
                             #{formatTagLabel(tag)}
                           </Badge>
                         ))}
