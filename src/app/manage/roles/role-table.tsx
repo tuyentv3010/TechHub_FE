@@ -3,7 +3,6 @@
 import {
   CaretSortIcon,
   DotsHorizontalIcon,
-  PlusCircledIcon,
 } from "@radix-ui/react-icons";
 import {
   ColumnDef,
@@ -29,13 +28,6 @@ import {
 } from "@/components/ui/table";
 import { useState, createContext, useContext } from "react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -54,55 +46,50 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { useTranslations } from "next-intl";
-import AddPermission from "./add-permission";
-import EditPermission from "./edit-permission";
-import { PermissionSchemaType, HTTP_METHODS, RESOURCES } from "@/schemaValidations/permission.schema";
-import {
-  useGetPermissions,
-  useDeletePermissionMutation,
-} from "@/queries/usePermission";
+import { PlusCircle } from "lucide-react";
+import RoleModal from "./role-modal";
+import { RoleSchemaType } from "@/schemaValidations/role.schema";
+import { useGetRoles, useDeleteRoleMutation } from "@/queries/useRole";
 import TableSkeleton from "@/components/Skeleton";
 import { useToast } from "@/hooks/use-toast";
 
-type PermissionItem = PermissionSchemaType;
+type RoleItem = RoleSchemaType;
 
-const PermissionTableContext = createContext<{
-  setPermissionIdEdit: (value: string | undefined) => void;
-  permissionIdEdit: string | undefined;
-  permissionDelete: PermissionItem | null;
-  setPermissionDelete: (value: PermissionItem | null) => void;
+const RoleTableContext = createContext<{
+  setRoleIdEdit: (value: string | undefined) => void;
+  roleIdEdit: string | undefined;
+  roleDelete: RoleItem | null;
+  setRoleDelete: (value: RoleItem | null) => void;
 }>({
-  setPermissionIdEdit: () => {},
-  permissionIdEdit: undefined,
-  permissionDelete: null,
-  setPermissionDelete: () => {},
+  setRoleIdEdit: () => {},
+  roleIdEdit: undefined,
+  roleDelete: null,
+  setRoleDelete: () => {},
 });
 
-function DeletePermissionDialog({
-  permissionDelete,
-  setPermissionDelete,
+function DeleteRoleDialog({
+  roleDelete,
+  setRoleDelete,
 }: {
-  permissionDelete: PermissionItem | null;
-  setPermissionDelete: (value: PermissionItem | null) => void;
+  roleDelete: RoleItem | null;
+  setRoleDelete: (value: RoleItem | null) => void;
 }) {
-  const t = useTranslations("ManagePermission");
   const { toast } = useToast();
-  const deletePermissionMutation = useDeletePermissionMutation();
+  const deleteRoleMutation = useDeleteRoleMutation();
 
   const handleDelete = async () => {
-    if (permissionDelete) {
+    if (roleDelete) {
       try {
-        await deletePermissionMutation.mutateAsync(permissionDelete.id);
+        await deleteRoleMutation.mutateAsync(roleDelete.id);
         toast({
-          title: t("DeleteSuccess"),
-          description: `Permission ${permissionDelete.name} đã được xóa`,
+          title: "Xóa thành công",
+          description: `Role ${roleDelete.name} đã được xóa`,
         });
-        setPermissionDelete(null);
+        setRoleDelete(null);
       } catch (error: any) {
         const errorMessage = error?.message || "Có lỗi xảy ra";
         toast({
-          title: t("DeleteFailed"),
+          title: "Xóa thất bại",
           description: errorMessage,
           variant: "destructive",
         });
@@ -112,20 +99,20 @@ function DeletePermissionDialog({
 
   return (
     <AlertDialog
-      open={Boolean(permissionDelete)}
+      open={Boolean(roleDelete)}
       onOpenChange={(value) => {
         if (!value) {
-          setPermissionDelete(null);
+          setRoleDelete(null);
         }
       }}
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Xóa Permission</AlertDialogTitle>
+          <AlertDialogTitle>Xóa Role</AlertDialogTitle>
           <AlertDialogDescription>
-            Bạn có chắc chắn muốn xóa permission{" "}
+            Bạn có chắc chắn muốn xóa role{" "}
             <span className="bg-foreground text-primary-foreground rounded px-1">
-              {permissionDelete?.name}
+              {roleDelete?.name}
             </span>
             ? Hành động này không thể hoàn tác.
           </AlertDialogDescription>
@@ -141,17 +128,17 @@ function DeletePermissionDialog({
   );
 }
 
-export default function PermissionTable() {
-  const t = useTranslations("ManagePermission");
-  const [permissionIdEdit, setPermissionIdEdit] = useState<string | undefined>();
-  const [permissionDelete, setPermissionDelete] = useState<PermissionItem | null>(null);
+export default function RoleTable() {
+  const [roleIdEdit, setRoleIdEdit] = useState<string | undefined>();
+  const [roleDelete, setRoleDelete] = useState<RoleItem | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
 
-  const { data, isLoading, error } = useGetPermissions();
-  console.log("dasdasd data " , data)
-  const permissions = data?.payload?.data ?? [];
+  const { data, isLoading, error } = useGetRoles();
+  console.log("dasdasdas data " ,data);
 
-  const columns: ColumnDef<PermissionItem>[] = [
+  const roles = data?.payload?.data ?? [];
+
+  const columns: ColumnDef<RoleItem>[] = [
     {
       accessorKey: "name",
       header: ({ column }) => (
@@ -173,46 +160,27 @@ export default function PermissionTable() {
       ),
     },
     {
-      accessorKey: "method",
-      header: "Method",
+      accessorKey: "isActive",
+      header: "Trạng thái",
       cell: ({ row }) => {
-        const method = row.getValue("method") as string;
-        const colorMap: Record<string, string> = {
-          GET: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-          POST: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
-          PUT: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-          DELETE: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
-          PATCH: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-        };
+        const isActive = row.getValue("isActive") as boolean;
         return (
-          <Badge className={colorMap[method] || ""} variant="secondary">
-            {method}
+          <Badge variant={isActive ? "default" : "secondary"}>
+            {isActive ? "Active" : "Inactive"}
           </Badge>
         );
       },
-      filterFn: (row, columnId, filterValue) => {
-        if (!filterValue || filterValue === "all") return true;
-        return row.getValue(columnId) === filterValue;
-      },
     },
     {
-      accessorKey: "url",
-      header: "URL",
-      cell: ({ row }) => (
-        <code className="text-xs bg-muted px-2 py-1 rounded">
-          {row.getValue("url")}
-        </code>
-      ),
-    },
-    {
-      accessorKey: "resource",
-      header: "Resource",
-      cell: ({ row }) => (
-        <Badge variant="outline">{row.getValue("resource")}</Badge>
-      ),
-      filterFn: (row, columnId, filterValue) => {
-        if (!filterValue || filterValue === "all") return true;
-        return row.getValue(columnId) === filterValue;
+      accessorKey: "permissionIds",
+      header: "Permissions",
+      cell: ({ row }) => {
+        const permissionIds = row.getValue("permissionIds") as string[];
+        return (
+          <Badge variant="outline">
+            {permissionIds?.length || 0} permissions
+          </Badge>
+        );
       },
     },
     {
@@ -220,9 +188,7 @@ export default function PermissionTable() {
       header: "Hành động",
       enableHiding: false,
       cell: function Actions({ row }) {
-        const { setPermissionIdEdit, setPermissionDelete } = useContext(
-          PermissionTableContext
-        );
+        const { setRoleIdEdit, setRoleDelete } = useContext(RoleTableContext);
         return (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
@@ -233,13 +199,11 @@ export default function PermissionTable() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Hành động</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setPermissionIdEdit(row.original.id)}
-              >
+              <DropdownMenuItem onClick={() => setRoleIdEdit(row.original.id)}>
                 Chỉnh sửa
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => setPermissionDelete(row.original)}
+                onClick={() => setRoleDelete(row.original)}
                 className="text-destructive"
               >
                 Xóa
@@ -257,7 +221,7 @@ export default function PermissionTable() {
   const [rowSelection, setRowSelection] = useState({});
 
   const table = useReactTable({
-    data: permissions,
+    data: roles,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -276,27 +240,28 @@ export default function PermissionTable() {
   });
 
   return (
-    <PermissionTableContext.Provider
+    <RoleTableContext.Provider
       value={{
-        permissionIdEdit,
-        setPermissionIdEdit,
-        permissionDelete,
-        setPermissionDelete,
+        roleIdEdit,
+        setRoleIdEdit,
+        roleDelete,
+        setRoleDelete,
       }}
     >
       <div className="w-full">
-        {permissionIdEdit && (
-          <EditPermission
-            id={permissionIdEdit}
-            setId={setPermissionIdEdit}
+        {roleIdEdit && (
+          <RoleModal
+            open={true}
+            setOpen={() => setRoleIdEdit(undefined)}
+            roleId={roleIdEdit}
             onSubmitSuccess={() => {
-              setPermissionIdEdit(undefined);
+              setRoleIdEdit(undefined);
             }}
           />
         )}
-        <DeletePermissionDialog
-          permissionDelete={permissionDelete}
-          setPermissionDelete={setPermissionDelete}
+        <DeleteRoleDialog
+          roleDelete={roleDelete}
+          setRoleDelete={setRoleDelete}
         />
         {isLoading ? (
           <TableSkeleton />
@@ -313,48 +278,18 @@ export default function PermissionTable() {
                 }
                 className="max-w-sm"
               />
-              <Select
-                value={(table.getColumn("method")?.getFilterValue() as string) ?? "all"}
-                onValueChange={(value) =>
-                  table.getColumn("method")?.setFilterValue(value === "all" ? undefined : value)
-                }
-              >
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Lọc Method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  {HTTP_METHODS.map((method) => (
-                    <SelectItem key={method} value={method}>
-                      {method}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={(table.getColumn("resource")?.getFilterValue() as string) ?? "all"}
-                onValueChange={(value) =>
-                  table.getColumn("resource")?.setFilterValue(value === "all" ? undefined : value)
-                }
-              >
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Lọc Resource" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  {RESOURCES.map((resource) => (
-                    <SelectItem key={resource} value={resource}>
-                      {resource}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <div className="ml-auto">
                 <Button size="sm" onClick={() => setAddModalOpen(true)}>
-                  <PlusCircledIcon className="mr-2 h-4 w-4" />
-                  Thêm Permission
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Thêm Role
                 </Button>
-                <AddPermission open={addModalOpen} setOpen={setAddModalOpen} />
+                <RoleModal
+                  open={addModalOpen}
+                  setOpen={setAddModalOpen}
+                  onSubmitSuccess={() => {
+                    setAddModalOpen(false);
+                  }}
+                />
               </div>
             </div>
             <div className="rounded-md border">
@@ -423,6 +358,6 @@ export default function PermissionTable() {
           </>
         )}
       </div>
-    </PermissionTableContext.Provider>
+    </RoleTableContext.Provider>
   );
 }

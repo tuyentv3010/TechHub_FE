@@ -10,12 +10,38 @@ import {
 
 const roleApiRequest = {
   // List all roles
-  getRoles: () =>
-    http.get<RoleListResType>("/app/api/proxy/admin/roles"),
+  getRoles: () => {
+    console.log('[Role API] Getting all roles');
+    return http.get<RoleListResType>("/app/api/proxy/admin/roles")
+      .then(response => {
+        console.log('[Role API] Get roles SUCCESS:', response);
+        return response;
+      })
+      .catch(error => {
+        console.error('[Role API] Get roles ERROR:', error);
+        throw error;
+      });
+  },
 
   // Get single role
-  getRole: (id: string) =>
-    http.get<RoleDetailResType>(`/app/api/proxy/admin/roles/${id}`),
+  getRole: (id: string) => {
+    console.log('[Role API] Getting role with ID:', id);
+    console.log('[Role API] Request URL:', `/app/api/proxy/admin/roles/${id}`);
+    return http.get<RoleDetailResType>(`/app/api/proxy/admin/roles/${id}`)
+      .then(response => {
+        console.log('[Role API] Get role SUCCESS:', response);
+        return response;
+      })
+      .catch(error => {
+        console.error('[Role API] Get role ERROR:', error);
+        console.error('[Role API] Error details:', {
+          status: error.status,
+          message: error.message,
+          payload: error.payload
+        });
+        throw error;
+      });
+  },
 
   // Create role
   createRole: (body: CreateRoleBodyType) =>

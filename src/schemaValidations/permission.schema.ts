@@ -51,7 +51,9 @@ export const PermissionListRes = z.object({
   success: z.boolean(),
   status: z.string(),
   message: z.string(),
-  data: z.array(PermissionSchema),
+  payload: z.object({
+    data: z.array(PermissionSchema),
+  }),
   timestamp: z.string(),
   path: z.string(),
   code: z.number(),
@@ -64,7 +66,9 @@ export const PermissionDetailRes = z.object({
   success: z.boolean(),
   status: z.string(),
   message: z.string(),
-  data: PermissionSchema,
+  payload: z.object({
+    data: PermissionSchema,
+  }),
   timestamp: z.string(),
   path: z.string(),
   code: z.number(),
@@ -77,7 +81,9 @@ export const DeletePermissionRes = z.object({
   success: z.boolean(),
   status: z.string(),
   message: z.string(),
-  data: z.null(),
+  payload: z.object({
+    data: z.null(),
+  }),
   timestamp: z.string(),
   path: z.string(),
   code: z.number(),

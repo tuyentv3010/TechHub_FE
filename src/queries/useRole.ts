@@ -17,9 +17,13 @@ export const useGetRoles = () => {
 
 // Get single role
 export const useGetRole = (id: string, enabled: boolean = true) => {
+  console.log('[useGetRole Hook] Called with:', { id, enabled });
   return useQuery({
     queryKey: ["role", id],
-    queryFn: () => roleApiRequest.getRole(id),
+    queryFn: () => {
+      console.log('[useGetRole Hook] Fetching role:', id);
+      return roleApiRequest.getRole(id);
+    },
     enabled: enabled && !!id,
   });
 };
