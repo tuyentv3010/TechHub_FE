@@ -25,18 +25,6 @@ export default function Home() {
     size: 6,
     status: "PUBLISHED", // Only show published courses
   });
-  
-  // Mock data - in real app, this would come from API
-  const categories = [
-    { title: t("categories.webDesign"), icon: "🎨", bgColor: "bg-blue-100" },
-    { title: t("categories.dataScience"), icon: "📊", bgColor: "bg-green-100" },
-    { title: t("categories.businessDevelopment"), icon: "💼", bgColor: "bg-purple-100" },
-    { title: t("categories.personalDevelopment"), icon: "🧠", bgColor: "bg-yellow-100" },
-    { title: t("categories.itAndSoftware"), icon: "💻", bgColor: "bg-red-100" },
-    { title: t("categories.graphicDesign"), icon: "🎭", bgColor: "bg-indigo-100" },
-    { title: t("categories.digitalMarketing"), icon: "📱", bgColor: "bg-pink-100" },
-    { title: t("categories.newsAndPhotography"), icon: "📷", bgColor: "bg-orange-100" },
-  ];
 
   // Transform API data - keep instructorId for fetching
   const coursesWithInstructorIds = coursesData?.payload?.data?.map((course: any) => ({
@@ -76,7 +64,6 @@ export default function Home() {
       {/* Categories Section */}
       <CategoriesSection
         title={t("categories.title")}
-        categories={categories}
       />
 
       {/* Courses Section */}
