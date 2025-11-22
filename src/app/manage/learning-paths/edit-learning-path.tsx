@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import SkillManager from "@/components/manage/SkillManager";
 
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -39,8 +40,7 @@ export default function EditLearningPath({
   onSuccess,
 }: EditLearningPathProps) {
   const t = useTranslations("ManageLearningPath");
-  const [skillInput, setSkillInput] = useState("");
-  const [skills, setSkills] = useState<string[]>(learningPath.skills || []);
+  const [showSkillManager, setShowSkillManager] = useState(false);
 
   const updateMutation = useUpdateLearningPathMutation();
   const { toast } = useToast();
@@ -61,30 +61,22 @@ export default function EditLearningPath({
   });
 
   useEffect(() => {
-    setSkills(learningPath.skills || []);
     setValue("skills", learningPath.skills || []);
   }, [learningPath, setValue]);
 
-  const handleAddSkill = () => {
-    if (skillInput.trim() && !skills.includes(skillInput.trim())) {
-      const newSkills = [...skills, skillInput.trim()];
-      setSkills(newSkills);
-      setValue("skills", newSkills);
-      setSkillInput("");
+  const toggleSkill = (skillName: string) => {
+    const current = watch('skills') || [];
+    if (current.includes(skillName)) {
+      setValue('skills', current.filter((s: string) => s !== skillName), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    } else {
+      setValue('skills', [...current, skillName], { shouldDirty: true, shouldTouch: true, shouldValidate: true });
     }
   };
 
   const handleRemoveSkill = (skillToRemove: string) => {
-    const newSkills = skills.filter((s) => s !== skillToRemove);
-    setSkills(newSkills);
-    setValue("skills", newSkills);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddSkill();
-    }
+    const current = watch('skills') || [];
+    const newSkills = current.filter((s) => s !== skillToRemove);
+    setValue('skills', newSkills, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
   };
 
   const onSubmit = async (data: UpdateLearningPathBodyType) => {
@@ -142,26 +134,19 @@ export default function EditLearningPath({
 
           <div className="space-y-2">
             <Label htmlFor="skills">{t("FormSkills")}</Label>
-            <div className="flex gap-2">
-              <Input
-                id="skills"
-                placeholder={t("FormSkillsPlaceholder")}
-                value={skillInput}
-                onChange={(e) => setSkillInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAddSkill}
+                variant="ghost"
+                onClick={() => setShowSkillManager(true)}
+                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                <X className="h-4 w-4 rotate-45" />
+                {t("ManageSkills") || "Manage Skills"}
               </Button>
             </div>
-            {skills.length > 0 && (
+            {watch('skills')?.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
-                {skills.map((skill, index) => (
+                {watch('skills')?.map((skill: string, index: number) => (
                   <Badge key={index} variant="secondary">
                     {skill}
                     <button
@@ -190,6 +175,13 @@ export default function EditLearningPath({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      <SkillManager
+        open={showSkillManager}
+        onOpenChange={setShowSkillManager}
+        onSelect={(s: any) => toggleSkill(s.name)}
+        selectedItems={watch('skills') || []}
+      />
     </Dialog>
   );
 }
