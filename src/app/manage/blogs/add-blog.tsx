@@ -26,7 +26,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCreateBlogMutation } from "@/queries/useBlog";
 import { useAccountProfile } from "@/queries/useAccount";
 import dynamic from "next/dynamic";
-import TagInput from "@/components/blog/tag-input";
+import { useGetTags } from "@/queries/useCourse";
+import TagManager from "@/components/manage/TagManager";
+import { Badge } from "@/components/ui/badge";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import fileApiRequest from "@/apiRequests/file";
 import { Upload } from "lucide-react";
@@ -57,6 +59,19 @@ export default function AddBlog() {
       attachments: [],
     },
   });
+
+  const { data: tagsData } = useGetTags();
+  const tagsOptions = tagsData?.payload?.data ?? [];
+  const [showTagManager, setShowTagManager] = useState(false);
+
+  const toggleTag = (tagName: string) => {
+    const current = form.getValues('tags') || [];
+    if (current.includes(tagName)) {
+      form.setValue('tags', current.filter((t: string) => t !== tagName), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    } else {
+      form.setValue('tags', [...current, tagName], { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    }
+  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -243,11 +258,19 @@ export default function AddBlog() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("Tags")}</FormLabel>
-                    <TagInput
-                      value={field.value || []}
-                      onChange={field.onChange}
-                      placeholder={t("TagsPlaceholder")}
-                    />
+                    <div className="flex items-center gap-2">
+                      <Button type="button" variant="ghost" onClick={() => setShowTagManager(true)} className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700">
+                        {t("ManageTags") || "Manage tags"}
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {form.watch("tags")?.map((tag: string, idx: number) => (
+                        <Badge key={idx} variant="secondary" className="gap-1">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+
                     <FormMessage />
                   </FormItem>
                 )}
@@ -288,6 +311,13 @@ export default function AddBlog() {
         userId={userId}
         mediaType="IMAGE"
         title="Select Thumbnail"
+      />
+
+      <TagManager
+        open={showTagManager}
+        onOpenChange={setShowTagManager}
+        onSelect={(t: any) => toggleTag(t.name)}
+        selectedItems={form.watch('tags') || []}
       />
     </Dialog>
   );

@@ -16,6 +16,8 @@ export const CourseItemRes = z.object({
   level: CourseLevel,
   language: Language,
   categories: z.array(z.string()),
+  // Backwards-compatible: some endpoints return 'skills' instead of 'categories'
+  skills: z.array(z.string()).optional(),
   tags: z.array(z.string()),
   objectives: z.array(z.string()),
   requirements: z.array(z.string()),
@@ -99,6 +101,8 @@ export const CreateCourseBody = z.object({
   language: Language,
   status: CourseStatus,
   categories: z.array(z.string()).optional(),
+  // Frontend should send skills (preferred) — kept optional for compatibility
+  skills: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   objectives: z.array(z.string()).optional(),
   requirements: z.array(z.string()).optional(),
@@ -118,6 +122,7 @@ export const UpdateCourseBody = z.object({
   language: Language.optional(),
   status: CourseStatus.optional(),
   categories: z.array(z.string()).optional(),
+  skills: z.array(z.string()).optional(), // Add skills field for backend
   tags: z.array(z.string()).optional(),
   objectives: z.array(z.string()).optional(),
   requirements: z.array(z.string()).optional(),

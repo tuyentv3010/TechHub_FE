@@ -259,7 +259,14 @@ export default function SkillManager({
                               <Button
                                 size="sm"
                                 variant="secondary"
-                                onClick={() => onSelect(s)}
+                                onClick={() => {
+                                  console.log("[SkillManager] Select button clicked for skill:", s);
+                                  console.log("[SkillManager] Skill name:", s.name);
+                                  console.log("[SkillManager] Current selectedItems:", selectedItems);
+                                  console.log("[SkillManager] Calling onSelect with skill:", s);
+                                  onSelect(s);
+                                  console.log("[SkillManager] onSelect called");
+                                }}
                                 className={`${(selectedItems || []).includes(s.name) ? 'opacity-60 bg-gray-200 text-gray-700' : ''}`}
                               >
                                 { (selectedItems || []).includes(s.name) ? 'Selected' : 'Select' }

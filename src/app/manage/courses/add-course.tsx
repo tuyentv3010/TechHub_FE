@@ -38,8 +38,8 @@ import { useAccountProfile } from "@/queries/useAccount";
 import fileApiRequest from "@/apiRequests/file";
 import { useRef } from "react";
 import { useGetSkills, useGetTags } from "@/queries/useCourse";
-import SkillManager from "./SkillManager";
-import TagManager from "./TagManager";
+import SkillManager from "@/components/manage/SkillManager";
+import TagManager from "@/components/manage/TagManager";
 
 export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   const t = useTranslations("ManageCourse");
@@ -92,6 +92,13 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
     },
   });
 
+  // Ensure 'skills' and 'tags' are registered and initialized as arrays
+  useEffect(() => {
+    form.register("skills", { value: [] });
+    form.register("tags", { value: [] });
+    // keep eslint happy about form
+  }, [form]);
+
   // Helper functions for array fields
   const addItem = (field: 'skills' | 'tags' | 'objectives' | 'requirements', value: string) => {
     if (!value.trim()) return;
@@ -102,13 +109,24 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   };
 
   const toggleItem = (field: 'skills' | 'tags' | 'objectives' | 'requirements', value: string) => {
-    if (!value.trim()) return;
-    const current = form.getValues(field) || [];
-    if (current.includes(value.trim())) {
-      form.setValue(field, current.filter((v: string) => v !== value.trim()));
-    } else {
-      form.setValue(field, [...current, value.trim()]);
+    console.log(`[AddCourse] toggleItem called - field: ${field}, value: '${value}'`);
+    if (!value.trim()) {
+      console.log(`[AddCourse] toggleItem - value is empty, returning`);
+      return;
     }
+    const current = form.getValues(field) || [];
+    console.log(`[AddCourse] toggleItem - current ${field} values:`, current);
+    const trimmedValue = value.trim();
+    if (current.includes(trimmedValue)) {
+      const newValue = current.filter((v: string) => v !== trimmedValue);
+      console.log(`[AddCourse] toggleItem - removing '${trimmedValue}', new values:`, newValue);
+      form.setValue(field, newValue, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    } else {
+      const newValue = [...current, trimmedValue];
+      console.log(`[AddCourse] toggleItem - adding '${trimmedValue}', new values:`, newValue);
+      form.setValue(field, newValue, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    }
+    console.log(`[AddCourse] toggleItem - final ${field} values:`, form.getValues(field));
   };
 
   const removeItem = (field: 'skills' | 'tags' | 'objectives' | 'requirements', index: number) => {
@@ -223,7 +241,28 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   const onSubmit = async (data: any) => {
     if (createCourseMutation.isPending) return;
     try {
-      // Backend expects `categories` as list of strings. Map selected skills -> categories (skill names)
+      console.log("[AddCourse] ========== FORM SUBMIT START ==========");
+      console.log("[AddCourse] Raw form data:", data);
+      console.log("[AddCourse] Form data.skills:", data.skills);
+      console.log("[AddCourse] Form data.tags:", data.tags);
+      console.log("[AddCourse] Form data.skills type:", typeof data.skills, Array.isArray(data.skills));
+      console.log("[AddCourse] Form data.tags type:", typeof data.tags, Array.isArray(data.tags));
+      
+      // Double-check by reading from form.getValues()
+      const currentSkills = form.getValues("skills");
+      const currentTags = form.getValues("tags");
+      console.log("[AddCourse] getValues('skills'):", currentSkills);
+      console.log("[AddCourse] getValues('tags'):", currentTags);
+      
+      // Backend now accepts `skills` (preferred). Build skills/tags arrays from form.
+      const skills = Array.isArray(data.skills) ? data.skills : (Array.isArray(currentSkills) ? currentSkills : []);
+      const tags = Array.isArray(data.tags) ? data.tags : (Array.isArray(currentTags) ? currentTags : []);
+      
+      console.log("[AddCourse] Processed skills:", skills);
+      console.log("[AddCourse] Processed tags:", tags);
+      console.log("[AddCourse] Skills length:", skills.length);
+      console.log("[AddCourse] Tags length:", tags.length);
+      
       const payload: CreateCourseBodyType = {
         title: data.title,
         description: data.description,
@@ -232,15 +271,25 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
         level: data.level,
         language: data.language,
         status: data.status,
-        categories: data.skills ?? [],
-        tags: data.tags ?? [],
-        objectives: data.objectives ?? [],
-        requirements: data.requirements ?? [],
-        thumbnail: data.thumbnail,
-        introVideo: data.introVideo,
+        // send skills (preferred). Keep categories empty for backward-compatibility if needed.
+        skills: skills,
+        categories: [],
+        tags: tags,
+        objectives: Array.isArray(data.objectives) ? data.objectives : [],
+        requirements: Array.isArray(data.requirements) ? data.requirements : [],
+        thumbnail: data.thumbnail || undefined,
+        introVideo: data.introVideo || undefined,
       };
+      
+      console.log("[AddCourse] Final payload to send:", JSON.stringify(payload, null, 2));
+      console.log("[AddCourse] Payload.skills:", payload.skills);
+      console.log("[AddCourse] Payload.categories:", payload.categories);
+      console.log("[AddCourse] Payload.tags:", payload.tags);
 
-      await createCourseMutation.mutateAsync(payload);
+      const response = await createCourseMutation.mutateAsync(payload);
+      console.log("[AddCourse] API Response received:", response);
+      console.log("[AddCourse] Response data:", response?.payload?.data);
+      console.log("[AddCourse] ========== FORM SUBMIT SUCCESS ==========");
       toast({
         title: t("CreateSuccess"),
         description: t("CourseCreated"),

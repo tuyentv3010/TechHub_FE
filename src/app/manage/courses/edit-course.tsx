@@ -36,8 +36,8 @@ import {
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { useAccountProfile } from "@/queries/useAccount";
 import fileApiRequest from "@/apiRequests/file";
-import SkillManager from "./SkillManager";
-import TagManager from "./TagManager";
+import SkillManager from "@/components/manage/SkillManager";
+import TagManager from "@/components/manage/TagManager";
 
 export default function EditCourse({
   id,
@@ -51,6 +51,11 @@ export default function EditCourse({
   const t = useTranslations("ManageCourse");
   const updateCourseMutation = useUpdateCourseMutation();
   const { data, refetch } = useGetCourseById(id!);
+  useEffect(() => {
+    if (id) {
+      console.debug('[FE] EditCourse - requested course id=', id);
+    }
+  }, [id]);
   const { data: profileData } = useAccountProfile();
   const userId = profileData?.payload?.data?.id || '';
 
@@ -88,6 +93,7 @@ export default function EditCourse({
       language: "VI",
       status: "DRAFT",
       categories: [],
+      skills: [],
       tags: [],
       objectives: [],
       requirements: [],
@@ -97,8 +103,16 @@ export default function EditCourse({
   });
 
   useEffect(() => {
+    if (data) {
+      console.debug('[FE] EditCourse - getCourseById response', data);
+    }
     if (data?.payload?.data?.summary) {
       const course = data.payload.data.summary;
+      console.debug('[FE] EditCourse - course summary', course);
+      // Backend returns skills array (name strings), map to form
+      const skillNames = (course.skills || []).map((s: any) => typeof s === 'string' ? s : s.name);
+      const tagNames = (course.tags || []).map((t: any) => typeof t === 'string' ? t : t.name);
+      
       form.reset({
         title: course.title,
         description: course.description || "",
@@ -108,7 +122,8 @@ export default function EditCourse({
         language: course.language,
         status: course.status,
         categories: course.categories || [],
-        tags: course.tags || [],
+        skills: skillNames,
+        tags: tagNames,
         objectives: course.objectives || [],
         requirements: course.requirements || [],
         thumbnail: course.thumbnail?.url || "",
@@ -120,27 +135,28 @@ export default function EditCourse({
   }, [data, form]);
 
   // Helper functions for array fields
-  const addItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', value: string) => {
+  const addItem = (field: 'categories' | 'skills' | 'tags' | 'objectives' | 'requirements', value: string) => {
     if (!value.trim()) return;
     const current = form.getValues(field) || [];
     if (!current.includes(value.trim())) {
-      form.setValue(field, [...current, value.trim()]);
+      form.setValue(field, [...current, value.trim()], { shouldDirty: true, shouldTouch: true, shouldValidate: true });
     }
   };
 
-  const toggleItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', value: string) => {
+  const toggleItem = (field: 'categories' | 'skills' | 'tags' | 'objectives' | 'requirements', value: string) => {
     if (!value.trim()) return;
     const current = form.getValues(field) || [];
+    console.debug('[FE] EditCourse - toggleItem', { field, value, current });
     if (current.includes(value.trim())) {
-      form.setValue(field, current.filter((v: string) => v !== value.trim()));
+      form.setValue(field, current.filter((v: string) => v !== value.trim()), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
     } else {
-      form.setValue(field, [...current, value.trim()]);
+      form.setValue(field, [...current, value.trim()], { shouldDirty: true, shouldTouch: true, shouldValidate: true });
     }
   };
 
-  const removeItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', index: number) => {
+  const removeItem = (field: 'categories' | 'skills' | 'tags' | 'objectives' | 'requirements', index: number) => {
     const current = form.getValues(field) || [];
-    form.setValue(field, current.filter((_: any, i: number) => i !== index));
+    form.setValue(field, current.filter((_: any, i: number) => i !== index), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
   };
 
   const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -249,8 +265,19 @@ export default function EditCourse({
 
   const onSubmit = async (data: UpdateCourseBodyType) => {
     if (updateCourseMutation.isPending || !id) return;
+    
+    // Prepare payload with skills field (preferred by backend)
+    const skills = form.getValues('skills') || [];
+    const payload = {
+      ...data,
+      skills: Array.isArray(skills) ? skills : [],
+    };
+    
+    console.debug('[FE] EditCourse - submit payload', { id, body: payload });
+    console.debug('[FE] EditCourse - skills:', payload.skills);
+    
     try {
-      await updateCourseMutation.mutateAsync({ id, body: data });
+      await updateCourseMutation.mutateAsync({ id, body: payload });
       toast({
         title: t("UpdateSuccess"),
         description: t("CourseUpdated"),
@@ -360,9 +387,9 @@ export default function EditCourse({
             </div>
           </div>
 
-          {/* Categories */}
+          {/* Skills */}
           <div className="space-y-2">
-            <Label>{t("CategoriesLabel")}</Label>
+            <Label>{t("SkillsLabel")}</Label>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -374,12 +401,12 @@ export default function EditCourse({
                 </Button>
               </div>
             <div className="flex flex-wrap gap-2 mt-2">
-              {form.watch("categories")?.map((cat, idx) => (
+              {form.watch("skills")?.map((skill, idx) => (
                 <Badge key={idx} variant="secondary" className="gap-1">
-                  {cat}
+                  {skill}
                   <X
                     className="w-3 h-3 cursor-pointer"
-                    onClick={() => removeItem('categories', idx)}
+                    onClick={() => removeItem('skills', idx)}
                   />
                 </Badge>
               ))}
@@ -669,8 +696,8 @@ export default function EditCourse({
       <SkillManager
         open={showSkillManager}
         onOpenChange={setShowSkillManager}
-        onSelect={(s) => toggleItem('categories', s.name)}
-        selectedItems={form.watch('categories') || []}
+        onSelect={(s) => toggleItem('skills', s.name)}
+        selectedItems={form.watch('skills') || []}
       />
       <TagManager
         open={showTagManager}
