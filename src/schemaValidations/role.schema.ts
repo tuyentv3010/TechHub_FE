@@ -1,57 +1,83 @@
 import { z } from "zod";
+import { PermissionSchema } from "./permission.schema";
 
-export const CreateRoleBody = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  active: z.boolean().default(true),
-  permissions: z.array(z.object({ id: z.number() })).optional(), // Array of objects with id
-});
-
-export const UpdateRoleBody = CreateRoleBody.partial().extend({
-  id: z.number().optional(), // ID is included for updates
-});
-
-export type CreateRoleBodyType = z.infer<typeof CreateRoleBody>;
-export type UpdateRoleBodyType = z.infer<typeof UpdateRoleBody>;
-
+// Role schema (from API response)
 export const RoleSchema = z.object({
-  id: z.number(),
+  id: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable(),
-  active: z.boolean(),
-  permissions: z.array(
-    z.object({
-      id: z.number(),
-      name: z.string(),
-      apiPath: z.string(),
-      method: z.string(),
-      module: z.string(),
-    })
-  ),
-});
-
-export const RoleListRes = z.object({
-  statusCode: z.number(),
-  error: z.string().nullable(),
-  message: z.string(),
-  data: z.object({
-    result: z.array(RoleSchema),
-    meta: z.object({
-      page: z.number(),
-      pageSize: z.number(),
-      pages: z.number(),
-      total: z.number(),
-    }),
-  }),
-});
-
-export const RoleRes = z.object({
-  statusCode: z.number(),
-  error: z.string().nullable(),
-  message: z.string(),
-  data: RoleSchema,
+  isActive: z.boolean(),
+  permissionIds: z.array(z.string().uuid()),
 });
 
 export type RoleSchemaType = z.infer<typeof RoleSchema>;
+
+// Role with full permission details
+export const RoleWithPermissionsSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable(),
+  isActive: z.boolean(),
+  permissions: z.array(PermissionSchema),
+});
+
+export type RoleWithPermissionsType = z.infer<typeof RoleWithPermissionsSchema>;
+
+// Create role request
+export const CreateRoleBody = z.object({
+  name: z.string().min(1, "Name is required").max(50),
+  description: z.string().optional(),
+  active: z.boolean().default(true),
+});
+
+export type CreateRoleBodyType = z.infer<typeof CreateRoleBody>;
+
+// Update role request
+export const UpdateRoleBody = z.object({
+  name: z.string().min(1).max(50).optional(),
+  description: z.string().optional(),
+  active: z.boolean().optional(),
+});
+
+export type UpdateRoleBodyType = z.infer<typeof UpdateRoleBody>;
+
+// Assign permissions to role request
+export const AssignPermissionsBody = z.object({
+  permissionIds: z.array(z.string().uuid()).min(1, "At least one permission is required"),
+});
+
+export type AssignPermissionsBodyType = z.infer<typeof AssignPermissionsBody>;
+
+// Assign roles to user request
+export const AssignRolesBody = z.object({
+  roleIds: z.array(z.string().uuid()).min(1, "At least one role is required"),
+  active: z.boolean().default(true),
+});
+
+export type AssignRolesBodyType = z.infer<typeof AssignRolesBody>;
+
+// Role list response
+export const RoleListRes = z.object({
+  success: z.boolean(),
+  status: z.string(),
+  message: z.string(),
+  data: z.array(RoleSchema),
+  timestamp: z.string(),
+  path: z.string(),
+  code: z.number(),
+});
+
 export type RoleListResType = z.infer<typeof RoleListRes>;
-export type RoleResType = z.infer<typeof RoleRes>;
+
+// Role detail response
+export const RoleDetailRes = z.object({
+  success: z.boolean(),
+  status: z.string(),
+  message: z.string(),
+  data: RoleWithPermissionsSchema,
+  timestamp: z.string(),
+  path: z.string(),
+  code: z.number(),
+});
+
+export type RoleDetailResType = z.infer<typeof RoleDetailRes>;
