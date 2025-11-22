@@ -16,19 +16,34 @@ export default function SkillDetailPage() {
   const skill = skills.find((s: any) => s.id === skillId);
 
   const { data: coursesData, isLoading: coursesLoading } = useGetCourseList({ size: 100 });
-  const allCourses = coursesData?.payload?.data?.content ?? [];
+  const allCourses = coursesData?.payload?.data ?? [];
   
   const { data: pathsData, isLoading: pathsLoading } = useGetLearningPathList({ size: 100 });
-  const allPaths = pathsData?.payload?.data?.content ?? [];
+  const allPaths = pathsData?.payload?.data ?? [];
+
+  // Debug: Log API responses
+  
+  // Debug: Log skills from each course
+  allCourses.forEach((course: any) => {
+  });
+  
+  // Debug: Log skills from each learning path
+  allPaths.forEach((path: any) => {
+  });
 
   // Filter courses and paths that have this skill
-  const relatedCourses = allCourses.filter((course: any) => 
-    course.skills?.includes(skill?.name)
-  );
+  const relatedCourses = allCourses.filter((course: any) => {
+    // Course skills is array of objects: [{id, name, thumbnail, category}, ...]
+    const hasSkill = course.skills?.some((s: any) => s.name === skill?.name);
+    return hasSkill;
+  });
   
-  const relatedPaths = allPaths.filter((path: any) => 
-    path.skills?.includes(skill?.name)
-  );
+  const relatedPaths = allPaths.filter((path: any) => {
+    // Path skills is array of strings: ["skill1", "skill2", ...]
+    const hasSkill = path.skills?.includes(skill?.name);
+    return hasSkill;
+  });
+
 
   if (skillsLoading) {
     return (
@@ -42,7 +57,6 @@ export default function SkillDetailPage() {
       </div>
     );
   }
-
   if (!skill) {
     return (
       <div className="container mx-auto px-4 py-12 text-center">
@@ -88,7 +102,6 @@ export default function SkillDetailPage() {
           </div>
         </div>
       </div>
-
       <div className="container mx-auto px-4 py-12">
         {/* Courses Section */}
         <section className="mb-16">
@@ -113,7 +126,7 @@ export default function SkillDetailPage() {
                   <div className="relative h-48 bg-gradient-to-br from-purple-400 to-blue-400">
                     {course.thumbnail && (
                       <Image
-                        src={course.thumbnail}
+                        src={course.thumbnail.url}
                         alt={course.title}
                         fill
                         className="object-cover"
