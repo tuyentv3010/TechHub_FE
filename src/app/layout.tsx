@@ -12,6 +12,8 @@ import { baseOpenGraph } from "@/shared-metadata";
 import GoogleTag from "@/components/google-tag";
 import { AppProvider } from "@/components/app-provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AiLearningPathProvider } from "@/contexts/AiLearningPathContext";
+
 const fontSans = FontSans({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -48,16 +50,24 @@ export default async function RootLayout({
         <NextTopLoader showSpinner={false} color="hsl(var(--foreground))" />
         <NextIntlClientProvider messages={messages}>
           <AppProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
-              {/* <Footer /> */}
-              <Toaster />
-            </ThemeProvider>
+            <AiLearningPathProvider>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+              >
+                {children}
+                <a
+                  href="/ai-chat"
+                  className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-primary-foreground shadow-lg hover:shadow-xl transition-all"
+                >
+                  <span className="text-sm font-medium">AI Chat</span>
+                </a>
+                {/* <Footer /> */}
+                <Toaster />
+              </ThemeProvider>
+            </AiLearningPathProvider>
           </AppProvider>
         </NextIntlClientProvider>
         <GoogleTag />
