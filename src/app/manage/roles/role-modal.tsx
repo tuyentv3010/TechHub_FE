@@ -65,7 +65,8 @@ export default function RoleModal({
   const isEdit = !!roleId;
   const { data: roleData } = useGetRole(roleId!, isEdit);
   const { data: permissionsData } = useGetPermissions();
-  const permissions = permissionsData?.data ?? [];
+  console.log("asdasdas lac da  , " ,roleData)  
+  const permissions = permissionsData?.payload?.data ?? [];
 
   const createRoleMutation = useCreateRoleMutation();
   const updateRoleMutation = useUpdateRoleMutation();
@@ -107,10 +108,9 @@ export default function RoleModal({
       active: true,
     },
   });
-
   useEffect(() => {
-    if (isEdit && roleData?.data) {
-      const role = roleData.data;
+    if (isEdit && roleData?.payload?.data) {
+      const role = roleData?.payload?.data;
       form.reset({
         name: role.name,
         description: role.description || "",
@@ -213,113 +213,115 @@ export default function RoleModal({
 
   return (
     <Dialog open={open} onOpenChange={(value) => !value && reset()}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Chỉnh sửa Role" : "Thêm Role Mới"}</DialogTitle>
           <DialogDescription>
             {isEdit ? "Cập nhật thông tin role" : "Tạo role mới và gán permissions"}
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form
-            id="role-form"
-            className="grid gap-4 py-4"
-            onSubmit={form.handleSubmit(onSubmit)}
-          >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Tên <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="ADMIN" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mô tả</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Quản trị viên hệ thống" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="active"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2">
-                  <FormLabel>Trạng thái</FormLabel>
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                  <span className="text-sm">{field.value ? "Active" : "Inactive"}</span>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div className="flex-1 overflow-y-auto">
+          <Form {...form}>
+            <form
+              id="role-form"
+              className="grid gap-4 py-4"
+              onSubmit={form.handleSubmit(onSubmit)}
+            >
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Tên <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="ADMIN" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mô tả</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Quản trị viên hệ thống" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="active"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2">
+                    <FormLabel>Trạng thái</FormLabel>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <span className="text-sm">{field.value ? "Active" : "Inactive"}</span>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {/* Permissions Selection */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <FormLabel>Permissions</FormLabel>
-                <Badge variant="secondary">
-                  {selectedPermissionIds.size} đã chọn
-                </Badge>
-              </div>
-              <div className="space-y-4 max-h-96 overflow-y-auto border rounded-lg p-4">
-                {groupedPermissions.map((group) => {
-                  const allSelected = group.permissions.every((p) =>
-                    selectedPermissionIds.has(p.id)
-                  );
-                  return (
-                    <div key={group.resource} className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={allSelected}
-                          onCheckedChange={() => toggleResourceAll(group.resource)}
-                        />
-                        <span className="font-semibold text-lg">{group.resource}</span>
-                      </div>
-                      <div className="ml-8 grid grid-cols-1 gap-2">
-                        {group.permissions.map((perm) => (
-                          <div key={perm.id} className="flex items-center gap-2">
-                            <Switch
-                              checked={selectedPermissionIds.has(perm.id)}
-                              onCheckedChange={() => togglePermission(perm.id)}
-                            />
-                            <div className="flex-1">
-                              <span className="text-sm">{perm.name}</span>
-                              {" - "}
-                              <span className={`text-xs ${getMethodColor(perm.method)}`}>
-                                {perm.method}
-                              </span>
-                              {" "}
-                              <code className="text-xs text-muted-foreground">
-                                {perm.url}
-                              </code>
+              {/* Permissions Selection */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <FormLabel>Permissions</FormLabel>
+                  <Badge variant="secondary">
+                    {selectedPermissionIds.size} đã chọn
+                  </Badge>
+                </div>
+                <div className="space-y-4 border rounded-lg p-4">
+                  {groupedPermissions.map((group) => {
+                    const allSelected = group.permissions.every((p) =>
+                      selectedPermissionIds.has(p.id)
+                    );
+                    return (
+                      <div key={group.resource} className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={allSelected}
+                            onCheckedChange={() => toggleResourceAll(group.resource)}
+                          />
+                          <span className="font-semibold text-lg">{group.resource}</span>
+                        </div>
+                        <div className="ml-8 grid grid-cols-1 gap-2">
+                          {group.permissions.map((perm) => (
+                            <div key={perm.id} className="flex items-center gap-2">
+                              <Switch
+                                checked={selectedPermissionIds.has(perm.id)}
+                                onCheckedChange={() => togglePermission(perm.id)}
+                              />
+                              <div className="flex-1">
+                                <span className="text-sm">{perm.name}</span>
+                                {" - "}
+                                <span className={`text-xs ${getMethodColor(perm.method)}`}>
+                                  {perm.method}
+                                </span>
+                                {" "}
+                                <code className="text-xs text-muted-foreground">
+                                  {perm.url}
+                                </code>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          </form>
-        </Form>
-        <DialogFooter>
+            </form>
+          </Form>
+        </div>
+        <DialogFooter className="flex-shrink-0">
           <Button
             type="submit"
             form="role-form"

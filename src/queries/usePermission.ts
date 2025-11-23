@@ -13,6 +13,15 @@ export const useGetPermissions = () => {
   });
 };
 
+// Get permission by ID
+export const useGetPermissionById = (id: string | undefined) => {
+  return useQuery({
+    queryKey: ["permissions", id],
+    queryFn: () => permissionApiRequest.getPermissionById(id!),
+    enabled: !!id, // Only run query if id exists
+  });
+};
+
 // Create permission
 export const useCreatePermissionMutation = () => {
   const queryClient = useQueryClient();
@@ -31,8 +40,9 @@ export const useUpdatePermissionMutation = () => {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: UpdatePermissionBodyType }) =>
       permissionApiRequest.updatePermission(id, body),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["permissions", variables.id] });
     },
   });
 };

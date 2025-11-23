@@ -290,6 +290,7 @@
     "errorMessage": "Xác thực thất bại"
   },
   "ValidationErrors": {
+    "invalidEmail": "Email không hợp lệ",
     "Invalid email address": "Email không hợp lệ",
     "Email is required": "Email không được để trống",
     "Password is required": "Mật khẩu không được để trống",

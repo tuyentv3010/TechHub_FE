@@ -4,18 +4,19 @@ import LearningPathDetail from "./learning-path-detail";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function LearningPathDetailPage({ params }: PageProps) {
+  const { id } = await params;
   const t = await getTranslations("LearningPathDetail");
   
   return (
     <main className="min-h-screen bg-background">
       <Suspense fallback={<LoadingSkeleton />}>
-        <LearningPathDetail pathId={params.id} />
+        <LearningPathDetail pathId={id} />
       </Suspense>
     </main>
   );

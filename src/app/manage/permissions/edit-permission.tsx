@@ -29,7 +29,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useUpdatePermissionMutation, useGetPermissions } from "@/queries/usePermission";
+import { useUpdatePermissionMutation, useGetPermissionById } from "@/queries/usePermission";
 import {
   UpdatePermissionBody,
   UpdatePermissionBodyType,
@@ -50,9 +50,8 @@ export default function EditPermission({
   onSubmitSuccess?: () => void;
 }) {
   const updatePermissionMutation = useUpdatePermissionMutation();
-  const { data } = useGetPermissions();
-  const permissions = data?.data ?? [];
-  const permission = permissions.find((p) => p.id === id);
+  const { data, isLoading } = useGetPermissionById(id);
+  const permission = data?.payload?.data;
 
   const form = useForm<UpdatePermissionBodyType>({
     resolver: zodResolver(UpdatePermissionBody),
@@ -109,12 +108,15 @@ export default function EditPermission({
             Cập nhật thông tin permission trong hệ thống phân quyền
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form
-            id="edit-permission-form"
-            className="grid gap-4 py-4"
-            onSubmit={form.handleSubmit(onSubmit)}
-          >
+        {isLoading ? (
+          <div className="py-8 text-center">Đang tải...</div>
+        ) : (
+          <Form {...form}>
+            <form
+              id="edit-permission-form"
+              className="grid gap-4 py-4"
+              onSubmit={form.handleSubmit(onSubmit)}
+            >
             <FormField
               control={form.control}
               name="name"
@@ -241,11 +243,12 @@ export default function EditPermission({
             />
           </form>
         </Form>
+        )}
         <DialogFooter>
           <Button
             type="submit"
             form="edit-permission-form"
-            disabled={updatePermissionMutation.isPending}
+            disabled={updatePermissionMutation.isPending || isLoading}
           >
             Cập nhật Permission
           </Button>

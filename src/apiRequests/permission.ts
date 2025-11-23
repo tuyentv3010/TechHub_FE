@@ -12,6 +12,10 @@ const permissionApiRequest = {
   getPermissions: () =>
     http.get<PermissionListResType>("/app/api/proxy/admin/permissions"),
 
+  // Get permission by ID
+  getPermissionById: (id: string) =>
+    http.get<PermissionDetailResType>(`/app/api/proxy/admin/permissions/${id}`),
+
   // Create permission
   createPermission: (body: CreatePermissionBodyType) =>
     http.post<PermissionDetailResType>("/app/api/proxy/admin/permissions", body),

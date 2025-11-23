@@ -144,7 +144,7 @@ export default function EditLearningPath({
                 {t("ManageSkills") || "Manage Skills"}
               </Button>
             </div>
-            {watch('skills')?.length > 0 && (
+            {(watch('skills')?.length ?? 0) > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
                 {watch('skills')?.map((skill: string, index: number) => (
                   <Badge key={index} variant="secondary">
