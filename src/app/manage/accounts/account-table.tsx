@@ -251,7 +251,21 @@ export default function AccountTable() {
       ),
       cell: ({ row }) => {
         const roles = row.original.roles as string[] | undefined;
-        return <div>{roles?.[0] || "-"}</div>;
+        if (!roles || roles.length === 0) {
+          return <div className="text-muted-foreground">-</div>;
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            {roles.map((role, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary text-primary-foreground hover:bg-primary/80"
+              >
+                {role}
+              </span>
+            ))}
+          </div>
+        );
       },
     },
     {
