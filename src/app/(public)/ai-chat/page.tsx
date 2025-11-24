@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
-import { useSendChatMessageMutation } from "@/queries/useAi";
+import { useSendChatMessageMutation, useGetUserSessions, useGetSessionMessages, useDeleteSessionMutation } from "@/queries/useAi";
 import { useAppContext } from "@/components/app-provider";
 import {
   MessageCircle,
@@ -27,6 +28,7 @@ import {
   CheckCircle,
   MessageSquare,
   GraduationCap,
+  Trash2,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -52,12 +54,19 @@ export default function AiChatPage() {
   const [inputMessage, setInputMessage] = useState<string>("");
   const [useProgress, setUseProgress] = useState<boolean>(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<{ id: string; label: string }[]>([]);
-  const [sessionMessages, setSessionMessages] = useState<Record<string, Message[]>>({});
+  const [sessions, setSessions] = useState<{ id: string; label: string; startedAt: string }[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const chatMutation = useSendChatMessageMutation();
+  const deleteSessionMutation = useDeleteSessionMutation();
+  
+  // Fetch user sessions from DB
+  const { data: sessionsData } = useGetUserSessions(userId);
+  
+  // Fetch messages for current session from DB
+  const { data: messagesData } = useGetSessionMessages(sessionId || "");
 
+  // Load userId from localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedUserInfo = localStorage.getItem("userInfo");
@@ -74,6 +83,43 @@ export default function AiChatPage() {
       }
     }
   }, [isAuth]);
+
+  // Sync sessions from DB
+  useEffect(() => {
+    if (sessionsData?.payload?.data) {
+      const dbSessions = sessionsData.payload.data;
+      setSessions(
+        dbSessions.map((s: { id: string; userId: string; startedAt: string }, idx: number) => ({
+          id: s.id,
+          label: `${t("session")} ${dbSessions.length - idx}`,
+          startedAt: s.startedAt,
+        }))
+      );
+      
+      // Auto-select most recent session if none selected
+      if (!sessionId && dbSessions.length > 0) {
+        setSessionId(dbSessions[0].id);
+      }
+    }
+  }, [sessionsData, t, sessionId]);
+
+  // Sync messages from DB when session changes
+  useEffect(() => {
+    if (messagesData?.payload?.data) {
+      const dbMessages = messagesData.payload.data;
+      setMessages(
+        dbMessages.map((m: { id: string; sessionId: string; sender: string; content: string; timestamp: string }) => ({
+          id: m.id,
+          role: m.sender === "USER" ? ("user" as const) : ("assistant" as const),
+          content: m.content,
+          timestamp: new Date(m.timestamp),
+        }))
+      );
+    } else if (sessionId && !messagesData) {
+      // Clear messages when switching to session with no messages yet
+      setMessages([]);
+    }
+  }, [messagesData, sessionId]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -115,13 +161,7 @@ export default function AiChatPage() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => {
-      const next = [...prev, userMessage];
-      if (sessionId) {
-        setSessionMessages((map) => ({ ...map, [sessionId]: next }));
-      }
-      return next;
-    });
+    setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
 
     // Show typing indicator
@@ -147,40 +187,50 @@ export default function AiChatPage() {
         const newId = response.payload.data.sessionId;
         setSessionId(newId);
         setSessions((prev) =>
-          prev.find((s) => s.id === newId) ? prev : [{ id: newId, label: `${t("session")} ${prev.length + 1}` }, ...prev]
+          prev.find((s) => s.id === newId) ? prev : [{ 
+            id: newId, 
+            label: `${t("session")} ${prev.length + 1}`,
+            startedAt: new Date().toISOString()
+          }, ...prev]
         );
       }
 
       // Remove typing indicator and add response
       setMessages((prev) => {
         const filtered = prev.filter((m) => m.id !== "typing");
-        const payloadData: any = response.payload?.data;
-        const assistantText =
-          payloadData?.answer ||
-          payloadData?.message ||
-          (response.payload as any)?.message ||
-          (response.payload as any)?.data ||
-          t("errorResponse");
+        const payloadData = response.payload?.data;
+        
+        // Extract clean text response - prioritize message field
+        let assistantText = "";
+        
+        // Try to get from payload.data first (actual AI response)
+        if (payloadData?.message && typeof payloadData.message === "string") {
+          assistantText = payloadData.message;
+        } else if (payloadData?.answer && typeof payloadData.answer === "string") {
+          assistantText = payloadData.answer;
+        } else if (typeof response.message === "string" && response.message !== "Chat processed") {
+          // Fallback to top-level message if it's not the wrapper message
+          assistantText = response.message;
+        } else {
+          // Last resort fallback
+          assistantText = t("errorResponse");
+        }
+        
         const assistantMessage: Message = {
           id: Date.now().toString(),
           role: "assistant",
-          content: typeof assistantText === "string" ? assistantText : JSON.stringify(assistantText),
+          content: assistantText.trim(),
           timestamp: new Date(),
         };
-        const nextMessages = [...filtered, assistantMessage];
-        if (sessionId || response.payload?.data?.sessionId) {
-          const sid = sessionId || response.payload?.data?.sessionId;
-          setSessionMessages((map) => ({ ...map, [sid!]: nextMessages }));
-        }
-        return nextMessages;
+        return [...filtered, assistantMessage];
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Remove typing indicator
       setMessages((prev) => prev.filter((m) => m.id !== "typing"));
 
       toast({
         title: tCommon("error"),
-        description: error?.message || t("errorSend"),
+        description: error instanceof Error ? error.message : t("errorSend"),
         variant: "destructive",
       });
     }
@@ -207,11 +257,95 @@ export default function AiChatPage() {
 
   const handleSelectSession = (id: string) => {
     setSessionId(id);
-    setMessages(sessionMessages[id] || []);
+  };
+
+  const handleDeleteSession = async (sessionIdToDelete: string) => {
+    if (!userId) return;
+    
+    try {
+      await deleteSessionMutation.mutateAsync({ 
+        sessionId: sessionIdToDelete, 
+        userId 
+      });
+      
+      // If deleting current session, create new one
+      if (sessionIdToDelete === sessionId) {
+        setSessionId(null);
+        setMessages([]);
+      }
+      
+      toast({
+        title: t("sessionDeleted") || "Session deleted",
+        description: t("sessionDeletedSuccess") || "Session has been deleted successfully",
+      });
+    } catch (error: unknown) {
+      toast({
+        title: tCommon("error"),
+        description: error instanceof Error ? error.message : t("errorDelete") || "Failed to delete session",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Helper function to render message content with clickable links
+  const renderMessageContent = (content: string) => {
+    // Parse markdown-style links: [text](url)
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = linkRegex.exec(content)) !== null) {
+      // Add text before the link
+      if (match.index > lastIndex) {
+        parts.push(content.substring(lastIndex, match.index));
+      }
+
+      // Add the link
+      const linkText = match[1];
+      const linkUrl = match[2];
+      parts.push(
+        <Link
+          key={match.index}
+          href={linkUrl}
+          className="text-blue-400 hover:text-blue-300 underline font-medium"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {linkText}
+        </Link>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text after last link
+    if (lastIndex < content.length) {
+      parts.push(content.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : content;
   };
 
   return (
     <main className="container mx-auto p-4 sm:px-6 sm:py-4 md:p-8 space-y-6">
+      {/* Auth Check Banner */}
+      {!userId && (
+        <Card className="bg-amber-500/10 border-amber-500/50">
+          <CardContent className="flex items-center gap-3 p-4">
+            <MessageCircle className="h-6 w-6 text-amber-500" />
+            <div>
+              <p className="font-semibold text-amber-700 dark:text-amber-400">
+                {t("authRequired") || "Login Required"}
+              </p>
+              <p className="text-sm text-amber-600 dark:text-amber-500">
+                {t("authRequiredDesc") || "Please login to use AI chat feature and save your chat history"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -224,19 +358,33 @@ export default function AiChatPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Select onValueChange={handleSelectSession} value={sessionId || undefined}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder={t("selectSession")} />
-            </SelectTrigger>
-            <SelectContent>
-              {sessions.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" onClick={handleNewSession}>
+          {/* Session List with Delete */}
+          <div className="flex items-center gap-2">
+            <Select onValueChange={handleSelectSession} value={sessionId || undefined}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder={t("selectSession")} />
+              </SelectTrigger>
+              <SelectContent>
+                {sessions.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {sessionId && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hover:bg-destructive/20 hover:text-destructive"
+                onClick={() => handleDeleteSession(sessionId)}
+                title={t("deleteSession") || "Delete session"}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          <Button variant="outline" onClick={handleNewSession} disabled={!userId}>
             {t("newSession")}
           </Button>
         </div>
@@ -244,7 +392,7 @@ export default function AiChatPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left Sidebar - Settings */}
-        <Card className="lg:col-span-1 h-fit">
+        <Card className="lg:col-span-1 h-fit order-2 lg:order-1">
           <CardHeader>
             <CardTitle className="text-base">{t("settings")}</CardTitle>
           </CardHeader>
@@ -252,7 +400,7 @@ export default function AiChatPage() {
             {/* Mode Selection */}
             <div className="space-y-2">
               <Label>{t("mode")}</Label>
-              <Select value={mode} onValueChange={(v: any) => setMode(v)}>
+              <Select value={mode} onValueChange={(v: string) => setMode(v as "GENERAL" | "ADVISOR")}>
                 <SelectTrigger>
                   <SelectValue placeholder={t("selectMode")} />
                 </SelectTrigger>
@@ -323,10 +471,11 @@ export default function AiChatPage() {
                     key={idx}
                     variant="outline"
                     size="sm"
-                    className="w-full text-left justify-start text-xs h-auto py-2"
+                    className="w-full text-left justify-start text-xs h-auto py-2 px-3 whitespace-normal"
                     onClick={() => handlePresetPrompt(prompt)}
+                    style={{ wordBreak: "break-word", whiteSpace: "normal", lineHeight: "1.4" }}
                   >
-                    {prompt}
+                    <span className="block w-full">{prompt}</span>
                   </Button>
                 ))}
               </div>
@@ -335,7 +484,7 @@ export default function AiChatPage() {
         </Card>
 
         {/* Main Chat Area */}
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-3 order-1 lg:order-2">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -352,7 +501,7 @@ export default function AiChatPage() {
           <CardContent className="space-y-4">
             {/* Messages */}
             <ScrollArea className="h-[500px] pr-4" ref={scrollAreaRef}>
-              <div className="space-y-4">
+              <div className="space-y-4 pb-4">
                 {messages.length === 0 ? (
                   <div className="text-center py-12">
                     <Bot className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
@@ -371,31 +520,32 @@ export default function AiChatPage() {
                     >
                       {/* Avatar */}
                       <div
-                        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
                           message.role === "user"
                             ? "bg-blue-500 text-white"
                             : "bg-purple-500 text-white"
                         }`}
                       >
                         {message.role === "user" ? (
-                          <User className="h-4 w-4" />
+                          <User className="h-5 w-5" />
                         ) : (
-                          <Bot className="h-4 w-4" />
+                          <Bot className="h-5 w-5" />
                         )}
                       </div>
 
                       {/* Message Content */}
                       <div
-                        className={`flex-1 max-w-[80%] ${
+                        className={`flex-1 ${
                           message.role === "user" ? "items-end" : "items-start"
                         }`}
                       >
                         <div
-                          className={`p-3 rounded-lg ${
+                          className={`p-4 rounded-2xl break-words ${
                             message.role === "user"
-                              ? "bg-blue-500 text-white"
-                              : "bg-gray-100 text-gray-900"
+                              ? "bg-blue-500 text-white max-w-[85%] ml-auto rounded-br-sm"
+                              : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 max-w-[90%] rounded-bl-sm"
                           }`}
+                          style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
                         >
                           {message.content === "..." ? (
                             <div className="flex gap-1">
@@ -410,7 +560,12 @@ export default function AiChatPage() {
                               ></div>
                             </div>
                           ) : (
-                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                            <div 
+                              className="text-sm leading-relaxed whitespace-pre-wrap break-words" 
+                              style={{ wordBreak: "break-word" }}
+                            >
+                              {renderMessageContent(message.content)}
+                            </div>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-1 px-1">

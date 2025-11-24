@@ -96,9 +96,51 @@ export const useRecommendScheduledMutation = () => {
 
 // Send chat message mutation
 export const useSendChatMessageMutation = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: ChatMessageRequestType) =>
       aiApiRequest.sendChatMessage(body),
+    onSuccess: (_data, variables) => {
+      // Invalidate user sessions to refresh the list
+      if (variables.userId) {
+        queryClient.invalidateQueries({ queryKey: ["chat-sessions", variables.userId] });
+      }
+      // Invalidate session messages if updating existing session
+      if (variables.sessionId) {
+        queryClient.invalidateQueries({ queryKey: ["session-messages", variables.sessionId] });
+      }
+    },
+  });
+};
+
+// Get user's chat sessions
+export const useGetUserSessions = (userId: string) => {
+  return useQuery({
+    queryKey: ["chat-sessions", userId],
+    queryFn: () => aiApiRequest.getUserSessions(userId),
+    enabled: !!userId,
+  });
+};
+
+// Get session messages
+export const useGetSessionMessages = (sessionId: string) => {
+  return useQuery({
+    queryKey: ["session-messages", sessionId],
+    queryFn: () => aiApiRequest.getSessionMessages(sessionId),
+    enabled: !!sessionId,
+  });
+};
+
+// Delete session mutation
+export const useDeleteSessionMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sessionId, userId }: { sessionId: string; userId: string }) =>
+      aiApiRequest.deleteSession(sessionId, userId),
+    onSuccess: (_data, variables) => {
+      // Invalidate user sessions to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["chat-sessions", variables.userId] });
+    },
   });
 };
 

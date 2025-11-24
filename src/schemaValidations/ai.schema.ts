@@ -231,11 +231,11 @@ export type ChatMessageRequestType = z.TypeOf<typeof ChatMessageRequest>;
 // Chat Message Response
 export const ChatMessageResponse = z.object({
   sessionId: z.string(),
-  message: z.string().optional(),
-  answer: z.string().optional(),
   messageId: z.string().optional(),
   timestamp: z.string().optional(),
   mode: ChatMode.optional(),
+  message: z.string().optional(), // Unified response field
+  answer: z.string().optional(),  // Backward compatibility
   context: z.any().optional(),
   metadata: z
     .object({
@@ -246,6 +246,28 @@ export const ChatMessageResponse = z.object({
 });
 
 export type ChatMessageResponseType = z.TypeOf<typeof ChatMessageResponse>;
+
+// Chat Session
+export const ChatSession = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  startedAt: z.string(),
+  endedAt: z.string().optional().nullable(),
+  context: z.any().optional().nullable(),
+});
+
+export type ChatSessionType = z.TypeOf<typeof ChatSession>;
+
+// Chat Message
+export const ChatMessage = z.object({
+  id: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  sender: z.enum(["USER", "BOT"]),
+  content: z.string(),
+  timestamp: z.string(),
+});
+
+export type ChatMessageType = z.TypeOf<typeof ChatMessage>;
 
 // ============================================
 // ADMIN SCHEMAS

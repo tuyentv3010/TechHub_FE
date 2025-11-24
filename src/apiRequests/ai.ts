@@ -11,6 +11,8 @@ import {
   ReindexResponseType,
   QdrantStatsResponseType,
   DraftItemType,
+  type ChatSessionType,
+  type ChatMessageType,
 } from "@/schemaValidations/ai.schema";
 
 const aiApiRequest = {
@@ -61,12 +63,8 @@ const aiApiRequest = {
   // Send chat message
   sendChatMessage: (body: ChatMessageRequestType) =>
     http.post<{ payload: { data: ChatMessageResponseType } }>(
-      "/api/proxy/ai/chat/messages",
-      body,
-      {
-        // Go through Next.js proxy to avoid CORS and ensure auth headers/cookies are forwarded
-        baseUrl: "",
-      }
+      "/app/api/proxy/ai/chat/messages",
+      body
     ),
 
   // ============================================
@@ -130,14 +128,14 @@ const aiApiRequest = {
 
   // Approve exercise draft
   approveExerciseDraft: (taskId: string) =>
-    http.post<{ payload: { data: any } }>(
+    http.post<{ payload: { data: DraftItemType } }>(
       `/app/api/proxy/ai/drafts/${taskId}/approve-exercise`,
       {}
     ),
 
   // Approve learning path draft
   approveLearningPathDraft: (taskId: string) =>
-    http.post<{ payload: { data: any } }>(
+    http.post<{ payload: { data: DraftItemType } }>(
       `/app/api/proxy/ai/drafts/${taskId}/approve-learning-path`,
       {}
     ),
@@ -147,6 +145,28 @@ const aiApiRequest = {
     http.post<{ payload: { data: DraftItemType } }>(
       `/app/api/proxy/ai/drafts/${taskId}/reject${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`,
       {}
+    ),
+
+  // ============================================
+  // CHAT SESSION HISTORY
+  // ============================================
+
+  // Get user's chat sessions
+  getUserSessions: (userId: string) =>
+    http.get<{ payload: { data: ChatSessionType[] } }>(
+      `/app/api/proxy/ai/chat/sessions?userId=${userId}`
+    ),
+
+  // Get session messages
+  getSessionMessages: (sessionId: string) =>
+    http.get<{ payload: { data: ChatMessageType[] } }>(
+      `/app/api/proxy/ai/chat/sessions/${sessionId}/messages`
+    ),
+
+  // Delete session
+  deleteSession: (sessionId: string, userId: string) =>
+    http.delete<{ payload: { data: null } }>(
+      `/app/api/proxy/ai/chat/sessions/${sessionId}?userId=${userId}`
     ),
 };
 
