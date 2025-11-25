@@ -58,6 +58,7 @@ import fileApiRequest from "@/apiRequests/file";
 import {
   useGetCourseById,
   useGetLesson,
+  useGetLessonExercise,
   useCreateChapterMutation,
   useUpdateChapterMutation,
   useDeleteChapterMutation,
@@ -68,6 +69,7 @@ import {
   useUpdateAssetMutation,
   useDeleteAssetMutation,
 } from "@/queries/useCourse";
+import { useGetExerciseDrafts } from "@/queries/useAi";
 import {
   CreateChapterBody,
   CreateChapterBodyType,
@@ -84,6 +86,7 @@ import {
 } from "@/schemaValidations/course.schema";
 import TableSkeleton from "@/components/Skeleton";
 import { useAccountProfile } from "@/queries/useAccount";
+import AiExercisePanel from "@/app/manage/courses/[id]/ai-exercise-panel";
 
 const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"), {
   ssr: false,
@@ -117,6 +120,99 @@ const AssetTypeIcon = ({ type }: { type: string }) => {
   return icons[type as keyof typeof icons] || <Paperclip className="h-3 w-3" />;
 };
 
+// Exercise Display Component
+const ExerciseDisplay = ({ courseId, lessonId, hasExercise }: { courseId: string; lessonId: string; hasExercise?: boolean }) => {
+  const t = useTranslations("ManageCourse");
+  const { data: exerciseData, isLoading } = useGetLessonExercise(courseId, lessonId);
+  const exercise = exerciseData?.payload?.data;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+          {t("Exercise")}
+        </h4>
+      </div>
+      
+      {isLoading ? (
+        <div className="text-center py-2">
+          <p className="text-xs text-muted-foreground">{t("Loading") || "Đang tải..."}</p>
+        </div>
+      ) : exercise ? (
+        <div className="p-3 bg-background rounded border space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 flex-1">
+              <HelpCircle className="h-4 w-4 text-purple-500 flex-shrink-0" />
+              <div className="flex-1">
+                <Badge variant="secondary" className="text-xs mb-2">
+                  {exercise.type === "MULTIPLE_CHOICE" ? "Trắc nghiệm" : 
+                   exercise.type === "CODING" ? "Lập trình" : 
+                   exercise.type === "OPEN_ENDED" ? "Tự luận" : exercise.type}
+                </Badge>
+                <p className="text-sm font-medium">{exercise.question}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* MCQ Options */}
+          {exercise.type === "MULTIPLE_CHOICE" && exercise.options?.choices && (
+            <div className="space-y-2 pl-6">
+              {exercise.options.choices.map((choice: any, idx: number) => (
+                <div 
+                  key={choice.id || idx}
+                  className={`text-xs p-2 rounded flex items-start gap-2 ${
+                    choice.isCorrect 
+                      ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800" 
+                      : "bg-muted/50"
+                  }`}
+                >
+                  <span className="font-semibold min-w-[20px]">
+                    {String.fromCharCode(65 + idx)}.
+                  </span>
+                  <span className="flex-1">{choice.text}</span>
+                  {choice.isCorrect && (
+                    <Badge variant="default" className="text-xs bg-green-600">
+                      ✓ Đúng
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Coding Test Cases */}
+          {exercise.type === "CODING" && exercise.testCases && exercise.testCases.length > 0 && (
+            <div className="space-y-2 pl-6">
+              <p className="text-xs font-semibold text-muted-foreground">Test Cases:</p>
+              {exercise.testCases.slice(0, 3).map((tc: any, idx: number) => (
+                <div key={idx} className="text-xs p-2 rounded bg-muted/50">
+                  <div className="flex gap-2">
+                    <span className="font-semibold">Input:</span>
+                    <code className="flex-1">{tc.input}</code>
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                    <span className="font-semibold">Expected:</span>
+                    <code className="flex-1">{tc.expectedOutput}</code>
+                  </div>
+                </div>
+              ))}
+              {exercise.testCases.length > 3 && (
+                <p className="text-xs text-muted-foreground">+ {exercise.testCases.length - 3} more test cases</p>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-center py-2">
+          <p className="text-xs text-muted-foreground">
+            {t("NoExercise") || "Chưa có bài tập"}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function CourseContentManagementPage() {
   const params = useParams();
   const courseId = params.id as string;
@@ -132,6 +228,31 @@ export default function CourseContentManagementPage() {
   const createAssetMutation = useCreateAssetMutation();
   const updateAssetMutation = useUpdateAssetMutation();
   const deleteAssetMutation = useDeleteAssetMutation();
+  
+  const course = courseData?.payload?.data?.summary;
+  const chapters = courseData?.payload?.data?.chapters || [];
+
+  // Get all exercise drafts for this course
+  const [allExerciseDrafts, setAllExerciseDrafts] = useState<unknown[]>([]);
+  const [draftLessonIds, setDraftLessonIds] = useState<string[]>([]);
+
+  // Collect all lesson IDs from chapters
+  useEffect(() => {
+    const lessonIds = chapters.flatMap((ch: { lessons?: { id: string }[] }) => 
+      (ch.lessons || []).map(l => l.id)
+    );
+    setDraftLessonIds(lessonIds);
+  }, [chapters]);
+
+  // Fetch drafts for all lessons (simplified - in production, use a single API call)
+  const firstLessonId = draftLessonIds[0] || "";
+  const { data: draftsData, refetch: refetchDrafts } = useGetExerciseDrafts(firstLessonId);
+
+  useEffect(() => {
+    if (draftsData?.payload?.data) {
+      setAllExerciseDrafts(draftsData.payload.data);
+    }
+  }, [draftsData]);
 
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
@@ -160,9 +281,6 @@ export default function CourseContentManagementPage() {
     open: false,
     mode: 'create',
   });
-
-  const course = courseData?.payload?.data?.summary;
-  const chapters = courseData?.payload?.data?.chapters || [];
 
   const toggleChapter = (chapterId: string) => {
     setExpandedChapters(prev => {
@@ -553,6 +671,34 @@ export default function CourseContentManagementPage() {
     }
   };
 
+  const handleGenerateExercises = async (lessonId: string, lessonTitle: string) => {
+    try {
+      toast({
+        title: "Generating exercises...",
+        description: `Creating AI-generated exercises for "${lessonTitle}"`,
+      });
+      
+      await generateExercisesMutation.mutateAsync({
+        lessonId,
+        config: {
+          difficulties: ["BEGINNER"],
+          formats: ["MCQ"],
+          count: 5,
+          variants: 1,
+          includeExplanations: true,
+          includeTestCases: true,
+        },
+      });
+      
+      toast({
+        title: t("Success"),
+        description: "Exercises generated successfully!",
+      });
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
   if (isLoading) {
     return <div className="p-6"><TableSkeleton /></div>;
   }
@@ -817,6 +963,12 @@ export default function CourseContentManagementPage() {
                                                           {t("Free")}
                                                         </Badge>
                                                       )}
+                                                      {lesson.hasExercise && (
+                                                        <Badge variant="default" className="text-xs bg-purple-500">
+                                                          <HelpCircle className="h-3 w-3 mr-1" />
+                                                          {t("Exercise")}
+                                                        </Badge>
+                                                      )}
                                                       {lesson.assets && lesson.assets.length > 0 && (
                                                         <Badge variant="outline" className="text-xs">
                                                           <Paperclip className="h-3 w-3 mr-1" />
@@ -874,11 +1026,25 @@ export default function CourseContentManagementPage() {
                                                   </div>
                                                 </div>
 
-                                                {/* Assets List */}
+                                                {/* Assets & Exercise List */}
                                                 {expandedLessons.has(lesson.id) && (
-                                                  <div className="px-12 py-3 bg-muted/30 border-t">
+                                                  <div className="px-12 py-3 bg-muted/30 border-t space-y-4">
+                                                    {/* Exercise Section */}
+                                                    <ExerciseDisplay 
+                                                      courseId={courseId} 
+                                                      lessonId={lesson.id} 
+                                                      hasExercise={lesson.hasExercise}
+                                                    />
+
+                                                    {/* Assets Section */}
+                                                    <div className="space-y-2">
+                                                      <div className="flex items-center justify-between">
+                                                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+                                                          {t("Assets")}
+                                                        </h4>
+                                                      </div>
                                                     {(!lesson.assets || lesson.assets.length === 0) ? (
-                                                      <div className="text-center py-4">
+                                                      <div className="text-center py-2">
                                                         <p className="text-xs text-muted-foreground mb-2">
                                                           {t("NoAssets")}
                                                         </p>
@@ -946,6 +1112,7 @@ export default function CourseContentManagementPage() {
                                                         ))}
                                                       </div>
                                                     )}
+                                                    </div>
                                                   </div>
                                                 )}
                                               </div>
@@ -1004,6 +1171,21 @@ export default function CourseContentManagementPage() {
         onCreate={handleCreateAsset}
         onUpdate={handleUpdateAsset}
       />
+
+      {/* AI Exercise Generation Panel */}
+      <Card>
+        <CardContent className="pt-6">
+          <AiExercisePanel 
+            courseId={courseId} 
+            chapters={chapters}
+            exerciseDrafts={allExerciseDrafts}
+            refetchDrafts={() => {
+              refetchDrafts();
+              refetch();
+            }}
+          />
+        </CardContent>
+      </Card>
     </main>
   );
 }
