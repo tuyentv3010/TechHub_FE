@@ -1,6 +1,7 @@
 "use client";
-import { useAccountProfile } from "@/queries/useAccount"; // Replace useAppContext
-import menuItems from "@/app/manage/menuItems"; // Named import for the array
+import { useAccountProfile } from "@/queries/useAccount";
+import menuItems, { MenuItem } from "@/app/manage/menuItems";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -8,49 +9,59 @@ import { Package2, PanelLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Import types from menuItems.tsx
-
-// Define permission type
-interface Permission {
-  id: number;
-  name: string;
-  apiPath: string;
-  method: string;
-  module: string;
-}
-
-// Mapping of href to module for permission checking
-const hrefToModuleMap: Record<string, string> = {
-  "/manage/dashboard": "REVENUE",
-  "/manage/accounts": "ACCOUNTS",
-  "/manage/roles": "ROLES",
-  "/manage/permissions": "PERMISSIONS",
-};
-
 export default function MobileNavLinks() {
   const pathname = usePathname();
-  const { data, isLoading, isError, error } = useAccountProfile();
-  console.log(">>>>", data); // Log data for debugging
+  const { data, isLoading: isProfileLoading } = useAccountProfile();
+  const { hasPermission, isLoading: isPermissionsLoading } = usePermissions();
+  
   const account = data?.payload?.data;
-  const userRoles = account?.roles as string[] | undefined;
 
-  // Filter menu items based on roles (simplified)
-  const accessibleMenuItems = menuItems.filter((item: any) => {
-    if (isLoading || isError || !userRoles) return true; // Show all during loading or if roles are unavailable
-    // For now, show all items to ADMIN, or implement specific role checks
-    return userRoles.includes("ADMIN") || userRoles.includes("INSTRUCTOR");
+  // Filter menu items based on permissions
+  const accessibleMenuItems = menuItems.filter((item: MenuItem) => {
+    // If no permission required, show the item
+    if (!item.requiredPermission) {
+      return true;
+    }
+
+    // If still loading permissions, don't show permission-restricted items yet
+    if (isPermissionsLoading) {
+      return false;
+    }
+
+    // Check if user has the required permission
+    const hasAccess = hasPermission(
+      item.requiredPermission.method,
+      item.requiredPermission.url
+    );
+    
+    console.log(`🔍 [MobileNav] Menu "${item.title}": ${hasAccess ? "✅ SHOW" : "❌ HIDE"} (${item.requiredPermission.method} ${item.requiredPermission.url})`);
+    
+    return hasAccess;
   });
 
-  if (isLoading) {
-    return <div></div>; // Loading state
-  }
-
-  if (isError) {
-    console.error("Account profile error:", {
-      error,
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-    return <div></div>; // Error state
+  if (isProfileLoading || isPermissionsLoading) {
+    return (
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button size="icon" variant="outline" className="sm:hidden">
+            <PanelLeft className="h-5 w-5" />
+            <span className="sr-only">Toggle Menu</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="sm:max-w-xs">
+          <nav className="grid gap-6 text-lg font-medium">
+            <Link
+              href="/"
+              className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
+            >
+              <Package2 className="h-5 w-5 transition-all group-hover:scale-110" />
+              <span className="sr-only">TechHub</span>
+            </Link>
+            <div className="text-sm text-muted-foreground">Đang tải menu...</div>
+          </nav>
+        </SheetContent>
+      </Sheet>
+    );
   }
 
   return (
@@ -68,9 +79,9 @@ export default function MobileNavLinks() {
             className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
           >
             <Package2 className="h-5 w-5 transition-all group-hover:scale-110" />
-            <span className="sr-only">Acme Inc</span>
+            <span className="sr-only">TechHub</span>
           </Link>
-          {accessibleMenuItems.map((item: any, index: number) => {
+          {accessibleMenuItems.map((item: MenuItem, index: number) => {
             const isActive = pathname === item.href;
             return (
               <Link
