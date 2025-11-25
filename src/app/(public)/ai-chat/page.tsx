@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
-import { useSendChatMessageMutation, useGetUserSessions, useGetSessionMessages, useDeleteSessionMutation } from "@/queries/useAi";
+import { useSendChatMessageMutation, useGetUserSessions, useGetSessionMessages, useDeleteSessionMutation, useCreateSessionMutation } from "@/queries/useAi";
 import { useAppContext } from "@/components/app-provider";
 import {
   MessageCircle,
@@ -58,6 +58,7 @@ export default function AiChatPage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const chatMutation = useSendChatMessageMutation();
+  const createSessionMutation = useCreateSessionMutation();
   const deleteSessionMutation = useDeleteSessionMutation();
   
   // Fetch user sessions from DB
@@ -246,13 +247,35 @@ export default function AiChatPage() {
     setTimeout(() => setCopiedMessageId(null), 2000);
   };
 
-  const handleNewSession = () => {
-    setSessionId(null);
-    setMessages([]);
-    toast({
-      title: t("newSession"),
-      description: t("newSessionCreated"),
-    });
+  const handleNewSession = async () => {
+    if (!userId) {
+      toast({
+        title: tCommon("error"),
+        description: "Please login before creating a session.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await createSessionMutation.mutateAsync({ userId, mode });
+      const newSessionId = response.payload?.data?.id;
+      
+      if (newSessionId) {
+        setSessionId(newSessionId);
+        setMessages([]);
+        toast({
+          title: t("newSession"),
+          description: t("newSessionCreated"),
+        });
+      }
+    } catch (error) {
+      toast({
+        title: tCommon("error"),
+        description: error instanceof Error ? error.message : "Failed to create session",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSelectSession = (id: string) => {

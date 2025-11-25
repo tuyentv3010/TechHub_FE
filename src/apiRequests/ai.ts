@@ -151,6 +151,13 @@ const aiApiRequest = {
   // CHAT SESSION HISTORY
   // ============================================
 
+  // Create new empty session
+  createSession: (userId: string, mode?: "GENERAL" | "ADVISOR") =>
+    http.post<{ payload: { data: ChatSessionType } }>(
+      `/app/api/proxy/ai/chat/sessions?userId=${userId}${mode ? `&mode=${mode}` : ""}`,
+      {}
+    ),
+
   // Get user's chat sessions
   getUserSessions: (userId: string) =>
     http.get<{ payload: { data: ChatSessionType[] } }>(

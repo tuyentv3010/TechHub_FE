@@ -113,6 +113,19 @@ export const useSendChatMessageMutation = () => {
   });
 };
 
+// Create session mutation
+export const useCreateSessionMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, mode }: { userId: string; mode?: "GENERAL" | "ADVISOR" }) =>
+      aiApiRequest.createSession(userId, mode),
+    onSuccess: (_data, variables) => {
+      // Invalidate user sessions to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["chat-sessions", variables.userId] });
+    },
+  });
+};
+
 // Get user's chat sessions
 export const useGetUserSessions = (userId: string) => {
   return useQuery({

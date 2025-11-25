@@ -13,7 +13,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 
-import { ChevronDown, Edit, MoreHorizontal, Plus, Trash, Route, Sparkles, Loader2 } from "lucide-react";
+import { ChevronDown, Edit, MoreHorizontal, Trash, Route, Sparkles, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -34,13 +34,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -108,10 +101,11 @@ export default function LearningPathTable() {
         variant: "default",
       });
       refetch();
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
       toast({
         title: t("DeleteError"),
-        description: error?.message || "An error occurred",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -122,10 +116,11 @@ export default function LearningPathTable() {
       await approveDraftMutation.mutateAsync(taskId);
       toast({ title: t("ApproveSuccess", { defaultValue: "Đã duyệt draft" }) });
       refetchDrafts();
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
       toast({
         title: t("ApproveError", { defaultValue: "Lỗi duyệt draft" }),
-        description: error?.message || "An error occurred",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -136,10 +131,11 @@ export default function LearningPathTable() {
       await rejectDraftMutation.mutateAsync({ taskId });
       toast({ title: t("RejectSuccess", { defaultValue: "Đã từ chối draft" }) });
       refetchDrafts();
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
       toast({
         title: t("RejectError", { defaultValue: "Lỗi từ chối draft" }),
-        description: error?.message || "An error occurred",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -416,7 +412,7 @@ export default function LearningPathTable() {
               <div className="text-sm text-muted-foreground">{tAiDrafts("noDrafts")}</div>
             ) : (
               <div className="space-y-3">
-                {(aiDraftsData?.payload?.data || []).map((draft: any) => (
+                {(aiDraftsData?.payload?.data || []).map((draft: { taskId: string; taskType: string; status: string; createdAt: string }) => (
                   <Card key={draft.taskId}>
                     <CardContent className="py-3 flex items-center justify-between">
                       <div className="space-y-1">
@@ -431,6 +427,14 @@ export default function LearningPathTable() {
                         </div>
                       </div>
                       <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => router.push(`/manage/learning-paths/drafts/${draft.taskId}/designer`)}
+                        >
+                          <Route className="mr-2 h-4 w-4" />
+                          {t("DesignPath", { defaultValue: "Design" })}
+                        </Button>
                         <Button
                           size="sm"
                           disabled={approveDraftMutation.isPending}

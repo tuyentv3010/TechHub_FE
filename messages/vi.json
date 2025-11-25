@@ -16,7 +16,9 @@
     "months": "Tháng",
     "years": "Năm",
     "options": "Tùy chọn",
-    "note": "Lưu ý"
+    "note": "Lưu ý",
+    "success": "Thành công",
+    "error": "Lỗi"
   },
   "navigation": {
     "home": "Trang chủ",
@@ -753,6 +755,7 @@
     "FormDuration": "Thời lượng (giờ)",
     "FormSkills": "Kỹ năng",
     "FormSkillsPlaceholder": "Nhập kỹ năng và nhấn Enter",
+    "ManageSkills": "Quản lý Kỹ năng",
     "Cancel": "Hủy",
     "Create": "Tạo",
     "Creating": "Đang tạo...",
@@ -866,11 +869,16 @@
     "currentLevel": "Trình độ hiện tại",
     "targetLevel": "Trình độ mục tiêu",
     "language": "Ngôn ngữ",
+    "beginner": "Người mới bắt đầu",
+    "intermediate": "Trung cấp",
+    "advanced": "Nâng cao",
+    "expert": "Chuyên gia",
     "includePositions": "Gợi ý vị trí công việc",
     "includeProjects": "Gợi ý dự án thực tế",
     "generate": "Tạo lộ trình",
     "success": "Đã tạo lộ trình thành công",
-    "expert": "Chuyên gia",
+    "successGenerated": "Lộ trình đã được tạo thành công!",
+    "error": "Không thể tạo lộ trình",
     "note1": "AI sẽ phân tích mục tiêu và đề xuất các khóa học phù hợp",
     "note2": "Lộ trình sẽ được tạo dưới dạng draft, bạn có thể chỉnh sửa trước khi lưu",
     "note3": "Quá trình tạo có thể mất 10-30 giây"
