@@ -2,12 +2,11 @@
 
 import { useAppContext } from "@/components/app-provider";
 import { toast } from "@/components/ui/use-toast";
-import { decodeToken } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import envConfig from "@/config";
 
-export default function OauthPage() {
+export default function OAuth2RedirectPage() {
   const { setRole, setIsAuth } = useAppContext();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -21,32 +20,6 @@ export default function OauthPage() {
 
     const processOAuth = async () => {
       try {
-        // Check if this is a direct token response (from existing flow)
-        const accessToken = searchParams.get("accessToken");
-        const refreshToken = searchParams.get("refreshToken");
-        const message = searchParams.get("message");
-
-        if (accessToken && refreshToken) {
-          // Existing flow - tokens already generated
-          console.log("Processing existing OAuth flow with tokens");
-          const { role } = decodeToken(accessToken);
-          
-          localStorage.setItem("accessToken", accessToken);
-          localStorage.setItem("refreshToken", refreshToken);
-          
-          setRole(role);
-          setIsAuth(true);
-          
-          toast({
-            title: "Login Successful",
-            description: message || "You have successfully logged in!",
-          });
-          
-          router.push(role === "ADMIN" ? "/manage/accounts" : "/");
-          return;
-        }
-
-        // New flow - exchange OAuth result for tokens
         const userId = searchParams.get("userId");
         const email = searchParams.get("email");
         const username = searchParams.get("username");
@@ -57,20 +30,20 @@ export default function OauthPage() {
         if (error) {
           toast({
             variant: "destructive",
-            title: "Login Failed",
-            description: error || "An error occurred during OAuth login",
+            title: "Đăng nhập thất bại",
+            description: error || "Có lỗi xảy ra khi đăng nhập",
           });
           router.push("/login");
           return;
         }
 
         if (oauth2Success === "true" && userId && email) {
-          console.log("Processing new OAuth flow - exchanging for tokens");
+          console.log("Processing OAuth - exchanging for tokens");
           console.log("User ID:", userId, "Email:", email, "Provider:", provider);
 
           // Exchange OAuth result for JWT tokens
           const response = await fetch(
-            `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/api/proxy/auth/oauth2/exchange`,
+            `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/app/api/proxy/auth/oauth2/exchange`,
             {
               method: "POST",
               headers: {
@@ -83,9 +56,17 @@ export default function OauthPage() {
             }
           );
 
+          console.log("Exchange response status:", response.status);
           const data = await response.json();
+          console.log("Exchange response data:", data);
 
           if (!response.ok || !data.success) {
+            console.error("Exchange failed:", {
+              status: response.status,
+              success: data.success,
+              message: data.message,
+              fullResponse: data
+            });
             throw new Error(data.message || "Failed to exchange OAuth result");
           }
 
@@ -102,8 +83,8 @@ export default function OauthPage() {
           setRole(userRole);
 
           toast({
-            title: "Login Successful",
-            description: `Welcome ${username || email}! Logged in via ${provider}`,
+            title: "Đăng nhập thành công!",
+            description: `Chào mừng ${username || email}! Đã đăng nhập qua ${provider}`,
           });
 
           // Redirect based on role
@@ -119,8 +100,8 @@ export default function OauthPage() {
         console.error("OAuth processing error:", error);
         toast({
           variant: "destructive",
-          title: "Login Failed",
-          description: error.message || "An error occurred during login",
+          title: "Đăng nhập thất bại",
+          description: error.message || "Có lỗi xảy ra khi đăng nhập",
         });
         router.push("/login");
       } finally {
@@ -136,7 +117,7 @@ export default function OauthPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <p className="text-gray-700 text-lg">Processing login...</p>
+          <p className="text-gray-700 text-lg">Đang xử lý đăng nhập...</p>
         </div>
       </div>
     );
