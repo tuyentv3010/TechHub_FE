@@ -49,6 +49,20 @@ const accountApiRequest = {
       },
     });
   },
-};
 
+  // Get user's effective permissions
+  getUserPermissions: (userId: string) =>
+    http.get<{
+      success: boolean;
+      data: Array<{
+        id: string;
+        name: string;
+        url: string;
+        method: string;
+        resource: string;
+        source: string;
+        allowed: boolean;
+      }>;
+    }>(`/app/api/proxy/users/${userId}/permissions/effective`),
+};
 export default accountApiRequest;

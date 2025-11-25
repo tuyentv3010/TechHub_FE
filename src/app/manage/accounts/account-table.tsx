@@ -53,7 +53,6 @@ import { useTranslations } from "next-intl";
 import {
   useDeleteAccountMutation,
   useGetAccountList,
-  useAccountProfile,
 } from "@/queries/useAccount";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
@@ -65,6 +64,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type AccountItem = AccountListResType["data"][0];
 
@@ -156,21 +156,13 @@ export default function AccountTable() {
     null
   );
 
-  // Fetch user permissions
-  const {
-    data: accountData,
-    isLoading: isAccountLoading,
-    isError: isAccountError,
-  } = useAccountProfile();
-  
-  // Note: New API returns roles as array of strings, not permissions
-  // You may need to implement a role-to-permission mapping or update backend
-  const userRoles = accountData?.payload?.data?.roles as string[] | undefined;
+  // Use permissions hook to check user permissions
+  const { hasPermission, hasPermissionByName, isLoading: isPermissionsLoading } = usePermissions();
 
-  // Check permissions based on roles (simplified - adjust based on your role system)
-  const hasAddPermission = userRoles?.includes("ADMIN");
-  const hasEditPermission = userRoles?.includes("ADMIN");
-  const hasDeletePermission = userRoles?.includes("ADMIN");
+  // Check permissions based on actual user permissions from backend
+  const hasAddPermission = hasPermissionByName("USER_CREATE") || hasPermission("POST", "/api/users");
+  const hasEditPermission = hasPermissionByName("USER_UPDATE") || hasPermission("PUT", "/api/users/{id}");
+  const hasDeletePermission = hasPermissionByName("USER_DELETE") || hasPermission("DELETE", "/api/users/{id}");
 
   // Fetch account list
   const accountListQuery = useGetAccountList(page, pageSize);
@@ -373,10 +365,8 @@ export default function AccountTable() {
           setEmployeeDelete={setEmployeeDelete}
           onSuccess={accountListQuery.refetch}
         />
-        {isAccountLoading || accountListQuery.isLoading ? (
+        {accountListQuery.isLoading || isPermissionsLoading ? (
           <TableSkeleton />
-        ) : isAccountError ? (
-          <div className="text-red-500">Error loading user permissions</div>
         ) : accountListQuery.error ? (
           <div className="text-red-500">
             {t("Error")}: {accountListQuery.error.message}

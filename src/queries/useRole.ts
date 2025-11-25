@@ -43,10 +43,16 @@ export const useCreateRoleMutation = () => {
 export const useUpdateRoleMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: UpdateRoleBodyType }) =>
-      roleApiRequest.updateRole(id, body),
-    onSuccess: () => {
+    mutationFn: ({ id, body }: { id: string; body: UpdateRoleBodyType }) => {
+      console.log('[useUpdateRoleMutation] Mutation started:', { id, body });
+      return roleApiRequest.updateRole(id, body);
+    },
+    onSuccess: (data) => {
+      console.log('[useUpdateRoleMutation] Mutation SUCCESS:', data);
       queryClient.invalidateQueries({ queryKey: ["roles"] });
+    },
+    onError: (error) => {
+      console.error('[useUpdateRoleMutation] Mutation ERROR:', error);
     },
   });
 };

@@ -48,8 +48,24 @@ const roleApiRequest = {
     http.post<RoleDetailResType>("/app/api/proxy/admin/roles", body),
 
   // Update role
-  updateRole: (id: string, body: UpdateRoleBodyType) =>
-    http.put<RoleDetailResType>(`/app/api/proxy/admin/roles/${id}`, body),
+  updateRole: (id: string, body: UpdateRoleBodyType) => {
+    console.log('[Role API] Updating role:', { id, body });
+    console.log('[Role API] Request URL:', `/app/api/proxy/admin/roles/${id}`);
+    return http.put<RoleDetailResType>(`/app/api/proxy/admin/roles/${id}`, body)
+      .then(response => {
+        console.log('[Role API] Update role SUCCESS:', response);
+        return response;
+      })
+      .catch(error => {
+        console.error('[Role API] Update role ERROR:', error);
+        console.error('[Role API] Error details:', {
+          status: error.status,
+          message: error.message,
+          payload: error.payload
+        });
+        throw error;
+      });
+  },
 
   // Delete role
   deleteRole: (id: string) =>

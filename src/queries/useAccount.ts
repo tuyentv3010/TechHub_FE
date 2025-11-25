@@ -118,3 +118,12 @@ export const useUpdateProfileMutation = () => {
     },
   });
 };
+
+// Get user permissions
+export const useUserPermissions = (userId: string, enabled: boolean = true) => {
+  return useQuery({
+    queryKey: ["user-permissions", userId],
+    queryFn: () => accountApiRequest.getUserPermissions(userId),
+    enabled: enabled && !!userId,
+  });
+};
