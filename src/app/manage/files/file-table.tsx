@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import {
@@ -46,6 +47,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
 import UploadFileDialog from './upload-file-dialog';
 import FolderTreeDialog from './folder-tree-dialog';
 import {
@@ -82,14 +84,20 @@ const formatFileSize = (bytes: number): string => {
 };
 
 export default function FileTable() {
+  const router = useRouter();
   const { toast } = useToast();
-  const { data: profileData, isLoading: loadingProfile } = useAccountProfile();
+  const { data: profileData, isLoading: loadingProfile, error: profileError } = useAccountProfile();
   const userId = profileData?.payload?.data?.id || '';
+  const { hasPermission, isLoading: permissionsLoading } = usePermissions();
 
   // Debug logs
-  console.log('🔍 FileTable - profileData:', profileData);
-  console.log('🔍 FileTable - userId:', userId);
-  console.log('🔍 FileTable - loadingProfile:', loadingProfile);
+
+  // Permission checks
+  const canViewFiles = hasPermission('GET', '/api/files/user');
+  const canUploadFiles = hasPermission('POST', '/api/files/upload');
+  const canDeleteFiles = hasPermission('DELETE', '/api/files');
+  const canDownloadFiles = hasPermission('GET', '/api/files/download');
+
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -134,6 +142,22 @@ export default function FileTable() {
   const handleDelete = async () => {
     if (!fileToDelete || !userId) return;
 
+    console.log('🗑️ [FileTable] Delete attempt:', {
+      canDeleteFiles,
+      fileId: fileToDelete.id,
+      fileName: fileToDelete.name
+    });
+
+    if (!canDeleteFiles) {
+      console.warn('⚠️ [FileTable] Delete permission denied');
+      toast({
+        title: 'Không có quyền',
+        description: 'Bạn không có quyền xóa file',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       await deleteFileMutation.mutateAsync({
         id: fileToDelete.id,
@@ -158,6 +182,15 @@ export default function FileTable() {
   };
 
   const handleDownload = async (file: FileType) => {
+    if (!canDownloadFiles) {
+      toast({
+        title: 'Không có quyền',
+        description: 'Bạn không có quyền tải file xuống',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       // Fetch file as blob
       const response = await fetch(file.cloudinarySecureUrl);
@@ -263,10 +296,18 @@ export default function FileTable() {
             {selectedFolder && selectedFolderName ? selectedFolderName : 'Tất cả thư mục'}
           </Button>
         </div>
-        <Button onClick={() => setUploadDialogOpen(true)}>
-          <Upload className="w-4 h-4 mr-2" />
-          Tải lên
-        </Button>
+        {canUploadFiles && (
+          <Button onClick={() => setUploadDialogOpen(true)}>
+            <Upload className="w-4 h-4 mr-2" />
+            Tải lên
+          </Button>
+        )}
+        {!canUploadFiles && (
+          <Button disabled title="Bạn không có quyền tải file lên">
+            <Upload className="w-4 h-4 mr-2" />
+            Tải lên
+          </Button>
+        )}
       </div>
 
       {/* Files Table */}
@@ -390,21 +431,27 @@ export default function FileTable() {
                           <Eye className="w-4 h-4 mr-2" />
                           Xem chi tiết
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDownload(file)}>
-                          <Download className="w-4 h-4 mr-2" />
-                          Tải xuống
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => {
-                            setFileToDelete(file);
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Xóa
-                        </DropdownMenuItem>
+                        {canDownloadFiles && (
+                          <DropdownMenuItem onClick={() => handleDownload(file)}>
+                            <Download className="w-4 h-4 mr-2" />
+                            Tải xuống
+                          </DropdownMenuItem>
+                        )}
+                        {canDeleteFiles && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => {
+                                setFileToDelete(file);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Xóa
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

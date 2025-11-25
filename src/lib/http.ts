@@ -213,7 +213,9 @@ const request = async <Response>(
           }
         );
       } else if (res.status === AUTHENTICATION_ERROR_STATUS) {
+        console.warn('🔐 [HTTP] 401 Unauthorized - Token expired or invalid');
         if (isClient && !clientLogoutRequest) {
+          console.log('🚪 [HTTP] Logging out user...');
           clientLogoutRequest = fetch("/api/auth/logout", {
             method: "POST",
             headers: {
@@ -222,12 +224,15 @@ const request = async <Response>(
           });
           try {
             await clientLogoutRequest;
+            console.log('✅ [HTTP] Logout successful');
           } catch (error) {
-            console.error("Logout error:", error);
+            console.error("❌ [HTTP] Logout error:", error);
           } finally {
             localStorage.removeItem("accessToken");
             localStorage.removeItem("refreshToken");
+            console.log('🧹 [HTTP] Tokens cleared from localStorage');
             clientLogoutRequest = null;
+            console.log('↪️ [HTTP] Redirecting to /login');
             location.href = `/login`;
           }
         } else if (!isClient) {
@@ -356,8 +361,10 @@ const requestWithRefresh = async <Response>(
     return await request<Response>(method, url, options);
   } catch (error: any) {
     if (error.status === AUTHENTICATION_ERROR_STATUS && isClient) {
+      console.log('🔄 [HTTP] Attempting to refresh token...');
       try {
         const newAccessToken = await refreshToken();
+        console.log('✅ [HTTP] Token refreshed successfully');
         const newOptions = {
           ...options,
           headers: {
@@ -365,8 +372,10 @@ const requestWithRefresh = async <Response>(
             Authorization: `Bearer ${newAccessToken}`,
           },
         };
+        console.log('🔁 [HTTP] Retrying request with new token');
         return await request<Response>(method, url, newOptions);
       } catch (refreshError) {
+        console.error('❌ [HTTP] Token refresh failed:', refreshError);
         throw refreshError;
       }
     }
