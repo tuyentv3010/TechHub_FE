@@ -44,7 +44,7 @@ const CourseCard = ({ course }: CourseCardProps) => {
         {/* Price Badge - Top Right */}
         <div className="absolute top-4 right-4">
           <span className="bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-full text-sm font-bold shadow-md">
-            ${course.price.toFixed(2)}
+            {course.price.toFixed(2)} USD
           </span>
         </div>
         

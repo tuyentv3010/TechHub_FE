@@ -24,8 +24,9 @@ import { Badge } from "@/components/ui/badge";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusCircle, Upload, X, ImagePlus, Video } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
 import { useCreateCourseMutation } from "@/queries/useCourse";
@@ -40,6 +41,7 @@ import { useRef } from "react";
 import { useGetSkills, useGetTags } from "@/queries/useCourse";
 import SkillManager from "@/components/manage/SkillManager";
 import TagManager from "@/components/manage/TagManager";
+import { CurrencyInputWithSwitch } from "@/components/ui/currency-input-with-switch";
 
 export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   const t = useTranslations("ManageCourse");
@@ -380,12 +382,17 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="price">{t("PriceLabel")}</Label>
-              <Input
-                id="price"
-                type="number"
-                step="0.01"
-                placeholder="49.99"
-                {...form.register("price", { valueAsNumber: true })}
+              <Controller
+                name="price"
+                control={form.control}
+                render={({ field }) => (
+                  <CurrencyInputWithSwitch
+                    id="price"
+                    placeholder="49 000"
+                    value={field.value}
+                    onChange={(numericValue) => field.onChange(numericValue)}
+                  />
+                )}
               />
               {form.formState.errors.price && (
                 <p className="text-sm text-red-500">
@@ -396,12 +403,17 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
             <div className="space-y-2">
               <Label htmlFor="discountPrice">{t("DiscountPriceLabel")}</Label>
-              <Input
-                id="discountPrice"
-                type="number"
-                step="0.01"
-                placeholder="29.99"
-                {...form.register("discountPrice", { valueAsNumber: true })}
+              <Controller
+                name="discountPrice"
+                control={form.control}
+                render={({ field }) => (
+                  <CurrencyInputWithSwitch
+                    id="discountPrice"
+                    placeholder="29 000"
+                    value={field.value}
+                    onChange={(numericValue) => field.onChange(numericValue)}
+                  />
+                )}
               />
             </div>
 

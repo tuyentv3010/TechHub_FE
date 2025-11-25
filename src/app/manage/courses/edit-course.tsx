@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +24,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusCircle, X, ImagePlus, Video, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useRef } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
 import { useGetCourseById, useUpdateCourseMutation } from "@/queries/useCourse";
@@ -38,6 +38,7 @@ import { useAccountProfile } from "@/queries/useAccount";
 import fileApiRequest from "@/apiRequests/file";
 import SkillManager from "@/components/manage/SkillManager";
 import TagManager from "@/components/manage/TagManager";
+import { CurrencyInputWithSwitch } from "@/components/ui/currency-input-with-switch";
 
 export default function EditCourse({
   id,
@@ -351,21 +352,33 @@ export default function EditCourse({
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="price">{t("PriceLabel")}</Label>
-              <Input
-                id="price"
-                type="number"
-                step="0.01"
-                {...form.register("price", { valueAsNumber: true })}
+              <Controller
+                name="price"
+                control={form.control}
+                render={({ field }) => (
+                  <CurrencyInputWithSwitch
+                    id="price"
+                    placeholder="49 000"
+                    value={field.value}
+                    onChange={(numericValue) => field.onChange(numericValue)}
+                  />
+                )}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="discountPrice">{t("DiscountPriceLabel")}</Label>
-              <Input
-                id="discountPrice"
-                type="number"
-                step="0.01"
-                {...form.register("discountPrice", { valueAsNumber: true })}
+              <Controller
+                name="discountPrice"
+                control={form.control}
+                render={({ field }) => (
+                  <CurrencyInputWithSwitch
+                    id="discountPrice"
+                    placeholder="29 000"
+                    value={field.value}
+                    onChange={(numericValue) => field.onChange(numericValue)}
+                  />
+                )}
               />
             </div>
 
@@ -469,7 +482,7 @@ export default function EditCourse({
             <div className="flex flex-col gap-1 mt-2">
               {form.watch("objectives")?.map((obj, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
-                  <span>• {obj}</span>
+                  <span>â€¢ {obj}</span>
                   <X
                     className="w-3 h-3 cursor-pointer text-muted-foreground hover:text-destructive"
                     onClick={() => removeItem('objectives', idx)}
@@ -509,7 +522,7 @@ export default function EditCourse({
             <div className="flex flex-col gap-1 mt-2">
               {form.watch("requirements")?.map((req, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
-                  <span>• {req}</span>
+                  <span>â€¢ {req}</span>
                   <X
                     className="w-3 h-3 cursor-pointer text-muted-foreground hover:text-destructive"
                     onClick={() => removeItem('requirements', idx)}
@@ -633,7 +646,7 @@ export default function EditCourse({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="status">{t("Status")}</Label>
+            <Label htmlFor="status">{t("StatusLabel")}</Label>
             <Select
               value={form.watch("status")}
               onValueChange={(value: any) => form.setValue("status", value)}
@@ -708,3 +721,5 @@ export default function EditCourse({
     </Dialog>
   );
 }
+
+

@@ -70,13 +70,11 @@ export const formatLanguage = (language: string): string => {
 };
 
 /**
- * Format price thành currency
+ * Format price thành currency (xx.xx USD)
+ * Backend stores prices in USD
  */
 export const formatPrice = (price: number): string => {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(price);
+  return `${price.toFixed(2)} USD`;
 };
 
 /**

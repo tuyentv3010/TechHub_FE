@@ -128,6 +128,15 @@ export const UpdateCourseBody = z.object({
   requirements: z.array(z.string()).optional(),
   thumbnail: z.string().max(500).optional(), // URL string
   introVideo: z.string().max(500).optional(), // URL string
+}).refine((data) => {
+  // If both price and discountPrice are provided, discountPrice must be <= price
+  if (data.price !== undefined && data.discountPrice !== undefined && data.discountPrice > 0) {
+    return data.discountPrice <= data.price;
+  }
+  return true;
+}, {
+  message: "Discount price must be less than or equal to the original price",
+  path: ["discountPrice"],
 });
 
 export type UpdateCourseBodyType = z.TypeOf<typeof UpdateCourseBody>;

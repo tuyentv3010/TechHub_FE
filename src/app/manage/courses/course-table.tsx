@@ -58,6 +58,7 @@ import AddCourse from "./add-course";
 import EditCourse from "./edit-course";
 import { useDeleteCourseMutation, useGetCourseList } from "@/queries/useCourse";
 import { CourseListResponseType } from "@/schemaValidations/course.schema";
+import { DollarSign } from "lucide-react";
 
 type CourseItem = CourseListResponseType["data"][0];
 
@@ -145,6 +146,30 @@ export default function CourseTable() {
   const [rowSelection, setRowSelection] = useState({});
   const [courseIdEdit, setCourseIdEdit] = useState<string | undefined>();
   const [courseDelete, setCourseDelete] = useState<CourseItem | null>(null);
+  const [searchInput, setSearchInput] = useState(search); // Local state for search input
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput !== search) {
+        const params = new URLSearchParams(searchParams);
+        if (searchInput) {
+          params.set("search", searchInput);
+        } else {
+          params.delete("search");
+        }
+        params.set("page", "1");
+        router.push(`${pathname}?${params.toString()}`);
+      }
+    }, 500); // Delay 500ms before searching
+
+    return () => clearTimeout(timer);
+  }, [searchInput, pathname, router, searchParams, search]);
+
+  // Sync searchInput with URL when navigating
+  useEffect(() => {
+    setSearchInput(search);
+  }, [search]);
 
   const courseListQuery = useGetCourseList({
     page: page - 1,
@@ -268,24 +293,19 @@ export default function CourseTable() {
       },
       {
         accessorKey: "price",
-        header: t("PriceColumn"),
+        header: t("Price"),
         cell: ({ row }) => {
           const price = parseFloat(row.getValue("price"));
-          const discountPrice = row.original.discountPrice;
           return (
-            <div>
-              {discountPrice ? (
-                <>
-                  <div className="line-through text-sm text-muted-foreground">
-                    ${price.toFixed(2)}
-                  </div>
-                  <div className="font-medium text-green-600">
-                    ${discountPrice.toFixed(2)}
-                  </div>
-                </>
-              ) : (
-                <div className="font-medium">${price.toFixed(2)}</div>
-              )}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="rounded-md bg-secondary/50 p-2">
+                  <DollarSign className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <div className="font-medium">{price.toFixed(2)} USD</div>
+                </div>
+              </div>
             </div>
           );
         },
@@ -331,8 +351,6 @@ export default function CourseTable() {
         enableHiding: false,
         cell: ({ row }) => {
           const course = row.original;
-          const { setCourseIdEdit, setCourseDelete } =
-            useContext(CourseTableContext);
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -369,7 +387,7 @@ export default function CourseTable() {
         },
       },
     ],
-    [t]
+    [t, setCourseIdEdit, setCourseDelete]
   );
 
   const table = useReactTable({
@@ -390,17 +408,6 @@ export default function CourseTable() {
       rowSelection,
     },
   });
-
-  const handleSearchChange = (value: string) => {
-    const params = new URLSearchParams(searchParams);
-    if (value) {
-      params.set("search", value);
-    } else {
-      params.delete("search");
-    }
-    params.set("page", "1");
-    router.push(`${pathname}?${params.toString()}`);
-  };
 
   const handleStatusChange = (value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -441,8 +448,8 @@ export default function CourseTable() {
           <div className="flex items-center gap-2 flex-1">
             <Input
               placeholder={t("SearchPlaceholder")}
-              value={search}
-              onChange={(event) => handleSearchChange(event.target.value)}
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
               className="max-w-sm"
             />
             <Select value={status} onValueChange={handleStatusChange}>

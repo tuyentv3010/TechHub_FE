@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import Image from "next/image";
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   BookOpen,
   Clock,
   Users,
   Star,
-  Globe,
   Award,
   CheckCircle,
   PlayCircle,
@@ -39,9 +37,11 @@ import {
   useAddCourseCommentMutation 
 } from "@/queries/useCourseComments";
 import { CourseCommentsList } from "@/components/course/CourseCommentsList";
+import Link from 'next/link';
 
 export default function CourseDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const t = useTranslations("Course");
   const { toast } = useToast();
   const slug = params.slug as string;
@@ -186,22 +186,8 @@ export default function CourseDetailPage() {
   };
 
   const handleEnroll = async () => {
-    try {
-      await enrollMutation.mutateAsync(courseId);
-      toast({
-        title: "Đăng ký thành công!",
-        description: "Bạn đã đăng ký khóa học thành công.",
-      });
-      
-      // Redirect to learning page
-      window.location.href = `/courses/${slug}/learn`;
-    } catch (error: any) {
-      toast({
-        title: "Đăng ký thất bại",
-        description: error?.message || "Có lỗi xảy ra khi đăng ký khóa học.",
-        variant: "destructive",
-      });
-    }
+    // Redirect to payment page
+    router.push(`/payment/${slug}`);
   };
 
   if (isLoading) {
@@ -241,8 +227,6 @@ export default function CourseDetailPage() {
   const discountPercentage = courseSummary.discountPrice
     ? calculateDiscountPercentage(courseSummary.price, courseSummary.discountPrice)
     : 0;
-
-  const finalPrice = courseSummary.discountPrice || courseSummary.price;
 
   return (
     <main className="min-h-screen bg-background pb-20 pt-16">
@@ -380,6 +364,7 @@ export default function CourseDetailPage() {
                       onClick={() => {
                         if (course.enrolled) {
                           window.location.href = `/courses/${slug}/learn`;
+                          <Link href=""/>;
                         } else {
                           handleEnroll();
                         }
