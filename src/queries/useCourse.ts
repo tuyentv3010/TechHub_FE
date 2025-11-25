@@ -304,6 +304,32 @@ export const useDeleteAssetMutation = () => {
 };
 
 // ============================================
+// EXERCISE HOOKS
+// ============================================
+
+// Get lesson exercise
+export const useGetLessonExercise = (courseId: string, lessonId: string) => {
+  return useQuery({
+    queryKey: ["lesson-exercise", courseId, lessonId],
+    queryFn: () => courseApiRequest.getLessonExercise(courseId, lessonId),
+    enabled: !!courseId && !!lessonId,
+  });
+};
+
+// Upsert exercise
+export const useUpsertExerciseMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ courseId, lessonId, body }: { courseId: string; lessonId: string; body: any }) =>
+      courseApiRequest.upsertExercise(courseId, lessonId, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["lesson-exercise", variables.courseId, variables.lessonId] });
+      queryClient.invalidateQueries({ queryKey: ["chapters", variables.courseId] });
+    },
+  });
+};
+
+// ============================================
 // PROGRESS HOOKS
 // ============================================
 

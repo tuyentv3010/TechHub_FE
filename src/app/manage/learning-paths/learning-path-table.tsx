@@ -13,14 +13,7 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 
-import {
-  ChevronDown,
-  Edit,
-  MoreHorizontal,
-  Plus,
-  Trash,
-  Route,
-} from "lucide-react";
+import { ChevronDown, Edit, MoreHorizontal, Trash, Route, Sparkles, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -41,14 +34,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
@@ -57,11 +50,19 @@ import { LearningPathItemType } from "@/schemaValidations/learning-path.schema";
 import { useToast } from "@/hooks/use-toast";
 import AddLearningPath from "./add-learning-path";
 import EditLearningPath from "./edit-learning-path";
+import GenerateAiLearningPath from "./generate-ai-learning-path";
 import { formatDateTimeToLocaleString } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import {
+  useGetLearningPathDrafts,
+  useApproveLearningPathDraftMutation,
+  useRejectDraftMutation,
+} from "@/queries/useAi";
+import { Separator } from "@/components/ui/separator";
 
 export default function LearningPathTable() {
   const t = useTranslations("ManageLearningPath");
+  const tAiDrafts = useTranslations("AiDrafts");
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -83,6 +84,9 @@ export default function LearningPathTable() {
 
   const deleteMutation = useDeleteLearningPathMutation();
   const { toast } = useToast();
+  const { data: aiDraftsData, refetch: refetchDrafts, isLoading: aiDraftsLoading } = useGetLearningPathDrafts();
+  const approveDraftMutation = useApproveLearningPathDraftMutation();
+  const rejectDraftMutation = useRejectDraftMutation();
 
   // Edit state
   const [editingPath, setEditingPath] = useState<LearningPathItemType | null>(null);
@@ -97,10 +101,41 @@ export default function LearningPathTable() {
         variant: "default",
       });
       refetch();
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
       toast({
         title: t("DeleteError"),
-        description: error?.message || "An error occurred",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleApproveDraft = async (taskId: string) => {
+    try {
+      await approveDraftMutation.mutateAsync(taskId);
+      toast({ title: t("ApproveSuccess", { defaultValue: "Đã duyệt draft" }) });
+      refetchDrafts();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
+      toast({
+        title: t("ApproveError", { defaultValue: "Lỗi duyệt draft" }),
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRejectDraft = async (taskId: string) => {
+    try {
+      await rejectDraftMutation.mutateAsync({ taskId });
+      toast({ title: t("RejectSuccess", { defaultValue: "Đã từ chối draft" }) });
+      refetchDrafts();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
+      toast({
+        title: t("RejectError", { defaultValue: "Lỗi từ chối draft" }),
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -259,6 +294,7 @@ export default function LearningPathTable() {
               })}
           </DropdownMenuContent>
         </DropdownMenu>
+        <GenerateAiLearningPath onSuccess={() => refetch()} />
         <AddLearningPath onSuccess={() => refetch()} />
       </div>
       <div className="rounded-md border">
@@ -355,6 +391,80 @@ export default function LearningPathTable() {
           }}
         />
       )}
+
+      <Separator className="my-6" />
+      <div className="space-y-3">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Sparkles className="h-4 w-4" />
+          {tAiDrafts("title")}
+        </h3>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{tAiDrafts("pendingPaths")}</CardTitle>
+            <CardDescription>
+              {tAiDrafts("pendingPathsDescription")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {aiDraftsLoading ? (
+              <div className="text-sm text-muted-foreground">{tAiDrafts("loading")}</div>
+            ) : (aiDraftsData?.payload?.data || []).length === 0 ? (
+              <div className="text-sm text-muted-foreground">{tAiDrafts("noDrafts")}</div>
+            ) : (
+              <div className="space-y-3">
+                {(aiDraftsData?.payload?.data || []).map((draft: { taskId: string; taskType: string; status: string; createdAt: string }) => (
+                  <Card key={draft.taskId}>
+                    <CardContent className="py-3 flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{draft.taskType}</Badge>
+                          <Badge variant={draft.status === "DRAFT" ? "secondary" : "default"}>
+                            {draft.status}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(draft.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => router.push(`/manage/learning-paths/drafts/${draft.taskId}/designer`)}
+                        >
+                          <Route className="mr-2 h-4 w-4" />
+                          {t("DesignPath", { defaultValue: "Design" })}
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={approveDraftMutation.isPending}
+                          onClick={() => handleApproveDraft(draft.taskId)}
+                        >
+                          {approveDraftMutation.isPending ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : null}
+                          {tAiDrafts("approve")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={rejectDraftMutation.isPending}
+                          onClick={() => handleRejectDraft(draft.taskId)}
+                        >
+                          {rejectDraftMutation.isPending ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : null}
+                          {tAiDrafts("reject")}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

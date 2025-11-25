@@ -176,6 +176,36 @@ const courseApiRequest = {
   // Mark lesson as complete
   markLessonComplete: (courseId: string, lessonId: string) =>
     http.post(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/progress/complete`, {}),
+
+  // ============================================
+  // EXERCISE MANAGEMENT
+  // ============================================
+
+  // Get lesson exercise (single exercise per lesson)
+  getLessonExercise: (courseId: string, lessonId: string) =>
+    http.get(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercise`),
+
+  // Upsert exercise for a lesson (PUT - create or update single exercise)
+  upsertExercise: (courseId: string, lessonId: string, body: any) =>
+    http.put(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercise`, body),
+
+  // Get all exercises for a lesson
+  getExercises: (courseId: string, lessonId: string) =>
+    http.get(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises`),
+
+  // Create multiple exercises for a lesson at once
+  createExercises: (courseId: string, lessonId: string, body: any[]) =>
+    http.post(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises`, body),
+  bulkCreateExercises: (courseId: string, lessonId: string, body: { exercises: any[] }) =>
+    http.post(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/bulk`, body),
+
+  // Update exercise
+  updateExercise: (courseId: string, lessonId: string, exerciseId: string, body: any) =>
+    http.put(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/${exerciseId}`, body),
+
+  // Delete exercise
+  deleteExercise: (courseId: string, lessonId: string, exerciseId: string) =>
+    http.delete(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/${exerciseId}`),
 };
 
 export default courseApiRequest;

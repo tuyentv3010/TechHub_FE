@@ -11,6 +11,7 @@ import TableSkeleton from "@/components/Skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import LessonManagement from "./lesson-management";
 import AssetManagement from "./asset-management";
+import AiExercisePanel from "./ai-exercise-panel";
 
 const ChapterManagement = dynamic(() => import("./chapter-management"));
 const ProgressTracker = dynamic(() => import("./progress-tracker"));
@@ -83,6 +84,7 @@ export default function CourseDetailPage() {
         <TabsList>
           <TabsTrigger value="content">{t("CourseContent")}</TabsTrigger>
           <TabsTrigger value="progress">{t("Progress")}</TabsTrigger>
+          <TabsTrigger value="ai-exercises">{t("AiExercises")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="content" className="space-y-6">
@@ -159,6 +161,14 @@ export default function CourseDetailPage() {
           <Suspense fallback={<TableSkeleton />}>
             <ProgressTracker courseId={courseId} />
           </Suspense>
+        </TabsContent>
+
+        <TabsContent value="ai-exercises">
+          {chaptersLoading ? (
+            <TableSkeleton />
+          ) : (
+            <AiExercisePanel courseId={courseId} chapters={chapters} />
+          )}
         </TabsContent>
       </Tabs>
     </main>
