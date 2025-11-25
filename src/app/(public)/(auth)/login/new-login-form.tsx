@@ -16,12 +16,7 @@ import { useLoginMutation } from "@/queries/useAuth";
 import { useAppContext } from "@/components/app-provider";
 import envConfig from "@/config";
 import Image from "next/image";
-
-// OAuth URLs - Redirect to backend endpoints
-// Backend will handle OAuth flow with its own Client ID and Secret
-const googleOauthUrl = `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/oauth2/authorization/google`;
-const githubOauthUrl = `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/oauth2/authorization/github`;
-const facebookOauthUrl = `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/oauth2/authorization/facebook`;
+import authApiRequest from "@/apiRequests/auth";
 
 export default function NewLoginForm() {
   const t = useTranslations("Login");
@@ -129,7 +124,7 @@ export default function NewLoginForm() {
               {/* Social Login Buttons */}
               <div className="space-y-3">
                 {/* Google Login Button */}
-                <Link href={googleOauthUrl}>
+                <Link href={authApiRequest.getGoogleOAuthUrl()}>
                   <Button
                     variant="outline"
                     className="w-full h-12 border-gray-300 hover:bg-gray-50"
@@ -158,7 +153,7 @@ export default function NewLoginForm() {
                 </Link>
 
                 {/* GitHub Login Button */}
-                <Link href={githubOauthUrl}>
+                <Link href={authApiRequest.getGithubOAuthUrl()}>
                   <Button
                     variant="outline"
                     className="w-full h-12 border-gray-300 hover:bg-gray-50"
@@ -172,7 +167,7 @@ export default function NewLoginForm() {
                 </Link>
 
                 {/* Facebook Login Button */}
-                <Link href={facebookOauthUrl}>
+                <Link href={authApiRequest.getFacebookOAuthUrl()}>
                   <Button
                     variant="outline"
                     className="w-full h-12 border-gray-300 hover:bg-gray-50"

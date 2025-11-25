@@ -59,6 +59,11 @@ const authApiRequest = {
 
   sRefreshToken: (body: { refreshToken: string }) =>
     http.post<LoginResType>("/auth/refresh-token", body),
+
+  // OAuth2 URLs - Direct backend endpoints (no HTTP wrapper needed)
+  getGoogleOAuthUrl: () => `${process.env.NEXT_PUBLIC_API_ENDPOINT}/oauth2/authorization/google`,
+  getGithubOAuthUrl: () => `${process.env.NEXT_PUBLIC_API_ENDPOINT}/oauth2/authorization/github`,
+  getFacebookOAuthUrl: () => `${process.env.NEXT_PUBLIC_API_ENDPOINT}/oauth2/authorization/facebook`,
 };
 
 export default authApiRequest;
