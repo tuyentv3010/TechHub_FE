@@ -54,12 +54,12 @@ export default function PaymentResultPage() {
       return "N/A";
     }
 
-    // Nếu là VNPay
+    // Nếu là VNPay - amount đã là số tiền thực (VND), không cần chia 100
     const numAmount = parseInt(amountStr);
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
-    }).format(numAmount / 100); // VNPay returns amount * 100
+    }).format(numAmount);
   };
 
   const getPaymentMethodDisplay = (method: string | null) => {

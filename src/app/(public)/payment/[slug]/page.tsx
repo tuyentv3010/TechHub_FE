@@ -26,6 +26,7 @@ import {
 } from "@/lib/course";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateVNPayPayment, useCreatePayPalPayment } from "@/queries/usePayment";
+import { useAccountProfile } from "@/queries/useAccount";
 
 type PaymentMethod = "vnpay" | "paypal" | null;
 
@@ -40,11 +41,13 @@ export default function PaymentPage() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { data: courseResponse, isLoading, error } = useGetCourseById(courseId);
+  const { data: profileResponse, isLoading: isLoadingProfile } = useAccountProfile();
   const createVNPayPayment = useCreateVNPayPayment();
   const createPayPalPayment = useCreatePayPalPayment();
 
   const course = courseResponse?.payload?.data;
   const courseSummary = course?.summary;
+  const userProfile = profileResponse?.payload?.data;
 
   const handlePayment = async () => {
     if (!selectedMethod) {
@@ -58,6 +61,15 @@ export default function PaymentPage() {
     if (!courseSummary?.price) {
       toast({
         title: "Không thể xác định giá khóa học",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!userProfile?.id) {
+      toast({
+        title: "Không thể xác định người dùng",
+        description: "Vui lòng đăng nhập lại",
         variant: "destructive",
       });
       return;
@@ -85,10 +97,12 @@ export default function PaymentPage() {
           description: "Vui lòng đợi trong giây lát",
         });
 
-        // Gọi API để tạo payment URL
+        // Gọi API để tạo payment URL với userId
         const response = await createVNPayPayment.mutateAsync({
           amount: finalPrice,
           bankCode: "NCB", // Mã ngân hàng mặc định, có thể để người dùng chọn
+          userId: userProfile.id,
+          courseId: courseId,
         });
 
         if (response.payload?.data?.paymentUrl) {
@@ -132,15 +146,19 @@ export default function PaymentPage() {
           description: "Vui lòng đợi trong giây lát",
         });
 
-        // Gọi API để tạo PayPal payment
-        const response = await createPayPalPayment.mutateAsync(parseFloat(priceInUSD));
+        // Gọi API để tạo PayPal payment với userId và courseId
+        const response = await createPayPalPayment.mutateAsync({
+          amount: parseFloat(priceInUSD),
+          userId: userProfile.id,
+          courseId: courseId,
+        });
 
         console.log("✅ PayPal API Response:", response);
 
         if (response.payload?.links) {
           // Tìm link "approve" để chuyển hướng người dùng
           const approveLink = response.payload.links.find(
-            (link) => link.rel === "approve"
+            (link: { rel: string; href: string; method: string }) => link.rel === "approve"
           );
 
           if (approveLink) {
@@ -166,7 +184,7 @@ export default function PaymentPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingProfile) {
     return (
       <main className="min-h-screen bg-background pb-20 pt-24">
         <div className="container mx-auto max-w-6xl px-4">

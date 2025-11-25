@@ -68,7 +68,7 @@ export default function CourseDetailPage() {
             </div>
             <div>
               <span className="text-muted-foreground">{t("Price")}: </span>
-              <span className="font-medium">${course.price}</span>
+              <span className="font-medium">{course.price.toFixed(2)} USD</span>
             </div>
             <div>
               <span className="text-muted-foreground">{t("Enrollments")}: </span>

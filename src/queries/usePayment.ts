@@ -10,7 +10,7 @@ export const useCreateVNPayPayment = () => {
 
 export const useCreatePayPalPayment = () => {
   return useMutation({
-    mutationFn: (amount: number) =>
-      paymentApiRequest.createPayPalPayment(amount),
+    mutationFn: ({ amount, userId, courseId }: { amount: number; userId: string; courseId: string }) =>
+      paymentApiRequest.createPayPalPayment(amount, userId, courseId),
   });
 };

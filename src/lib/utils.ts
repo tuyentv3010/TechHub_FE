@@ -134,12 +134,115 @@ export const checkAndRefreshToken = async (param?: {
   }
 };
 ///
+/**
+ * Currency conversion rate (1 USD = 25000 VND approximately)
+ */
+export const VND_TO_USD_RATE = 25000;
+
+/**
+ * Convert VND to USD
+ * @param vnd - Amount in VND
+ * @returns Amount in USD
+ */
+export function convertVNDtoUSD(vnd: number): number {
+  return vnd / VND_TO_USD_RATE;
+}
+
+/**
+ * Convert USD to VND
+ * @param usd - Amount in USD
+ * @returns Amount in VND
+ */
+export function convertUSDtoVND(usd: number): number {
+  return usd * VND_TO_USD_RATE;
+}
+
+/**
+ * Format price to display (xx.xx USD)
+ * @param price - Price in USD (from backend)
+ * @returns Formatted string like "49.99 USD"
+ */
+export function formatPriceUSD(price: number): string {
+  return `${price.toFixed(2)} USD`;
+}
+
+/**
+ * Format price in VND with spaces (120 000 VND)
+ * @param price - Price in VND
+ * @returns Formatted string like "120 000 VND"
+ */
+export function formatPriceVND(price: number): string {
+  return `${formatCurrencyInput(price)} VND`;
+}
+
+/**
+ * Format currency input based on currency type
+ * @param value - The numeric value
+ * @param currency - The currency type ('VND' or 'USD')
+ * @returns Formatted string
+ */
+export function formatCurrencyByType(value: number, currency: 'VND' | 'USD'): string {
+  if (currency === 'USD') {
+    return value.toFixed(2);
+  }
+  return formatCurrencyInput(value);
+}
+
+/**
+ * Parse currency input based on currency type
+ * @param value - The formatted string
+ * @param currency - The currency type ('VND' or 'USD')
+ * @returns Numeric value
+ */
+export function parseCurrencyByType(value: string, currency: 'VND' | 'USD'): number {
+  if (currency === 'USD') {
+    // Remove all characters except digits and decimal points
+    let cleaned = value.replace(/[^\d.]/g, '');
+    
+    // Ensure only one decimal point - keep the first one
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return parseCurrencyInput(value);
+}
+
 export const formatCurrency = (number: number) => {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
   }).format(number);
 };
+
+/**
+ * Format number to display with spaces (e.g., 120000 -> "120 000")
+ * @param value - The number or string to format
+ * @returns Formatted string with spaces
+ */
+export function formatCurrencyInput(value: string | number): string {
+  // Remove all non-digit characters
+  const numericValue = String(value).replace(/\D/g, '');
+
+  if (!numericValue) return '';
+
+  // Add spaces every 3 digits from the right
+  return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+/**
+ * Parse formatted currency string back to number (e.g., "120 000" -> 120000)
+ * @param value - The formatted string
+ * @returns The numeric value
+ */
+export function parseCurrencyInput(value: string): number {
+  // Remove all spaces and non-digit characters
+  const numericValue = value.replace(/\s/g, '').replace(/\D/g, '');
+  return numericValue ? parseInt(numericValue, 10) : 0;
+}
 
 // export const getVietnameseDishStatus = (
 //   status: (typeof DishStatus)[keyof typeof DishStatus]
@@ -282,3 +385,4 @@ export function usePermissions() {
 
   return { hasPermission, hasAnyPermission, hasModulePermission };
 }
+
