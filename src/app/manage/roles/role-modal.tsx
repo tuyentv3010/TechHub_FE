@@ -140,26 +140,20 @@ export default function RoleModal({
           name: values.name,
           description: values.description,
           active: values.active,
+          permissionIds: Array.from(selectedPermissionIds), // Update permissions together
         };
         await updateRoleMutation.mutateAsync({ id: roleId!, body });
         
-        // Update permissions
-        await assignPermissionsMutation.mutateAsync({
-          roleId: roleId!,
-          body: { permissionIds: Array.from(selectedPermissionIds) },
-        });
-        
         toast({ description: "Role đã được cập nhật" });
       } else {
-        const result = await createRoleMutation.mutateAsync(values);
-        
-        // Assign permissions to new role
-        if (result.data && selectedPermissionIds.size > 0) {
-          await assignPermissionsMutation.mutateAsync({
-            roleId: result.data.id,
-            body: { permissionIds: Array.from(selectedPermissionIds) },
-          });
-        }
+        // Create role with permissions in one request
+        const body: CreateRoleBodyType = {
+          name: values.name,
+          description: values.description,
+          active: values.active,
+          permissionIds: Array.from(selectedPermissionIds), // Send permissions when creating
+        };
+        await createRoleMutation.mutateAsync(body);
         
         toast({ description: "Role đã được tạo" });
       }

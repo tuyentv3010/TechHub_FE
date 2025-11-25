@@ -28,6 +28,7 @@ export const CreateRoleBody = z.object({
   name: z.string().min(1, "Name is required").max(50),
   description: z.string().optional(),
   active: z.boolean().default(true),
+  permissionIds: z.array(z.string().uuid()).optional(), // Optional: Permissions to assign when creating
 });
 
 export type CreateRoleBodyType = z.infer<typeof CreateRoleBody>;
@@ -37,6 +38,7 @@ export const UpdateRoleBody = z.object({
   name: z.string().min(1).max(50).optional(),
   description: z.string().optional(),
   active: z.boolean().optional(),
+  permissionIds: z.array(z.string().uuid()).optional(), // Optional: Update role permissions
 });
 
 export type UpdateRoleBodyType = z.infer<typeof UpdateRoleBody>;
