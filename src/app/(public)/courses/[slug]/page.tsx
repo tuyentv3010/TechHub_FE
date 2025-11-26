@@ -601,6 +601,7 @@ export default function CourseDetailPage() {
                 isEnrolled={!!course.enrolled}
                 onSubmitRating={handleSubmitRating}
                 isSubmitting={submitRatingMutation.isPending}
+                ratingDistribution={ratings.ratingDistribution}
               />
             )}
 

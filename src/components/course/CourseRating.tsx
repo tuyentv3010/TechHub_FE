@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { RatingDistribution } from "./RatingDistribution";
 
 interface CourseRatingProps {
   courseId: string;
@@ -15,6 +16,13 @@ interface CourseRatingProps {
   isEnrolled: boolean;
   onSubmitRating: (score: number) => Promise<void>;
   isSubmitting?: boolean;
+  ratingDistribution?: {
+    1: number;
+    2: number;
+    3: number;
+    4: number;
+    5: number;
+  };
 }
 
 export function CourseRating({
@@ -25,6 +33,7 @@ export function CourseRating({
   isEnrolled,
   onSubmitRating,
   isSubmitting = false,
+  ratingDistribution,
 }: CourseRatingProps) {
   const [hoveredStar, setHoveredStar] = useState<number | null>(null);
   const [selectedStar, setSelectedStar] = useState<number | null>(userScore);
@@ -67,11 +76,11 @@ export function CourseRating({
     const sizeClass = {
       sm: "h-4 w-4",
       md: "h-5 w-5",
-      lg: "h-8 w-8",
+      lg: "h-6 w-6",
     }[size];
 
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         {Array.from({ length: count }).map((_, index) => {
           const starValue = index + 1;
           const isFilled =
@@ -111,50 +120,54 @@ export function CourseRating({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Star className="h-6 w-6 text-yellow-400" />
-          Đánh giá khóa học
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Average Rating Display */}
-        <div className="text-center">
-          <div className="mb-2 text-5xl font-bold text-yellow-400">
-            {averageRating ? averageRating.toFixed(1) : "N/A"}
+    <Card className="shadow-sm">
+      <CardContent className="p-8">
+        {/* Rating Summary */}
+        <div className="mb-8">
+          <div className="mb-6 flex items-end gap-3">
+            <div className="text-6xl font-bold tracking-tight">
+              {averageRating ? averageRating.toFixed(1) : "0.0"}
+            </div>
+            <div className="pb-2">
+              {renderStars(5, averageRating || 0, false, "md")}
+              <p className="mt-1 text-sm text-muted-foreground">
+                {ratingCount > 0
+                  ? `${ratingCount.toLocaleString()} reviews`
+                  : "No reviews yet"}
+              </p>
+            </div>
           </div>
-          <div className="mb-3 flex justify-center">
-            {renderStars(5, averageRating || 0, false, "md")}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {ratingCount > 0
-              ? `${ratingCount} đánh giá`
-              : "Chưa có đánh giá nào"}
-          </p>
+
+          {/* Rating Distribution */}
+          {ratingDistribution && ratingCount > 0 && (
+            <div className="mt-6">
+              <RatingDistribution
+                distributions={ratingDistribution}
+                totalRatings={ratingCount}
+              />
+            </div>
+          )}
         </div>
 
         {/* User Rating Section */}
         {isEnrolled && (
           <div className="border-t pt-6">
-            <div className="mb-3 text-center">
-              <p className="mb-2 text-sm font-medium">
-                {selectedStar
-                  ? "Đánh giá của bạn"
-                  : "Đánh giá khóa học này"}
-              </p>
-              <div className="flex justify-center">
+            <div className="mb-4">
+              <h3 className="mb-3 text-lg font-semibold">
+                {selectedStar ? "Your Rating" : "Rate this course"}
+              </h3>
+              <div className="flex justify-start">
                 {renderStars(5, selectedStar || 0, true, "lg")}
               </div>
               {selectedStar && (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Bạn đã đánh giá {selectedStar} sao
+                  You rated {selectedStar} {selectedStar === 1 ? "star" : "stars"}
                 </p>
               )}
             </div>
             {!selectedStar && (
-              <p className="text-center text-xs text-muted-foreground">
-                Click vào số sao để đánh giá
+              <p className="text-xs text-muted-foreground">
+                Click on the stars to rate this course
               </p>
             )}
           </div>
@@ -164,7 +177,7 @@ export function CourseRating({
         {!isEnrolled && (
           <div className="border-t pt-6">
             <p className="text-center text-sm text-muted-foreground">
-              Đăng ký khóa học để có thể đánh giá
+              Enroll in this course to rate it
             </p>
           </div>
         )}
