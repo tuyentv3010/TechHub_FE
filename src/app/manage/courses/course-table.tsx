@@ -56,7 +56,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import AddCourse from "./add-course";
 import EditCourse from "./edit-course";
-import { useDeleteCourseMutation, useGetCourseList } from "@/queries/useCourse";
+import CourseFilters from "./course-filters";
+import { useDeleteCourseMutation, useGetCourseList, useGetSkills, useGetTags } from "@/queries/useCourse";
 import { CourseListResponseType } from "@/schemaValidations/course.schema";
 import { DollarSign } from "lucide-react";
 
@@ -138,7 +139,13 @@ export default function CourseTable() {
     ? Number(searchParams.get("pageSize"))
     : 10;
   const search = searchParams.get("search") || "";
-  const status = searchParams.get("status") || "all";
+  const status = searchParams.get("status") || "";
+  const level = searchParams.get("level") || "";
+  const language = searchParams.get("language") || "";
+  const skillIds = searchParams.get("skillIds")?.split(",").filter(Boolean) || [];
+  const tagIds = searchParams.get("tagIds")?.split(",").filter(Boolean) || [];
+  const minPrice = searchParams.get("minPrice") || "";
+  const maxPrice = searchParams.get("maxPrice") || "";
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -171,11 +178,21 @@ export default function CourseTable() {
     setSearchInput(search);
   }, [search]);
 
+  // Fetch skills and tags for filters
+  const skillsQuery = useGetSkills();
+  const tagsQuery = useGetTags();
+
   const courseListQuery = useGetCourseList({
     page: page - 1,
     size: pageSize,
     search: search || undefined,
-    status: status !== "all" ? status : undefined,
+    status: status || undefined,
+    level: level || undefined,
+    language: language || undefined,
+    skillIds: skillIds.length > 0 ? skillIds : undefined,
+    tagIds: tagIds.length > 0 ? tagIds : undefined,
+    minPrice: minPrice ? Number(minPrice) : undefined,
+    maxPrice: maxPrice ? Number(maxPrice) : undefined,
   });
 
   const data = useMemo(
@@ -409,17 +426,6 @@ export default function CourseTable() {
     },
   });
 
-  const handleStatusChange = (value: string) => {
-    const params = new URLSearchParams(searchParams);
-    if (value && value !== "all") {
-      params.set("status", value);
-    } else {
-      params.delete("status");
-    }
-    params.set("page", "1");
-    router.push(`${pathname}?${params.toString()}`);
-  };
-
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams);
     params.set("page", String(newPage));
@@ -444,27 +450,20 @@ export default function CourseTable() {
       }}
     >
       <div className="w-full">
-        <div className="flex items-center justify-between py-4 gap-4">
-          <div className="flex items-center gap-2 flex-1">
+        <div className="flex flex-col gap-4 py-4">
+          <div className="flex items-center justify-between gap-4">
             <Input
               placeholder={t("SearchPlaceholder")}
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
               className="max-w-sm"
             />
-            <Select value={status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder={t("FilterStatus")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("AllStatus")}</SelectItem>
-                <SelectItem value="DRAFT">{t("Status.DRAFT")}</SelectItem>
-                <SelectItem value="PUBLISHED">{t("Status.PUBLISHED")}</SelectItem>
-                <SelectItem value="ARCHIVED">{t("Status.ARCHIVED")}</SelectItem>
-              </SelectContent>
-            </Select>
+            <AddCourse onSuccess={() => courseListQuery.refetch()} />
           </div>
-          <AddCourse onSuccess={() => courseListQuery.refetch()} />
+          <CourseFilters
+            availableSkills={skillsQuery.data?.payload?.data || []}
+            availableTags={tagsQuery.data?.payload?.data || []}
+          />
         </div>
         <div className="rounded-md border">
           <Table>

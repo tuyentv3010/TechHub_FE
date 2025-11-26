@@ -14,16 +14,40 @@ const courseApiRequest = {
     size?: number;
     search?: string;
     status?: string;
+    level?: string;
+    language?: string;
+    instructorId?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    skillIds?: string[];
+    tagIds?: string[];
   }) => {
+    console.log("🔍 [FE] getCourseList called with params:", JSON.stringify(params, null, 2));
+    
     const searchParams = new URLSearchParams();
     if (params?.page !== undefined) searchParams.append("page", String(params.page));
     if (params?.size !== undefined) searchParams.append("size", String(params.size));
     if (params?.search) searchParams.append("search", params.search);
     if (params?.status) searchParams.append("status", params.status);
+    if (params?.level) searchParams.append("level", params.level);
+    if (params?.language) searchParams.append("language", params.language);
+    if (params?.instructorId) searchParams.append("instructorId", params.instructorId);
+    if (params?.minPrice !== undefined) searchParams.append("minPrice", String(params.minPrice));
+    if (params?.maxPrice !== undefined) searchParams.append("maxPrice", String(params.maxPrice));
+    if (params?.skillIds && params.skillIds.length > 0) {
+      console.log("🏷️ [FE] skillIds array:", params.skillIds);
+      params.skillIds.forEach((id) => searchParams.append("skillIds", id));
+    }
+    if (params?.tagIds && params.tagIds.length > 0) {
+      console.log("🏷️ [FE] tagIds array:", params.tagIds);
+      params.tagIds.forEach((id) => searchParams.append("tagIds", id));
+    }
 
-    return http.get<CourseListResponseType>(
-      `/app/api/proxy/courses${searchParams.toString() ? `?${searchParams.toString()}` : ""}`
-    );
+    const url = `/app/api/proxy/courses${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+    console.log("🌐 [FE] Request URL:", url);
+    console.log("📋 [FE] Search params:", searchParams.toString());
+
+    return http.get<CourseListResponseType>(url);
   },
 
   // Get course by ID

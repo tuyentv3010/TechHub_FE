@@ -191,6 +191,14 @@ const request = async <Response>(
       payload,
     };
 
+    console.log(`✅ HTTP ${method} response:`, {
+      url: fullUrl,
+      status: res.status,
+      payloadPreview: typeof payload === 'object' 
+        ? JSON.stringify(payload).slice(0, 200) + (JSON.stringify(payload).length > 200 ? '...' : '')
+        : payload,
+    });
+
     if (!res.ok) {
       if (
         res.status === ENTITY_ERROR_STATUS &&

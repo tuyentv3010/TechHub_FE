@@ -4,6 +4,50 @@ export const CourseStatus = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
 export const CourseLevel = z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL_LEVELS"]);
 export const Language = z.enum(["VI", "EN", "JA"]);
 
+// Skill Schema
+export const SkillItem = z.object({
+  id: z.string(),
+  name: z.string(),
+  thumbnail: z.string().nullable(),
+  category: z.string().nullable(),
+});
+
+export type SkillItemType = z.TypeOf<typeof SkillItem>;
+
+// Tag Schema
+export const TagItem = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+export type TagItemType = z.TypeOf<typeof TagItem>;
+
+// Skills List Response
+export const SkillsListRes = z.object({
+  success: z.boolean(),
+  status: z.string(),
+  code: z.number(),
+  message: z.string(),
+  data: z.array(SkillItem),
+  timestamp: z.string(),
+  path: z.string(),
+});
+
+export type SkillsListResType = z.TypeOf<typeof SkillsListRes>;
+
+// Tags List Response
+export const TagsListRes = z.object({
+  success: z.boolean(),
+  status: z.string(),
+  code: z.number(),
+  message: z.string(),
+  data: z.array(TagItem),
+  timestamp: z.string(),
+  path: z.string(),
+});
+
+export type TagsListResType = z.TypeOf<typeof TagsListRes>;
+
 // Course Item Response
 export const CourseItemRes = z.object({
   id: z.string(),
@@ -15,22 +59,37 @@ export const CourseItemRes = z.object({
   status: CourseStatus,
   level: CourseLevel,
   language: Language,
-  categories: z.array(z.string()),
-  // Backwards-compatible: some endpoints return 'skills' instead of 'categories'
-  skills: z.array(z.string()).optional(),
-  tags: z.array(z.string()),
+  categories: z.array(z.string()).nullable(),
+  // Updated: skills is now array of objects with id, name, thumbnail, category
+  skills: z.array(SkillItem),
+  // Updated: tags is now array of objects with id, name
+  tags: z.array(TagItem),
   objectives: z.array(z.string()),
   requirements: z.array(z.string()),
   instructorId: z.string(),
   thumbnail: z.object({
-    id: z.string(),
+    fileId: z.string().nullable(),
+    name: z.string().nullable(),
+    originalName: z.string().nullable(),
     url: z.string(),
-    secureUrl: z.string(),
+    secureUrl: z.string().nullable(),
+    mimeType: z.string().nullable(),
+    fileSize: z.number().nullable(),
+    width: z.number().nullable(),
+    height: z.number().nullable(),
+    duration: z.number().nullable(),
   }).nullable(),
   introVideo: z.object({
-    id: z.string(),
+    fileId: z.string().nullable(),
+    name: z.string().nullable(),
+    originalName: z.string().nullable(),
     url: z.string(),
-    secureUrl: z.string(),
+    secureUrl: z.string().nullable(),
+    mimeType: z.string().nullable(),
+    fileSize: z.number().nullable(),
+    width: z.number().nullable(),
+    height: z.number().nullable(),
+    duration: z.number().nullable(),
   }).nullable(),
   created: z.string(),
   updated: z.string(),
