@@ -36,7 +36,12 @@ import {
   useCourseComments, 
   useAddCourseCommentMutation 
 } from "@/queries/useCourseComments";
+import { 
+  useGetCourseRatings, 
+  useSubmitCourseRatingMutation 
+} from "@/queries/useCourse";
 import { CourseCommentsList } from "@/components/course/CourseCommentsList";
+import { CourseRating } from "@/components/course/CourseRating";
 import Link from 'next/link';
 
 export default function CourseDetailPage() {
@@ -93,8 +98,17 @@ export default function CourseDetailPage() {
   );
   const comments = commentsResponse?.payload?.data ?? [];
 
+  // Fetch course ratings
+  const { data: ratingsResponse, isLoading: isLoadingRatings } = useGetCourseRatings(
+    courseId
+  );
+  const ratings = ratingsResponse?.payload?.data;
+
   // Add course comment mutation
   const addCommentMutation = useAddCourseCommentMutation();
+
+  // Submit rating mutation
+  const submitRatingMutation = useSubmitCourseRatingMutation();
 
   const handleSubmitComment = (content: string) => {
     if (!courseId) {
@@ -129,6 +143,26 @@ export default function CourseDetailPage() {
         },
       }
     );
+  };
+
+  const handleSubmitRating = async (score: number) => {
+    if (!courseId) {
+      throw new Error("Không tìm thấy khóa học");
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      submitRatingMutation.mutate(
+        { courseId, score },
+        {
+          onSuccess: () => {
+            resolve();
+          },
+          onError: (error: any) => {
+            reject(error);
+          },
+        }
+      );
+    });
   };
 
   const handleSubmitReply = (parentId: string, content: string) => {
@@ -557,6 +591,19 @@ export default function CourseDetailPage() {
 
           {/* Right Sidebar */}
           <div className="space-y-6 lg:col-span-1">
+            {/* Course Rating */}
+            {ratings && (
+              <CourseRating
+                courseId={courseId}
+                averageRating={ratings.averageRating}
+                ratingCount={ratings.ratingCount}
+                userScore={ratings.userScore}
+                isEnrolled={!!course.enrolled}
+                onSubmitRating={handleSubmitRating}
+                isSubmitting={submitRatingMutation.isPending}
+              />
+            )}
+
             {/* Skills & Tags */}
             {(skills.length > 0 || tags.length > 0) && (
               <Card>

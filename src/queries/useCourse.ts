@@ -366,3 +366,29 @@ export const useMarkLessonCompleteMutation = () => {
     },
   });
 };
+
+// ============================================
+// RATING HOOKS
+// ============================================
+
+// Get course ratings
+export const useGetCourseRatings = (courseId: string) => {
+  return useQuery({
+    queryKey: ["course-ratings", courseId],
+    queryFn: () => courseApiRequest.getRatings(courseId),
+    enabled: !!courseId,
+  });
+};
+
+// Submit course rating
+export const useSubmitCourseRatingMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ courseId, score }: { courseId: string; score: number }) =>
+      courseApiRequest.submitRating(courseId, { score }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["course-ratings", variables.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["course", variables.courseId] });
+    },
+  });
+};
