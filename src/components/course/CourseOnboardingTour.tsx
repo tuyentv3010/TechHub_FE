@@ -56,7 +56,7 @@ export default function CourseOnboardingTour({
       title: t("step2.title"),
       content: t("step2.content", { userName }),
       targetId: "video-player-area",
-      position: "bottom",
+      position: "right",
     },
     {
       id: 3,
@@ -70,7 +70,7 @@ export default function CourseOnboardingTour({
       title: t("step4.title"),
       content: t("step4.content"),
       targetId: "first-lesson",
-      position: "left",
+      position: "bottom",
     },
     {
       id: 5,
@@ -84,7 +84,7 @@ export default function CourseOnboardingTour({
       title: t("step6.title"),
       content: t("step6.content"),
       targetId: "add-note-button",
-      position: "bottom",
+      position: "top",
     },
     {
       id: 7,

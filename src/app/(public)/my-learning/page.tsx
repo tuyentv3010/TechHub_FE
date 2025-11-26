@@ -6,16 +6,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Clock, CheckCircle, PlayCircle, Calendar } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Enrollment } from "@/types/enrollment.types";
 
 export default function MyLearningPage() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const { data, isLoading, error } = useMyEnrollments(statusFilter);
-    console.log("asdasdas das dasd " , data);
-  const enrollments = data?.payload?.data || [];
-
+  const enrollments = (data?.payload?.data || []) as Enrollment[];
+  console.log("enrollments", enrollments);
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
       ENROLLED: { label: "Đang học", variant: "default" },
@@ -109,12 +110,24 @@ export default function MyLearningPage() {
               Tìm thấy {enrollments.length} khóa học
             </div>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {enrollments.map((enrollment: any) => (
+              {enrollments.map((enrollment: Enrollment) => (
                 <Card key={enrollment.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   <CardContent className="p-0">
-                    {/* Course Image Placeholder */}
-                    <div className="relative h-48 bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
-                      <PlayCircle className="h-16 w-16 text-white opacity-80" />
+                    {/* Course Thumbnail */}
+                    <div className="relative h-48 bg-gradient-to-br from-purple-500 to-blue-600">
+                      {enrollment.thumbnail ? (
+                        <Image
+                          src={enrollment.thumbnail}
+                          alt={enrollment.courseName || "Course thumbnail"}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <PlayCircle className="h-16 w-16 text-white opacity-80" />
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-6">
