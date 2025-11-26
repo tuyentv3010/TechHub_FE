@@ -113,6 +113,16 @@ export const VerifyEmailRes = z.object({
 
 export type VerifyEmailResType = z.infer<typeof VerifyEmailRes>;
 
+export const ResendCodeRes = z.object({
+  success: z.boolean(),
+  status: z.string().optional(),
+  message: z.string(),
+  timestamp: z.string(),
+  code: z.number(),
+});
+
+export type ResendCodeResType = z.infer<typeof ResendCodeRes>;
+
 // Forgot Password Schema
 export const ForgotPasswordBody = z.object({
   email: z.string().email("Invalid email address"),

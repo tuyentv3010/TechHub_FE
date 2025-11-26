@@ -12,7 +12,7 @@ import { LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useRef } from "react";
-import { useVerifyEmailMutation } from "@/queries/useAuth";
+import { useVerifyEmailMutation, useResendCodeMutation } from "@/queries/useAuth";
 
 interface VerifyEmailFormData {
   code1: string;
@@ -30,6 +30,7 @@ export default function NewVerifyEmailForm() {
   const email = searchParams.get("email") || "";
   const [isLoading, setIsLoading] = useState(false);
   const verifyEmailMutation = useVerifyEmailMutation();
+  const resendCodeMutation = useResendCodeMutation();
 
   // Refs for OTP inputs
   const code1Ref = useRef<HTMLInputElement | null>(null);
@@ -111,16 +112,37 @@ export default function NewVerifyEmailForm() {
   };
 
   const handleResend = async () => {
+    if (!email) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Email is required",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // TODO: Call resend code API
-      // const result = await resendCodeMutation.mutateAsync({ email });
+      console.log('Calling resend code API with email:', email);
       
-      toast({
-        title: "Success",
-        description: "Verification code resent",
-      });
+      const result = await resendCodeMutation.mutateAsync({ email });
+      
+      console.log('Resend code API result:', result);
+      
+      if (result.payload.success) {
+        toast({
+          title: "Success",
+          description: "Verification code resent to your email",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.payload.message || "Failed to resend code",
+        });
+      }
     } catch (error: any) {
+      console.error("Resend code error:", error);
       toast({
         variant: "destructive",
         title: "Error",

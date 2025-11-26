@@ -10,6 +10,8 @@ import {
   ResetPasswordResType,
   VerifyCodeBodyType,
   VerifyEmailResType,
+  VerifyEmailBodyType,
+  ResendCodeResType,
 } from "@/schemaValidations/auth.schema";
 
 const authApiRequest = {
@@ -33,6 +35,14 @@ const authApiRequest = {
   // Verify Email API - POST /app/api/proxy/auth/verify-email
   verifyEmail: (body: VerifyCodeBodyType) =>
     http.post<VerifyEmailResType>("/app/api/proxy/auth/verify-email", body),
+
+  // Resend Code API - POST /app/api/proxy/auth/resend-code
+  resendCode: (body: VerifyEmailBodyType) =>
+    http.post<ResendCodeResType>("/app/api/proxy/auth/resend-code", body),
+
+  // Resend Reset Password Code API - POST /app/api/proxy/users/resend-reset-code/:email
+  resendResetCode: (email: string) =>
+    http.post<ResendCodeResType>(`/app/api/proxy/users/resend-reset-code/${email}`, {}),
 
   // Set token to cookie (for OAuth flow)
   setTokenToCookie: (body: { accessToken: string; refreshToken: string }) =>
