@@ -8,6 +8,8 @@ import {
   ForgotPasswordResType,
   ResetPasswordBodyType,
   ResetPasswordResType,
+  VerifyCodeBodyType,
+  VerifyEmailResType,
 } from "@/schemaValidations/auth.schema";
 
 const authApiRequest = {
@@ -27,6 +29,10 @@ const authApiRequest = {
   // Reset Password API - POST /app/api/proxy/users/reset-password/:email
   resetPassword: (email: string, body: ResetPasswordBodyType) =>
     http.post<ResetPasswordResType>(`/app/api/proxy/users/reset-password/${email}`, body),
+
+  // Verify Email API - POST /app/api/proxy/auth/verify-email
+  verifyEmail: (body: VerifyCodeBodyType) =>
+    http.post<VerifyEmailResType>("/app/api/proxy/auth/verify-email", body),
 
   // Set token to cookie (for OAuth flow)
   setTokenToCookie: (body: { accessToken: string; refreshToken: string }) =>

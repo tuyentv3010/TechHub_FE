@@ -156,12 +156,6 @@ export default function CourseFilters({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      {console.log("🎨 [CourseFilters] Rendering with:", {
-        status: status || "ALL",
-        level: level || "ALL", 
-        language: language || "ALL"
-      })}
-      
       {/* Status Filter */}
       <Select 
         value={status || "ALL"} 

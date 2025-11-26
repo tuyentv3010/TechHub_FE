@@ -97,6 +97,22 @@ export const VerifyEmailBody = z.object({
 export type VerifyCodeBodyType = z.infer<typeof VerifyCodeBody>;
 export type VerifyEmailBodyType = z.infer<typeof VerifyEmailBody>;
 
+export const VerifyEmailRes = z.object({
+  success: z.boolean(),
+  status: z.string(),
+  message: z.string(),
+  data: z.object({
+    id: z.string(),
+    email: z.string(),
+    username: z.string(),
+    status: z.string(),
+  }),
+  timestamp: z.string(),
+  code: z.number(),
+});
+
+export type VerifyEmailResType = z.infer<typeof VerifyEmailRes>;
+
 // Forgot Password Schema
 export const ForgotPasswordBody = z.object({
   email: z.string().email("Invalid email address"),

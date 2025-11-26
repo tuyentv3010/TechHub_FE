@@ -482,7 +482,7 @@ export default function EditCourse({
             <div className="flex flex-col gap-1 mt-2">
               {form.watch("objectives")?.map((obj, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
-                  <span>â€¢ {obj}</span>
+                  <span>{obj}</span>
                   <X
                     className="w-3 h-3 cursor-pointer text-muted-foreground hover:text-destructive"
                     onClick={() => removeItem('objectives', idx)}
@@ -522,7 +522,7 @@ export default function EditCourse({
             <div className="flex flex-col gap-1 mt-2">
               {form.watch("requirements")?.map((req, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
-                  <span>â€¢ {req}</span>
+                  <span>{req}</span>
                   <X
                     className="w-3 h-3 cursor-pointer text-muted-foreground hover:text-destructive"
                     onClick={() => removeItem('requirements', idx)}
