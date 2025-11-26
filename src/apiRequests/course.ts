@@ -80,6 +80,16 @@ const courseApiRequest = {
   submitRating: (courseId: string, body: { score: number }) =>
     http.post(`/app/api/proxy/courses/${courseId}/ratings`, body),
 
+  // ============================================
+  // MY LEARNING / ENROLLMENTS
+  // ============================================
+
+  // Get current user's enrollments (my learning)
+  getMyEnrollments: (status?: string) => {
+    const params = status ? `?status=${status}` : '';
+    return http.get(`/app/api/proxy/enrollments/my-enrollments${params}`);
+  },
+
   // Get course comments
   getComments: (courseId: string) =>
     http.get(`/app/api/proxy/courses/${courseId}/comments`),
