@@ -1,6 +1,6 @@
 "use client";
 import Footer from "@/components/footer";
-import { NewHeader } from "@/components/organisms/NewHeader";
+import { DropdownProfile } from "@/components/organisms/DropdownProfile";
 
 export default function Layout({
   children,
@@ -11,7 +11,7 @@ export default function Layout({
 }>) {
   return (
     <div className="flex min-h-screen w-full flex-col">
-      <NewHeader />
+      <DropdownProfile />
       <main className="flex-1">{children}</main>
       {modal}
     </div>

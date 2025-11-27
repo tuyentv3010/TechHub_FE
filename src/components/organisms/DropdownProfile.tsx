@@ -22,6 +22,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import { useLogoutMutation } from "@/queries/useAuth";
+import { useAccountProfile } from "@/queries/useAccount";
 
 interface MenuItem {
   title: string;
@@ -38,13 +39,16 @@ interface UserInfo {
   avatar?: string;
 }
 
-export function NewHeader() {
+export function DropdownProfile() {
   const t = useTranslations("NavItem");
   const { isAuth, role, setIsAuth, setRole, setPermissions } = useAppContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const router = useRouter();
   const logoutMutation = useLogoutMutation();
+  const { data, isLoading, isError } = useAccountProfile();
+  
+  const account = data?.payload?.data;
 
   // Load user info from localStorage on mount
   useEffect(() => {
@@ -59,6 +63,20 @@ export function NewHeader() {
       }
     }
   }, [isAuth]);
+
+  // Update userInfo when account data changes
+  useEffect(() => {
+    if (account) {
+      setUserInfo({
+        id: account.id,
+        email: account.email,
+        username: account.username,
+        roles: account.roles || [],
+        status: account.status,
+        avatar: account.avatar,
+      });
+    }
+  }, [account]);
 
   const navigationItems: MenuItem[] = [
     { title: t("home"), href: "/" },
@@ -155,11 +173,15 @@ export function NewHeader() {
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
                     <AvatarImage 
-                      src={userInfo?.avatar || "/placeholder-avatar.jpg"} 
-                      alt={userInfo?.username || "User"} 
+                      src={userInfo?.avatar || account?.avatar || "/placeholder-avatar.jpg"} 
+                      alt={userInfo?.username || account?.username || "User"}
+                      className="object-cover"
                     />
                     <AvatarFallback>
-                      {userInfo?.username ? userInfo.username.substring(0, 2).toUpperCase() : <User className="h-4 w-4" />}
+                      {(userInfo?.username || account?.username) 
+                        ? (userInfo?.username || account?.username).substring(0, 2).toUpperCase() 
+                        : <User className="h-4 w-4" />
+                      }
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -168,15 +190,15 @@ export function NewHeader() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      {userInfo?.username || "User"}
+                      {userInfo?.username || account?.username || "User"}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {userInfo?.email || ""}
+                      {userInfo?.email || account?.email || ""}
                     </p>
-                    {userInfo?.roles && userInfo.roles.length > 0 && (
+                    {(userInfo?.roles || account?.roles) && (userInfo?.roles || account?.roles).length > 0 && (
                       <p className="text-xs leading-none text-muted-foreground mt-1">
                         <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-                          {userInfo.roles[0]}
+                          {(userInfo?.roles || account?.roles)?.[0]}
                         </span>
                       </p>
                     )}

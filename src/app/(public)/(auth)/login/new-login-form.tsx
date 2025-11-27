@@ -167,7 +167,7 @@ export default function NewLoginForm() {
                 </Link>
 
                 {/* Facebook Login Button */}
-                <Link href={authApiRequest.getFacebookOAuthUrl()}>
+                {/* <Link href={authApiRequest.getFacebookOAuthUrl()}>
                   <Button
                     variant="outline"
                     className="w-full h-12 border-gray-300 hover:bg-gray-50"
@@ -178,7 +178,7 @@ export default function NewLoginForm() {
                     </svg>
                     Continue with Facebook
                   </Button>
-                </Link>
+                </Link> */}
               </div>
 
               {/* Divider */}

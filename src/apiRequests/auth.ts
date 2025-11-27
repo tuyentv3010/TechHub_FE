@@ -13,6 +13,10 @@ import {
   VerifyEmailBodyType,
   ResendCodeResType,
 } from "@/schemaValidations/auth.schema";
+import { 
+  ChangePasswordBodyType, 
+  ChangePasswordResType 
+} from "@/schemaValidations/password.schema";
 
 const authApiRequest = {
   // Client-side methods
@@ -43,6 +47,10 @@ const authApiRequest = {
   // Resend Reset Password Code API - POST /app/api/proxy/users/resend-reset-code/:email
   resendResetCode: (email: string) =>
     http.post<ResendCodeResType>(`/app/api/proxy/users/resend-reset-code/${email}`, {}),
+
+  // Change Password API - PUT /app/api/proxy/auth/change-password
+  changePassword: (body: ChangePasswordBodyType) =>
+    http.put<ChangePasswordResType>("/app/api/proxy/auth/change-password", body),
 
   // Set token to cookie (for OAuth flow)
   setTokenToCookie: (body: { accessToken: string; refreshToken: string }) =>
