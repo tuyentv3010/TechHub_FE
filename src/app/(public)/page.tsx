@@ -63,6 +63,7 @@ export default function Home() {
         buttonText={t("hero.buttonText")}
         instructorCount={t("hero.instructorCount")}
         instructorText={t("hero.instructorText")}
+        instructors={instructorsData?.payload?.data || []}
       />
 
       {/* Categories Section */}
