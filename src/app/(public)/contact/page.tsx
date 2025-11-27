@@ -82,8 +82,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Phone</h3>
-                    <p className="text-gray-600 dark:text-gray-300">84+ 080808080</p>
-                    <p className="text-gray-600 dark:text-gray-300">84+ 090909090</p>
+                    <p className="text-gray-600 dark:text-gray-300">84+ 0808080808</p>
+                    <p className="text-gray-600 dark:text-gray-300">84+ 0909090908</p>
                   </div>
                 </div>
 
