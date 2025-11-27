@@ -59,6 +59,7 @@ import {
   useGetCourseById,
   useGetLesson,
   useGetLessonExercise,
+  useGetExercises,
   useCreateChapterMutation,
   useUpdateChapterMutation,
   useDeleteChapterMutation,
@@ -68,8 +69,15 @@ import {
   useCreateAssetMutation,
   useUpdateAssetMutation,
   useDeleteAssetMutation,
+  useUpsertExerciseMutation,
+  useCreateExercisesMutation,
+  useUpdateExerciseMutation,
+  useDeleteExerciseMutation,
 } from "@/queries/useCourse";
-import { useGetExerciseDrafts } from "@/queries/useAi";
+import { 
+  useGetExerciseDrafts,
+  useGenerateExercisesMutation,
+} from "@/queries/useAi";
 import {
   CreateChapterBody,
   CreateChapterBodyType,
@@ -83,6 +91,10 @@ import {
   CreateAssetBodyType,
   UpdateAssetBody,
   UpdateAssetBodyType,
+  CreateExerciseBody,
+  CreateExerciseBodyType,
+  UpdateExerciseBody,
+  UpdateExerciseBodyType,
 } from "@/schemaValidations/course.schema";
 import TableSkeleton from "@/components/Skeleton";
 import { useAccountProfile } from "@/queries/useAccount";
@@ -121,10 +133,26 @@ const AssetTypeIcon = ({ type }: { type: string }) => {
 };
 
 // Exercise Display Component
-const ExerciseDisplay = ({ courseId, lessonId, hasExercise }: { courseId: string; lessonId: string; hasExercise?: boolean }) => {
+const ExerciseDisplay = ({ 
+  courseId, 
+  lessonId, 
+  chapterId,
+  hasExercise, 
+  onEdit, 
+  onDelete, 
+  onCreate 
+}: { 
+  courseId: string; 
+  lessonId: string; 
+  chapterId: string;
+  hasExercise?: boolean;
+  onEdit?: (exercise: any) => void;
+  onDelete?: (exercise: any) => void;
+  onCreate?: () => void;
+}) => {
   const t = useTranslations("ManageCourse");
-  const { data: exerciseData, isLoading } = useGetLessonExercise(courseId, lessonId);
-  const exercise = exerciseData?.payload?.data;
+  const { data: exercisesData, isLoading } = useGetExercises(courseId, lessonId);
+  const exercises = exercisesData?.payload?.data || [];
 
   return (
     <div className="space-y-2">
@@ -132,31 +160,63 @@ const ExerciseDisplay = ({ courseId, lessonId, hasExercise }: { courseId: string
         <h4 className="text-xs font-semibold text-muted-foreground uppercase">
           {t("Exercise")}
         </h4>
+        {onCreate && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCreate}
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            {t("AddExercise")}
+          </Button>
+        )}
       </div>
       
       {isLoading ? (
         <div className="text-center py-2">
           <p className="text-xs text-muted-foreground">{t("Loading") || "Đang tải..."}</p>
         </div>
-      ) : exercise ? (
-        <div className="p-3 bg-background rounded border space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 flex-1">
-              <HelpCircle className="h-4 w-4 text-purple-500 flex-shrink-0" />
-              <div className="flex-1">
-                <Badge variant="secondary" className="text-xs mb-2">
-                  {exercise.type === "MULTIPLE_CHOICE" ? "Trắc nghiệm" : 
-                   exercise.type === "CODING" ? "Lập trình" : 
-                   exercise.type === "OPEN_ENDED" ? "Tự luận" : exercise.type}
-                </Badge>
-                <p className="text-sm font-medium">{exercise.question}</p>
+      ) : exercises.length > 0 ? (
+        <div className="space-y-3">
+          {exercises.map((exercise: any) => (
+            <div key={exercise.id} className="p-3 bg-background rounded border space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 flex-1">
+                  <HelpCircle className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                  <div className="flex-1">
+                    <Badge variant="secondary" className="text-xs mb-2">
+                      {exercise.type === "MULTIPLE_CHOICE" ? "Trắc nghiệm" : 
+                       exercise.type === "CODING" ? "Lập trình" : 
+                       exercise.type === "OPEN_ENDED" ? "Tự luận" : exercise.type}
+                    </Badge>
+                    <p className="text-sm font-medium">{exercise.question}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  {onEdit && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEdit(exercise)}
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                  {onDelete && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDelete(exercise)}
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* MCQ Options */}
-          {exercise.type === "MULTIPLE_CHOICE" && exercise.options?.choices && (
-            <div className="space-y-2 pl-6">
+              {/* MCQ Options */}
+              {exercise.type === "MULTIPLE_CHOICE" && exercise.options?.choices && (
+                <div className="space-y-2 pl-6">
               {exercise.options.choices.map((choice: any, idx: number) => (
                 <div 
                   key={choice.id || idx}
@@ -170,19 +230,19 @@ const ExerciseDisplay = ({ courseId, lessonId, hasExercise }: { courseId: string
                     {String.fromCharCode(65 + idx)}.
                   </span>
                   <span className="flex-1">{choice.text}</span>
-                  {choice.isCorrect && (
-                    <Badge variant="default" className="text-xs bg-green-600">
-                      ✓ Đúng
-                    </Badge>
-                  )}
+                      {choice.isCorrect && (
+                        <Badge variant="default" className="text-xs bg-green-600">
+                          ✓ Đúng
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {/* Coding Test Cases */}
-          {exercise.type === "CODING" && exercise.testCases && exercise.testCases.length > 0 && (
-            <div className="space-y-2 pl-6">
+              {/* Coding Test Cases */}
+              {exercise.type === "CODING" && exercise.testCases && exercise.testCases.length > 0 && (
+                <div className="space-y-2 pl-6">
               <p className="text-xs font-semibold text-muted-foreground">Test Cases:</p>
               {exercise.testCases.slice(0, 3).map((tc: any, idx: number) => (
                 <div key={idx} className="text-xs p-2 rounded bg-muted/50">
@@ -196,11 +256,13 @@ const ExerciseDisplay = ({ courseId, lessonId, hasExercise }: { courseId: string
                   </div>
                 </div>
               ))}
-              {exercise.testCases.length > 3 && (
-                <p className="text-xs text-muted-foreground">+ {exercise.testCases.length - 3} more test cases</p>
+                  {exercise.testCases.length > 3 && (
+                    <p className="text-xs text-muted-foreground">+ {exercise.testCases.length - 3} more test cases</p>
+                  )}
+                </div>
               )}
             </div>
-          )}
+          ))}
         </div>
       ) : (
         <div className="text-center py-2">
@@ -228,6 +290,11 @@ export default function CourseContentManagementPage() {
   const createAssetMutation = useCreateAssetMutation();
   const updateAssetMutation = useUpdateAssetMutation();
   const deleteAssetMutation = useDeleteAssetMutation();
+  const upsertExerciseMutation = useUpsertExerciseMutation();
+  const createExercisesMutation = useCreateExercisesMutation();
+  const updateExerciseMutation = useUpdateExerciseMutation();
+  const deleteExerciseMutation = useDeleteExerciseMutation();
+  const generateExercisesMutation = useGenerateExercisesMutation();
   
   const course = courseData?.payload?.data?.summary;
   const chapters = courseData?.payload?.data?.chapters || [];
@@ -272,6 +339,16 @@ export default function CourseContentManagementPage() {
     mode: 'create',
   });
   const [assetDialog, setAssetDialog] = useState<{
+    open: boolean;
+    mode: 'create' | 'edit';
+    chapterId?: string;
+    lessonId?: string;
+    data?: any;
+  }>({
+    open: false,
+    mode: 'create',
+  });
+  const [exerciseDialog, setExerciseDialog] = useState<{
     open: boolean;
     mode: 'create' | 'edit';
     chapterId?: string;
@@ -671,6 +748,63 @@ export default function CourseContentManagementPage() {
     }
   };
 
+  const handleCreateExercise = async (data: CreateExerciseBodyType) => {
+    if (!exerciseDialog.chapterId || !exerciseDialog.lessonId) return;
+    try {
+      await createExercisesMutation.mutateAsync({
+        courseId,
+        lessonId: exerciseDialog.lessonId,
+        body: [data], // API expects array
+      });
+      toast({
+        title: t("Success"),
+        description: t("ExerciseCreated"),
+      });
+      setExerciseDialog({ open: false, mode: 'create' });
+      refetch();
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
+  const handleUpdateExercise = async (data: UpdateExerciseBodyType) => {
+    if (!exerciseDialog.chapterId || !exerciseDialog.lessonId || !exerciseDialog.data?.id) return;
+    try {
+      await updateExerciseMutation.mutateAsync({
+        courseId,
+        lessonId: exerciseDialog.lessonId,
+        exerciseId: exerciseDialog.data.id,
+        body: data,
+      });
+      toast({
+        title: t("Success"),
+        description: t("ExerciseUpdated"),
+      });
+      setExerciseDialog({ open: false, mode: 'create' });
+      refetch();
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
+  const handleDeleteExercise = async (chapterId: string, lessonId: string, exercise: any) => {
+    if (!confirm(t("DeleteExerciseWarning", { question: exercise.question }))) return;
+    try {
+      await deleteExerciseMutation.mutateAsync({
+        courseId,
+        lessonId,
+        exerciseId: exercise.id,
+      });
+      toast({
+        title: t("Success"),
+        description: t("ExerciseDeleted"),
+      });
+      refetch();
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
   const handleGenerateExercises = async (lessonId: string, lessonTitle: string) => {
     try {
       toast({
@@ -679,15 +813,17 @@ export default function CourseContentManagementPage() {
       });
       
       await generateExercisesMutation.mutateAsync({
+        courseId,
         lessonId,
-        config: {
-          difficulties: ["BEGINNER"],
-          formats: ["MCQ"],
-          count: 5,
-          variants: 1,
-          includeExplanations: true,
-          includeTestCases: true,
-        },
+        type: "MCQ",
+        difficulties: ["BEGINNER"],
+        formats: ["MCQ"],
+        count: 5,
+        variants: 1,
+        difficulty: "BEGINNER",
+        language: "vi",
+        includeExplanations: true,
+        includeTestCases: true,
       });
       
       toast({
@@ -1032,8 +1168,23 @@ export default function CourseContentManagementPage() {
                                                     {/* Exercise Section */}
                                                     <ExerciseDisplay 
                                                       courseId={courseId} 
-                                                      lessonId={lesson.id} 
+                                                      lessonId={lesson.id}
+                                                      chapterId={chapter.id}
                                                       hasExercise={lesson.hasExercise}
+                                                      onCreate={() => setExerciseDialog({
+                                                        open: true,
+                                                        mode: 'create',
+                                                        chapterId: chapter.id,
+                                                        lessonId: lesson.id,
+                                                      })}
+                                                      onEdit={(exercise) => setExerciseDialog({
+                                                        open: true,
+                                                        mode: 'edit',
+                                                        chapterId: chapter.id,
+                                                        lessonId: lesson.id,
+                                                        data: exercise,
+                                                      })}
+                                                      onDelete={(exercise) => handleDeleteExercise(chapter.id, lesson.id, exercise)}
                                                     />
 
                                                     {/* Assets Section */}
@@ -1172,17 +1323,22 @@ export default function CourseContentManagementPage() {
         onUpdate={handleUpdateAsset}
       />
 
+      {/* Exercise Dialog */}
+      <ExerciseDialog
+        open={exerciseDialog.open}
+        mode={exerciseDialog.mode}
+        data={exerciseDialog.data}
+        onClose={() => setExerciseDialog({ open: false, mode: 'create' })}
+        onCreate={handleCreateExercise}
+        onUpdate={handleUpdateExercise}
+      />
+
       {/* AI Exercise Generation Panel */}
       <Card>
         <CardContent className="pt-6">
           <AiExercisePanel 
             courseId={courseId} 
             chapters={chapters}
-            exerciseDrafts={allExerciseDrafts}
-            refetchDrafts={() => {
-              refetchDrafts();
-              refetch();
-            }}
           />
         </CardContent>
       </Card>
@@ -1290,6 +1446,179 @@ function ChapterDialog({
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? t(mode === 'create' ? "Creating" : "Updating") : t(mode === 'create' ? "Create" : "Update")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Exercise Dialog Component
+function ExerciseDialog({
+  open,
+  mode,
+  data,
+  onClose,
+  onCreate,
+  onUpdate,
+}: {
+  open: boolean;
+  mode: 'create' | 'edit';
+  data?: any;
+  onClose: () => void;
+  onCreate: (data: CreateExerciseBodyType) => void;
+  onUpdate: (data: UpdateExerciseBodyType) => void;
+}) {
+  const t = useTranslations("ManageCourse");
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateExerciseBodyType | UpdateExerciseBodyType>({
+    resolver: mode === 'create'
+      ? (zodResolver(CreateExerciseBody) as any)
+      : (zodResolver(UpdateExerciseBody) as any),
+    defaultValues: data || { type: 'MULTIPLE_CHOICE', orderIndex: 1 },
+  });
+
+  useEffect(() => {
+    if (open) {
+      reset(data || { type: 'MULTIPLE_CHOICE', orderIndex: 1 });
+    }
+  }, [open, data, reset]);
+
+  const onSubmit = (formData: CreateExerciseBodyType | UpdateExerciseBodyType) => {
+    if (mode === 'create') {
+      onCreate(formData as CreateExerciseBodyType);
+    } else {
+      onUpdate(formData as UpdateExerciseBodyType);
+    }
+  };
+
+  const exerciseType = watch("type");
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === 'create' ? t("AddExercise") || "Add Exercise" : t("EditExercise") || "Edit Exercise"}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'create'
+              ? t("AddExerciseDescription") || "Create a new exercise for this lesson"
+              : t("EditExerciseDescription") || "Modify the exercise details"}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="type">{t("ExerciseType") || "Type"}</Label>
+              <Select
+                value={exerciseType}
+                onValueChange={(value) => setValue("type", value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MULTIPLE_CHOICE">
+                    {t("ExerciseType.MULTIPLE_CHOICE") || "Multiple Choice"}
+                  </SelectItem>
+                  <SelectItem value="CODING">
+                    {t("ExerciseType.CODING") || "Coding"}
+                  </SelectItem>
+                  <SelectItem value="OPEN_ENDED">
+                    {t("ExerciseType.OPEN_ENDED") || "Open Ended"}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.type && (
+                <p className="text-sm text-destructive">{String(errors.type.message)}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="orderIndex">{t("Order") || "Order"}</Label>
+              <Input
+                id="orderIndex"
+                type="number"
+                {...register("orderIndex", { valueAsNumber: true })}
+                placeholder="1"
+                min={1}
+              />
+              {errors.orderIndex && (
+                <p className="text-sm text-destructive">{String(errors.orderIndex.message)}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="question">{t("Question") || "Question"}</Label>
+            <Textarea
+              id="question"
+              {...register("question")}
+              placeholder={t("ExerciseQuestionPlaceholder") || "Enter the exercise question..."}
+              rows={4}
+            />
+            {errors.question && (
+              <p className="text-sm text-destructive">{String(errors.question.message)}</p>
+            )}
+          </div>
+
+          {/* Multiple Choice Options */}
+          {exerciseType === "MULTIPLE_CHOICE" && (
+            <div className="space-y-2">
+              <Label htmlFor="options">{t("Options") || "Options (JSON)"}</Label>
+              <Textarea
+                id="options"
+                {...register("options")}
+                placeholder={`${t("OptionsPlaceholder") || "Enter options as JSON"}:\n{\n  "choices": [\n    {"text": "Option A", "isCorrect": true},\n    {"text": "Option B", "isCorrect": false}\n  ]\n}`}
+                rows={8}
+                className="font-mono text-xs"
+              />
+              {errors.options && (
+                <p className="text-sm text-destructive">{String(errors.options.message)}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {t("OptionsHint") || "Format: JSON with 'choices' array containing text and isCorrect fields"}
+              </p>
+            </div>
+          )}
+
+          {/* Coding Test Cases */}
+          {exerciseType === "CODING" && (
+            <div className="space-y-2">
+              <Label htmlFor="testCases">{t("TestCases") || "Test Cases (JSON Array)"}</Label>
+              <Textarea
+                id="testCases"
+                {...register("testCases")}
+                placeholder={`${t("TestCasesPlaceholder") || "Enter test cases as JSON array"}:\n[\n  {\n    "orderIndex": 1,\n    "visibility": "PUBLIC",\n    "input": "5",\n    "expectedOutput": "25",\n    "weight": 10,\n    "timeoutSeconds": 2\n  }\n]`}
+                rows={10}
+                className="font-mono text-xs"
+              />
+              {errors.testCases && (
+                <p className="text-sm text-destructive">{String(errors.testCases.message)}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {t("TestCasesHint") || "Format: JSON array with orderIndex, visibility (PUBLIC/PRIVATE), input, expectedOutput, weight, timeoutSeconds"}
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              {t("Cancel") || "Cancel"}
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? t(mode === 'create' ? "Creating" : "Updating")
+                : t(mode === 'create' ? "Create" : "Update")}
             </Button>
           </DialogFooter>
         </form>

@@ -50,7 +50,7 @@ const authApiRequest = {
 
   // Change Password API - PUT /app/api/proxy/auth/change-password
   changePassword: (body: ChangePasswordBodyType) =>
-    http.put<ChangePasswordResType>("/app/api/proxy/auth/change-password", body),
+    http.post<ChangePasswordResType>("/app/api/proxy/auth/change-password", body),
 
   // Set token to cookie (for OAuth flow)
   setTokenToCookie: (body: { accessToken: string; refreshToken: string }) =>

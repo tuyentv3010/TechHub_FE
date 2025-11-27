@@ -13,19 +13,16 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import GenerateAiExercise from "./generate-ai-exercise";
 import { useToast } from "@/components/ui/use-toast";
+import { useMemo } from "react";
 
 interface AiExercisePanelProps {
   courseId: string;
   chapters: unknown[];
-  exerciseDrafts: unknown[];
-  refetchDrafts: () => void;
 }
 
 export default function AiExercisePanel({ 
   courseId, 
-  chapters, 
-  exerciseDrafts,
-  refetchDrafts 
+  chapters,
 }: AiExercisePanelProps) {
   const { toast } = useToast();
   const router = useRouter();
@@ -36,6 +33,21 @@ export default function AiExercisePanel({
   const approveDraftMutation = useApproveExerciseDraftMutation();
   const rejectDraftMutation = useRejectDraftMutation();
 
+  // Collect all exercise drafts from lessons across chapters
+  const exerciseDrafts = useMemo(() => {
+    const drafts: any[] = [];
+    (chapters as any[]).forEach((chapter: any) => {
+      if (chapter.lessons && Array.isArray(chapter.lessons)) {
+        chapter.lessons.forEach((lesson: any) => {
+          if (lesson.exerciseDrafts && Array.isArray(lesson.exerciseDrafts)) {
+            drafts.push(...lesson.exerciseDrafts);
+          }
+        });
+      }
+    });
+    return drafts;
+  }, [chapters]);
+
   const handleApproveDraft = async (taskId: string) => {
     try {
       await approveDraftMutation.mutateAsync(taskId);
@@ -43,7 +55,7 @@ export default function AiExercisePanel({
         title: tCommon("success"),
         description: tAiDrafts("approveSuccess"),
       });
-      refetchDrafts();
+      // Refresh would need to be handled by parent component
     } catch {
       toast({
         title: tCommon("error"),
@@ -60,7 +72,7 @@ export default function AiExercisePanel({
         title: tCommon("success"),
         description: tAiDrafts("rejectSuccess"),
       });
-      refetchDrafts();
+      // Refresh would need to be handled by parent component
     } catch {
       toast({
         title: tCommon("error"),
@@ -86,7 +98,6 @@ export default function AiExercisePanel({
         <GenerateAiExercise 
           courseId={courseId} 
           chapters={chapters} 
-          onSuccess={refetchDrafts} 
         />
       </div>
 

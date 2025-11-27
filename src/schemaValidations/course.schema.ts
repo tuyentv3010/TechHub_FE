@@ -341,6 +341,77 @@ export const UpdateAssetBody = z.object({
 export type UpdateAssetBodyType = z.TypeOf<typeof UpdateAssetBody>;
 
 // ============================================
+// EXERCISE SCHEMAS
+// ============================================
+
+export const ExerciseType = z.enum(["MULTIPLE_CHOICE", "CODING", "OPEN_ENDED"]);
+export const TestCaseVisibility = z.enum(["PUBLIC", "PRIVATE"]);
+
+// Test Case Schema
+export const TestCaseItem = z.object({
+  id: z.string().optional(),
+  orderIndex: z.number(),
+  visibility: TestCaseVisibility,
+  input: z.string(),
+  expectedOutput: z.string(),
+  weight: z.number().min(0).max(100),
+  timeoutSeconds: z.number().optional(),
+  sample: z.boolean().optional(),
+  metadata: z.any().optional(),
+});
+
+export type TestCaseItemType = z.TypeOf<typeof TestCaseItem>;
+
+// Exercise Item - Response from backend
+export const ExerciseItem = z.object({
+  id: z.string(),
+  lessonId: z.string(),
+  type: ExerciseType,
+  question: z.string(),
+  orderIndex: z.number(),
+  options: z.any().nullable().optional(), // JSONB for multiple choice options
+  testCases: z.array(TestCaseItem).optional(),
+  lastSubmissionStatus: z.string().nullable().optional(),
+  bestScore: z.number().nullable().optional(),
+  lastSubmittedAt: z.string().nullable().optional(),
+  created: z.string(),
+  updated: z.string(),
+  active: z.boolean(),
+});
+
+export type ExerciseItemType = z.TypeOf<typeof ExerciseItem>;
+
+// Create Exercise Body
+export const CreateExerciseBody = z.object({
+  type: ExerciseType,
+  question: z.string().min(1, "Question is required"),
+  orderIndex: z.number().min(0).optional(),
+  options: z.any().optional(), // For MULTIPLE_CHOICE type
+  testCases: z.array(TestCaseItem).optional(), // For CODING type
+});
+
+export type CreateExerciseBodyType = z.TypeOf<typeof CreateExerciseBody>;
+
+// Update Exercise Body
+export const UpdateExerciseBody = z.object({
+  type: ExerciseType.optional(),
+  question: z.string().min(1).optional(),
+  orderIndex: z.number().min(0).optional(),
+  options: z.any().optional(),
+  testCases: z.array(TestCaseItem).optional(),
+});
+
+export type UpdateExerciseBodyType = z.TypeOf<typeof UpdateExerciseBody>;
+
+// Submit Exercise Body
+export const SubmitExerciseBody = z.object({
+  answer: z.string().min(1, "Answer is required"),
+  submissionData: z.any().optional(),
+});
+
+export type SubmitExerciseBodyType = z.TypeOf<typeof SubmitExerciseBody>;
+
+// ============================================
 // PROGRESS SCHEMAS
 // ============================================
 

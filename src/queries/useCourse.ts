@@ -314,7 +314,7 @@ export const useDeleteAssetMutation = () => {
 // EXERCISE HOOKS
 // ============================================
 
-// Get lesson exercise
+// Get lesson exercise (single - legacy)
 export const useGetLessonExercise = (courseId: string, lessonId: string) => {
   return useQuery({
     queryKey: ["lesson-exercise", courseId, lessonId],
@@ -323,7 +323,16 @@ export const useGetLessonExercise = (courseId: string, lessonId: string) => {
   });
 };
 
-// Upsert exercise
+// Get all exercises for a lesson
+export const useGetExercises = (courseId: string, lessonId: string) => {
+  return useQuery({
+    queryKey: ["exercises", courseId, lessonId],
+    queryFn: () => courseApiRequest.getExercises(courseId, lessonId),
+    enabled: !!courseId && !!lessonId,
+  });
+};
+
+// Upsert exercise (single - legacy)
 export const useUpsertExerciseMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -331,6 +340,46 @@ export const useUpsertExerciseMutation = () => {
       courseApiRequest.upsertExercise(courseId, lessonId, body),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["lesson-exercise", variables.courseId, variables.lessonId] });
+      queryClient.invalidateQueries({ queryKey: ["exercises", variables.courseId, variables.lessonId] });
+      queryClient.invalidateQueries({ queryKey: ["chapters", variables.courseId] });
+    },
+  });
+};
+
+// Create multiple exercises
+export const useCreateExercisesMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ courseId, lessonId, body }: { courseId: string; lessonId: string; body: any[] }) =>
+      courseApiRequest.createExercises(courseId, lessonId, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["exercises", variables.courseId, variables.lessonId] });
+      queryClient.invalidateQueries({ queryKey: ["chapters", variables.courseId] });
+    },
+  });
+};
+
+// Update exercise
+export const useUpdateExerciseMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ courseId, lessonId, exerciseId, body }: { courseId: string; lessonId: string; exerciseId: string; body: any }) =>
+      courseApiRequest.updateExercise(courseId, lessonId, exerciseId, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["exercises", variables.courseId, variables.lessonId] });
+      queryClient.invalidateQueries({ queryKey: ["chapters", variables.courseId] });
+    },
+  });
+};
+
+// Delete exercise
+export const useDeleteExerciseMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ courseId, lessonId, exerciseId }: { courseId: string; lessonId: string; exerciseId: string }) =>
+      courseApiRequest.deleteExercise(courseId, lessonId, exerciseId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["exercises", variables.courseId, variables.lessonId] });
       queryClient.invalidateQueries({ queryKey: ["chapters", variables.courseId] });
     },
   });
