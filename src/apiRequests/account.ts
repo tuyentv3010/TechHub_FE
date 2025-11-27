@@ -64,5 +64,9 @@ const accountApiRequest = {
         allowed: boolean;
       }>;
     }>(`/app/api/proxy/users/${userId}/permissions/effective`),
+
+  // Get public instructors (no auth required)
+  getPublicInstructors: (page: number = 0, size: number = 4) =>
+    http.get<AccountListResType>(`/app/api/proxy/users/public/instructors?page=${page}&size=${size}`),
 };
 export default accountApiRequest;

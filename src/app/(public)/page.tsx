@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useGetCourseList } from "@/queries/useCourse";
+import { useGetPublicInstructors } from "@/queries/useAccount";
 
 // Import new components
 import { HeroSection } from "@/components/organisms/HeroSection";
@@ -25,6 +26,9 @@ export default function Home() {
     size: 6,
     status: "PUBLISHED", // Only show published courses
   });
+
+  // Fetch instructors from public API (limit to 4)
+  const { data: instructorsData, isLoading: isLoadingInstructors } = useGetPublicInstructors(0, 4);
 
   // Transform API data - keep instructorId for fetching
   const coursesWithInstructorIds = coursesData?.payload?.data?.map((course: any) => ({
@@ -134,10 +138,27 @@ export default function Home() {
       />
 
       {/* Instructors Section */}
-      <InstructorsSection
-        title={t("instructors.title")}
-        subtitle={t("instructors.subtitle")}
-      />
+      {isLoadingInstructors ? (
+        <section className="py-16 bg-gray-50 dark:bg-gray-900">
+          <div className="container mx-auto px-4">
+            <div className="h-10 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-4" />
+            <div className="h-6 w-96 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-12" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+                  <div className="h-80 bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <InstructorsSection
+          title={t("instructors.title")}
+          subtitle={t("instructors.subtitle")}
+          instructors={instructorsData?.payload?.data || []}
+        />
+      )}
 
       {/* Blog Section */}
       <BlogSection

@@ -127,3 +127,11 @@ export const useUserPermissions = (userId: string, enabled: boolean = true) => {
     enabled: enabled && !!userId,
   });
 };
+
+// Get public instructors (no auth required)
+export const useGetPublicInstructors = (page: number = 0, size: number = 4) => {
+  return useQuery({
+    queryKey: ["public-instructors", page, size],
+    queryFn: () => accountApiRequest.getPublicInstructors(page, size),
+  });
+};

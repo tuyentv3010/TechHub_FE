@@ -1,34 +1,23 @@
 import Image from "next/image";
 
+interface Instructor {
+  id: string;
+  username: string;
+  avatar?: string;
+  email: string;
+}
+
 interface InstructorsSectionProps {
   title: string;
   subtitle: string;
+  instructors: Instructor[];
 }
 
-export function InstructorsSection({ title, subtitle }: InstructorsSectionProps) {
-  const instructors = [
-    {
-      name: "Alexander Bastian",
-      image: "/instructors/Square.png",
-      specialty: "Expert Mobile Engineer"
-    },
-    {
-      name: "Labie Carthaline",
-      image: "/instructors/Square1.png", 
-      specialty: "Marketing Specialist"
-    },
-    {
-      name: "Jonathan Doe",
-      image: "/instructors/Square3.png",
-      specialty: "Financial Strategist"
-    },
-    {
-      name: "Kitani Sarasvati",
-      image: "/instructors/Square1.png",
-      specialty: "Film Maker & Director"
-    }
-  ];
-
+export function InstructorsSection({ title, subtitle, instructors }: InstructorsSectionProps) {
+  // Take only first 4 instructors
+ console.log("asdasdas dasd asd " , instructors);
+  
+  const displayInstructors = instructors.slice(0, 4);
   return (
     <section className="relative py-16 bg-gray-50 dark:bg-gray-900 overflow-hidden">
       {/* Background Gradient Image - Absolute positioned */}
@@ -57,14 +46,14 @@ export function InstructorsSection({ title, subtitle }: InstructorsSectionProps)
         
         {/* Instructors Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {instructors.map((instructor, index) => (
-            <div key={index} className="group cursor-pointer">
+          {displayInstructors.map((instructor) => (
+            <div key={instructor.id} className="group cursor-pointer">
               <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-300">
                 {/* Instructor Image */}
                 <div className="relative h-80 overflow-hidden">
                   <Image
-                    src={instructor.image}
-                    alt={instructor.name}
+                    src={instructor.avatar || "/instructors/Square.png"}
+                    alt={instructor.username}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
@@ -81,8 +70,8 @@ export function InstructorsSection({ title, subtitle }: InstructorsSectionProps)
                   
                   {/* Text Content */}
                   <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <h3 className="text-xl font-bold mb-1">{instructor.name}</h3>
-                    <p className="text-white/90 text-sm">{instructor.specialty}</p>
+                    <h3 className="text-xl font-bold mb-1">{instructor.username}</h3>
+                    <p className="text-white/90 text-sm">{instructor.email}</p>
                   </div>
                 </div>
               </div>
