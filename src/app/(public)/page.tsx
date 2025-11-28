@@ -45,7 +45,6 @@ export default function Home() {
     lessons: 0, // Will be calculated from chapters if needed
     students: course.totalEnrollments || 0,
   })) || [];
-
   const communityStats = {
     totalStudents: t("community.stats.totalStudents"),
     totalCourses: t("community.stats.totalCourses"), 

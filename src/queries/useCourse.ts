@@ -4,8 +4,34 @@ import {
   CreateCourseBodyType,
   UpdateCourseBodyType,
 } from "@/schemaValidations/course.schema";
+import { CoursesResponse, transformApiCourse } from "@/types/course";
 
-// Get course list with pagination and filters
+// New API - Get courses with new response format
+export const useGetCourses = (params?: {
+  page?: number;
+  size?: number;
+  search?: string;
+  status?: string;
+  level?: string;
+  language?: string;
+  skillIds?: string[];
+  tagIds?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  instructorId?: string;
+}) => {
+  return useQuery({
+    queryKey: ["courses", params],
+    queryFn: () => courseApiRequest.getCourses(params),
+    select: (response: CoursesResponse) => ({
+      ...response,
+      // Transform ApiCourse[] to Course[] for backward compatibility
+      transformedData: response.data.map(transformApiCourse),
+    }),
+  });
+};
+
+// Legacy - Get course list with pagination and filters (for backward compatibility)
 export const useGetCourseList = (params?: {
   page?: number;
   size?: number;

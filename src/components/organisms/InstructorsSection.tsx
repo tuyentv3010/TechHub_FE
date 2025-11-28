@@ -15,7 +15,6 @@ interface InstructorsSectionProps {
 
 export function InstructorsSection({ title, subtitle, instructors }: InstructorsSectionProps) {
   // Take only first 4 instructors
- console.log("asdasdas dasd asd " , instructors);
   
   const displayInstructors = instructors.slice(0, 4);
   return (
