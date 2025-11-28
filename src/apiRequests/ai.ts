@@ -1,5 +1,6 @@
 import http from "@/lib/http";
 import envConfig from "@/config";
+import { EventSourceParserStream } from "eventsource-parser/stream";
 import {
   AiExerciseGenerateRequestType,
   AiExerciseGenerationResponseType,
@@ -83,7 +84,6 @@ const aiApiRequest = {
     console.log("🚀 [FE Streaming] Body:", JSON.stringify(body, null, 2));
 
     try {
-      // Via proxy-client for streaming (with proper CORS and auth handling)
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -95,7 +95,6 @@ const aiApiRequest = {
       });
 
       console.log("📡 [FE Streaming] Response status:", response.status);
-      console.log("📡 [FE Streaming] Response headers:", Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -103,46 +102,50 @@ const aiApiRequest = {
         throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        console.error("❌ [FE Streaming] No readable stream available");
+      if (!response.body) {
         throw new Error("No readable stream available");
       }
 
-      console.log("✅ [FE Streaming] Got reader, starting to read chunks...");
-      const decoder = new TextDecoder();
-      let chunkCount = 0;
+      // Use EventSourceParserStream for proper SSE parsing
+      const eventStream = response.body
+        .pipeThrough(new TextDecoderStream())
+        .pipeThrough(new EventSourceParserStream());
+      
+      const reader = eventStream.getReader();
+      console.log("✅ [FE Streaming] Using EventSourceParserStream");
 
       while (true) {
-        const { done, value } = await reader.read();
+        const { done, value: event } = await reader.read();
         if (done) {
-          console.log("✅ [FE Streaming] Stream done, total chunks:", chunkCount);
+          console.log("✅ [FE Streaming] Stream done");
           break;
         }
 
-        const text = decoder.decode(value, { stream: true });
-        console.log(`📦 [FE Streaming] Raw chunk ${++chunkCount}:`, JSON.stringify(text));
-        
-        const lines = text.split("\n");
-        console.log(`📦 [FE Streaming] Lines in chunk:`, lines);
+        console.log("📨 [FE Streaming] Event:", event);
 
-        for (const line of lines) {
-          if (line.startsWith("data:")) {
-            const data = line.slice(5).trim();
-            console.log("📨 [FE Streaming] Data extracted:", data);
-            if (data === "[DONE]") {
-              console.log("🏁 [FE Streaming] Received [DONE] signal");
-              onComplete?.();
-              return;
+        const data = event.data;
+        const eventType = event.event;
+        
+        if (data === "[DONE]" || eventType === "done") {
+          console.log("🏁 [FE Streaming] Received [DONE] signal");
+          onComplete?.();
+          return;
+        }
+
+        if (data) {
+          try {
+            // Parse JSON data: {"content":"..."}
+            // This preserves leading/trailing spaces that SSE might strip
+            const parsed = JSON.parse(data);
+            const content = parsed.content;
+            if (content !== undefined && content !== null) {
+              console.log("✍️ [FE Streaming] Sending chunk:", JSON.stringify(content));
+              onChunk(content);
             }
-            if (data) {
-              console.log("✍️ [FE Streaming] Calling onChunk with:", data);
-              onChunk(data);
-            }
-          } else if (line.startsWith("event:")) {
-            console.log("🎫 [FE Streaming] Event line:", line);
-          } else if (line.trim()) {
-            console.log("❓ [FE Streaming] Unknown line:", line);
+          } catch {
+            // If not JSON, use data as-is (fallback for plain text)
+            console.log("✍️ [FE Streaming] Sending raw chunk:", JSON.stringify(data));
+            onChunk(data);
           }
         }
       }

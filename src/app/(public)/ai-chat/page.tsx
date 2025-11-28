@@ -1007,7 +1007,14 @@ export default function AiChatPage() {
                               <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
                               <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
                             </div>
+                          ) : message.id === streamingAssistantId ? (
+                            // While streaming: show raw text with cursor
+                            <div className="whitespace-pre-wrap">
+                              {message.content}
+                              <span className="animate-pulse">▌</span>
+                            </div>
                           ) : (
+                            // After streaming complete: show formatted content
                             <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
                               {renderMessageContent(message.content)}
                             </div>

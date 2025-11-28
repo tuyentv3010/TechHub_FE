@@ -57,6 +57,7 @@
     "cmdk": "^1.0.0",
     "date-fns": "^4.1.0",
     "emoji-picker-react": "^4.15.0",
+    "eventsource-parser": "^3.0.6",
     "html-to-text": "^9.0.5",
     "html2canvas": "^1.4.1",
     "jsonwebtoken": "^9.0.2",
