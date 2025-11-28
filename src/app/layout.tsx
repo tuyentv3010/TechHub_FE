@@ -13,6 +13,7 @@ import GoogleTag from "@/components/google-tag";
 import { AppProvider } from "@/components/app-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AiLearningPathProvider } from "@/contexts/AiLearningPathContext";
+import Image from "next/image";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -60,9 +61,16 @@ export default async function RootLayout({
                 {children}
                 <a
                   href="/ai-chat"
-                  className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-primary-foreground shadow-lg hover:shadow-xl transition-all"
+                  className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2"
                 >
-                  <span className="text-sm font-medium">AI Chat</span>
+                  <Image
+                    src="/ai/AI.png"
+                    alt="AI Chat Assistant"
+                    width={60}
+                    height={60}
+                    className="rounded-full object-cover shadow-2xl"
+                    priority={true}
+                  />
                 </a>
                 {/* <Footer /> */}
                 <Toaster />

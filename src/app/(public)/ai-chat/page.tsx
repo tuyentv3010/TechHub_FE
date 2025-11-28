@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { useSendChatMessageMutation, useGetUserSessions, useGetSessionMessages, useDeleteSessionMutation, useCreateSessionMutation } from "@/queries/useAi";
 import { useAppContext } from "@/components/app-provider";
+import { useAccountProfile } from "@/queries/useAccount";
 import {
   MessageCircle,
   Send,
@@ -29,9 +31,21 @@ import {
   MessageSquare,
   GraduationCap,
   Trash2,
+  Plus,
+  Search,
+  Settings,
+  Pencil,
+  ThumbsUp,
+  ThumbsDown,
+  RotateCcw,
+  MoreHorizontal,
+  Menu,
+  X,
+  ChevronLeft,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { useTranslations } from "next-intl";
 
@@ -55,11 +69,17 @@ export default function AiChatPage() {
   const [useProgress, setUseProgress] = useState<boolean>(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<{ id: string; label: string; startedAt: string }[]>([]);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const chatMutation = useSendChatMessageMutation();
   const createSessionMutation = useCreateSessionMutation();
   const deleteSessionMutation = useDeleteSessionMutation();
+  
+  // Fetch user account profile
+  const { data: accountData } = useAccountProfile();
+  const userProfile = accountData?.payload?.data;
   
   // Fetch user sessions from DB
   const { data: sessionsData } = useGetUserSessions(userId);
@@ -350,311 +370,555 @@ export default function AiChatPage() {
     return parts.length > 0 ? parts : content;
   };
 
+  // Group sessions by date
+  const groupSessionsByDate = () => {
+    const today = new Date();
+    const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    const grouped: { today: typeof sessions; lastWeek: typeof sessions; older: typeof sessions } = {
+      today: [],
+      lastWeek: [],
+      older: [],
+    };
+    
+    sessions.forEach((session) => {
+      const sessionDate = new Date(session.startedAt);
+      if (sessionDate.toDateString() === today.toDateString()) {
+        grouped.today.push(session);
+      } else if (sessionDate >= lastWeek) {
+        grouped.lastWeek.push(session);
+      } else {
+        grouped.older.push(session);
+      }
+    });
+    
+    return grouped;
+  };
+
+  const handleClearAll = async () => {
+    // Delete all sessions
+    for (const session of sessions) {
+      try {
+        await deleteSessionMutation.mutateAsync({ 
+          sessionId: session.id, 
+          userId 
+        });
+      } catch (error) {
+        console.error("Failed to delete session:", error);
+      }
+    }
+    setSessionId(null);
+    setMessages([]);
+    setSessions([]);
+  };
+
+  const groupedSessions = groupSessionsByDate();
+
   return (
-    <main className="container mx-auto p-4 sm:px-6 sm:py-4 md:p-8 space-y-6">
-      {/* Auth Check Banner */}
-      {!userId && (
-        <Card className="bg-amber-500/10 border-amber-500/50">
-          <CardContent className="flex items-center gap-3 p-4">
-            <MessageCircle className="h-6 w-6 text-amber-500" />
-            <div>
-              <p className="font-semibold text-amber-700 dark:text-amber-400">
-                {t("authRequired") || "Login Required"}
-              </p>
-              <p className="text-sm text-amber-600 dark:text-amber-500">
-                {t("authRequiredDesc") || "Please login to use AI chat feature and save your chat history"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="flex h-[calc(100vh-64px)] bg-gray-50 dark:bg-gray-900 relative">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <MessageCircle className="h-8 w-8 text-purple-500" />
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {t("description")}
-          </p>
+      {/* Left Sidebar */}
+      <div className={`
+        fixed lg:relative inset-y-0 left-0 z-50
+        w-72 sm:w-80 bg-white dark:bg-gray-950 
+        border-r border-gray-200 dark:border-gray-800 
+        flex flex-col
+        transform transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        lg:transform-none
+      `}>
+        {/* Header */}
+        <div className="p-4 sm:p-6 pb-4 flex items-center justify-between">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{t("headerTitle") || "CHAT A.I+"}</h1>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Session List with Delete */}
-          <div className="flex items-center gap-2">
-            <Select onValueChange={handleSelectSession} value={sessionId || undefined}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder={t("selectSession")} />
-              </SelectTrigger>
-              <SelectContent>
-                {sessions.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.label}
-                  </SelectItem>
+
+        {/* New Chat Button & Search */}
+        <div className="px-3 sm:px-4 pb-4 flex gap-2">
+          <Button
+            onClick={() => {
+              handleNewSession();
+              setSidebarOpen(false);
+            }}
+            disabled={!userId}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {t("newSession") || "New chat"}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full border-gray-300 dark:border-gray-700 flex-shrink-0"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Conversations Header */}
+        <div className="px-3 sm:px-4 py-2 flex items-center justify-between">
+          <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+            {t("yourConversations") || "Your conversations"}
+          </span>
+          <Button
+            variant="link"
+            size="sm"
+            className="text-blue-600 hover:text-blue-700 p-0 h-auto text-xs sm:text-sm"
+            onClick={handleClearAll}
+          >
+            {t("clearAll") || "Clear All"}
+          </Button>
+        </div>
+
+        {/* Session List */}
+        <ScrollArea className="flex-1 px-2">
+          <div className="space-y-1">
+            {groupedSessions.today.length > 0 && (
+              <>
+                <p className="text-xs text-gray-400 px-2 py-2">{t("today") || "Today"}</p>
+                {groupedSessions.today.map((session) => (
+                  <SessionItem
+                    key={session.id}
+                    session={session}
+                    isActive={sessionId === session.id}
+                    onSelect={() => {
+                      handleSelectSession(session.id);
+                      setSidebarOpen(false);
+                    }}
+                    onDelete={() => handleDeleteSession(session.id)}
+                  />
                 ))}
-              </SelectContent>
-            </Select>
-            {sessionId && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hover:bg-destructive/20 hover:text-destructive"
-                onClick={() => handleDeleteSession(sessionId)}
-                title={t("deleteSession") || "Delete session"}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              </>
+            )}
+            
+            {groupedSessions.lastWeek.length > 0 && (
+              <>
+                <p className="text-xs text-gray-400 px-2 py-2 mt-4">{t("lastDays") || "Last 7 Days"}</p>
+                {groupedSessions.lastWeek.map((session) => (
+                  <SessionItem
+                    key={session.id}
+                    session={session}
+                    isActive={sessionId === session.id}
+                    onSelect={() => {
+                      handleSelectSession(session.id);
+                      setSidebarOpen(false);
+                    }}
+                    onDelete={() => handleDeleteSession(session.id)}
+                  />
+                ))}
+              </>
+            )}
+            
+            {groupedSessions.older.length > 0 && (
+              <>
+                <p className="text-xs text-gray-400 px-2 py-2 mt-4">{t("older") || "Older"}</p>
+                {groupedSessions.older.map((session) => (
+                  <SessionItem
+                    key={session.id}
+                    session={session}
+                    isActive={sessionId === session.id}
+                    onSelect={() => {
+                      handleSelectSession(session.id);
+                      setSidebarOpen(false);
+                    }}
+                    onDelete={() => handleDeleteSession(session.id)}
+                  />
+                ))}
+              </>
+            )}
+
+            {sessions.length === 0 && (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                {t("noConversations") || "No conversations yet"}
+              </div>
             )}
           </div>
-          <Button variant="outline" onClick={handleNewSession} disabled={!userId}>
-            {t("newSession")}
+        </ScrollArea>
+
+        {/* Bottom Section - Settings & User Profile */}
+        <div className="border-t border-gray-200 dark:border-gray-800 p-3 sm:p-4 space-y-3">
+          {/* Settings Button */}
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm"
+            onClick={() => setShowSettings(!showSettings)}
+          >
+            <Settings className="h-4 w-4 mr-3" />
+            {t("settings") || "Settings"}
           </Button>
+
+          {/* Settings Panel (collapsible) */}
+          {showSettings && (
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 space-y-3">
+              <div className="space-y-2">
+                <Label className="text-xs">{t("mode")}</Label>
+                <Select value={mode} onValueChange={(v: string) => setMode(v as "GENERAL" | "ADVISOR")}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GENERAL">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-3 w-3" />
+                        {t("modeGeneral")}
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="ADVISOR">
+                      <div className="flex items-center gap-2">
+                        <GraduationCap className="h-3 w-3" />
+                        {t("modeAdvisor")}
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {mode === "ADVISOR" && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="use-progress-sidebar"
+                    checked={useProgress}
+                    onCheckedChange={(checked) => setUseProgress(checked as boolean)}
+                    className="h-3 w-3"
+                  />
+                  <label htmlFor="use-progress-sidebar" className="text-xs">
+                    {t("useMyProgress")}
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* User Profile */}
+          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
+            <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
+              <AvatarImage 
+                src={userProfile?.avatar?.secureUrl || userProfile?.avatar?.url || "/avatars/default.png"} 
+                alt={userProfile?.fullName || userProfile?.username || "User"} 
+              />
+              <AvatarFallback className="bg-blue-100 text-blue-600 text-xs sm:text-sm font-medium">
+                {(userProfile?.fullName || userProfile?.username || "U").substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                {userProfile?.fullName || userProfile?.username || t("guest") || "Guest"}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Left Sidebar - Settings */}
-        <Card className="lg:col-span-1 h-fit order-2 lg:order-1">
-          <CardHeader>
-            <CardTitle className="text-base">{t("settings")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Mode Selection */}
-            <div className="space-y-2">
-              <Label>{t("mode")}</Label>
-              <Select value={mode} onValueChange={(v: string) => setMode(v as "GENERAL" | "ADVISOR")}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("selectMode")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="GENERAL">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4" />
-                      {t("modeGeneral")}
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="ADVISOR">
-                    <div className="flex items-center gap-2">
-                      <GraduationCap className="h-4 w-4" />
-                      {t("modeAdvisor")}
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {mode === "GENERAL"
-                  ? t("descGeneral")
-                  : t("descAdvisor")}
-              </p>
-            </div>
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-950 w-full">
+        {/* Mobile Header */}
+        <div className="lg:hidden flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-semibold">{t("headerTitle") || "CHAT A.I+"}</h1>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleNewSession}
+            disabled={!userId}
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+        </div>
 
-            {/* Progress Context */}
-            {mode === "ADVISOR" && (
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="use-progress"
-                  checked={useProgress}
-                  onCheckedChange={(checked) => setUseProgress(checked as boolean)}
-                />
-                <label
-                  htmlFor="use-progress"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {t("useMyProgress")}
-                </label>
-              </div>
-            )}
-
-            <Separator />
-
-            {/* Session Info */}
-            <div className="space-y-2">
-              <Label>{t("currentSession")}</Label>
-              <div className="text-xs text-muted-foreground">
-                {sessionId ? (
-                  <div className="space-y-1">
-                    <p>ID: {sessionId.substring(0, 8)}...</p>
-                    <p>{messages.length} {t("messages")}</p>
-                  </div>
-                ) : (
-                  <p>{t("newSession")}</p>
-                )}
+        {/* Auth Check Banner */}
+        {!userId && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-4 sm:px-6 py-3">
+            <div className="flex items-center gap-3">
+              <MessageCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="font-medium text-amber-800 dark:text-amber-300 text-xs sm:text-sm">
+                  {t("authRequired") || "Login Required"}
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 hidden sm:block">
+                  {t("authRequiredDesc") || "Please login to use AI chat feature and save your chat history"}
+                </p>
               </div>
             </div>
+          </div>
+        )}
 
-            <Separator />
-
-            {/* Preset Prompts */}
-            <div className="space-y-2">
-              <Label>{t("suggestedQuestions")}</Label>
-              <div className="space-y-2">
-                {presetPrompts[mode].map((prompt, idx) => (
-                  <Button
-                    key={idx}
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-left justify-start text-xs h-auto py-2 px-3 whitespace-normal"
-                    onClick={() => handlePresetPrompt(prompt)}
-                    style={{ wordBreak: "break-word", whiteSpace: "normal", lineHeight: "1.4" }}
-                  >
-                    <span className="block w-full">{prompt}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Main Chat Area */}
-        <Card className="lg:col-span-3 order-1 lg:order-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>{t("chat")}</CardTitle>
-                <CardDescription>
-                  {t("modeLabel")}{" "}
-                  <Badge variant={mode === "GENERAL" ? "default" : "secondary"}>
-                    {mode === "GENERAL" ? t("general") : t("advisor")}
-                  </Badge>
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Messages */}
-            <ScrollArea className="h-[500px] pr-4" ref={scrollAreaRef}>
-              <div className="space-y-4 pb-4">
-                {messages.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Bot className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                    <p className="text-muted-foreground">{t("noMessages")}</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      {t("startChatting")}
-                    </p>
-                  </div>
-                ) : (
-                  messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex gap-3 ${
-                        message.role === "user" ? "flex-row-reverse" : "flex-row"
-                      }`}
+        {/* Chat Messages Area */}
+        <ScrollArea className="flex-1 px-3 sm:px-6 py-4" ref={scrollAreaRef}>
+          <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-[50vh] sm:h-[60vh] text-center px-4">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4 sm:mb-6">
+                  <Bot className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                </div>
+                <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  {t("welcomeTitle") || "How can I help you today?"}
+                </h2>
+                <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-md">
+                  {t("startChatting") || "Start a conversation by typing a message below"}
+                </p>
+                
+                {/* Suggested Prompts */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mt-6 sm:mt-8 w-full max-w-2xl">
+                  {presetPrompts[mode].slice(0, 4).map((prompt, idx) => (
+                    <Button
+                      key={idx}
+                      variant="outline"
+                      className="h-auto py-2.5 sm:py-3 px-3 sm:px-4 text-left justify-start text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 border-gray-200 dark:border-gray-700 whitespace-normal"
+                      onClick={() => handlePresetPrompt(prompt)}
                     >
-                      {/* Avatar */}
-                      <div
-                        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                          message.role === "user"
-                            ? "bg-blue-500 text-white"
-                            : "bg-purple-500 text-white"
-                        }`}
-                      >
-                        {message.role === "user" ? (
-                          <User className="h-5 w-5" />
-                        ) : (
-                          <Bot className="h-5 w-5" />
-                        )}
-                      </div>
-
-                      {/* Message Content */}
-                      <div
-                        className={`flex-1 ${
-                          message.role === "user" ? "items-end" : "items-start"
-                        }`}
-                      >
-                        <div
-                          className={`p-4 rounded-2xl break-words ${
-                            message.role === "user"
-                              ? "bg-blue-500 text-white max-w-[85%] ml-auto rounded-br-sm"
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 max-w-[90%] rounded-bl-sm"
-                          }`}
-                          style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
+                      <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 flex-shrink-0" />
+                      <span className="line-clamp-2">{prompt}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              messages.map((message) => (
+                <div key={message.id} className="space-y-3 sm:space-y-4">
+                  {/* User Message */}
+                  {message.role === "user" && (
+                    <div className="flex items-start gap-2 sm:gap-3 justify-end">
+                      <div className="flex flex-col items-end max-w-[85%] sm:max-w-[80%]">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Avatar className="h-5 w-5 sm:h-6 sm:w-6">
+                            <AvatarImage 
+                              src={userProfile?.avatar?.secureUrl || userProfile?.avatar?.url} 
+                            />
+                            <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-xs">
+                              {(userProfile?.fullName || userProfile?.username || "U").substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
+                        <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-tr-sm px-3 sm:px-4 py-2 sm:py-3">
+                          <p className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
+                            {message.content}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 sm:h-6 sm:w-6 p-0 mt-1 text-gray-400 hover:text-gray-600"
                         >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Assistant Message */}
+                  {message.role === "assistant" && (
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                        <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                      </div>
+                      <div className="flex-1 max-w-[90%] sm:max-w-[85%]">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                            CHAT A.I+
+                          </span>
+                          <CheckCircle className="h-3 w-3 text-blue-500" />
+                        </div>
+                        <div className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                           {message.content === "..." ? (
                             <div className="flex gap-1">
-                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                              <div
-                                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                                style={{ animationDelay: "0.2s" }}
-                              ></div>
-                              <div
-                                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                                style={{ animationDelay: "0.4s" }}
-                              ></div>
+                              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
                             </div>
                           ) : (
-                            <div 
-                              className="text-sm leading-relaxed whitespace-pre-wrap break-words" 
-                              style={{ wordBreak: "break-word" }}
-                            >
+                            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
                               {renderMessageContent(message.content)}
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-1 px-1">
-                          <span className="text-xs text-muted-foreground">
-                            {message.timestamp.toLocaleTimeString()}
-                          </span>
-                          {message.role === "assistant" && message.id !== "typing" && (
+                        {message.id !== "typing" && (
+                          <div className="flex flex-wrap items-center gap-1 mt-2 sm:mt-3">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-auto py-0 px-1"
+                              className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-gray-400 hover:text-gray-600"
+                            >
+                              <ThumbsUp className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            </Button>
+                            <span className="text-gray-300 dark:text-gray-600 hidden sm:inline">|</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-gray-400 hover:text-gray-600"
+                            >
+                              <ThumbsDown className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            </Button>
+                            <span className="text-gray-300 dark:text-gray-600 hidden sm:inline">|</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-gray-400 hover:text-gray-600"
                               onClick={() => handleCopyMessage(message.id, message.content)}
                             >
                               {copiedMessageId === message.id ? (
-                                <CheckCircle className="h-3 w-3 text-green-500" />
+                                <CheckCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-500" />
                               ) : (
-                                <Copy className="h-3 w-3" />
+                                <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                               )}
                             </Button>
-                          )}
-                        </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-gray-400 hover:text-gray-600 hidden sm:flex"
+                            >
+                              <MoreHorizontal className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            </Button>
+                            <div className="flex-1" />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 sm:h-7 px-1.5 sm:px-2 text-gray-400 hover:text-gray-600 text-xs gap-1"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              <span className="hidden sm:inline">{t("regenerate") || "Regenerate"}</span>
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-
-            <Separator />
-
-            {/* Input Area */}
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <Textarea
-                  placeholder={t("enterMessage")}
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  rows={3}
-                  className="flex-1"
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!inputMessage.trim() || chatMutation.isPending || !userId}
-                  className="self-end"
-                >
-                  {chatMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
                   )}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t("enterToSend")}
-              </p>
+                </div>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+
+        {/* Input Area */}
+        <div className="border-t border-gray-200 dark:border-gray-800 p-2 sm:p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="relative flex items-end gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-3 sm:px-4 py-1.5 sm:py-2">
+              <Avatar className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 mb-0.5 sm:mb-1 hidden sm:flex">
+                <AvatarImage 
+                  src={userProfile?.avatar?.secureUrl || userProfile?.avatar?.url} 
+                />
+                <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-xs">
+                  {(userProfile?.fullName || userProfile?.username || "U").substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <input
+                type="text"
+                placeholder={t("enterMessage") || "What's in your mind?..."}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 py-2"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!inputMessage.trim() || chatMutation.isPending || !userId}
+                size="icon"
+                className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
+              >
+                {chatMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
-    </main>
+
+      {/* Upgrade to Pro Banner - Hidden on mobile */}
+      <div className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 hidden md:block">
+        <Button
+          variant="ghost"
+          className="bg-gradient-to-b from-purple-500 to-blue-600 text-white px-1.5 sm:px-2 py-6 sm:py-8 rounded-full writing-mode-vertical text-xs font-medium"
+          style={{ writingMode: "vertical-rl" }}
+        >
+          {t("upgradeToPro") || "Upgrade to Pro"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Session Item Component
+function SessionItem({
+  session,
+  isActive,
+  onSelect,
+  onDelete,
+}: {
+  session: { id: string; label: string; startedAt: string };
+  isActive: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+}) {
+  const [showActions, setShowActions] = useState(false);
+
+  return (
+    <div
+      className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+        isActive
+          ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+          : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+      }`}
+      onClick={onSelect}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
+    >
+      <MessageSquare className="h-4 w-4 flex-shrink-0" />
+      <span className="flex-1 text-sm truncate">{session.label}</span>
+      {showActions && (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 p-0 hover:bg-destructive/20 hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+      {isActive && !showActions && (
+        <div className="w-2 h-2 rounded-full bg-blue-500" />
+      )}
+    </div>
   );
 }
 

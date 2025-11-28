@@ -93,7 +93,16 @@ const CourseCard = ({ course }: CourseCardProps) => {
           </div>
 
           {/* Course Title */}
-          <h3 className="font-bold text-xl mb-4 line-clamp-2 text-gray-900 dark:text-white leading-tight">
+          <h3 className="font-bold text-xl text-gray-900 dark:text-white leading-tight overflow-hidden" 
+              style={{
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                wordBreak: 'break-word',
+                hyphens: 'auto',
+                minHeight: '3.5rem', // Fixed height for 2 lines
+                maxHeight: '3.5rem'
+              }}>
             {enhancedCourse.title}
           </h3>
 
@@ -129,16 +138,15 @@ const CourseCard = ({ course }: CourseCardProps) => {
 
           {/* Skills Section */}
           {enhancedCourse.skills && enhancedCourse.skills.length > 0 && (
-            <div className="mb-4">
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Kỹ năng:</h4>
-              <div className="flex flex-wrap gap-2">
-                {enhancedCourse.skills.slice(0, 4).map((skill: Skill, index: number) => (
+            <div className="h-12"> {/* Fixed height container */}
+              <div className="flex flex-wrap gap-1.5 overflow-hidden h-8"> {/* Fixed height for skills */}
+                {enhancedCourse.skills.slice(0, 3).map((skill: Skill, index: number) => (
                   <div 
                     key={skill.id || index}
-                    className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-2 py-1 rounded-full border border-gray-200 dark:border-gray-600 text-xs"
+                    className="flex items-center gap-1 bg-white dark:bg-gray-800 px-2 py-1 rounded-full border border-gray-200 dark:border-gray-600 text-xs whitespace-nowrap"
                   >
                     {skill.thumbnail && (
-                      <div className="relative w-4 h-4">
+                      <div className="relative w-3 h-3 flex-shrink-0">
                         <Image
                           src={skill.thumbnail}
                           alt={skill.name}
@@ -147,14 +155,14 @@ const CourseCard = ({ course }: CourseCardProps) => {
                         />
                       </div>
                     )}
-                    <span className="text-gray-700 dark:text-gray-300 font-medium">
+                    <span className="text-gray-700 dark:text-gray-300 font-medium truncate max-w-[60px]">
                       {skill.name}
                     </span>
                   </div>
                 ))}
-                {enhancedCourse.skills.length > 4 && (
-                  <div className="flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-400">
-                    +{enhancedCourse.skills.length - 4} more
+                {enhancedCourse.skills.length > 3 && (
+                  <div className="flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    +{enhancedCourse.skills.length - 3}
                   </div>
                 )}
               </div>
