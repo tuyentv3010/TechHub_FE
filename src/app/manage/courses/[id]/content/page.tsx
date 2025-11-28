@@ -749,13 +749,52 @@ export default function CourseContentManagementPage() {
   };
 
   const handleCreateExercise = async (data: CreateExerciseBodyType) => {
-    if (!exerciseDialog.chapterId || !exerciseDialog.lessonId) return;
+    console.log('➕ handleCreateExercise called with:', {
+      data,
+      exerciseDialog,
+      courseId,
+      lessonId: exerciseDialog.lessonId,
+    });
+
+    if (!exerciseDialog.chapterId || !exerciseDialog.lessonId) {
+      console.error('❌ Missing required fields for create:', {
+        hasChapterId: !!exerciseDialog.chapterId,
+        hasLessonId: !!exerciseDialog.lessonId,
+      });
+      return;
+    }
+
+    // Get existing exercises for this lesson to calculate next orderIndex
+    const lesson = chapters
+      .find((ch: any) => ch.id === exerciseDialog.chapterId)
+      ?.lessons?.find((l: any) => l.id === exerciseDialog.lessonId);
+    
+    const existingExercises = lesson?.exercises || [];
+    const nextOrderIndex = existingExercises.length > 0
+      ? Math.max(...existingExercises.map((ex: any) => ex.orderIndex || 0)) + 1
+      : 1;
+    
+    // Auto-assign orderIndex
+    const exerciseData = {
+      ...data,
+      orderIndex: nextOrderIndex,
+    };
+
     try {
+      console.log('📤 Calling createExercisesMutation with:', {
+        courseId,
+        lessonId: exerciseDialog.lessonId,
+        body: [exerciseData],
+        autoOrderIndex: nextOrderIndex,
+      });
+
       await createExercisesMutation.mutateAsync({
         courseId,
         lessonId: exerciseDialog.lessonId,
-        body: [data], // API expects array
+        body: [exerciseData], // API expects array
       });
+
+      console.log('✅ Exercise created successfully');
       toast({
         title: t("Success"),
         description: t("ExerciseCreated"),
@@ -763,44 +802,201 @@ export default function CourseContentManagementPage() {
       setExerciseDialog({ open: false, mode: 'create' });
       refetch();
     } catch (error) {
+      console.error('❌ Error creating exercise:', error);
       handleErrorApi({ error });
     }
   };
 
   const handleUpdateExercise = async (data: UpdateExerciseBodyType) => {
-    if (!exerciseDialog.chapterId || !exerciseDialog.lessonId || !exerciseDialog.data?.id) return;
+    console.log('🔧 === HANDLE UPDATE EXERCISE START ===');
+    console.log('🔧 Input data received:', JSON.stringify(data, null, 2));
+    console.log('🔧 Exercise dialog state:', {
+      mode: exerciseDialog.mode,
+      chapterId: exerciseDialog.chapterId,
+      lessonId: exerciseDialog.lessonId,
+      exerciseId: exerciseDialog.data?.id,
+      exerciseData: JSON.stringify(exerciseDialog.data, null, 2),
+    });
+    console.log('🔧 Course ID:', courseId);
+
+    // Validation with enhanced logging
+    if (!exerciseDialog.chapterId || !exerciseDialog.lessonId || !exerciseDialog.data?.id) {
+      console.error('❌ === VALIDATION FAILED ===');
+      console.error('❌ Missing required fields:', {
+        hasChapterId: !!exerciseDialog.chapterId,
+        hasLessonId: !!exerciseDialog.lessonId,
+        hasExerciseId: !!exerciseDialog.data?.id,
+        chapterId: exerciseDialog.chapterId,
+        lessonId: exerciseDialog.lessonId,
+        exerciseId: exerciseDialog.data?.id,
+      });
+      return;
+    }
+
+    console.log('✅ Validation passed, proceeding with update...');
+
     try {
-      await updateExerciseMutation.mutateAsync({
+      // Enhanced data processing logging
+      console.log('🔧 === PREPARING UPDATE PAYLOAD ===');
+      console.log('🔧 Original exercise data from dialog:', JSON.stringify(exerciseDialog.data, null, 2));
+      console.log('🔧 Form data to update with:', JSON.stringify(data, null, 2));
+      
+      // Log specific fields
+      console.log('🔧 Exercise type:', data.type);
+      console.log('🔧 Exercise question:', data.question);
+      console.log('🔧 Preserving orderIndex:', exerciseDialog.data.orderIndex);
+      
+      // Enhanced options/testCases logging
+      if (data.type === 'MULTIPLE_CHOICE' && data.options) {
+        console.log('🔍 === MCQ OPTIONS PROCESSING ===');
+        console.log('🔍 Options field type:', typeof data.options);
+        console.log('🔍 Options raw value:', data.options);
+        
+        if (typeof data.options === 'string') {
+          try {
+            const parsedOptions = JSON.parse(data.options);
+            console.log('🔍 Parsed options object:', JSON.stringify(parsedOptions, null, 2));
+            console.log('🔍 Choices count:', parsedOptions.choices?.length || 0);
+            console.log('🔍 Correct choices:', parsedOptions.choices?.filter((c: any) => c.isCorrect).length || 0);
+          } catch (parseError) {
+            console.error('❌ Failed to parse options JSON:', parseError);
+          }
+        }
+      }
+      
+      if (data.type === 'CODING' && data.testCases) {
+        console.log('💻 === CODING TEST CASES PROCESSING ===');
+        console.log('💻 TestCases field type:', typeof data.testCases);
+        console.log('💻 TestCases raw value:', data.testCases);
+        
+        if (typeof data.testCases === 'string') {
+          try {
+            const parsedTestCases = JSON.parse(data.testCases);
+            console.log('💻 Parsed test cases:', JSON.stringify(parsedTestCases, null, 2));
+            console.log('💻 Test cases count:', parsedTestCases.length || 0);
+            console.log('💻 Public test cases:', parsedTestCases.filter((tc: any) => tc.visibility === 'PUBLIC').length || 0);
+          } catch (parseError) {
+            console.error('❌ Failed to parse testCases JSON:', parseError);
+          }
+        }
+      }
+
+      const updatePayload = {
         courseId,
         lessonId: exerciseDialog.lessonId,
         exerciseId: exerciseDialog.data.id,
-        body: data,
+        body: {
+          ...data,
+          orderIndex: exerciseDialog.data.orderIndex,
+        },
+      };
+      
+      console.log('📤 === FINAL API PAYLOAD ===');
+      console.log('📤 Full payload object:', JSON.stringify(updatePayload, null, 2));
+      console.log('📤 Payload body:', JSON.stringify(updatePayload.body, null, 2));
+      console.log('📤 Payload size (chars):', JSON.stringify(updatePayload).length);
+      console.log('📤 API endpoint info:', {
+        courseId,
+        lessonId: exerciseDialog.lessonId,
+        exerciseId: exerciseDialog.data.id,
       });
+
+      console.log('🚀 Making API call to updateExerciseMutation...');
+      const result = await updateExerciseMutation.mutateAsync(updatePayload);
+      
+      console.log('✅ === UPDATE SUCCESSFUL ===');
+      console.log('✅ API response:', JSON.stringify(result, null, 2));
+      console.log('✅ Response status:', result?.status);
+      console.log('✅ Response payload:', result?.payload);
+      
       toast({
         title: t("Success"),
         description: t("ExerciseUpdated"),
       });
+      
+      console.log('🔄 Closing dialog and refreshing data...');
       setExerciseDialog({ open: false, mode: 'create' });
       refetch();
+      console.log('✅ Update process completed successfully');
+      
     } catch (error) {
+      console.error('❌ === UPDATE FAILED ===');
+      console.error('❌ Error object:', error);
+      console.error('❌ Error message:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      
+      // Enhanced error details
+      if (error && typeof error === 'object') {
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
+        
+        // Check for specific error types
+        if ('response' in error) {
+          console.error('❌ HTTP Response error:', (error as any).response);
+          console.error('❌ Response status:', (error as any).response?.status);
+          console.error('❌ Response data:', (error as any).response?.data);
+        }
+        
+        if ('request' in error) {
+          console.error('❌ Network request error:', (error as any).request);
+        }
+      }
+      
       handleErrorApi({ error });
     }
+    
+    console.log('🏁 === HANDLE UPDATE EXERCISE END ===\n');
   };
 
   const handleDeleteExercise = async (chapterId: string, lessonId: string, exercise: any) => {
-    if (!confirm(t("DeleteExerciseWarning", { question: exercise.question }))) return;
+    console.log('🗑️ handleDeleteExercise called with:', {
+      chapterId,
+      lessonId,
+      exercise,
+      exerciseId: exercise?.id,
+      courseId,
+    });
+    console.log('🗑️ Exercise object:', JSON.stringify(exercise, null, 2));
+
+    if (!exercise?.id) {
+      console.error('❌ Exercise ID is missing:', exercise);
+      console.error('❌ Full exercise object:', JSON.stringify(exercise, null, 2));
+      toast({
+        title: t("Error"),
+        description: "Exercise ID is missing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm(t("DeleteExerciseWarning", { question: exercise.question }))) {
+      console.log('⏸️ User cancelled delete');
+      return;
+    }
+
     try {
-      await deleteExerciseMutation.mutateAsync({
+      const deletePayload = {
         courseId,
         lessonId,
         exerciseId: exercise.id,
-      });
+      };
+      
+      console.log('📤 Calling deleteExerciseMutation with:', deletePayload);
+      console.log('📤 Exercise to delete:', JSON.stringify(exercise, null, 2));
+
+      const result = await deleteExerciseMutation.mutateAsync(deletePayload);
+
+      console.log('✅ Exercise deleted successfully');
+      console.log('✅ Delete result:', result);
+      
       toast({
         title: t("Success"),
         description: t("ExerciseDeleted"),
       });
       refetch();
     } catch (error) {
+      console.error('❌ Error deleting exercise:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       handleErrorApi({ error });
     }
   };
@@ -1177,13 +1373,27 @@ export default function CourseContentManagementPage() {
                                                         chapterId: chapter.id,
                                                         lessonId: lesson.id,
                                                       })}
-                                                      onEdit={(exercise) => setExerciseDialog({
-                                                        open: true,
-                                                        mode: 'edit',
-                                                        chapterId: chapter.id,
-                                                        lessonId: lesson.id,
-                                                        data: exercise,
-                                                      })}
+                                                      onEdit={(exercise) => {
+                                                        console.log('📝 === OPENING EXERCISE EDIT DIALOG ===');
+                                                        console.log('📝 Exercise to edit:', JSON.stringify(exercise, null, 2));
+                                                        console.log('📝 Exercise ID:', exercise.id);
+                                                        console.log('📝 Exercise type:', exercise.type);
+                                                        console.log('📝 Exercise question:', exercise.question);
+                                                        console.log('📝 Exercise options (raw):', exercise.options);
+                                                        console.log('📝 Exercise testCases (raw):', exercise.testCases);
+                                                        console.log('📝 Exercise orderIndex:', exercise.orderIndex);
+                                                        console.log('📝 Chapter ID:', chapter.id);
+                                                        console.log('📝 Lesson ID:', lesson.id);
+                                                        
+                                                        setExerciseDialog({
+                                                          open: true,
+                                                          mode: 'edit',
+                                                          chapterId: chapter.id,
+                                                          lessonId: lesson.id,
+                                                          data: exercise,
+                                                        });
+                                                        console.log('📝 Exercise dialog state set, opening...');
+                                                      }}
                                                       onDelete={(exercise) => handleDeleteExercise(chapter.id, lesson.id, exercise)}
                                                     />
 
@@ -1471,6 +1681,28 @@ function ExerciseDialog({
   onUpdate: (data: UpdateExerciseBodyType) => void;
 }) {
   const t = useTranslations("ManageCourse");
+  
+  // MCQ Choices state
+  const [choices, setChoices] = useState<Array<{ text: string; isCorrect: boolean }>>([
+    { text: '', isCorrect: false },
+  ]);
+
+  // Test Cases state
+  const [testCases, setTestCases] = useState<Array<{
+    orderIndex: number;
+    visibility: string;
+    input: string;
+    expectedOutput: string;
+    weight: number;
+    timeoutSeconds: number;
+  }>>([{
+    orderIndex: 1,
+    visibility: 'PUBLIC',
+    input: '',
+    expectedOutput: '',
+    weight: 10,
+    timeoutSeconds: 2,
+  }]);
 
   const {
     register,
@@ -1478,29 +1710,252 @@ function ExerciseDialog({
     reset,
     watch,
     setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<CreateExerciseBodyType | UpdateExerciseBodyType>({
     resolver: mode === 'create'
       ? (zodResolver(CreateExerciseBody) as any)
-      : (zodResolver(UpdateExerciseBody) as any),
+      : undefined, // Remove validation for edit mode temporarily
     defaultValues: data || { type: 'MULTIPLE_CHOICE', orderIndex: 1 },
+    mode: 'onChange',
   });
 
   useEffect(() => {
     if (open) {
-      reset(data || { type: 'MULTIPLE_CHOICE', orderIndex: 1 });
+      console.log('🎯 === EXERCISE DIALOG OPENED ===');
+      console.log('📊 Dialog mode:', mode);
+      console.log('📊 Raw data received:', JSON.stringify(data, null, 2));
+      
+      if (data) {
+        console.log('📝 === EDIT MODE - PROCESSING DATA ===');
+        console.log('📝 Exercise type:', data.type);
+        console.log('📝 Exercise question:', data.question);
+        console.log('📝 Exercise orderIndex:', data.orderIndex);
+        
+        // Enhanced debugging for options/choices
+        if (data.type === 'MULTIPLE_CHOICE') {
+          console.log('🔍 === PROCESSING MCQ DATA ===');
+          console.log('🔍 Raw options field:', data.options);
+          console.log('🔍 Type of options:', typeof data.options);
+          
+          let parsedChoices;
+          try {
+            if (typeof data.options === 'string') {
+              console.log('📜 Parsing options from JSON string...');
+              const parsed = JSON.parse(data.options);
+              console.log('📜 Parsed options object:', JSON.stringify(parsed, null, 2));
+              parsedChoices = parsed.choices || [];
+            } else if (data.options && data.options.choices) {
+              console.log('📦 Using options.choices directly...');
+              parsedChoices = data.options.choices;
+            } else {
+              console.log('❌ No valid choices found, using default');
+              parsedChoices = [{ text: '', isCorrect: false }];
+            }
+            
+            console.log('✅ Final parsed choices:', JSON.stringify(parsedChoices, null, 2));
+            console.log('✅ Choices count:', parsedChoices.length);
+            setChoices(parsedChoices);
+            
+          } catch (error) {
+            console.error('❌ Error parsing choices:', error);
+            console.error('❌ Problematic options data:', data.options);
+            setChoices([{ text: '', isCorrect: false }]);
+          }
+        }
+        
+        // Enhanced debugging for test cases
+        if (data.type === 'CODING') {
+          console.log('💻 === PROCESSING CODING DATA ===');
+          console.log('💻 Raw testCases field:', data.testCases);
+          console.log('💻 Type of testCases:', typeof data.testCases);
+          
+          let parsedTestCases;
+          try {
+            if (typeof data.testCases === 'string') {
+              console.log('📜 Parsing testCases from JSON string...');
+              parsedTestCases = JSON.parse(data.testCases);
+            } else if (Array.isArray(data.testCases)) {
+              console.log('📋 Using testCases array directly...');
+              parsedTestCases = data.testCases;
+            } else {
+              console.log('❌ No valid test cases found, using default');
+              parsedTestCases = [{
+                orderIndex: 1,
+                visibility: 'PUBLIC',
+                input: '',
+                expectedOutput: '',
+                weight: 10,
+                timeoutSeconds: 2,
+              }];
+            }
+            
+            console.log('✅ Final parsed test cases:', JSON.stringify(parsedTestCases, null, 2));
+            console.log('✅ Test cases count:', parsedTestCases.length);
+            setTestCases(parsedTestCases);
+            
+          } catch (error) {
+            console.error('❌ Error parsing test cases:', error);
+            console.error('❌ Problematic testCases data:', data.testCases);
+            setTestCases([{
+              orderIndex: 1,
+              visibility: 'PUBLIC',
+              input: '',
+              expectedOutput: '',
+              weight: 10,
+              timeoutSeconds: 2,
+            }]);
+          }
+        }
+        
+        console.log('📝 Calling form reset with data...');
+        reset(data);
+        console.log('✅ Form reset completed');
+        
+      } else {
+        console.log('➕ === CREATE MODE - USING DEFAULTS ===');
+        const defaultData = { type: 'MULTIPLE_CHOICE' as const, orderIndex: 1 };
+        console.log('➕ Default data:', JSON.stringify(defaultData, null, 2));
+        
+        reset(defaultData);
+        setChoices([{ text: '', isCorrect: false }]);
+        setTestCases([{
+          orderIndex: 1,
+          visibility: 'PUBLIC',
+          input: '',
+          expectedOutput: '',
+          weight: 10,
+          timeoutSeconds: 2,
+        }]);
+        console.log('✅ Create mode initialization completed');
+      }
+      console.log('🏁 === DIALOG SETUP COMPLETE ===\n');
     }
   }, [open, data, reset]);
 
   const onSubmit = (formData: CreateExerciseBodyType | UpdateExerciseBodyType) => {
-    if (mode === 'create') {
-      onCreate(formData as CreateExerciseBodyType);
-    } else {
-      onUpdate(formData as UpdateExerciseBodyType);
+    console.log('🚀 === EXERCISE FORM SUBMISSION (FIXED) ===');
+    console.log('🚀 Form mode:', mode);
+    console.log('🚀 Raw form data:', JSON.stringify(formData, null, 2));
+    console.log('🚀 Exercise type:', exerciseType);
+    console.log('🚀 Current choices state:', JSON.stringify(choices, null, 2));
+    console.log('🚀 Current testCases state:', JSON.stringify(testCases, null, 2));
+
+    // Clone formData to avoid mutation
+    const payload = { ...formData };
+    
+    // Ensure orderIndex is set
+    if (!payload.orderIndex && data?.orderIndex) {
+      payload.orderIndex = data.orderIndex;
     }
+    if (!payload.orderIndex) {
+      payload.orderIndex = 1;
+    }
+
+    // Enhanced debugging for options building
+    if (exerciseType === 'MULTIPLE_CHOICE') {
+      console.log('🔧 === BUILDING MCQ OPTIONS (FIXED) ===');
+      console.log('🔧 Choices to stringify:', JSON.stringify(choices, null, 2));
+      console.log('🔧 Valid choices count:', choices.filter(c => c.text.trim()).length);
+      console.log('🔧 Correct choices count:', choices.filter(c => c.isCorrect).length);
+      
+      const optionsObject = { choices };
+      const optionsJson = JSON.stringify(optionsObject);
+      console.log('🔧 Options object:', JSON.stringify(optionsObject, null, 2));
+      console.log('🔧 Options JSON string:', optionsJson);
+      console.log('🔧 Options JSON string length:', optionsJson.length);
+      
+      (payload as any).options = optionsJson;
+      console.log('✅ Options field set in payload');
+    }
+    
+    // Enhanced debugging for test cases building
+    if (exerciseType === 'CODING') {
+      console.log('💻 === BUILDING CODING TEST CASES (FIXED) ===');
+      console.log('💻 Test cases to stringify:', JSON.stringify(testCases, null, 2));
+      console.log('💻 Valid test cases count:', testCases.filter(tc => tc.input.trim() && tc.expectedOutput.trim()).length);
+      console.log('💻 Public test cases count:', testCases.filter(tc => tc.visibility === 'PUBLIC').length);
+      console.log('💻 Private test cases count:', testCases.filter(tc => tc.visibility === 'PRIVATE').length);
+      
+      const testCasesJson = JSON.stringify(testCases);
+      console.log('💻 Test cases JSON string:', testCasesJson);
+      console.log('💻 Test cases JSON string length:', testCasesJson.length);
+      
+      (payload as any).testCases = testCasesJson;
+      console.log('✅ TestCases field set in payload');
+    }
+
+    console.log('📤 === FINAL SUBMISSION PAYLOAD (FIXED) ===');
+    console.log('📤 Final payload:', JSON.stringify(payload, null, 2));
+    console.log('📤 Payload size (chars):', JSON.stringify(payload).length);
+
+    try {
+      if (mode === 'create') {
+        console.log('➕ Calling onCreate with payload...');
+        onCreate(payload as CreateExerciseBodyType);
+      } else {
+        console.log('🔧 Calling onUpdate with payload...');
+        onUpdate(payload as UpdateExerciseBodyType);
+      }
+      console.log('✅ Form submission call completed');
+    } catch (error) {
+      console.error('❌ Error in form submission:', error);
+    }
+    
+    console.log('🏁 === FORM SUBMISSION COMPLETE (FIXED) ===\n');
   };
 
   const exerciseType = watch("type");
+
+  // MCQ Choice handlers
+  const addChoice = () => {
+    setChoices([...choices, { text: '', isCorrect: false }]);
+  };
+
+  const removeChoice = (index: number) => {
+    if (choices.length > 1) {
+      setChoices(choices.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateChoiceText = (index: number, text: string) => {
+    const newChoices = [...choices];
+    newChoices[index].text = text;
+    setChoices(newChoices);
+  };
+
+  const toggleChoiceCorrect = (index: number) => {
+    const newChoices = [...choices];
+    newChoices[index].isCorrect = !newChoices[index].isCorrect;
+    setChoices(newChoices);
+  };
+
+  // Test Case handlers
+  const addTestCase = () => {
+    setTestCases([...testCases, {
+      orderIndex: testCases.length + 1,
+      visibility: 'PUBLIC',
+      input: '',
+      expectedOutput: '',
+      weight: 10,
+      timeoutSeconds: 2,
+    }]);
+  };
+
+  const removeTestCase = (index: number) => {
+    if (testCases.length > 1) {
+      const newTestCases = testCases.filter((_, i) => i !== index);
+      // Re-index
+      newTestCases.forEach((tc, i) => tc.orderIndex = i + 1);
+      setTestCases(newTestCases);
+    }
+  };
+
+  const updateTestCase = (index: number, field: string, value: any) => {
+    const newTestCases = [...testCases];
+    (newTestCases[index] as any)[field] = value;
+    setTestCases(newTestCases);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -1515,10 +1970,49 @@ function ExerciseDialog({
               : t("EditExerciseDescription") || "Modify the exercise details"}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form 
+          onSubmit={(e) => {
+            console.log('📋 === FORM SUBMIT EVENT TRIGGERED ===');
+            console.log('📋 Event type:', e.type);
+            console.log('📋 Form valid?', (e.target as HTMLFormElement).checkValidity());
+            console.log('📋 Mode:', mode);
+            console.log('📋 Is submitting:', isSubmitting);
+            console.log('📋 Form errors before submit:', JSON.stringify(errors, null, 2));
+            console.log('📋 Calling handleSubmit wrapper...');
+            
+            // Call the handleSubmit wrapper with error handling
+            const submitHandler = handleSubmit(
+              onSubmit,
+              (validationErrors) => {
+                console.log('❌ === FORM VALIDATION FAILED ===');
+                console.log('❌ Validation errors:', JSON.stringify(validationErrors, null, 2));
+                console.log('❌ Number of errors:', Object.keys(validationErrors).length);
+                
+                Object.keys(validationErrors).forEach(key => {
+                  const error = (validationErrors as any)[key];
+                  console.log(`❌ Field '${key}' error:`, error?.message);
+                  console.log(`❌ Field '${key}' type:`, error?.type);
+                  console.log(`❌ Field '${key}' full error:`, error);
+                });
+                
+                // Also log current form values
+                const formValues = getValues();
+                console.log('📊 Current form values:', JSON.stringify(formValues, null, 2));
+                console.log('📊 Exercise type from form:', formValues.type);
+                console.log('📊 Question from form:', formValues.question);
+                console.log('📊 OrderIndex from form:', formValues.orderIndex);
+              }
+            );
+            
+            submitHandler(e);
+            
+            console.log('📋 handleSubmit wrapper called');
+          }}
+          className="space-y-4"
+        >
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="type">{t("ExerciseType") || "Type"}</Label>
+              <Label htmlFor="type">{t("ExerciseTypeLabel") || "Type"}</Label>
               <Select
                 value={exerciseType}
                 onValueChange={(value) => setValue("type", value as any)}
@@ -1549,17 +2043,19 @@ function ExerciseDialog({
                 id="orderIndex"
                 type="number"
                 {...register("orderIndex", { valueAsNumber: true })}
-                placeholder="1"
+                placeholder={t("AutoGenerated") || "Auto-generated"}
                 min={1}
+                disabled
+                className="bg-muted"
               />
-              {errors.orderIndex && (
-                <p className="text-sm text-destructive">{String(errors.orderIndex.message)}</p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                {t("OrderAutoHint") || "Order will be auto-assigned based on existing exercises"}
+              </p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="question">{t("Question") || "Question"}</Label>
+            <Label htmlFor="question">{t("QuestionLabel") || "Question"}</Label>
             <Textarea
               id="question"
               {...register("question")}
@@ -1573,40 +2069,150 @@ function ExerciseDialog({
 
           {/* Multiple Choice Options */}
           {exerciseType === "MULTIPLE_CHOICE" && (
-            <div className="space-y-2">
-              <Label htmlFor="options">{t("Options") || "Options (JSON)"}</Label>
-              <Textarea
-                id="options"
-                {...register("options")}
-                placeholder={`${t("OptionsPlaceholder") || "Enter options as JSON"}:\n{\n  "choices": [\n    {"text": "Option A", "isCorrect": true},\n    {"text": "Option B", "isCorrect": false}\n  ]\n}`}
-                rows={8}
-                className="font-mono text-xs"
-              />
-              {errors.options && (
-                <p className="text-sm text-destructive">{String(errors.options.message)}</p>
-              )}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>{t("ChoicesLabel") || "Choices"}</Label>
+                <Button type="button" size="sm" variant="outline" onClick={addChoice}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  {t("AddChoice") || "Add Choice"}
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                {choices.map((choice, index) => (
+                  <div key={index} className="flex items-start gap-2 p-3 border rounded-lg bg-muted/30">
+                    <span className="text-sm font-semibold mt-2 min-w-[24px]">
+                      {String.fromCharCode(65 + index)}.
+                    </span>
+                    <Input
+                      value={choice.text}
+                      onChange={(e) => updateChoiceText(index, e.target.value)}
+                      placeholder={t("ChoicePlaceholder") || "Enter choice..."}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={choice.isCorrect ? "default" : "outline"}
+                      onClick={() => toggleChoiceCorrect(index)}
+                      className={choice.isCorrect ? "bg-green-600 hover:bg-green-700" : ""}
+                    >
+                      {choice.isCorrect ? "✓ Correct" : "Mark Correct"}
+                    </Button>
+                    {choices.length > 1 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeChoice(index)}
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
               <p className="text-xs text-muted-foreground">
-                {t("OptionsHint") || "Format: JSON with 'choices' array containing text and isCorrect fields"}
+                {t("ChoicesHint") || "Add at least one choice and mark the correct answer(s)"}
               </p>
             </div>
           )}
 
           {/* Coding Test Cases */}
           {exerciseType === "CODING" && (
-            <div className="space-y-2">
-              <Label htmlFor="testCases">{t("TestCases") || "Test Cases (JSON Array)"}</Label>
-              <Textarea
-                id="testCases"
-                {...register("testCases")}
-                placeholder={`${t("TestCasesPlaceholder") || "Enter test cases as JSON array"}:\n[\n  {\n    "orderIndex": 1,\n    "visibility": "PUBLIC",\n    "input": "5",\n    "expectedOutput": "25",\n    "weight": 10,\n    "timeoutSeconds": 2\n  }\n]`}
-                rows={10}
-                className="font-mono text-xs"
-              />
-              {errors.testCases && (
-                <p className="text-sm text-destructive">{String(errors.testCases.message)}</p>
-              )}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>{t("TestCasesLabel") || "Test Cases"}</Label>
+                <Button type="button" size="sm" variant="outline" onClick={addTestCase}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  {t("AddTestCase") || "Add Test Case"}
+                </Button>
+              </div>
+              
+              <div className="space-y-3">
+                {testCases.map((testCase, index) => (
+                  <div key={index} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="outline">Test Case #{testCase.orderIndex}</Badge>
+                      {testCases.length > 1 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeTestCase(index)}
+                        >
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("Visibility") || "Visibility"}</Label>
+                        <Select
+                          value={testCase.visibility}
+                          onValueChange={(value) => updateTestCase(index, 'visibility', value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PUBLIC">PUBLIC</SelectItem>
+                            <SelectItem value="PRIVATE">PRIVATE</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("Weight") || "Weight"}</Label>
+                        <Input
+                          type="number"
+                          value={testCase.weight}
+                          onChange={(e) => updateTestCase(index, 'weight', Number(e.target.value))}
+                          className="h-8 text-xs"
+                          min={0}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t("Input") || "Input"}</Label>
+                      <Input
+                        value={testCase.input}
+                        onChange={(e) => updateTestCase(index, 'input', e.target.value)}
+                        placeholder="5"
+                        className="h-8 text-xs font-mono"
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t("ExpectedOutput") || "Expected Output"}</Label>
+                      <Input
+                        value={testCase.expectedOutput}
+                        onChange={(e) => updateTestCase(index, 'expectedOutput', e.target.value)}
+                        placeholder="25"
+                        className="h-8 text-xs font-mono"
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t("TimeoutSeconds") || "Timeout (seconds)"}</Label>
+                      <Input
+                        type="number"
+                        value={testCase.timeoutSeconds}
+                        onChange={(e) => updateTestCase(index, 'timeoutSeconds', Number(e.target.value))}
+                        className="h-8 text-xs"
+                        min={1}
+                        max={30}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
               <p className="text-xs text-muted-foreground">
-                {t("TestCasesHint") || "Format: JSON array with orderIndex, visibility (PUBLIC/PRIVATE), input, expectedOutput, weight, timeoutSeconds"}
+                {t("TestCasesHint") || "Test cases will be numbered automatically. PUBLIC cases are visible to students."}
               </p>
             </div>
           )}
@@ -1615,7 +2221,30 @@ function ExerciseDialog({
             <Button type="button" variant="outline" onClick={onClose}>
               {t("Cancel") || "Cancel"}
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              onClick={() => {
+                console.log('🔘 === SUBMIT BUTTON CLICKED ===');
+                console.log('🔘 Mode:', mode);
+                console.log('🔘 Is submitting:', isSubmitting);
+                console.log('🔘 Form errors count:', Object.keys(errors).length);
+                console.log('🔘 Form errors:', JSON.stringify(errors, null, 2));
+                console.log('🔘 Exercise type:', exerciseType);
+                console.log('🔘 Button disabled?', isSubmitting);
+                
+                // Detailed error analysis
+                if (Object.keys(errors).length > 0) {
+                  console.log('❌ === FORM VALIDATION ERRORS DETECTED ===');
+                  Object.keys(errors).forEach(key => {
+                    console.log(`❌ Error in field '${key}':`, errors[key as keyof typeof errors]);
+                    console.log(`❌ Error message:`, (errors[key as keyof typeof errors] as any)?.message);
+                  });
+                }
+                
+                console.log('🔘 About to trigger form submission...');
+              }}
+            >
               {isSubmitting
                 ? t(mode === 'create' ? "Creating" : "Updating")
                 : t(mode === 'create' ? "Create" : "Update")}

@@ -234,12 +234,29 @@ const courseApiRequest = {
     http.post(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/bulk`, body),
 
   // Update exercise
-  updateExercise: (courseId: string, lessonId: string, exerciseId: string, body: any) =>
-    http.put(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/${exerciseId}`, body),
+  updateExercise: (courseId: string, lessonId: string, exerciseId: string, body: any) => {
+    const url = `/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/${exerciseId}`;
+    console.log('🔧 [API] PUT updateExercise:', {
+      url,
+      courseId,
+      lessonId,
+      exerciseId,
+      body,
+    });
+    return http.put(url, body);
+  },
 
   // Delete exercise
-  deleteExercise: (courseId: string, lessonId: string, exerciseId: string) =>
-    http.delete(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/${exerciseId}`),
+  deleteExercise: (courseId: string, lessonId: string, exerciseId: string) => {
+    const url = `/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/${exerciseId}`;
+    console.log('🗑️ [API] DELETE deleteExercise:', {
+      url,
+      courseId,
+      lessonId,
+      exerciseId,
+    });
+    return http.delete(url);
+  },
 };
 
 export default courseApiRequest;

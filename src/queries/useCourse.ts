@@ -363,11 +363,26 @@ export const useCreateExercisesMutation = () => {
 export const useUpdateExerciseMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ courseId, lessonId, exerciseId, body }: { courseId: string; lessonId: string; exerciseId: string; body: any }) =>
-      courseApiRequest.updateExercise(courseId, lessonId, exerciseId, body),
+    mutationFn: ({ courseId, lessonId, exerciseId, body }: { courseId: string; lessonId: string; exerciseId: string; body: any }) => {
+      console.log('🔧 [useCourse] updateExercise mutation called:', {
+        courseId,
+        lessonId,
+        exerciseId,
+        body,
+        url: `/courses/${courseId}/lessons/${lessonId}/exercises/${exerciseId}`,
+      });
+      return courseApiRequest.updateExercise(courseId, lessonId, exerciseId, body);
+    },
     onSuccess: (_data, variables) => {
+      console.log('✅ [useCourse] updateExercise success:', _data);
       queryClient.invalidateQueries({ queryKey: ["exercises", variables.courseId, variables.lessonId] });
       queryClient.invalidateQueries({ queryKey: ["chapters", variables.courseId] });
+    },
+    onError: (error, variables) => {
+      console.error('❌ [useCourse] updateExercise error:', {
+        error,
+        variables,
+      });
     },
   });
 };
@@ -376,11 +391,25 @@ export const useUpdateExerciseMutation = () => {
 export const useDeleteExerciseMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ courseId, lessonId, exerciseId }: { courseId: string; lessonId: string; exerciseId: string }) =>
-      courseApiRequest.deleteExercise(courseId, lessonId, exerciseId),
+    mutationFn: ({ courseId, lessonId, exerciseId }: { courseId: string; lessonId: string; exerciseId: string }) => {
+      console.log('🗑️ [useCourse] deleteExercise mutation called:', {
+        courseId,
+        lessonId,
+        exerciseId,
+        url: `/courses/${courseId}/lessons/${lessonId}/exercises/${exerciseId}`,
+      });
+      return courseApiRequest.deleteExercise(courseId, lessonId, exerciseId);
+    },
     onSuccess: (_data, variables) => {
+      console.log('✅ [useCourse] deleteExercise success:', _data);
       queryClient.invalidateQueries({ queryKey: ["exercises", variables.courseId, variables.lessonId] });
       queryClient.invalidateQueries({ queryKey: ["chapters", variables.courseId] });
+    },
+    onError: (error, variables) => {
+      console.error('❌ [useCourse] deleteExercise error:', {
+        error,
+        variables,
+      });
     },
   });
 };
