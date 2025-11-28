@@ -48,9 +48,9 @@ const authApiRequest = {
   resendResetCode: (email: string) =>
     http.post<ResendCodeResType>(`/app/api/proxy/users/resend-reset-code/${email}`, {}),
 
-  // Change Password API - PUT /app/api/proxy/auth/change-password
+  // Change Password API - POST /app/api/proxy/users/change-password
   changePassword: (body: ChangePasswordBodyType) =>
-    http.post<ChangePasswordResType>("/app/api/proxy/auth/change-password", body),
+    http.post<ChangePasswordResType>("/app/api/proxy/users/change-password", body),
 
   // Set token to cookie (for OAuth flow)
   setTokenToCookie: (body: { accessToken: string; refreshToken: string }) =>

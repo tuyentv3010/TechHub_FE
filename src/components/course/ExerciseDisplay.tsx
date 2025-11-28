@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, XCircle, HelpCircle, Code } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,10 +32,12 @@ interface ExerciseDisplayProps {
 export default function ExerciseDisplay({ exercise, onComplete }: ExerciseDisplayProps) {
   const { toast } = useToast();
   const [selectedAnswer, setSelectedAnswer] = useState<string>("");
+  const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [choices, setChoices] = useState<Choice[]>([]);
   const [showResult, setShowResult] = useState(false);
+  const [isMultipleChoice, setIsMultipleChoice] = useState(false);
 
   // Debug log
   useEffect(() => {
@@ -64,7 +67,11 @@ export default function ExerciseDisplay({ exercise, onComplete }: ExerciseDispla
         
         if (parsedOptions.choices && Array.isArray(parsedOptions.choices)) {
           setChoices(parsedOptions.choices);
+          // Check if multiple answers are correct
+          const correctCount = parsedOptions.choices.filter((choice: Choice) => choice.isCorrect).length;
+          setIsMultipleChoice(correctCount > 1);
           console.log('✅ Choices set:', parsedOptions.choices);
+          console.log('🎯 Multiple choice detected:', correctCount > 1, 'correct answers:', correctCount);
         } else {
           console.warn('⚠️ No choices array found in options:', parsedOptions);
         }
@@ -77,45 +84,92 @@ export default function ExerciseDisplay({ exercise, onComplete }: ExerciseDispla
   }, [exercise]);
 
   const handleSubmit = () => {
-    if (!selectedAnswer) {
-      toast({
-        title: "Chưa chọn đáp án",
-        description: "Vui lòng chọn một đáp án trước khi nộp bài",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (isMultipleChoice) {
+      if (selectedAnswers.length === 0) {
+        toast({
+          title: "Chưa chọn đáp án",
+          description: "Vui lòng chọn ít nhất một đáp án trước khi nộp bài",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    const selectedIndex = parseInt(selectedAnswer);
-    const selectedChoice = choices[selectedIndex];
-    const correct = selectedChoice?.isCorrect || false;
+      // Check if all selected answers are correct and no incorrect ones are selected
+      const correctIndices = choices.map((choice, index) => choice.isCorrect ? index : -1).filter(i => i !== -1);
+      const selectedIndices = selectedAnswers.map(Number);
+      
+      const allCorrectSelected = correctIndices.every(i => selectedIndices.includes(i));
+      const noIncorrectSelected = selectedIndices.every(i => choices[i].isCorrect);
+      
+      const correct = allCorrectSelected && noIncorrectSelected && correctIndices.length === selectedIndices.length;
+      
+      setIsCorrect(correct);
+      setSubmitted(true);
+      setShowResult(true);
 
-    setIsCorrect(correct);
-    setSubmitted(true);
-    setShowResult(true);
+      if (correct) {
+        toast({
+          title: "🎉 Chính xác!",
+          description: "Bạn đã chọn đúng tất cả đáp án",
+        });
+      } else {
+        toast({
+          title: "❌ Chưa chính xác",
+          description: "Hãy xem lại các đáp án đúng bên dưới",
+          variant: "destructive",
+        });
+      }
 
-    // Show result notification
-    if (correct) {
-      toast({
-        title: "🎉 Chính xác!",
-        description: "Bạn đã trả lời đúng câu hỏi",
-      });
+      onComplete?.(exercise.id, correct);
     } else {
-      toast({
-        title: "❌ Chưa chính xác",
-        description: "Hãy xem lại đáp án đúng bên dưới",
-        variant: "destructive",
-      });
-    }
+      if (!selectedAnswer) {
+        toast({
+          title: "Chưa chọn đáp án",
+          description: "Vui lòng chọn một đáp án trước khi nộp bài",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    onComplete?.(exercise.id, correct);
+      const selectedIndex = parseInt(selectedAnswer);
+      const selectedChoice = choices[selectedIndex];
+      const correct = selectedChoice?.isCorrect || false;
+
+      setIsCorrect(correct);
+      setSubmitted(true);
+      setShowResult(true);
+
+      if (correct) {
+        toast({
+          title: "🎉 Chính xác!",
+          description: "Bạn đã trả lời đúng câu hỏi",
+        });
+      } else {
+        toast({
+          title: "❌ Chưa chính xác",
+          description: "Hãy xem lại đáp án đúng bên dưới",
+          variant: "destructive",
+        });
+      }
+
+      onComplete?.(exercise.id, correct);
+    }
   };
 
   const handleRetry = () => {
     setSelectedAnswer("");
+    setSelectedAnswers([]);
     setSubmitted(false);
     setShowResult(false);
     setIsCorrect(false);
+  };
+
+  const handleMultipleChoiceChange = (index: string, checked: boolean) => {
+    if (checked) {
+      setSelectedAnswers(prev => [...prev, index]);
+    } else {
+      setSelectedAnswers(prev => prev.filter(item => item !== index));
+    }
   };
 
   const getExerciseIcon = () => {
@@ -157,7 +211,7 @@ export default function ExerciseDisplay({ exercise, onComplete }: ExerciseDispla
           {getExerciseIcon()}
           <CardTitle className="text-lg">Bài tập trắc nghiệm</CardTitle>
           <Badge variant="outline" className="ml-auto">
-            Trắc nghiệm
+            {isMultipleChoice ? "Nhiều lựa chọn" : "Một lựa chọn"}
           </Badge>
         </div>
       </CardHeader>
@@ -170,66 +224,133 @@ export default function ExerciseDisplay({ exercise, onComplete }: ExerciseDispla
 
         {/* Choices */}
         <div className="space-y-3">
-          <h4 className="font-medium">Chọn đáp án đúng:</h4>
-          <RadioGroup
-            value={selectedAnswer}
-            onValueChange={setSelectedAnswer}
-            disabled={submitted}
-            className="space-y-3"
-          >
-            {choices.map((choice, index) => {
-              const isSelected = selectedAnswer === index.toString();
-              const isCorrectChoice = choice.isCorrect;
-              
-              // Determine styling based on state
-              let choiceClass = "p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50";
-              
-              if (showResult) {
-                if (isCorrectChoice) {
-                  choiceClass += " bg-green-50 border-green-300 dark:bg-green-950 dark:border-green-700";
-                } else if (isSelected && !isCorrectChoice) {
-                  choiceClass += " bg-red-50 border-red-300 dark:bg-red-950 dark:border-red-700";
+          <h4 className="font-medium">
+            {isMultipleChoice 
+              ? `Chọn các đáp án đúng (${choices.filter(c => c.isCorrect).length} đáp án):`
+              : "Chọn đáp án đúng:"
+            }
+          </h4>
+          
+          {isMultipleChoice ? (
+            // Multiple choice with checkboxes
+            <div className="space-y-3">
+              {choices.map((choice, index) => {
+                const isSelected = selectedAnswers.includes(index.toString());
+                const isCorrectChoice = choice.isCorrect;
+                
+                // Determine styling based on state
+                let choiceClass = "p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50";
+                
+                if (showResult) {
+                  if (isCorrectChoice) {
+                    choiceClass += " bg-green-50 border-green-300 dark:bg-green-950 dark:border-green-700";
+                  } else if (isSelected && !isCorrectChoice) {
+                    choiceClass += " bg-red-50 border-red-300 dark:bg-red-950 dark:border-red-700";
+                  }
+                } else if (isSelected) {
+                  choiceClass += " bg-primary/5 border-primary";
                 }
-              } else if (isSelected) {
-                choiceClass += " bg-primary/5 border-primary";
-              }
 
-              return (
-                <div key={index} className={choiceClass}>
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem 
-                      value={index.toString()} 
-                      id={`choice-${index}`}
-                      className="flex-shrink-0"
-                    />
-                    <Label 
-                      htmlFor={`choice-${index}`} 
-                      className="flex-1 cursor-pointer font-normal"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{choice.text}</span>
-                        {showResult && (
-                          <div className="flex items-center gap-1">
-                            {isCorrectChoice ? (
-                              <>
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                <span className="text-sm text-green-600 font-medium">Đúng</span>
-                              </>
-                            ) : isSelected ? (
-                              <>
-                                <XCircle className="h-4 w-4 text-red-600" />
-                                <span className="text-sm text-red-600 font-medium">Sai</span>
-                              </>
-                            ) : null}
-                          </div>
-                        )}
-                      </div>
-                    </Label>
+                return (
+                  <div key={index} className={choiceClass}>
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id={`choice-${index}`}
+                        checked={isSelected}
+                        onCheckedChange={(checked) => handleMultipleChoiceChange(index.toString(), !!checked)}
+                        disabled={submitted}
+                        className="flex-shrink-0"
+                      />
+                      <Label 
+                        htmlFor={`choice-${index}`}
+                        className="flex-1 cursor-pointer font-normal"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{choice.text}</span>
+                          {showResult && (
+                            <div className="flex items-center gap-1">
+                              {isCorrectChoice ? (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                  <span className="text-sm text-green-600 font-medium">Đúng</span>
+                                </>
+                              ) : isSelected ? (
+                                <>
+                                  <XCircle className="h-4 w-4 text-red-600" />
+                                  <span className="text-sm text-red-600 font-medium">Sai</span>
+                                </>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                      </Label>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </RadioGroup>
+                );
+              })}
+            </div>
+          ) : (
+            // Single choice with radio buttons
+            <RadioGroup
+              value={selectedAnswer}
+              onValueChange={setSelectedAnswer}
+              disabled={submitted}
+              className="space-y-3"
+            >
+              {choices.map((choice, index) => {
+                const isSelected = selectedAnswer === index.toString();
+                const isCorrectChoice = choice.isCorrect;
+                
+                // Determine styling based on state
+                let choiceClass = "p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50";
+                
+                if (showResult) {
+                  if (isCorrectChoice) {
+                    choiceClass += " bg-green-50 border-green-300 dark:bg-green-950 dark:border-green-700";
+                  } else if (isSelected && !isCorrectChoice) {
+                    choiceClass += " bg-red-50 border-red-300 dark:bg-red-950 dark:border-red-700";
+                  }
+                } else if (isSelected) {
+                  choiceClass += " bg-primary/5 border-primary";
+                }
+
+                return (
+                  <div key={index} className={choiceClass}>
+                    <div className="flex items-center space-x-3">
+                      <RadioGroupItem 
+                        value={index.toString()} 
+                        id={`choice-${index}`}
+                        className="flex-shrink-0"
+                      />
+                      <Label 
+                        htmlFor={`choice-${index}`} 
+                        className="flex-1 cursor-pointer font-normal"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{choice.text}</span>
+                          {showResult && (
+                            <div className="flex items-center gap-1">
+                              {isCorrectChoice ? (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                  <span className="text-sm text-green-600 font-medium">Đúng</span>
+                                </>
+                              ) : isSelected ? (
+                                <>
+                                  <XCircle className="h-4 w-4 text-red-600" />
+                                  <span className="text-sm text-red-600 font-medium">Sai</span>
+                                </>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                      </Label>
+                    </div>
+                  </div>
+                );
+              })}
+            </RadioGroup>
+          )}
         </div>
 
         {/* Result Message */}
@@ -264,7 +385,7 @@ export default function ExerciseDisplay({ exercise, onComplete }: ExerciseDispla
           {!submitted ? (
             <Button 
               onClick={handleSubmit}
-              disabled={!selectedAnswer}
+              disabled={isMultipleChoice ? selectedAnswers.length === 0 : !selectedAnswer}
               className="flex-1"
             >
               Nộp bài
