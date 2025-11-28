@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeColorToggle } from "@/components/theme-color-toggle";
 import { SwitchLanguage } from "@/components/switch-language";
-import { Globe, Palette } from "lucide-react";
+import { Globe, Palette, Sun } from "lucide-react";
 
 export default function SettingPage() {
   return (
@@ -48,15 +49,27 @@ export default function SettingPage() {
             </CardTitle>
             <CardDescription>Customize how the application looks</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Theme</Label>
+                <Label>Theme Mode</Label>
                 <p className="text-sm text-muted-foreground">
                   Switch between light and dark mode
                 </p>
               </div>
               <ThemeToggle />
+            </div>
+            
+            <Separator />
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Color Theme</Label>
+                <p className="text-sm text-muted-foreground">
+                  Choose your preferred color scheme
+                </p>
+              </div>
+              <ThemeColorToggle />
             </div>
           </CardContent>
         </Card>
