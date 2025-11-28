@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { format } from "date-fns";
 import dynamic from "next/dynamic";
 import {
@@ -22,6 +22,8 @@ import {
   Smile,
   Twitter,
 } from "lucide-react";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
 
 // Dynamic import emoji picker để tránh SSR issues
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
@@ -39,6 +41,7 @@ import {
   useBlog,
   useBlogComments,
 } from "@/queries/useBlog";
+import { useQueryClient } from "@tanstack/react-query";
 import { useGetAccount } from "@/queries/useAccount";
 import {
   buildContentWithToc,
@@ -304,6 +307,7 @@ export default function BlogDetailPage() {
   }, [slug]);
   
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: blogResponse, isLoading, error } = useBlog(blogId, !!blogId);
   const blog = blogResponse?.payload?.data;
@@ -365,6 +369,66 @@ export default function BlogDetailPage() {
   }, []);
 
   const addCommentMutation = useAddBlogCommentMutation();
+
+  // WebSocket connection for real-time comments
+  useEffect(() => {
+    if (!blogId) return;
+
+    console.log("[WebSocket] Connecting for blog:", blogId);
+    
+    const client = new Client({
+      webSocketFactory: () => {
+        const sockJsUrl = "http://localhost:8081/ws-comment";
+        console.log("[WebSocket] Creating SockJS connection to:", sockJsUrl);
+        return new SockJS(sockJsUrl) as WebSocket;
+      },
+      debug: (str) => {
+        if (str.includes("CONNECT") || str.includes("MESSAGE") || str.includes("ERROR")) {
+          console.log("[STOMP]", str);
+        }
+      },
+      reconnectDelay: 5000,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
+      onConnect: () => {
+        console.log("[WebSocket] Connected! Subscribing to comments...");
+        
+        const destination = `/topic/blog/${blogId}/comments`;
+        console.log("[WebSocket] Subscribing to:", destination);
+        
+        client.subscribe(destination, (message) => {
+          console.log("[WebSocket] Received message:", message.body);
+          try {
+            const newComment = JSON.parse(message.body);
+            console.log("[WebSocket] New comment received:", newComment);
+            
+            // Invalidate comments query to refetch
+            queryClient.invalidateQueries({ queryKey: ["blog-comments", blogId] });
+            
+            toast({
+              title: "Bình luận mới",
+              description: "Có người vừa bình luận trong bài viết này!",
+            });
+          } catch (e) {
+            console.error("[WebSocket] Error parsing message:", e);
+          }
+        });
+      },
+      onDisconnect: () => {
+        console.log("[WebSocket] Disconnected");
+      },
+      onStompError: (frame) => {
+        console.error("[WebSocket] STOMP Error:", frame.headers["message"]);
+      },
+    });
+
+    client.activate();
+
+    return () => {
+      console.log("[WebSocket] Cleaning up connection...");
+      client.deactivate();
+    };
+  }, [blogId, queryClient, toast]);
 
   const preparedContent = useMemo(() => {
     if (!blog?.content) return { html: "", toc: [] as TocItem[] };

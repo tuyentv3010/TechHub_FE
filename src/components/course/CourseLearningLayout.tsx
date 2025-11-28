@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -139,6 +141,68 @@ export default function CourseLearningLayout({
 
   // Add lesson comment mutation
   const addCommentMutation = useAddLessonCommentMutation();
+
+  // WebSocket connection for real-time lesson comments
+  useEffect(() => {
+    if (!currentLesson?.id) return;
+
+    console.log("[WebSocket] Connecting for lesson:", currentLesson.id);
+    
+    const client = new Client({
+      webSocketFactory: () => {
+        const sockJsUrl = "http://localhost:8082/ws-comment";
+        console.log("[WebSocket] Creating SockJS connection to:", sockJsUrl);
+        return new SockJS(sockJsUrl) as WebSocket;
+      },
+      debug: (str) => {
+        if (str.includes("CONNECT") || str.includes("MESSAGE") || str.includes("ERROR")) {
+          console.log("[STOMP]", str);
+        }
+      },
+      reconnectDelay: 5000,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
+      onConnect: () => {
+        console.log("[WebSocket] Connected! Subscribing to lesson comments...");
+        
+        const destination = `/topic/lesson/${currentLesson.id}/comments`;
+        console.log("[WebSocket] Subscribing to:", destination);
+        
+        client.subscribe(destination, (message) => {
+          console.log("[WebSocket] Received message:", message.body);
+          try {
+            const data = JSON.parse(message.body);
+            console.log("[WebSocket] New lesson comment received:", data);
+            
+            // Invalidate comments query to refetch
+            queryClient.invalidateQueries({ 
+              queryKey: ["lesson-comments", courseSummary?.id, currentLesson.id] 
+            });
+            
+            toast({
+              title: "Bình luận mới",
+              description: "Có người vừa bình luận trong bài học này!",
+            });
+          } catch (e) {
+            console.error("[WebSocket] Error parsing message:", e);
+          }
+        });
+      },
+      onDisconnect: () => {
+        console.log("[WebSocket] Disconnected");
+      },
+      onStompError: (frame) => {
+        console.error("[WebSocket] STOMP Error:", frame.headers["message"]);
+      },
+    });
+
+    client.activate();
+
+    return () => {
+      console.log("[WebSocket] Cleaning up connection...");
+      client.deactivate();
+    };
+  }, [currentLesson?.id, courseSummary?.id, queryClient, toast]);
 
   // Check if a lesson is completed (only from API/database)
   const isLessonCompleted = (lessonId: string) => {

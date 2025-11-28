@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -15,6 +15,9 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,6 +52,7 @@ export default function CourseDetailPage() {
   const router = useRouter();
   const t = useTranslations("Course");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const slug = params.slug as string;
   const courseId = extractIdFromSlug(slug);
 
@@ -109,6 +113,66 @@ export default function CourseDetailPage() {
 
   // Submit rating mutation
   const submitRatingMutation = useSubmitCourseRatingMutation();
+
+  // WebSocket connection for real-time course comments
+  useEffect(() => {
+    if (!courseId) return;
+
+    console.log("[WebSocket] Connecting for course:", courseId);
+    
+    const client = new Client({
+      webSocketFactory: () => {
+        const sockJsUrl = "http://localhost:8082/ws-comment";
+        console.log("[WebSocket] Creating SockJS connection to:", sockJsUrl);
+        return new SockJS(sockJsUrl) as WebSocket;
+      },
+      debug: (str) => {
+        if (str.includes("CONNECT") || str.includes("MESSAGE") || str.includes("ERROR")) {
+          console.log("[STOMP]", str);
+        }
+      },
+      reconnectDelay: 5000,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
+      onConnect: () => {
+        console.log("[WebSocket] Connected! Subscribing to course comments...");
+        
+        const destination = `/topic/course/${courseId}/comments`;
+        console.log("[WebSocket] Subscribing to:", destination);
+        
+        client.subscribe(destination, (message) => {
+          console.log("[WebSocket] Received message:", message.body);
+          try {
+            const data = JSON.parse(message.body);
+            console.log("[WebSocket] New comment received:", data);
+            
+            // Invalidate comments query to refetch
+            queryClient.invalidateQueries({ queryKey: ["course-comments", courseId] });
+            
+            toast({
+              title: "Bình luận mới",
+              description: "Có người vừa bình luận trong khóa học này!",
+            });
+          } catch (e) {
+            console.error("[WebSocket] Error parsing message:", e);
+          }
+        });
+      },
+      onDisconnect: () => {
+        console.log("[WebSocket] Disconnected");
+      },
+      onStompError: (frame) => {
+        console.error("[WebSocket] STOMP Error:", frame.headers["message"]);
+      },
+    });
+
+    client.activate();
+
+    return () => {
+      console.log("[WebSocket] Cleaning up connection...");
+      client.deactivate();
+    };
+  }, [courseId, queryClient, toast]);
 
   const handleSubmitComment = (content: string) => {
     if (!courseId) {
