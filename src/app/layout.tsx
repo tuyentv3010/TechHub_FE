@@ -64,7 +64,7 @@ export default async function RootLayout({
                   className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2"
                 >
                   <Image
-                    src="/ai/AI.png"
+                    src="/ai/TechHub_Logo.png"
                     alt="AI Chat Assistant"
                     width={60}
                     height={60}

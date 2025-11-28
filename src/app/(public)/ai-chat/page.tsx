@@ -69,7 +69,7 @@ export default function AiChatPage() {
   const [useProgress, setUseProgress] = useState<boolean>(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<{ id: string; label: string; startedAt: string }[]>([]);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showSettings, setShowSettings] = useState<boolean>(true);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -434,17 +434,58 @@ export default function AiChatPage() {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         lg:transform-none
       `}>
-        {/* Header */}
-        <div className="p-4 sm:p-6 pb-4 flex items-center justify-between">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{t("headerTitle") || "CHAT A.I+"}</h1>
+        {/* Settings Section */}
+        <div className="p-3 sm:p-4 space-y-3">
+          {/* Settings Button */}
           <Button
             variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(false)}
+            className="w-full justify-start text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm"
+            onClick={() => setShowSettings(!showSettings)}
           >
-            <X className="h-5 w-5" />
+            <Settings className="h-4 w-4 mr-3" />
+            {t("settings") || "Settings"}
           </Button>
+
+          {/* Settings Panel (collapsible) */}
+          {showSettings && (
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 space-y-3">
+              <div className="space-y-2">
+                <Label className="text-xs">{t("mode")}</Label>
+                <Select value={mode} onValueChange={(v: string) => setMode(v as "GENERAL" | "ADVISOR")}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GENERAL">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-3 w-3" />
+                        {t("modeGeneral")}
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="ADVISOR">
+                      <div className="flex items-center gap-2">
+                        <GraduationCap className="h-3 w-3" />
+                        {t("modeAdvisor")}
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {mode === "ADVISOR" && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="use-progress-sidebar"
+                    checked={useProgress}
+                    onCheckedChange={(checked) => setUseProgress(checked as boolean)}
+                    className="h-3 w-3"
+                  />
+                  <label htmlFor="use-progress-sidebar" className="text-xs">
+                    {t("useMyProgress")}
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* New Chat Button & Search */}
@@ -549,76 +590,34 @@ export default function AiChatPage() {
           </div>
         </ScrollArea>
 
-        {/* Bottom Section - Settings & User Profile */}
-        <div className="border-t border-gray-200 dark:border-gray-800 p-3 sm:p-4 space-y-3">
-          {/* Settings Button */}
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm"
-            onClick={() => setShowSettings(!showSettings)}
-          >
-            <Settings className="h-4 w-4 mr-3" />
-            {t("settings") || "Settings"}
-          </Button>
-
-          {/* Settings Panel (collapsible) */}
-          {showSettings && (
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 space-y-3">
-              <div className="space-y-2">
-                <Label className="text-xs">{t("mode")}</Label>
-                <Select value={mode} onValueChange={(v: string) => setMode(v as "GENERAL" | "ADVISOR")}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="GENERAL">
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="h-3 w-3" />
-                        {t("modeGeneral")}
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="ADVISOR">
-                      <div className="flex items-center gap-2">
-                        <GraduationCap className="h-3 w-3" />
-                        {t("modeAdvisor")}
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {mode === "ADVISOR" && (
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="use-progress-sidebar"
-                    checked={useProgress}
-                    onCheckedChange={(checked) => setUseProgress(checked as boolean)}
-                    className="h-3 w-3"
-                  />
-                  <label htmlFor="use-progress-sidebar" className="text-xs">
-                    {t("useMyProgress")}
-                  </label>
-                </div>
-              )}
-            </div>
-          )}
-
+        {/* Bottom Section - User Profile */}
+        <div className="border-t border-gray-200 dark:border-gray-800 p-3 sm:p-4">
           {/* User Profile */}
+          <Link href="/profile">
           <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
             <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
               <AvatarImage 
-                src={userProfile?.avatar?.secureUrl || userProfile?.avatar?.url || "/avatars/default.png"} 
+                src={userProfile?.avatar || "/avatars/default.png"} 
                 alt={userProfile?.fullName || userProfile?.username || "User"} 
               />
               <AvatarFallback className="bg-blue-100 text-blue-600 text-xs sm:text-sm font-medium">
-                {(userProfile?.fullName || userProfile?.username || "U").substring(0, 2).toUpperCase()}
+                {(userProfile?.fullName || userProfile?.username || "U")
+                  .substring(0, 2)
+                  .toUpperCase()}
               </AvatarFallback>
             </Avatar>
+
             <div className="flex-1 min-w-0">
               <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                 {userProfile?.fullName || userProfile?.username || t("guest") || "Guest"}
               </p>
+
+              <p className="text-xs sm:text-sm font-medium text-blue-900 dark:text-gray-100 truncate">
+                {userProfile?.email || t("guest") || "Guest"}
+              </p>
             </div>
           </div>
+        </Link>
         </div>
       </div>
 
@@ -633,7 +632,7 @@ export default function AiChatPage() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-semibold">{t("headerTitle") || "CHAT A.I+"}</h1>
+          <h1 className="text-lg font-semibold">{t("headerTitle") || "Techhub AI"}</h1>
           <Button
             variant="ghost"
             size="icon"
@@ -666,8 +665,15 @@ export default function AiChatPage() {
           <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[50vh] sm:h-[60vh] text-center px-4">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4 sm:mb-6">
-                  <Bot className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full">
+               <Image
+                  src="/ai/TechHub_Logo.png"
+                  alt="Student learning"
+                  width={80}
+                  height={80}
+                  className="object-cover rounded-full"
+                  priority
+                />
                 </div>
                 <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   {t("welcomeTitle") || "How can I help you today?"}
@@ -701,7 +707,7 @@ export default function AiChatPage() {
                         <div className="flex items-center gap-2 mb-1">
                           <Avatar className="h-5 w-5 sm:h-6 sm:w-6">
                             <AvatarImage 
-                              src={userProfile?.avatar?.secureUrl || userProfile?.avatar?.url} 
+                              src={userProfile?.avatar} 
                             />
                             <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-xs">
                               {(userProfile?.fullName || userProfile?.username || "U").substring(0, 2).toUpperCase()}
@@ -728,12 +734,19 @@ export default function AiChatPage() {
                   {message.role === "assistant" && (
                     <div className="flex items-start gap-2 sm:gap-3">
                       <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                        <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                     <Image
+                        src="/ai/TechHub_Logo.png"
+                        alt="Student learning"
+                        width={80}
+                        height={80}
+                        className="object-cover rounded-full"
+                        priority
+                      />
                       </div>
                       <div className="flex-1 max-w-[90%] sm:max-w-[85%]">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                            CHAT A.I+
+                            Techhub AI
                           </span>
                           <CheckCircle className="h-3 w-3 text-blue-500" />
                         </div>
@@ -813,7 +826,7 @@ export default function AiChatPage() {
             <div className="relative flex items-end gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-3 sm:px-4 py-1.5 sm:py-2">
               <Avatar className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 mb-0.5 sm:mb-1 hidden sm:flex">
                 <AvatarImage 
-                  src={userProfile?.avatar?.secureUrl || userProfile?.avatar?.url} 
+                  src={userProfile?.avatar} 
                 />
                 <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-xs">
                   {(userProfile?.fullName || userProfile?.username || "U").substring(0, 2).toUpperCase()}
