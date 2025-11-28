@@ -1,4 +1,5 @@
 import http from "@/lib/http";
+import envConfig from "@/config";
 import {
   AiExerciseGenerateRequestType,
   AiExerciseGenerationResponseType,
@@ -60,12 +61,132 @@ const aiApiRequest = {
   // CHAT
   // ============================================
 
-  // Send chat message
+  // Send chat message (blocking - original)
   sendChatMessage: (body: ChatMessageRequestType) =>
     http.post<{ payload: { data: ChatMessageResponseType } }>(
       "/app/api/proxy/ai/chat/messages",
       body
     ),
+
+  // Send streaming chat message (SSE)
+  sendStreamingChatMessage: async (
+    body: ChatMessageRequestType,
+    onChunk: (chunk: string) => void,
+    onComplete?: () => void,
+    onError?: (error: Error) => void
+  ): Promise<void> => {
+    const baseUrl = envConfig.NEXT_PUBLIC_API_ENDPOINT;
+    const url = `${baseUrl}/app/api/proxy/ai/chat/stream`;
+    
+    console.log("🚀 [FE Streaming] Starting streaming request");
+    console.log("🚀 [FE Streaming] URL:", url);
+    console.log("🚀 [FE Streaming] Body:", JSON.stringify(body, null, 2));
+
+    try {
+      // Via proxy-client for streaming (with proper CORS and auth handling)
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify(body),
+        credentials: "include",
+      });
+
+      console.log("📡 [FE Streaming] Response status:", response.status);
+      console.log("📡 [FE Streaming] Response headers:", Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ [FE Streaming] HTTP error:", response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        console.error("❌ [FE Streaming] No readable stream available");
+        throw new Error("No readable stream available");
+      }
+
+      console.log("✅ [FE Streaming] Got reader, starting to read chunks...");
+      const decoder = new TextDecoder();
+      let chunkCount = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          console.log("✅ [FE Streaming] Stream done, total chunks:", chunkCount);
+          break;
+        }
+
+        const text = decoder.decode(value, { stream: true });
+        console.log(`📦 [FE Streaming] Raw chunk ${++chunkCount}:`, JSON.stringify(text));
+        
+        const lines = text.split("\n");
+        console.log(`📦 [FE Streaming] Lines in chunk:`, lines);
+
+        for (const line of lines) {
+          if (line.startsWith("data:")) {
+            const data = line.slice(5).trim();
+            console.log("📨 [FE Streaming] Data extracted:", data);
+            if (data === "[DONE]") {
+              console.log("🏁 [FE Streaming] Received [DONE] signal");
+              onComplete?.();
+              return;
+            }
+            if (data) {
+              console.log("✍️ [FE Streaming] Calling onChunk with:", data);
+              onChunk(data);
+            }
+          } else if (line.startsWith("event:")) {
+            console.log("🎫 [FE Streaming] Event line:", line);
+          } else if (line.trim()) {
+            console.log("❓ [FE Streaming] Unknown line:", line);
+          }
+        }
+      }
+
+      console.log("🏁 [FE Streaming] Stream completed normally");
+      onComplete?.();
+    } catch (error) {
+      console.error("❌ [FE Streaming] Error:", error);
+      onError?.(error instanceof Error ? error : new Error(String(error)));
+    }
+  },
+
+  // Simple streaming chat (GET request for quick queries)
+  streamSimpleChat: (
+    message: string,
+    userId: string,
+    onChunk: (chunk: string) => void,
+    onComplete?: () => void,
+    onError?: (error: Error) => void
+  ): EventSource => {
+    const baseUrl = envConfig.NEXT_PUBLIC_API_ENDPOINT;
+    // Via proxy-client for streaming
+    const url = `${baseUrl}/app/api/proxy/ai/chat/stream/simple?message=${encodeURIComponent(message)}&userId=${userId}`;
+
+    const eventSource = new EventSource(url, { withCredentials: true });
+
+    eventSource.addEventListener("message", (event) => {
+      if (event.data && event.data !== "[DONE]") {
+        onChunk(event.data);
+      }
+    });
+
+    eventSource.addEventListener("done", () => {
+      eventSource.close();
+      onComplete?.();
+    });
+
+    eventSource.onerror = (error) => {
+      eventSource.close();
+      onError?.(new Error("EventSource connection failed"));
+    };
+
+    return eventSource;
+  },
 
   // ============================================
   // ADMIN OPERATIONS

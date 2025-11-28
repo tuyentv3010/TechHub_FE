@@ -20,6 +20,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useSendChatMessageMutation, useGetUserSessions, useGetSessionMessages, useDeleteSessionMutation, useCreateSessionMutation } from "@/queries/useAi";
 import { useAppContext } from "@/components/app-provider";
 import { useAccountProfile } from "@/queries/useAccount";
+import { useStreamingChat } from "@/hooks/useStreamingChat";
 import {
   MessageCircle,
   Send,
@@ -67,15 +68,46 @@ export default function AiChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>("");
   const [useProgress, setUseProgress] = useState<boolean>(false);
+  const [useStreaming, setUseStreaming] = useState<boolean>(true); // Enable streaming by default
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<{ id: string; label: string; startedAt: string }[]>([]);
   const [showSettings, setShowSettings] = useState<boolean>(true);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const chatMutation = useSendChatMessageMutation();
   const createSessionMutation = useCreateSessionMutation();
   const deleteSessionMutation = useDeleteSessionMutation();
+
+  // Streaming chat hook
+  const { streamingMessage, isStreaming, sendStreamingMessage, resetStream } = useStreamingChat({
+    onComplete: (fullMessage) => {
+      // Replace streaming message with final message
+      if (streamingAssistantId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamingAssistantId
+              ? { ...m, content: fullMessage }
+              : m
+          )
+        );
+        setStreamingAssistantId(null);
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: tCommon("error"),
+        description: error.message || "Streaming failed",
+        variant: "destructive",
+      });
+      // Remove streaming message on error
+      if (streamingAssistantId) {
+        setMessages((prev) => prev.filter((m) => m.id !== streamingAssistantId));
+        setStreamingAssistantId(null);
+      }
+    },
+  });
   
   // Fetch user account profile
   const { data: accountData } = useAccountProfile();
@@ -147,7 +179,20 @@ export default function AiChatPage() {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, streamingMessage]);
+
+  // Update streaming message in real-time
+  useEffect(() => {
+    if (isStreaming && streamingAssistantId && streamingMessage) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === streamingAssistantId
+            ? { ...m, content: streamingMessage }
+            : m
+        )
+      );
+    }
+  }, [streamingMessage, isStreaming, streamingAssistantId]);
 
   const presetPrompts = {
     GENERAL: [
@@ -183,77 +228,98 @@ export default function AiChatPage() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const messageToSend = inputMessage;
     setInputMessage("");
 
-    // Show typing indicator
-    const typingMessage: Message = {
-      id: "typing",
-      role: "assistant",
-      content: "...",
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, typingMessage]);
+    // Use streaming mode
+    if (useStreaming) {
+      const assistantId = `streaming-${Date.now()}`;
+      const streamingPlaceholder: Message = {
+        id: assistantId,
+        role: "assistant",
+        content: "▌", // Cursor indicator
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, streamingPlaceholder]);
+      setStreamingAssistantId(assistantId);
+      resetStream();
 
-    try {
-      const response = await chatMutation.mutateAsync({
-        sessionId: sessionId || undefined,
-        userId,
-        mode,
-        message: inputMessage,
-        context: useProgress ? { includeProgress: true } : undefined,
-      });
-
-      // Update session ID if new session
-      if (!sessionId && response.payload?.data?.sessionId) {
-        const newId = response.payload.data.sessionId;
-        setSessionId(newId);
-        setSessions((prev) =>
-          prev.find((s) => s.id === newId) ? prev : [{ 
-            id: newId, 
-            label: `${t("session")} ${prev.length + 1}`,
-            startedAt: new Date().toISOString()
-          }, ...prev]
-        );
+      try {
+        await sendStreamingMessage({
+          sessionId: sessionId || undefined,
+          userId,
+          mode,
+          message: messageToSend,
+          context: useProgress ? { includeProgress: true } : undefined,
+        });
+      } catch (error) {
+        // Error handling is done in the hook's onError callback
+        console.error("Streaming error:", error);
       }
+    } else {
+      // Fallback to blocking mode
+      const typingMessage: Message = {
+        id: "typing",
+        role: "assistant",
+        content: "...",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, typingMessage]);
 
-      // Remove typing indicator and add response
-      setMessages((prev) => {
-        const filtered = prev.filter((m) => m.id !== "typing");
-        const payloadData = response.payload?.data;
-        
-        // Extract clean text response - prioritize message field
-        let assistantText = "";
-        
-        // Try to get from payload.data first (actual AI response)
-        if (payloadData?.message && typeof payloadData.message === "string") {
-          assistantText = payloadData.message;
-        } else if (payloadData?.answer && typeof payloadData.answer === "string") {
-          assistantText = payloadData.answer;
-        } else if (typeof response.message === "string" && response.message !== "Chat processed") {
-          // Fallback to top-level message if it's not the wrapper message
-          assistantText = response.message;
-        } else {
-          // Last resort fallback
-          assistantText = t("errorResponse");
+      try {
+        const response = await chatMutation.mutateAsync({
+          sessionId: sessionId || undefined,
+          userId,
+          mode,
+          message: messageToSend,
+          context: useProgress ? { includeProgress: true } : undefined,
+        });
+
+        // Update session ID if new session
+        if (!sessionId && response.payload?.data?.sessionId) {
+          const newId = response.payload.data.sessionId;
+          setSessionId(newId);
+          setSessions((prev) =>
+            prev.find((s) => s.id === newId) ? prev : [{ 
+              id: newId, 
+              label: `${t("session")} ${prev.length + 1}`,
+              startedAt: new Date().toISOString()
+            }, ...prev]
+          );
         }
-        
-        const assistantMessage: Message = {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: assistantText.trim(),
-          timestamp: new Date(),
-        };
-        return [...filtered, assistantMessage];
-      });
-    } catch (error: unknown) {
-      // Remove typing indicator
-      setMessages((prev) => prev.filter((m) => m.id !== "typing"));
 
-      toast({
-        title: tCommon("error"),
-        description: error instanceof Error ? error.message : t("errorSend"),
-        variant: "destructive",
-      });
+        // Remove typing indicator and add response
+        setMessages((prev) => {
+          const filtered = prev.filter((m) => m.id !== "typing");
+          const payloadData = response.payload?.data;
+          
+          let assistantText = "";
+          if (payloadData?.message && typeof payloadData.message === "string") {
+            assistantText = payloadData.message;
+          } else if (payloadData?.answer && typeof payloadData.answer === "string") {
+            assistantText = payloadData.answer;
+          } else if (typeof response.message === "string" && response.message !== "Chat processed") {
+            assistantText = response.message;
+          } else {
+            assistantText = t("errorResponse");
+          }
+          
+          const assistantMessage: Message = {
+            id: Date.now().toString(),
+            role: "assistant",
+            content: assistantText.trim(),
+            timestamp: new Date(),
+          };
+          return [...filtered, assistantMessage];
+        });
+      } catch (error: unknown) {
+        setMessages((prev) => prev.filter((m) => m.id !== "typing"));
+        toast({
+          title: tCommon("error"),
+          description: error instanceof Error ? error.message : t("errorSend"),
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -330,44 +396,215 @@ export default function AiChatPage() {
     }
   };
 
-  // Helper function to render message content with clickable links
-  const renderMessageContent = (content: string) => {
-    // Parse markdown-style links: [text](url)
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-    const parts: React.ReactNode[] = [];
-    let lastIndex = 0;
-    let match;
+  // Helper function to parse and format AI response (handles JSON and plain text)
+  const parseAiResponse = (content: string): string => {
+    // If content starts with cursor indicator, return as-is (streaming in progress)
+    if (content === "▌" || content.endsWith("▌")) {
+      return content;
+    }
 
-    while ((match = linkRegex.exec(content)) !== null) {
-      // Add text before the link
-      if (match.index > lastIndex) {
-        parts.push(content.substring(lastIndex, match.index));
+    // Try to parse as JSON
+    try {
+      // Clean up the content - remove extra whitespace but preserve structure
+      let cleanContent = content.trim();
+      
+      // If it looks like JSON, try to parse it
+      if (cleanContent.startsWith("{") || cleanContent.startsWith("[")) {
+        const parsed = JSON.parse(cleanContent);
+        return formatAiJsonResponse(parsed);
       }
-
-      // Add the link
-      const linkText = match[1];
-      const linkUrl = match[2];
-      parts.push(
-        <Link
-          key={match.index}
-          href={linkUrl}
-          className="text-blue-400 hover:text-blue-300 underline font-medium"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {linkText}
-        </Link>
-      );
-
-      lastIndex = match.index + match[0].length;
+    } catch {
+      // Not valid JSON, continue to text processing
     }
 
-    // Add remaining text after last link
-    if (lastIndex < content.length) {
-      parts.push(content.substring(lastIndex));
+    // Return as plain text if not JSON
+    return content;
+  };
+
+  // Format JSON response from AI into readable text
+  const formatAiJsonResponse = (data: Record<string, unknown>): string => {
+    let result = "";
+
+    // Handle response wrapper
+    const response = data.response || data;
+
+    // Handle tips/suggestions array
+    if (response && typeof response === 'object' && 'tips' in response) {
+      const tipsData = response as { tips: Array<{ tip?: string; title?: string; description?: string }> };
+      if (Array.isArray(tipsData.tips)) {
+        result += "💡 **Gợi ý:**\n\n";
+        tipsData.tips.forEach((item, index) => {
+          const title = item.tip || item.title || "";
+          const desc = item.description || "";
+          result += `${index + 1}. **${title}**\n   ${desc}\n\n`;
+        });
+      }
     }
 
-    return parts.length > 0 ? parts : content;
+    // Handle answer/message field
+    if (response && typeof response === 'object') {
+      const respObj = response as Record<string, unknown>;
+      if (respObj.answer && typeof respObj.answer === 'string') {
+        result += respObj.answer + "\n";
+      }
+      if (respObj.message && typeof respObj.message === 'string') {
+        result += respObj.message + "\n";
+      }
+      if (respObj.content && typeof respObj.content === 'string') {
+        result += respObj.content + "\n";
+      }
+      if (respObj.text && typeof respObj.text === 'string') {
+        result += respObj.text + "\n";
+      }
+    }
+
+    // Handle courses recommendations
+    if (response && typeof response === 'object' && 'courses' in response) {
+      const coursesData = response as { courses: Array<{ title?: string; name?: string; description?: string; url?: string }> };
+      if (Array.isArray(coursesData.courses)) {
+        result += "📚 **Khóa học gợi ý:**\n\n";
+        coursesData.courses.forEach((course, index) => {
+          const title = course.title || course.name || "";
+          const desc = course.description || "";
+          result += `${index + 1}. **${title}**\n   ${desc}\n`;
+          if (course.url) {
+            result += `   [Xem khóa học](${course.url})\n`;
+          }
+          result += "\n";
+        });
+      }
+    }
+
+    // Handle learning path
+    if (response && typeof response === 'object' && 'learningPath' in response) {
+      const pathData = response as { learningPath: Array<{ step?: number; title?: string; description?: string }> };
+      if (Array.isArray(pathData.learningPath)) {
+        result += "🎯 **Lộ trình học:**\n\n";
+        pathData.learningPath.forEach((step) => {
+          const stepNum = step.step || "";
+          const title = step.title || "";
+          const desc = step.description || "";
+          result += `**Bước ${stepNum}: ${title}**\n${desc}\n\n`;
+        });
+      }
+    }
+
+    // If no known fields found, try to stringify nicely
+    if (!result.trim()) {
+      // Check if it's a simple object with just text-like values
+      if (typeof response === 'string') {
+        return response;
+      }
+      if (response && typeof response === 'object') {
+        const respObj = response as Record<string, unknown>;
+        const keys = Object.keys(respObj);
+        keys.forEach(key => {
+          const value = respObj[key];
+          if (typeof value === 'string') {
+            result += `**${key}:** ${value}\n`;
+          } else if (Array.isArray(value)) {
+            result += `**${key}:**\n`;
+            value.forEach((item, i) => {
+              if (typeof item === 'string') {
+                result += `  ${i + 1}. ${item}\n`;
+              } else if (typeof item === 'object' && item !== null) {
+                result += `  ${i + 1}. ${JSON.stringify(item)}\n`;
+              }
+            });
+          }
+        });
+      }
+    }
+
+    return result.trim() || JSON.stringify(data, null, 2);
+  };
+
+  // Helper function to render message content with clickable links and formatting
+  const renderMessageContent = (content: string) => {
+    // First, parse the AI response (handles JSON formatting)
+    const formattedContent = parseAiResponse(content);
+    
+    // Then render with markdown-like formatting
+    const lines = formattedContent.split('\n');
+    
+    return (
+      <div className="space-y-2">
+        {lines.map((line, index) => {
+          // Handle bold text: **text**
+          const boldRegex = /\*\*([^*]+)\*\*/g;
+          let formattedLine: React.ReactNode = line;
+          
+          if (boldRegex.test(line)) {
+            const parts: React.ReactNode[] = [];
+            let lastIndex = 0;
+            let match;
+            boldRegex.lastIndex = 0; // Reset regex
+            
+            while ((match = boldRegex.exec(line)) !== null) {
+              if (match.index > lastIndex) {
+                parts.push(line.substring(lastIndex, match.index));
+              }
+              parts.push(
+                <strong key={`bold-${index}-${match.index}`} className="font-semibold">
+                  {match[1]}
+                </strong>
+              );
+              lastIndex = match.index + match[0].length;
+            }
+            
+            if (lastIndex < line.length) {
+              parts.push(line.substring(lastIndex));
+            }
+            
+            formattedLine = <>{parts}</>;
+          }
+
+          // Handle links: [text](url)
+          const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+          if (typeof formattedLine === 'string' && linkRegex.test(formattedLine)) {
+            const parts: React.ReactNode[] = [];
+            let lastIndex = 0;
+            let match;
+            linkRegex.lastIndex = 0;
+            
+            while ((match = linkRegex.exec(formattedLine)) !== null) {
+              if (match.index > lastIndex) {
+                parts.push(formattedLine.substring(lastIndex, match.index));
+              }
+              parts.push(
+                <Link
+                  key={`link-${index}-${match.index}`}
+                  href={match[2]}
+                  className="text-blue-500 hover:text-blue-400 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {match[1]}
+                </Link>
+              );
+              lastIndex = match.index + match[0].length;
+            }
+            
+            if (lastIndex < formattedLine.length) {
+              parts.push(formattedLine.substring(lastIndex));
+            }
+            
+            formattedLine = <>{parts}</>;
+          }
+
+          // Empty line = paragraph break
+          if (line.trim() === '') {
+            return <div key={index} className="h-2" />;
+          }
+
+          return (
+            <p key={index} className="leading-relaxed">
+              {formattedLine}
+            </p>
+          );
+        })}
+      </div>
+    );
   };
 
   // Group sessions by date
@@ -484,6 +721,19 @@ export default function AiChatPage() {
                   </label>
                 </div>
               )}
+              {/* Streaming Mode Toggle */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="use-streaming-sidebar"
+                  checked={useStreaming}
+                  onCheckedChange={(checked) => setUseStreaming(checked as boolean)}
+                  className="h-3 w-3"
+                />
+                <label htmlFor="use-streaming-sidebar" className="text-xs flex items-center gap-1">
+                  ⚡ Streaming Mode
+                  {isStreaming && <Loader2 className="h-3 w-3 animate-spin" />}
+                </label>
+              </div>
             </div>
           )}
         </div>
@@ -847,11 +1097,11 @@ export default function AiChatPage() {
               />
               <Button
                 onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || chatMutation.isPending || !userId}
+                disabled={!inputMessage.trim() || chatMutation.isPending || isStreaming || !userId}
                 size="icon"
                 className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
               >
-                {chatMutation.isPending ? (
+                {chatMutation.isPending || isStreaming ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4" />
