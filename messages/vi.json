@@ -1099,5 +1099,28 @@
     "approveError": "Không thể duyệt draft",
     "rejectSuccess": "Đã từ chối draft",
     "rejectError": "Không thể từ chối draft"
+  },
+  "Notification": {
+    "title": "Thông báo",
+    "subtitle": "Cập nhật những hoạt động mới nhất của bạn",
+    "notifications": "Thông báo",
+    "markAllRead": "Đánh dấu tất cả đã đọc",
+    "noNotifications": "Không có thông báo mới",
+    "noNotificationsDesc": "Bạn đã xem hết! Quay lại sau để xem thông báo mới.",
+    "viewAll": "Xem tất cả thông báo",
+    "new": "Mới",
+    "filterAll": "Tất cả",
+    "filterUnread": "Chưa đọc",
+    "filterRead": "Đã đọc",
+    "totalNotifications": "{count} thông báo",
+    "pageInfo": "Trang {current} / {total}",
+    "previous": "Trước",
+    "next": "Sau",
+    "typeAccount": "Tài khoản",
+    "typeBlog": "Blog",
+    "typeProgress": "Tiến độ",
+    "typeComment": "Bình luận",
+    "typeSystem": "Hệ thống",
+    "typeOther": "Khác"
   }
 }

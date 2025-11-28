@@ -1129,5 +1129,28 @@
     "approveError": "Failed to approve draft",
     "rejectSuccess": "Draft rejected",
     "rejectError": "Failed to reject draft"
+  },
+  "Notification": {
+    "title": "Notifications",
+    "subtitle": "Stay updated with your latest activities",
+    "notifications": "Notifications",
+    "markAllRead": "Mark all as read",
+    "noNotifications": "No new notifications",
+    "noNotificationsDesc": "You're all caught up! Check back later for new notifications.",
+    "viewAll": "View all notifications",
+    "new": "New",
+    "filterAll": "All",
+    "filterUnread": "Unread",
+    "filterRead": "Read",
+    "totalNotifications": "{count} notifications",
+    "pageInfo": "Page {current} of {total}",
+    "previous": "Previous",
+    "next": "Next",
+    "typeAccount": "Account",
+    "typeBlog": "Blog",
+    "typeProgress": "Progress",
+    "typeComment": "Comment",
+    "typeSystem": "System",
+    "typeOther": "Other"
   }
 }

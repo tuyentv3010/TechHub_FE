@@ -1028,5 +1028,28 @@
     "noDrafts": "下書きはまだありません。",
     "approve": "承認",
     "reject": "拒否"
+  },
+  "Notification": {
+    "title": "通知",
+    "subtitle": "最新のアクティビティをチェック",
+    "notifications": "通知",
+    "markAllRead": "すべて既読にする",
+    "noNotifications": "新しい通知はありません",
+    "noNotificationsDesc": "すべてチェック済み！後で新しい通知を確認してください。",
+    "viewAll": "すべての通知を表示",
+    "new": "新規",
+    "filterAll": "すべて",
+    "filterUnread": "未読",
+    "filterRead": "既読",
+    "totalNotifications": "{count} 件の通知",
+    "pageInfo": "ページ {current} / {total}",
+    "previous": "前へ",
+    "next": "次へ",
+    "typeAccount": "アカウント",
+    "typeBlog": "ブログ",
+    "typeProgress": "進捗",
+    "typeComment": "コメント",
+    "typeSystem": "システム",
+    "typeOther": "その他"
   }
 }

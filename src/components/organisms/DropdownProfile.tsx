@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { BookOpen, Menu, X, User, LogOut, Settings, BookText, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/components/app-provider";
+import { NotificationBell } from "@/components/organisms/NotificationBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -165,6 +166,9 @@ export function DropdownProfile() {
           
           {/* Theme Toggle */}
           <ThemeToggle />
+
+          {/* Notification Bell - Only show when authenticated */}
+          {isAuth && <NotificationBell />}
 
           {/* Auth Section */}
           {isAuth ? (
