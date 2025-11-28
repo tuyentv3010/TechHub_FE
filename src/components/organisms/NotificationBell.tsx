@@ -47,6 +47,13 @@ export function NotificationBell({ className }: NotificationBellProps) {
 
   const notifications: NotificationType[] = notificationsData?.payload?.data?.content || [];
   const totalUnread = notificationsData?.payload?.data?.totalElements || unreadCount;
+  console.log("sadasdasdasdasda" , notificationsData);
+  // Debug logs
+  console.log("🔔 [NotificationBell] isOpen:", isOpen);
+  console.log("🔔 [NotificationBell] unreadCount:", unreadCount, "isLoadingCount:", isLoadingCount);
+  console.log("🔔 [NotificationBell] notificationsData:", notificationsData);
+  console.log("🔔 [NotificationBell] notifications:", notifications);
+  console.log("🔔 [NotificationBell] totalUnread:", totalUnread);
 
   // Mutations
   const markAsReadMutation = useMarkAsReadMutation();
