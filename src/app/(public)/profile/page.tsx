@@ -266,8 +266,8 @@ export default function ProfilePage() {
                   <div className="space-y-2">
                     <FormLabel>Role</FormLabel>
                     <div className="flex gap-2">
-                      {account?.roles?.map((role) => (
-                        <span 
+                      {account?.roles?.map((role: string) => (
+                        <span
                           key={role} 
                           className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/20 px-3 py-1 text-sm font-medium text-blue-700 dark:text-blue-300"
                         >

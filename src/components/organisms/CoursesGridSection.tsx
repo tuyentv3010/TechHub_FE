@@ -1,7 +1,8 @@
-import CourseCard, { Course } from "@/components/molecules/CourseCard";
+import CourseCard from "@/components/molecules/CourseCard";
 import CourseCardWithInstructor from "@/components/molecules/CourseCardWithInstructor";
 import { PrimaryButton } from "@/components/atoms/PrimaryButton";
 import { useGetCourses } from "@/queries/useCourse";
+import { Course, transformApiCourse } from "@/types/course";
 
 interface CourseWithInstructorId extends Omit<Course, 'instructor' | 'instructorAvatar' | 'id'> {
   id: string;
@@ -43,9 +44,8 @@ export function CoursesGridSection({
     } : undefined
   );
 
-  // Use the raw API data directly since it already matches our Course interface
-  // Based on your sample: {id, title, instructorId, image, rating, reviews, price, badge, hours, lectures, lessons, students, instructor, instructorAvatar}
-  const apiCourses = apiResponse?.data || [];
+  // Transform API courses to Course type
+  const apiCourses = apiResponse?.data ? apiResponse.data.map(apiCourse => transformApiCourse(apiCourse)) : [];
 
   // Determine which courses to display
   const displayCourses = useApi ? apiCourses : (courses || []);

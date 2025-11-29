@@ -11,12 +11,11 @@ import {
   CheckCheck,
   ChevronLeft,
   ChevronRight,
-  Filter,
   Loader2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -240,7 +239,7 @@ export default function NotificationsPage() {
           ) : (
             // Notifications list
             <div className="divide-y">
-              {notifications.map((notification) => {
+              {notifications.map((notification: NotificationType) => {
                 const style = getNotificationStyle(notification.type);
                 return (
                   <div

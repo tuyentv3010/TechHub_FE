@@ -407,8 +407,8 @@ export default function AiChatPage() {
     // Try to parse as JSON
     try {
       // Clean up the content - remove extra whitespace but preserve structure
-      let cleanContent = content.trim();
-      
+      const cleanContent = content.trim();
+
       // If it looks like JSON, try to parse it
       if (cleanContent.startsWith("{") || cleanContent.startsWith("[")) {
         const parsed = JSON.parse(cleanContent);
@@ -1190,4 +1190,3 @@ function SessionItem({
     </div>
   );
 }
-

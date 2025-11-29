@@ -75,7 +75,7 @@ export default function RoleModal({
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<Set<string>>(new Set());
 
   // Group permissions by resource
-  const groupedPermissions: PermissionGroup[] = permissions.reduce((acc, perm) => {
+  const groupedPermissions: PermissionGroup[] = permissions.reduce((acc: PermissionGroup[], perm: { id: string; name: string; method: string; url: string; resource: string }) => {
     const existing = acc.find((g) => g.resource === perm.resource);
     if (existing) {
       existing.permissions.push({

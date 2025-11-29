@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
     const authHeader = request.headers.get("authorization");
-    const taskId = params.taskId;
+    const { taskId } = await params;
 
     const response = await fetch(
       `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/api/proxy/ai/drafts/${taskId}`,
@@ -32,11 +32,11 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
     const authHeader = request.headers.get("authorization");
-    const taskId = params.taskId;
+    const { taskId } = await params;
     const url = request.nextUrl;
     const action = url.pathname.split("/").pop();
 
