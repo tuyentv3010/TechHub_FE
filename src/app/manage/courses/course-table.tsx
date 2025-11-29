@@ -57,7 +57,7 @@ import { Badge } from "@/components/ui/badge";
 import AddCourse from "./add-course";
 import EditCourse from "./edit-course";
 import CourseFilters from "./course-filters";
-import { useDeleteCourseMutation, useGetCourseList, useGetSkills, useGetTags } from "@/queries/useCourse";
+import { useDeleteCourseMutation, useGetMyCourses, useGetSkills, useGetTags } from "@/queries/useCourse";
 import { CourseListResponseType } from "@/schemaValidations/course.schema";
 import { DollarSign } from "lucide-react";
 
@@ -182,17 +182,11 @@ export default function CourseTable() {
   const skillsQuery = useGetSkills();
   const tagsQuery = useGetTags();
 
-  const courseListQuery = useGetCourseList({
+  // Use getMyCourses API for Manage page - shows instructor's own courses (all statuses)
+  const courseListQuery = useGetMyCourses({
     page: page - 1,
     size: pageSize,
     search: search || undefined,
-    status: status || undefined,
-    level: level || undefined,
-    language: language || undefined,
-    skillIds: skillIds.length > 0 ? skillIds : undefined,
-    tagIds: tagIds.length > 0 ? tagIds : undefined,
-    minPrice: minPrice ? Number(minPrice) : undefined,
-    maxPrice: maxPrice ? Number(maxPrice) : undefined,
   });
 
   const data = useMemo(

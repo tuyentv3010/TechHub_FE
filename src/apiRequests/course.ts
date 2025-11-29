@@ -9,6 +9,25 @@ import {
 import { CoursesResponse, ApiCourse } from "@/types/course";
 
 const courseApiRequest = {
+  // Get instructor's own courses for Manage page (all statuses including DRAFT)
+  getMyCourses: (params?: {
+    page?: number;
+    size?: number;
+    search?: string;
+  }) => {
+    console.log("🔍 [FE] getMyCourses called with params:", JSON.stringify(params, null, 2));
+    
+    const searchParams = new URLSearchParams();
+    if (params?.page !== undefined) searchParams.append("page", String(params.page));
+    if (params?.size !== undefined) searchParams.append("size", String(params.size));
+    if (params?.search) searchParams.append("search", params.search);
+
+    const url = `/app/api/proxy/courses/my-courses${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+    console.log("🌐 [FE] getMyCourses Request URL:", url);
+
+    return http.get<CourseListResponseType>(url);
+  },
+
   // Get course list with pagination and filters (New API)
   getCourses: (params?: {
     page?: number;

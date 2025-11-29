@@ -6,6 +6,18 @@ import {
 } from "@/schemaValidations/course.schema";
 import { CoursesResponse, transformApiCourse } from "@/types/course";
 
+// Get instructor's own courses for Manage page (all statuses including DRAFT)
+export const useGetMyCourses = (params?: {
+  page?: number;
+  size?: number;
+  search?: string;
+}) => {
+  return useQuery({
+    queryKey: ["my-courses", params],
+    queryFn: () => courseApiRequest.getMyCourses(params),
+  });
+};
+
 // New API - Get courses with new response format
 export const useGetCourses = (params?: {
   page?: number;
@@ -67,6 +79,7 @@ export const useCreateCourseMutation = () => {
     mutationFn: (body: CreateCourseBodyType) => courseApiRequest.createCourse(body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["course-list"] });
+      queryClient.invalidateQueries({ queryKey: ["my-courses"] });
     },
   });
 };
@@ -79,6 +92,7 @@ export const useUpdateCourseMutation = () => {
       courseApiRequest.updateCourse(id, body),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["course-list"] });
+      queryClient.invalidateQueries({ queryKey: ["my-courses"] });
       queryClient.invalidateQueries({ queryKey: ["course", variables.id] });
     },
   });
@@ -91,6 +105,7 @@ export const useDeleteCourseMutation = () => {
     mutationFn: (id: string) => courseApiRequest.deleteCourse(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["course-list"] });
+      queryClient.invalidateQueries({ queryKey: ["my-courses"] });
     },
   });
 };
