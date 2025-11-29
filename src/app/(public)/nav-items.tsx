@@ -30,6 +30,8 @@ export default function NavItems({ className }: { className?: string }) {
     { title: t("home"), href: "/" },
     { title: t("courses"), href: "/courses" },
     { title: t("learningPaths"), href: "/learning-paths" },
+    { title: t("recommendations"), href: "/recommendations" },
+    { title: t("aiChat"), href: "/ai-chat" },
     { title: t("blog"), href: "/blog" },
     { title: t("about"), href: "/about" },
     { title: t("contact"), href: "/contact" },

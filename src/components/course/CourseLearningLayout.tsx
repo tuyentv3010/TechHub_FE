@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -19,7 +21,8 @@ import {
   Clock,
   Award,
   Video,
-  HelpCircle
+  HelpCircle,
+  Badge
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -34,7 +37,9 @@ import {
   useAddLessonCommentMutation 
 } from "@/queries/useCourseComments";
 import { useCourseProgress, useMarkLessonCompleteMutation } from "@/queries/useCourseProgress";
+import { useGetExercises } from "@/queries/useCourse";
 import { CourseCommentsList } from "./CourseCommentsList";
+import ExerciseDisplay from "./ExerciseDisplay";
 
 interface CourseLearningLayoutProps {
   course: any;
@@ -74,6 +79,23 @@ export default function CourseLearningLayout({
   });
 
   const currentLesson = allLessons[currentLessonIndex];
+  console.log("dasasdasdas asd asd as", currentLesson);
+  // Fetch exercises for current lesson
+  const { data: exercisesResponse } = useGetExercises(
+    courseSummary?.id, 
+    currentLesson?.id
+  );
+  const exercises = exercisesResponse?.payload?.data || [];
+  console.log("loli " , exercisesResponse);
+  // DEBUG: Log exercise data
+  console.log('=== EXERCISE DEBUG ===');
+  console.log('Course ID:', courseSummary?.id);
+  console.log('Current Lesson:', currentLesson);
+  console.log('Current Lesson ID:', currentLesson?.id);
+  console.log('Exercises Response:', exercisesResponse);
+  console.log('Exercises Data:', exercises);
+  console.log('Current Lesson hasExercise:', currentLesson?.hasExercise);
+  console.log('Exercises count:', exercises.length);
 
   // Fetch course progress
   const { data: progressResponse } = useCourseProgress(courseSummary?.id, !!courseSummary?.id);
@@ -119,6 +141,68 @@ export default function CourseLearningLayout({
 
   // Add lesson comment mutation
   const addCommentMutation = useAddLessonCommentMutation();
+
+  // WebSocket connection for real-time lesson comments
+  useEffect(() => {
+    if (!currentLesson?.id) return;
+
+    console.log("[WebSocket] Connecting for lesson:", currentLesson.id);
+    
+    const client = new Client({
+      webSocketFactory: () => {
+        const sockJsUrl = "http://localhost:8082/ws-comment";
+        console.log("[WebSocket] Creating SockJS connection to:", sockJsUrl);
+        return new SockJS(sockJsUrl) as WebSocket;
+      },
+      debug: (str) => {
+        if (str.includes("CONNECT") || str.includes("MESSAGE") || str.includes("ERROR")) {
+          console.log("[STOMP]", str);
+        }
+      },
+      reconnectDelay: 5000,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
+      onConnect: () => {
+        console.log("[WebSocket] Connected! Subscribing to lesson comments...");
+        
+        const destination = `/topic/lesson/${currentLesson.id}/comments`;
+        console.log("[WebSocket] Subscribing to:", destination);
+        
+        client.subscribe(destination, (message) => {
+          console.log("[WebSocket] Received message:", message.body);
+          try {
+            const data = JSON.parse(message.body);
+            console.log("[WebSocket] New lesson comment received:", data);
+            
+            // Invalidate comments query to refetch
+            queryClient.invalidateQueries({ 
+              queryKey: ["lesson-comments", courseSummary?.id, currentLesson.id] 
+            });
+            
+            toast({
+              title: "Bình luận mới",
+              description: "Có người vừa bình luận trong bài học này!",
+            });
+          } catch (e) {
+            console.error("[WebSocket] Error parsing message:", e);
+          }
+        });
+      },
+      onDisconnect: () => {
+        console.log("[WebSocket] Disconnected");
+      },
+      onStompError: (frame) => {
+        console.error("[WebSocket] STOMP Error:", frame.headers["message"]);
+      },
+    });
+
+    client.activate();
+
+    return () => {
+      console.log("[WebSocket] Cleaning up connection...");
+      client.deactivate();
+    };
+  }, [currentLesson?.id, courseSummary?.id, queryClient, toast]);
 
   // Check if a lesson is completed (only from API/database)
   const isLessonCompleted = (lessonId: string) => {
@@ -447,6 +531,75 @@ export default function CourseLearningLayout({
             </div>
           </div>
 
+          {/* Exercise Section - Always show for testing, hide hasExercise condition */}
+          <div className="p-6 border-b">
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <HelpCircle className="h-5 w-5" />
+              Bài tập
+              {currentLesson?.hasExercise && (
+                <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded">
+                  có hasExercise
+                </span>
+              )}
+              {exercises.length > 0 && (
+                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded ml-2">
+                  {exercises.length} câu từ API
+                </span>
+              )}
+            </h3>
+              
+              {!exercisesResponse && (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-sm text-muted-foreground mt-2">Đang tải bài tập...</p>
+                </div>
+              )}
+              
+              {exercisesResponse && exercises.length === 0 && (
+                <div className="text-center py-8">
+                  <HelpCircle className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">Bài học này chưa có bài tập</p>
+                </div>
+              )}
+              
+              {exercises.length > 0 && (
+                <div className="space-y-6">
+                  {exercises.map((exercise: any, index: number) => (
+                    <div key={exercise.id}>
+                      {index > 0 && <div className="border-t my-6"></div>}
+                      <div className="mb-3">
+                        <h4 className="text-sm font-medium text-muted-foreground">
+                          Bài tập {index + 1} - {exercise.type === "MULTIPLE_CHOICE" ? "Trắc nghiệm" : 
+                            exercise.type === "CODING" ? "Lập trình" : "Tự luận"}
+                        </h4>
+                      </div>
+                      <ExerciseDisplay 
+                        exercise={{
+                          id: exercise.id,
+                          type: exercise.type,
+                          question: exercise.question,
+                          options: exercise.options,
+                          testCases: exercise.testCases
+                        }}
+                        onComplete={(exerciseId, isCorrect) => {
+                          console.log('Exercise completed:', exerciseId, isCorrect);
+                          if (isCorrect) {
+                            // Trigger confetti for correct answer
+                            confetti({
+                              particleCount: 100,
+                              spread: 70,
+                              origin: { y: 0.6 }
+                            });
+                          }
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+            </div>
+
           {/* Lesson Assets/Resources */}
           {currentLesson?.assets && currentLesson.assets.length > 0 && (
             <div className="p-6 border-b">
@@ -699,6 +852,12 @@ export default function CourseLearningLayout({
                                         <span className="flex items-center gap-1">
                                           <Clock className="h-3 w-3" />
                                           {Math.floor(lesson.estimatedDuration / 60)} phút
+                                        </span>
+                                      )}
+                                      {lesson.hasExercise && (
+                                        <span className="flex items-center gap-1 text-orange-600">
+                                          <HelpCircle className="h-3 w-3" />
+                                          Bài tập
                                         </span>
                                       )}
                                     </div>

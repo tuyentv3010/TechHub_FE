@@ -70,13 +70,11 @@ export const formatLanguage = (language: string): string => {
 };
 
 /**
- * Format price thành currency
+ * Format price thành currency (xx.xx USD)
+ * Backend stores prices in USD
  */
 export const formatPrice = (price: number): string => {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(price);
+  return `${price.toFixed(2)} USD`;
 };
 
 /**
@@ -107,9 +105,14 @@ export const formatDuration = (minutes: number): string => {
 
 /**
  * Format tag label
+ * Handles both string and object formats from backend
  */
-export const formatTagLabel = (tag: string) =>
-  tag
+export const formatTagLabel = (tag: string | { name: string } | any): string => {
+  // Extract string value if tag is an object
+  const tagString = typeof tag === 'string' ? tag : (tag?.name || String(tag));
+  
+  return tagString
     .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+};

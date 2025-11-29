@@ -4,22 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Star, BookOpen, Clock, Users } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 import { createCourseSlug } from "@/lib/course";
-
-export interface Course {
-  id?: string;
-  title: string;
-  instructor: string;
-  image: string;
-  rating: number;
-  reviews: number;
-  price: number;
-  badge?: string;
-  hours?: number;
-  lectures?: number;
-  lessons?: number;
-  students?: number;
-  instructorAvatar?: string;
-}
+import { Course, Skill } from "@/types/course";
+import { useGetCourseById } from "@/queries/useCourse";
 
 export interface CourseCardProps {
   course: Course;
@@ -29,14 +15,29 @@ export interface CourseCardProps {
 const CourseCard = ({ course }: CourseCardProps) => {
   const courseSlug = course.id ? createCourseSlug(course.title, course.id) : "#";
   
+  // Fetch detailed course information to get lessons count and duration
+  const { data: courseDetailResponse } = useGetCourseById(course.id || "");
+  const courseDetail = courseDetailResponse?.payload?.data;
+  // Enhanced course data with fetched details
+  const enhancedCourse = {
+    ...course,
+    lessons: courseDetail?.totalLessons || course.lessons || 0,
+    hours: courseDetail?.totalEstimatedDurationMinutes 
+      ? Math.round(courseDetail.totalEstimatedDurationMinutes / 60 * 10) / 10 // Round to 1 decimal
+      : course.hours || 0,
+    skills: courseDetail?.summary.skills || course.skills || [],
+  };
+  console.log("sadasdasd asd asd skills " , courseDetail);
+
+  
   return (
     <Link href={`/courses/${courseSlug}`}>
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700 relative group cursor-pointer">
       {/* Course Image */}
       <div className="relative h-48 overflow-hidden">
         <Image
-          src={course.image}
-          alt={course.title}
+          src={enhancedCourse.image}
+          alt={enhancedCourse.title}
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-300"
         />
@@ -44,15 +45,15 @@ const CourseCard = ({ course }: CourseCardProps) => {
         {/* Price Badge - Top Right */}
         <div className="absolute top-4 right-4">
           <span className="bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-full text-sm font-bold shadow-md">
-            ${course.price.toFixed(2)}
+            {enhancedCourse.price.toFixed(2)} USD
           </span>
         </div>
         
         {/* Category Badge - Bottom Left */}
-        {course.badge && (
+        {enhancedCourse.badge && (
           <div className="absolute bottom-4 left-4">
             <span className="bg-blue-900 dark:bg-blue-800 text-white px-3 py-1 rounded-md text-sm font-medium">
-              {course.badge}
+              {enhancedCourse.badge}
             </span>
           </div>
         )}
@@ -80,65 +81,107 @@ const CourseCard = ({ course }: CourseCardProps) => {
               <Star
                 key={i}
                 className={`h-4 w-4 ${
-                  i < Math.floor(course.rating)
+                  i < Math.floor(enhancedCourse.rating)
                     ? 'text-yellow-400 fill-current'
                     : 'text-gray-300 dark:text-gray-600'
                 }`}
               />
             ))}
             <span className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              {course.rating} ({formatNumber(course.reviews || 0)})
+              {enhancedCourse.rating} ({formatNumber(enhancedCourse.reviews || 0)})
             </span>
           </div>
 
           {/* Course Title */}
-          <h3 className="font-bold text-xl mb-4 line-clamp-2 text-gray-900 dark:text-white leading-tight">
-            {course.title}
+          <h3 className="font-bold text-xl text-gray-900 dark:text-white leading-tight overflow-hidden" 
+              style={{
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                wordBreak: 'break-word',
+                hyphens: 'auto',
+                minHeight: '3.5rem', // Fixed height for 2 lines
+                maxHeight: '3.5rem'
+              }}>
+            {enhancedCourse.title}
           </h3>
 
           {/* Course Stats */}
           <div className="flex justify-center mb-4">
             <div className="flex items-center gap-4 bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow-sm border border-gray-100 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
-              {course.lessons && (
+              {enhancedCourse.lessons > 0 && (
                 <div className="flex items-center gap-1">
                   <BookOpen className="h-4 w-4" />
-                  <span>Lesson {course.lessons}</span>
+                  <span>{enhancedCourse.lessons} bài học</span>
                 </div>
               )}
-              {course.hours && (
+              {enhancedCourse.hours > 0 && (
                 <>
-                  {course.lessons && <div className="w-1 h-1 bg-gray-300 dark:bg-gray-600 rounded-full"></div>}
+                  {enhancedCourse.lessons > 0 && <div className="w-1 h-1 bg-gray-300 dark:bg-gray-600 rounded-full"></div>}
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    <span>{course.hours}h {course.hours > 1 ? '30m' : ''}</span>
+                    <span>{enhancedCourse.hours}h</span>
                   </div>
                 </>
               )}
-              {course.students && (
+              {enhancedCourse.students && enhancedCourse.students > 0 && (
                 <>
-                  {(course.lessons || course.hours) && <div className="w-1 h-1 bg-gray-300 dark:bg-gray-600 rounded-full"></div>}
+                  {(enhancedCourse.lessons > 0 || enhancedCourse.hours > 0) && <div className="w-1 h-1 bg-gray-300 dark:bg-gray-600 rounded-full"></div>}
                   <div className="flex items-center gap-1">
                     <Users className="h-4 w-4" />
-                    <span>Students {course.students}+</span>
+                    <span>{enhancedCourse.students} học viên</span>
                   </div>
                 </>
               )}
             </div>
           </div>
 
+          {/* Skills Section */}
+          {enhancedCourse.skills && enhancedCourse.skills.length > 0 && (
+            <div className="h-12"> {/* Fixed height container */}
+              <div className="flex flex-wrap gap-1.5 overflow-hidden h-8"> {/* Fixed height for skills */}
+                {enhancedCourse.skills.slice(0, 3).map((skill: Skill, index: number) => (
+                  <div 
+                    key={skill.id || index}
+                    className="flex items-center gap-1 bg-white dark:bg-gray-800 px-2 py-1 rounded-full border border-gray-200 dark:border-gray-600 text-xs whitespace-nowrap"
+                  >
+                    {skill.thumbnail && (
+                      <div className="relative w-3 h-3 flex-shrink-0">
+                        <Image
+                          src={skill.thumbnail}
+                          alt={skill.name}
+                          fill
+                          className="object-cover rounded-full"
+                        />
+                      </div>
+                    )}
+                    <span className="text-gray-700 dark:text-gray-300 font-medium truncate max-w-[60px]">
+                      {skill.name}
+                    </span>
+                  </div>
+                ))}
+                {enhancedCourse.skills.length > 3 && (
+                  <div className="flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    +{enhancedCourse.skills.length - 3}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Instructor and Enroll Button */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative w-10 h-10">
                 <Image
-                  src={course.instructorAvatar || "/avatars/default-instructor.jpg"}
-                  alt={course.instructor}
+                  src={enhancedCourse.instructorAvatar || "/avatars/default-instructor.jpg"}
+                  alt={enhancedCourse.instructor}
                   fill
                   className="object-cover rounded-full"
                 />
               </div>
               <span className="font-medium text-gray-700 dark:text-gray-300">
-                {course.instructor}
+                {enhancedCourse.instructor}
               </span>
             </div>
             

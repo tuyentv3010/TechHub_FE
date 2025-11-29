@@ -8,7 +8,15 @@ import {
   ForgotPasswordResType,
   ResetPasswordBodyType,
   ResetPasswordResType,
+  VerifyCodeBodyType,
+  VerifyEmailResType,
+  VerifyEmailBodyType,
+  ResendCodeResType,
 } from "@/schemaValidations/auth.schema";
+import { 
+  ChangePasswordBodyType, 
+  ChangePasswordResType 
+} from "@/schemaValidations/password.schema";
 
 const authApiRequest = {
   // Client-side methods
@@ -27,6 +35,22 @@ const authApiRequest = {
   // Reset Password API - POST /app/api/proxy/users/reset-password/:email
   resetPassword: (email: string, body: ResetPasswordBodyType) =>
     http.post<ResetPasswordResType>(`/app/api/proxy/users/reset-password/${email}`, body),
+
+  // Verify Email API - POST /app/api/proxy/auth/verify-email
+  verifyEmail: (body: VerifyCodeBodyType) =>
+    http.post<VerifyEmailResType>("/app/api/proxy/auth/verify-email", body),
+
+  // Resend Code API - POST /app/api/proxy/auth/resend-code
+  resendCode: (body: VerifyEmailBodyType) =>
+    http.post<ResendCodeResType>("/app/api/proxy/auth/resend-code", body),
+
+  // Resend Reset Password Code API - POST /app/api/proxy/users/resend-reset-code/:email
+  resendResetCode: (email: string) =>
+    http.post<ResendCodeResType>(`/app/api/proxy/users/resend-reset-code/${email}`, {}),
+
+  // Change Password API - POST /app/api/proxy/users/change-password
+  changePassword: (body: ChangePasswordBodyType) =>
+    http.post<ChangePasswordResType>("/app/api/proxy/users/change-password", body),
 
   // Set token to cookie (for OAuth flow)
   setTokenToCookie: (body: { accessToken: string; refreshToken: string }) =>
@@ -59,6 +83,11 @@ const authApiRequest = {
 
   sRefreshToken: (body: { refreshToken: string }) =>
     http.post<LoginResType>("/auth/refresh-token", body),
+
+  // OAuth2 URLs - Direct backend endpoints (no HTTP wrapper needed)
+  getGoogleOAuthUrl: () => `${process.env.NEXT_PUBLIC_API_ENDPOINT}/oauth2/authorization/google`,
+  getGithubOAuthUrl: () => `${process.env.NEXT_PUBLIC_API_ENDPOINT}/oauth2/authorization/github`,
+  getFacebookOAuthUrl: () => `${process.env.NEXT_PUBLIC_API_ENDPOINT}/oauth2/authorization/facebook`,
 };
 
 export default authApiRequest;

@@ -58,6 +58,8 @@ import fileApiRequest from "@/apiRequests/file";
 import {
   useGetCourseById,
   useGetLesson,
+  useGetLessonExercise,
+  useGetExercises,
   useCreateChapterMutation,
   useUpdateChapterMutation,
   useDeleteChapterMutation,
@@ -67,7 +69,15 @@ import {
   useCreateAssetMutation,
   useUpdateAssetMutation,
   useDeleteAssetMutation,
+  useUpsertExerciseMutation,
+  useCreateExercisesMutation,
+  useUpdateExerciseMutation,
+  useDeleteExerciseMutation,
 } from "@/queries/useCourse";
+import { 
+  useGetExerciseDrafts,
+  useGenerateExercisesMutation,
+} from "@/queries/useAi";
 import {
   CreateChapterBody,
   CreateChapterBodyType,
@@ -81,9 +91,14 @@ import {
   CreateAssetBodyType,
   UpdateAssetBody,
   UpdateAssetBodyType,
+  CreateExerciseBody,
+  CreateExerciseBodyType,
+  UpdateExerciseBody,
+  UpdateExerciseBodyType,
 } from "@/schemaValidations/course.schema";
 import TableSkeleton from "@/components/Skeleton";
 import { useAccountProfile } from "@/queries/useAccount";
+import AiExercisePanel from "@/app/manage/courses/[id]/ai-exercise-panel";
 
 const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"), {
   ssr: false,
@@ -117,6 +132,149 @@ const AssetTypeIcon = ({ type }: { type: string }) => {
   return icons[type as keyof typeof icons] || <Paperclip className="h-3 w-3" />;
 };
 
+// Exercise Display Component
+const ExerciseDisplay = ({ 
+  courseId, 
+  lessonId, 
+  chapterId,
+  hasExercise, 
+  onEdit, 
+  onDelete, 
+  onCreate 
+}: { 
+  courseId: string; 
+  lessonId: string; 
+  chapterId: string;
+  hasExercise?: boolean;
+  onEdit?: (exercise: any) => void;
+  onDelete?: (exercise: any) => void;
+  onCreate?: () => void;
+}) => {
+  const t = useTranslations("ManageCourse");
+  const { data: exercisesData, isLoading } = useGetExercises(courseId, lessonId);
+  const exercises = exercisesData?.payload?.data || [];
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+          {t("Exercise")}
+        </h4>
+        {onCreate && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCreate}
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            {t("AddExercise")}
+          </Button>
+        )}
+      </div>
+      
+      {isLoading ? (
+        <div className="text-center py-2">
+          <p className="text-xs text-muted-foreground">{t("Loading") || "Đang tải..."}</p>
+        </div>
+      ) : exercises.length > 0 ? (
+        <div className="space-y-3">
+          {exercises.map((exercise: any) => (
+            <div key={exercise.id} className="p-3 bg-background rounded border space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 flex-1">
+                  <HelpCircle className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                  <div className="flex-1">
+                    <Badge variant="secondary" className="text-xs mb-2">
+                      {exercise.type === "MULTIPLE_CHOICE" ? "Trắc nghiệm" : 
+                       exercise.type === "CODING" ? "Lập trình" : 
+                       exercise.type === "OPEN_ENDED" ? "Tự luận" : exercise.type}
+                    </Badge>
+                    <p className="text-sm font-medium">{exercise.question}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  {onEdit && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEdit(exercise)}
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                  {onDelete && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDelete(exercise)}
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* MCQ Options */}
+              {exercise.type === "MULTIPLE_CHOICE" && exercise.options?.choices && (
+                <div className="space-y-2 pl-6">
+              {exercise.options.choices.map((choice: any, idx: number) => (
+                <div 
+                  key={choice.id || idx}
+                  className={`text-xs p-2 rounded flex items-start gap-2 ${
+                    choice.isCorrect 
+                      ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800" 
+                      : "bg-muted/50"
+                  }`}
+                >
+                  <span className="font-semibold min-w-[20px]">
+                    {String.fromCharCode(65 + idx)}.
+                  </span>
+                  <span className="flex-1">{choice.text}</span>
+                      {choice.isCorrect && (
+                        <Badge variant="default" className="text-xs bg-green-600">
+                          ✓ Đúng
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Coding Test Cases */}
+              {exercise.type === "CODING" && exercise.testCases && exercise.testCases.length > 0 && (
+                <div className="space-y-2 pl-6">
+              <p className="text-xs font-semibold text-muted-foreground">Test Cases:</p>
+              {exercise.testCases.slice(0, 3).map((tc: any, idx: number) => (
+                <div key={idx} className="text-xs p-2 rounded bg-muted/50">
+                  <div className="flex gap-2">
+                    <span className="font-semibold">Input:</span>
+                    <code className="flex-1">{tc.input}</code>
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                    <span className="font-semibold">Expected:</span>
+                    <code className="flex-1">{tc.expectedOutput}</code>
+                  </div>
+                </div>
+              ))}
+                  {exercise.testCases.length > 3 && (
+                    <p className="text-xs text-muted-foreground">+ {exercise.testCases.length - 3} more test cases</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-2">
+          <p className="text-xs text-muted-foreground">
+            {t("NoExercise") || "Chưa có bài tập"}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function CourseContentManagementPage() {
   const params = useParams();
   const courseId = params.id as string;
@@ -132,6 +290,36 @@ export default function CourseContentManagementPage() {
   const createAssetMutation = useCreateAssetMutation();
   const updateAssetMutation = useUpdateAssetMutation();
   const deleteAssetMutation = useDeleteAssetMutation();
+  const upsertExerciseMutation = useUpsertExerciseMutation();
+  const createExercisesMutation = useCreateExercisesMutation();
+  const updateExerciseMutation = useUpdateExerciseMutation();
+  const deleteExerciseMutation = useDeleteExerciseMutation();
+  const generateExercisesMutation = useGenerateExercisesMutation();
+  
+  const course = courseData?.payload?.data?.summary;
+  const chapters = courseData?.payload?.data?.chapters || [];
+
+  // Get all exercise drafts for this course
+  const [allExerciseDrafts, setAllExerciseDrafts] = useState<unknown[]>([]);
+  const [draftLessonIds, setDraftLessonIds] = useState<string[]>([]);
+
+  // Collect all lesson IDs from chapters
+  useEffect(() => {
+    const lessonIds = chapters.flatMap((ch: { lessons?: { id: string }[] }) => 
+      (ch.lessons || []).map(l => l.id)
+    );
+    setDraftLessonIds(lessonIds);
+  }, [chapters]);
+
+  // Fetch drafts for all lessons (simplified - in production, use a single API call)
+  const firstLessonId = draftLessonIds[0] || "";
+  const { data: draftsData, refetch: refetchDrafts } = useGetExerciseDrafts(firstLessonId);
+
+  useEffect(() => {
+    if (draftsData?.payload?.data) {
+      setAllExerciseDrafts(draftsData.payload.data);
+    }
+  }, [draftsData]);
 
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
@@ -160,9 +348,16 @@ export default function CourseContentManagementPage() {
     open: false,
     mode: 'create',
   });
-
-  const course = courseData?.payload?.data?.summary;
-  const chapters = courseData?.payload?.data?.chapters || [];
+  const [exerciseDialog, setExerciseDialog] = useState<{
+    open: boolean;
+    mode: 'create' | 'edit';
+    chapterId?: string;
+    lessonId?: string;
+    data?: any;
+  }>({
+    open: false,
+    mode: 'create',
+  });
 
   const toggleChapter = (chapterId: string) => {
     setExpandedChapters(prev => {
@@ -553,6 +748,289 @@ export default function CourseContentManagementPage() {
     }
   };
 
+  const handleCreateExercise = async (data: CreateExerciseBodyType) => {
+    console.log('➕ handleCreateExercise called with:', {
+      data,
+      exerciseDialog,
+      courseId,
+      lessonId: exerciseDialog.lessonId,
+    });
+
+    if (!exerciseDialog.chapterId || !exerciseDialog.lessonId) {
+      console.error('❌ Missing required fields for create:', {
+        hasChapterId: !!exerciseDialog.chapterId,
+        hasLessonId: !!exerciseDialog.lessonId,
+      });
+      return;
+    }
+
+    // Get existing exercises for this lesson to calculate next orderIndex
+    const lesson = chapters
+      .find((ch: any) => ch.id === exerciseDialog.chapterId)
+      ?.lessons?.find((l: any) => l.id === exerciseDialog.lessonId);
+    
+    const existingExercises = lesson?.exercises || [];
+    const nextOrderIndex = existingExercises.length > 0
+      ? Math.max(...existingExercises.map((ex: any) => ex.orderIndex || 0)) + 1
+      : 1;
+    
+    // Auto-assign orderIndex
+    const exerciseData = {
+      ...data,
+      orderIndex: nextOrderIndex,
+    };
+
+    try {
+      console.log('📤 Calling createExercisesMutation with:', {
+        courseId,
+        lessonId: exerciseDialog.lessonId,
+        body: [exerciseData],
+        autoOrderIndex: nextOrderIndex,
+      });
+
+      await createExercisesMutation.mutateAsync({
+        courseId,
+        lessonId: exerciseDialog.lessonId,
+        body: [exerciseData], // API expects array
+      });
+
+      console.log('✅ Exercise created successfully');
+      toast({
+        title: t("Success"),
+        description: t("ExerciseCreated"),
+      });
+      setExerciseDialog({ open: false, mode: 'create' });
+      refetch();
+    } catch (error) {
+      console.error('❌ Error creating exercise:', error);
+      handleErrorApi({ error });
+    }
+  };
+
+  const handleUpdateExercise = async (data: UpdateExerciseBodyType) => {
+    console.log('🔧 === HANDLE UPDATE EXERCISE START ===');
+    console.log('🔧 Input data received:', JSON.stringify(data, null, 2));
+    console.log('🔧 Exercise dialog state:', {
+      mode: exerciseDialog.mode,
+      chapterId: exerciseDialog.chapterId,
+      lessonId: exerciseDialog.lessonId,
+      exerciseId: exerciseDialog.data?.id,
+      exerciseData: JSON.stringify(exerciseDialog.data, null, 2),
+    });
+    console.log('🔧 Course ID:', courseId);
+
+    // Validation with enhanced logging
+    if (!exerciseDialog.chapterId || !exerciseDialog.lessonId || !exerciseDialog.data?.id) {
+      console.error('❌ === VALIDATION FAILED ===');
+      console.error('❌ Missing required fields:', {
+        hasChapterId: !!exerciseDialog.chapterId,
+        hasLessonId: !!exerciseDialog.lessonId,
+        hasExerciseId: !!exerciseDialog.data?.id,
+        chapterId: exerciseDialog.chapterId,
+        lessonId: exerciseDialog.lessonId,
+        exerciseId: exerciseDialog.data?.id,
+      });
+      return;
+    }
+
+    console.log('✅ Validation passed, proceeding with update...');
+
+    try {
+      // Enhanced data processing logging
+      console.log('🔧 === PREPARING UPDATE PAYLOAD ===');
+      console.log('🔧 Original exercise data from dialog:', JSON.stringify(exerciseDialog.data, null, 2));
+      console.log('🔧 Form data to update with:', JSON.stringify(data, null, 2));
+      
+      // Log specific fields
+      console.log('🔧 Exercise type:', data.type);
+      console.log('🔧 Exercise question:', data.question);
+      console.log('🔧 Preserving orderIndex:', exerciseDialog.data.orderIndex);
+      
+      // Enhanced options/testCases logging
+      if (data.type === 'MULTIPLE_CHOICE' && data.options) {
+        console.log('🔍 === MCQ OPTIONS PROCESSING ===');
+        console.log('🔍 Options field type:', typeof data.options);
+        console.log('🔍 Options raw value:', data.options);
+        
+        if (typeof data.options === 'string') {
+          try {
+            const parsedOptions = JSON.parse(data.options);
+            console.log('🔍 Parsed options object:', JSON.stringify(parsedOptions, null, 2));
+            console.log('🔍 Choices count:', parsedOptions.choices?.length || 0);
+            console.log('🔍 Correct choices:', parsedOptions.choices?.filter((c: any) => c.isCorrect).length || 0);
+          } catch (parseError) {
+            console.error('❌ Failed to parse options JSON:', parseError);
+          }
+        }
+      }
+      
+      if (data.type === 'CODING' && data.testCases) {
+        console.log('💻 === CODING TEST CASES PROCESSING ===');
+        console.log('💻 TestCases field type:', typeof data.testCases);
+        console.log('💻 TestCases raw value:', data.testCases);
+        
+        if (typeof data.testCases === 'string') {
+          try {
+            const parsedTestCases = JSON.parse(data.testCases);
+            console.log('💻 Parsed test cases:', JSON.stringify(parsedTestCases, null, 2));
+            console.log('💻 Test cases count:', parsedTestCases.length || 0);
+            console.log('💻 Public test cases:', parsedTestCases.filter((tc: any) => tc.visibility === 'PUBLIC').length || 0);
+          } catch (parseError) {
+            console.error('❌ Failed to parse testCases JSON:', parseError);
+          }
+        }
+      }
+
+      const updatePayload = {
+        courseId,
+        lessonId: exerciseDialog.lessonId,
+        exerciseId: exerciseDialog.data.id,
+        body: {
+          ...data,
+          orderIndex: exerciseDialog.data.orderIndex,
+        },
+      };
+      
+      console.log('📤 === FINAL API PAYLOAD ===');
+      console.log('📤 Full payload object:', JSON.stringify(updatePayload, null, 2));
+      console.log('📤 Payload body:', JSON.stringify(updatePayload.body, null, 2));
+      console.log('📤 Payload size (chars):', JSON.stringify(updatePayload).length);
+      console.log('📤 API endpoint info:', {
+        courseId,
+        lessonId: exerciseDialog.lessonId,
+        exerciseId: exerciseDialog.data.id,
+      });
+
+      console.log('🚀 Making API call to updateExerciseMutation...');
+      const result = await updateExerciseMutation.mutateAsync(updatePayload);
+      
+      console.log('✅ === UPDATE SUCCESSFUL ===');
+      console.log('✅ API response:', JSON.stringify(result, null, 2));
+      console.log('✅ Response status:', result?.status);
+      console.log('✅ Response payload:', result?.payload);
+      
+      toast({
+        title: t("Success"),
+        description: t("ExerciseUpdated"),
+      });
+      
+      console.log('🔄 Closing dialog and refreshing data...');
+      setExerciseDialog({ open: false, mode: 'create' });
+      refetch();
+      console.log('✅ Update process completed successfully');
+      
+    } catch (error) {
+      console.error('❌ === UPDATE FAILED ===');
+      console.error('❌ Error object:', error);
+      console.error('❌ Error message:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      
+      // Enhanced error details
+      if (error && typeof error === 'object') {
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
+        
+        // Check for specific error types
+        if ('response' in error) {
+          console.error('❌ HTTP Response error:', (error as any).response);
+          console.error('❌ Response status:', (error as any).response?.status);
+          console.error('❌ Response data:', (error as any).response?.data);
+        }
+        
+        if ('request' in error) {
+          console.error('❌ Network request error:', (error as any).request);
+        }
+      }
+      
+      handleErrorApi({ error });
+    }
+    
+    console.log('🏁 === HANDLE UPDATE EXERCISE END ===\n');
+  };
+
+  const handleDeleteExercise = async (chapterId: string, lessonId: string, exercise: any) => {
+    console.log('🗑️ handleDeleteExercise called with:', {
+      chapterId,
+      lessonId,
+      exercise,
+      exerciseId: exercise?.id,
+      courseId,
+    });
+    console.log('🗑️ Exercise object:', JSON.stringify(exercise, null, 2));
+
+    if (!exercise?.id) {
+      console.error('❌ Exercise ID is missing:', exercise);
+      console.error('❌ Full exercise object:', JSON.stringify(exercise, null, 2));
+      toast({
+        title: t("Error"),
+        description: "Exercise ID is missing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm(t("DeleteExerciseWarning", { question: exercise.question }))) {
+      console.log('⏸️ User cancelled delete');
+      return;
+    }
+
+    try {
+      const deletePayload = {
+        courseId,
+        lessonId,
+        exerciseId: exercise.id,
+      };
+      
+      console.log('📤 Calling deleteExerciseMutation with:', deletePayload);
+      console.log('📤 Exercise to delete:', JSON.stringify(exercise, null, 2));
+
+      const result = await deleteExerciseMutation.mutateAsync(deletePayload);
+
+      console.log('✅ Exercise deleted successfully');
+      console.log('✅ Delete result:', result);
+      
+      toast({
+        title: t("Success"),
+        description: t("ExerciseDeleted"),
+      });
+      refetch();
+    } catch (error) {
+      console.error('❌ Error deleting exercise:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      handleErrorApi({ error });
+    }
+  };
+
+  const handleGenerateExercises = async (lessonId: string, lessonTitle: string) => {
+    try {
+      toast({
+        title: "Generating exercises...",
+        description: `Creating AI-generated exercises for "${lessonTitle}"`,
+      });
+      
+      await generateExercisesMutation.mutateAsync({
+        courseId,
+        lessonId,
+        type: "MCQ",
+        difficulties: ["BEGINNER"],
+        formats: ["MCQ"],
+        count: 5,
+        variants: 1,
+        difficulty: "BEGINNER",
+        language: "vi",
+        includeExplanations: true,
+        includeTestCases: true,
+      });
+      
+      toast({
+        title: t("Success"),
+        description: "Exercises generated successfully!",
+      });
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
+
   if (isLoading) {
     return <div className="p-6"><TableSkeleton /></div>;
   }
@@ -817,6 +1295,12 @@ export default function CourseContentManagementPage() {
                                                           {t("Free")}
                                                         </Badge>
                                                       )}
+                                                      {lesson.hasExercise && (
+                                                        <Badge variant="default" className="text-xs bg-purple-500">
+                                                          <HelpCircle className="h-3 w-3 mr-1" />
+                                                          {t("Exercise")}
+                                                        </Badge>
+                                                      )}
                                                       {lesson.assets && lesson.assets.length > 0 && (
                                                         <Badge variant="outline" className="text-xs">
                                                           <Paperclip className="h-3 w-3 mr-1" />
@@ -874,11 +1358,54 @@ export default function CourseContentManagementPage() {
                                                   </div>
                                                 </div>
 
-                                                {/* Assets List */}
+                                                {/* Assets & Exercise List */}
                                                 {expandedLessons.has(lesson.id) && (
-                                                  <div className="px-12 py-3 bg-muted/30 border-t">
+                                                  <div className="px-12 py-3 bg-muted/30 border-t space-y-4">
+                                                    {/* Exercise Section */}
+                                                    <ExerciseDisplay 
+                                                      courseId={courseId} 
+                                                      lessonId={lesson.id}
+                                                      chapterId={chapter.id}
+                                                      hasExercise={lesson.hasExercise}
+                                                      onCreate={() => setExerciseDialog({
+                                                        open: true,
+                                                        mode: 'create',
+                                                        chapterId: chapter.id,
+                                                        lessonId: lesson.id,
+                                                      })}
+                                                      onEdit={(exercise) => {
+                                                        console.log('📝 === OPENING EXERCISE EDIT DIALOG ===');
+                                                        console.log('📝 Exercise to edit:', JSON.stringify(exercise, null, 2));
+                                                        console.log('📝 Exercise ID:', exercise.id);
+                                                        console.log('📝 Exercise type:', exercise.type);
+                                                        console.log('📝 Exercise question:', exercise.question);
+                                                        console.log('📝 Exercise options (raw):', exercise.options);
+                                                        console.log('📝 Exercise testCases (raw):', exercise.testCases);
+                                                        console.log('📝 Exercise orderIndex:', exercise.orderIndex);
+                                                        console.log('📝 Chapter ID:', chapter.id);
+                                                        console.log('📝 Lesson ID:', lesson.id);
+                                                        
+                                                        setExerciseDialog({
+                                                          open: true,
+                                                          mode: 'edit',
+                                                          chapterId: chapter.id,
+                                                          lessonId: lesson.id,
+                                                          data: exercise,
+                                                        });
+                                                        console.log('📝 Exercise dialog state set, opening...');
+                                                      }}
+                                                      onDelete={(exercise) => handleDeleteExercise(chapter.id, lesson.id, exercise)}
+                                                    />
+
+                                                    {/* Assets Section */}
+                                                    <div className="space-y-2">
+                                                      <div className="flex items-center justify-between">
+                                                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+                                                          {t("Assets")}
+                                                        </h4>
+                                                      </div>
                                                     {(!lesson.assets || lesson.assets.length === 0) ? (
-                                                      <div className="text-center py-4">
+                                                      <div className="text-center py-2">
                                                         <p className="text-xs text-muted-foreground mb-2">
                                                           {t("NoAssets")}
                                                         </p>
@@ -946,6 +1473,7 @@ export default function CourseContentManagementPage() {
                                                         ))}
                                                       </div>
                                                     )}
+                                                    </div>
                                                   </div>
                                                 )}
                                               </div>
@@ -1004,6 +1532,26 @@ export default function CourseContentManagementPage() {
         onCreate={handleCreateAsset}
         onUpdate={handleUpdateAsset}
       />
+
+      {/* Exercise Dialog */}
+      <ExerciseDialog
+        open={exerciseDialog.open}
+        mode={exerciseDialog.mode}
+        data={exerciseDialog.data}
+        onClose={() => setExerciseDialog({ open: false, mode: 'create' })}
+        onCreate={handleCreateExercise}
+        onUpdate={handleUpdateExercise}
+      />
+
+      {/* AI Exercise Generation Panel */}
+      <Card>
+        <CardContent className="pt-6">
+          <AiExercisePanel 
+            courseId={courseId} 
+            chapters={chapters}
+          />
+        </CardContent>
+      </Card>
     </main>
   );
 }
@@ -1108,6 +1656,598 @@ function ChapterDialog({
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? t(mode === 'create' ? "Creating" : "Updating") : t(mode === 'create' ? "Create" : "Update")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Exercise Dialog Component
+function ExerciseDialog({
+  open,
+  mode,
+  data,
+  onClose,
+  onCreate,
+  onUpdate,
+}: {
+  open: boolean;
+  mode: 'create' | 'edit';
+  data?: any;
+  onClose: () => void;
+  onCreate: (data: CreateExerciseBodyType) => void;
+  onUpdate: (data: UpdateExerciseBodyType) => void;
+}) {
+  const t = useTranslations("ManageCourse");
+  
+  // MCQ Choices state
+  const [choices, setChoices] = useState<Array<{ text: string; isCorrect: boolean }>>([
+    { text: '', isCorrect: false },
+  ]);
+
+  // Test Cases state
+  const [testCases, setTestCases] = useState<Array<{
+    orderIndex: number;
+    visibility: string;
+    input: string;
+    expectedOutput: string;
+    weight: number;
+    timeoutSeconds: number;
+  }>>([{
+    orderIndex: 1,
+    visibility: 'PUBLIC',
+    input: '',
+    expectedOutput: '',
+    weight: 10,
+    timeoutSeconds: 2,
+  }]);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateExerciseBodyType | UpdateExerciseBodyType>({
+    resolver: mode === 'create'
+      ? (zodResolver(CreateExerciseBody) as any)
+      : undefined, // Remove validation for edit mode temporarily
+    defaultValues: data || { type: 'MULTIPLE_CHOICE', orderIndex: 1 },
+    mode: 'onChange',
+  });
+
+  useEffect(() => {
+    if (open) {
+      console.log('🎯 === EXERCISE DIALOG OPENED ===');
+      console.log('📊 Dialog mode:', mode);
+      console.log('📊 Raw data received:', JSON.stringify(data, null, 2));
+      
+      if (data) {
+        console.log('📝 === EDIT MODE - PROCESSING DATA ===');
+        console.log('📝 Exercise type:', data.type);
+        console.log('📝 Exercise question:', data.question);
+        console.log('📝 Exercise orderIndex:', data.orderIndex);
+        
+        // Enhanced debugging for options/choices
+        if (data.type === 'MULTIPLE_CHOICE') {
+          console.log('🔍 === PROCESSING MCQ DATA ===');
+          console.log('🔍 Raw options field:', data.options);
+          console.log('🔍 Type of options:', typeof data.options);
+          
+          let parsedChoices;
+          try {
+            if (typeof data.options === 'string') {
+              console.log('📜 Parsing options from JSON string...');
+              const parsed = JSON.parse(data.options);
+              console.log('📜 Parsed options object:', JSON.stringify(parsed, null, 2));
+              parsedChoices = parsed.choices || [];
+            } else if (data.options && data.options.choices) {
+              console.log('📦 Using options.choices directly...');
+              parsedChoices = data.options.choices;
+            } else {
+              console.log('❌ No valid choices found, using default');
+              parsedChoices = [{ text: '', isCorrect: false }];
+            }
+            
+            console.log('✅ Final parsed choices:', JSON.stringify(parsedChoices, null, 2));
+            console.log('✅ Choices count:', parsedChoices.length);
+            setChoices(parsedChoices);
+            
+          } catch (error) {
+            console.error('❌ Error parsing choices:', error);
+            console.error('❌ Problematic options data:', data.options);
+            setChoices([{ text: '', isCorrect: false }]);
+          }
+        }
+        
+        // Enhanced debugging for test cases
+        if (data.type === 'CODING') {
+          console.log('💻 === PROCESSING CODING DATA ===');
+          console.log('💻 Raw testCases field:', data.testCases);
+          console.log('💻 Type of testCases:', typeof data.testCases);
+          
+          let parsedTestCases;
+          try {
+            if (typeof data.testCases === 'string') {
+              console.log('📜 Parsing testCases from JSON string...');
+              parsedTestCases = JSON.parse(data.testCases);
+            } else if (Array.isArray(data.testCases)) {
+              console.log('📋 Using testCases array directly...');
+              parsedTestCases = data.testCases;
+            } else {
+              console.log('❌ No valid test cases found, using default');
+              parsedTestCases = [{
+                orderIndex: 1,
+                visibility: 'PUBLIC',
+                input: '',
+                expectedOutput: '',
+                weight: 10,
+                timeoutSeconds: 2,
+              }];
+            }
+            
+            console.log('✅ Final parsed test cases:', JSON.stringify(parsedTestCases, null, 2));
+            console.log('✅ Test cases count:', parsedTestCases.length);
+            setTestCases(parsedTestCases);
+            
+          } catch (error) {
+            console.error('❌ Error parsing test cases:', error);
+            console.error('❌ Problematic testCases data:', data.testCases);
+            setTestCases([{
+              orderIndex: 1,
+              visibility: 'PUBLIC',
+              input: '',
+              expectedOutput: '',
+              weight: 10,
+              timeoutSeconds: 2,
+            }]);
+          }
+        }
+        
+        console.log('📝 Calling form reset with data...');
+        reset(data);
+        console.log('✅ Form reset completed');
+        
+      } else {
+        console.log('➕ === CREATE MODE - USING DEFAULTS ===');
+        const defaultData = { type: 'MULTIPLE_CHOICE' as const, orderIndex: 1 };
+        console.log('➕ Default data:', JSON.stringify(defaultData, null, 2));
+        
+        reset(defaultData);
+        setChoices([{ text: '', isCorrect: false }]);
+        setTestCases([{
+          orderIndex: 1,
+          visibility: 'PUBLIC',
+          input: '',
+          expectedOutput: '',
+          weight: 10,
+          timeoutSeconds: 2,
+        }]);
+        console.log('✅ Create mode initialization completed');
+      }
+      console.log('🏁 === DIALOG SETUP COMPLETE ===\n');
+    }
+  }, [open, data, reset]);
+
+  const onSubmit = (formData: CreateExerciseBodyType | UpdateExerciseBodyType) => {
+    console.log('🚀 === EXERCISE FORM SUBMISSION (FIXED) ===');
+    console.log('🚀 Form mode:', mode);
+    console.log('🚀 Raw form data:', JSON.stringify(formData, null, 2));
+    console.log('🚀 Exercise type:', exerciseType);
+    console.log('🚀 Current choices state:', JSON.stringify(choices, null, 2));
+    console.log('🚀 Current testCases state:', JSON.stringify(testCases, null, 2));
+
+    // Clone formData to avoid mutation
+    const payload = { ...formData };
+    
+    // Ensure orderIndex is set
+    if (!payload.orderIndex && data?.orderIndex) {
+      payload.orderIndex = data.orderIndex;
+    }
+    if (!payload.orderIndex) {
+      payload.orderIndex = 1;
+    }
+
+    // Enhanced debugging for options building
+    if (exerciseType === 'MULTIPLE_CHOICE') {
+      console.log('🔧 === BUILDING MCQ OPTIONS (FIXED) ===');
+      console.log('🔧 Choices to stringify:', JSON.stringify(choices, null, 2));
+      console.log('🔧 Valid choices count:', choices.filter(c => c.text.trim()).length);
+      console.log('🔧 Correct choices count:', choices.filter(c => c.isCorrect).length);
+      
+      const optionsObject = { choices };
+      const optionsJson = JSON.stringify(optionsObject);
+      console.log('🔧 Options object:', JSON.stringify(optionsObject, null, 2));
+      console.log('🔧 Options JSON string:', optionsJson);
+      console.log('🔧 Options JSON string length:', optionsJson.length);
+      
+      (payload as any).options = optionsJson;
+      console.log('✅ Options field set in payload');
+    }
+    
+    // Enhanced debugging for test cases building
+    if (exerciseType === 'CODING') {
+      console.log('💻 === BUILDING CODING TEST CASES (FIXED) ===');
+      console.log('💻 Test cases to stringify:', JSON.stringify(testCases, null, 2));
+      console.log('💻 Valid test cases count:', testCases.filter(tc => tc.input.trim() && tc.expectedOutput.trim()).length);
+      console.log('💻 Public test cases count:', testCases.filter(tc => tc.visibility === 'PUBLIC').length);
+      console.log('💻 Private test cases count:', testCases.filter(tc => tc.visibility === 'PRIVATE').length);
+      
+      const testCasesJson = JSON.stringify(testCases);
+      console.log('💻 Test cases JSON string:', testCasesJson);
+      console.log('💻 Test cases JSON string length:', testCasesJson.length);
+      
+      (payload as any).testCases = testCasesJson;
+      console.log('✅ TestCases field set in payload');
+    }
+
+    console.log('📤 === FINAL SUBMISSION PAYLOAD (FIXED) ===');
+    console.log('📤 Final payload:', JSON.stringify(payload, null, 2));
+    console.log('📤 Payload size (chars):', JSON.stringify(payload).length);
+
+    try {
+      if (mode === 'create') {
+        console.log('➕ Calling onCreate with payload...');
+        onCreate(payload as CreateExerciseBodyType);
+      } else {
+        console.log('🔧 Calling onUpdate with payload...');
+        onUpdate(payload as UpdateExerciseBodyType);
+      }
+      console.log('✅ Form submission call completed');
+    } catch (error) {
+      console.error('❌ Error in form submission:', error);
+    }
+    
+    console.log('🏁 === FORM SUBMISSION COMPLETE (FIXED) ===\n');
+  };
+
+  const exerciseType = watch("type");
+
+  // MCQ Choice handlers
+  const addChoice = () => {
+    setChoices([...choices, { text: '', isCorrect: false }]);
+  };
+
+  const removeChoice = (index: number) => {
+    if (choices.length > 1) {
+      setChoices(choices.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateChoiceText = (index: number, text: string) => {
+    const newChoices = [...choices];
+    newChoices[index].text = text;
+    setChoices(newChoices);
+  };
+
+  const toggleChoiceCorrect = (index: number) => {
+    const newChoices = [...choices];
+    newChoices[index].isCorrect = !newChoices[index].isCorrect;
+    setChoices(newChoices);
+  };
+
+  // Test Case handlers
+  const addTestCase = () => {
+    setTestCases([...testCases, {
+      orderIndex: testCases.length + 1,
+      visibility: 'PUBLIC',
+      input: '',
+      expectedOutput: '',
+      weight: 10,
+      timeoutSeconds: 2,
+    }]);
+  };
+
+  const removeTestCase = (index: number) => {
+    if (testCases.length > 1) {
+      const newTestCases = testCases.filter((_, i) => i !== index);
+      // Re-index
+      newTestCases.forEach((tc, i) => tc.orderIndex = i + 1);
+      setTestCases(newTestCases);
+    }
+  };
+
+  const updateTestCase = (index: number, field: string, value: any) => {
+    const newTestCases = [...testCases];
+    (newTestCases[index] as any)[field] = value;
+    setTestCases(newTestCases);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === 'create' ? t("AddExercise") || "Add Exercise" : t("EditExercise") || "Edit Exercise"}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'create'
+              ? t("AddExerciseDescription") || "Create a new exercise for this lesson"
+              : t("EditExerciseDescription") || "Modify the exercise details"}
+          </DialogDescription>
+        </DialogHeader>
+        <form 
+          onSubmit={(e) => {
+            console.log('📋 === FORM SUBMIT EVENT TRIGGERED ===');
+            console.log('📋 Event type:', e.type);
+            console.log('📋 Form valid?', (e.target as HTMLFormElement).checkValidity());
+            console.log('📋 Mode:', mode);
+            console.log('📋 Is submitting:', isSubmitting);
+            console.log('📋 Form errors before submit:', JSON.stringify(errors, null, 2));
+            console.log('📋 Calling handleSubmit wrapper...');
+            
+            // Call the handleSubmit wrapper with error handling
+            const submitHandler = handleSubmit(
+              onSubmit,
+              (validationErrors) => {
+                console.log('❌ === FORM VALIDATION FAILED ===');
+                console.log('❌ Validation errors:', JSON.stringify(validationErrors, null, 2));
+                console.log('❌ Number of errors:', Object.keys(validationErrors).length);
+                
+                Object.keys(validationErrors).forEach(key => {
+                  const error = (validationErrors as any)[key];
+                  console.log(`❌ Field '${key}' error:`, error?.message);
+                  console.log(`❌ Field '${key}' type:`, error?.type);
+                  console.log(`❌ Field '${key}' full error:`, error);
+                });
+                
+                // Also log current form values
+                const formValues = getValues();
+                console.log('📊 Current form values:', JSON.stringify(formValues, null, 2));
+                console.log('📊 Exercise type from form:', formValues.type);
+                console.log('📊 Question from form:', formValues.question);
+                console.log('📊 OrderIndex from form:', formValues.orderIndex);
+              }
+            );
+            
+            submitHandler(e);
+            
+            console.log('📋 handleSubmit wrapper called');
+          }}
+          className="space-y-4"
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="type">{t("ExerciseTypeLabel") || "Type"}</Label>
+              <Select
+                value={exerciseType}
+                onValueChange={(value) => setValue("type", value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MULTIPLE_CHOICE">
+                    {t("ExerciseType.MULTIPLE_CHOICE") || "Multiple Choice"}
+                  </SelectItem>
+                  <SelectItem value="CODING">
+                    {t("ExerciseType.CODING") || "Coding"}
+                  </SelectItem>
+                  <SelectItem value="OPEN_ENDED">
+                    {t("ExerciseType.OPEN_ENDED") || "Open Ended"}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.type && (
+                <p className="text-sm text-destructive">{String(errors.type.message)}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="orderIndex">{t("Order") || "Order"}</Label>
+              <Input
+                id="orderIndex"
+                type="number"
+                {...register("orderIndex", { valueAsNumber: true })}
+                placeholder={t("AutoGenerated") || "Auto-generated"}
+                min={1}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("OrderAutoHint") || "Order will be auto-assigned based on existing exercises"}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="question">{t("QuestionLabel") || "Question"}</Label>
+            <Textarea
+              id="question"
+              {...register("question")}
+              placeholder={t("ExerciseQuestionPlaceholder") || "Enter the exercise question..."}
+              rows={4}
+            />
+            {errors.question && (
+              <p className="text-sm text-destructive">{String(errors.question.message)}</p>
+            )}
+          </div>
+
+          {/* Multiple Choice Options */}
+          {exerciseType === "MULTIPLE_CHOICE" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>{t("ChoicesLabel") || "Choices"}</Label>
+                <Button type="button" size="sm" variant="outline" onClick={addChoice}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  {t("AddChoice") || "Add Choice"}
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                {choices.map((choice, index) => (
+                  <div key={index} className="flex items-start gap-2 p-3 border rounded-lg bg-muted/30">
+                    <span className="text-sm font-semibold mt-2 min-w-[24px]">
+                      {String.fromCharCode(65 + index)}.
+                    </span>
+                    <Input
+                      value={choice.text}
+                      onChange={(e) => updateChoiceText(index, e.target.value)}
+                      placeholder={t("ChoicePlaceholder") || "Enter choice..."}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={choice.isCorrect ? "default" : "outline"}
+                      onClick={() => toggleChoiceCorrect(index)}
+                      className={choice.isCorrect ? "bg-green-600 hover:bg-green-700" : ""}
+                    >
+                      {choice.isCorrect ? "✓ Correct" : "Mark Correct"}
+                    </Button>
+                    {choices.length > 1 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeChoice(index)}
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <p className="text-xs text-muted-foreground">
+                {t("ChoicesHint") || "Add at least one choice and mark the correct answer(s)"}
+              </p>
+            </div>
+          )}
+
+          {/* Coding Test Cases */}
+          {exerciseType === "CODING" && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>{t("TestCasesLabel") || "Test Cases"}</Label>
+                <Button type="button" size="sm" variant="outline" onClick={addTestCase}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  {t("AddTestCase") || "Add Test Case"}
+                </Button>
+              </div>
+              
+              <div className="space-y-3">
+                {testCases.map((testCase, index) => (
+                  <div key={index} className="p-3 border rounded-lg space-y-2 bg-muted/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="outline">Test Case #{testCase.orderIndex}</Badge>
+                      {testCases.length > 1 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeTestCase(index)}
+                        >
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("Visibility") || "Visibility"}</Label>
+                        <Select
+                          value={testCase.visibility}
+                          onValueChange={(value) => updateTestCase(index, 'visibility', value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PUBLIC">PUBLIC</SelectItem>
+                            <SelectItem value="PRIVATE">PRIVATE</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("Weight") || "Weight"}</Label>
+                        <Input
+                          type="number"
+                          value={testCase.weight}
+                          onChange={(e) => updateTestCase(index, 'weight', Number(e.target.value))}
+                          className="h-8 text-xs"
+                          min={0}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t("Input") || "Input"}</Label>
+                      <Input
+                        value={testCase.input}
+                        onChange={(e) => updateTestCase(index, 'input', e.target.value)}
+                        placeholder="5"
+                        className="h-8 text-xs font-mono"
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t("ExpectedOutput") || "Expected Output"}</Label>
+                      <Input
+                        value={testCase.expectedOutput}
+                        onChange={(e) => updateTestCase(index, 'expectedOutput', e.target.value)}
+                        placeholder="25"
+                        className="h-8 text-xs font-mono"
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-xs">{t("TimeoutSeconds") || "Timeout (seconds)"}</Label>
+                      <Input
+                        type="number"
+                        value={testCase.timeoutSeconds}
+                        onChange={(e) => updateTestCase(index, 'timeoutSeconds', Number(e.target.value))}
+                        className="h-8 text-xs"
+                        min={1}
+                        max={30}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <p className="text-xs text-muted-foreground">
+                {t("TestCasesHint") || "Test cases will be numbered automatically. PUBLIC cases are visible to students."}
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              {t("Cancel") || "Cancel"}
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              onClick={() => {
+                console.log('🔘 === SUBMIT BUTTON CLICKED ===');
+                console.log('🔘 Mode:', mode);
+                console.log('🔘 Is submitting:', isSubmitting);
+                console.log('🔘 Form errors count:', Object.keys(errors).length);
+                console.log('🔘 Form errors:', JSON.stringify(errors, null, 2));
+                console.log('🔘 Exercise type:', exerciseType);
+                console.log('🔘 Button disabled?', isSubmitting);
+                
+                // Detailed error analysis
+                if (Object.keys(errors).length > 0) {
+                  console.log('❌ === FORM VALIDATION ERRORS DETECTED ===');
+                  Object.keys(errors).forEach(key => {
+                    console.log(`❌ Error in field '${key}':`, errors[key as keyof typeof errors]);
+                    console.log(`❌ Error message:`, (errors[key as keyof typeof errors] as any)?.message);
+                  });
+                }
+                
+                console.log('🔘 About to trigger form submission...');
+              }}
+            >
+              {isSubmitting
+                ? t(mode === 'create' ? "Creating" : "Updating")
+                : t(mode === 'create' ? "Create" : "Update")}
             </Button>
           </DialogFooter>
         </form>

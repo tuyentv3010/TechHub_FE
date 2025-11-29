@@ -4,6 +4,50 @@ export const CourseStatus = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
 export const CourseLevel = z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL_LEVELS"]);
 export const Language = z.enum(["VI", "EN", "JA"]);
 
+// Skill Schema
+export const SkillItem = z.object({
+  id: z.string(),
+  name: z.string(),
+  thumbnail: z.string().nullable(),
+  category: z.string().nullable(),
+});
+
+export type SkillItemType = z.TypeOf<typeof SkillItem>;
+
+// Tag Schema
+export const TagItem = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+export type TagItemType = z.TypeOf<typeof TagItem>;
+
+// Skills List Response
+export const SkillsListRes = z.object({
+  success: z.boolean(),
+  status: z.string(),
+  code: z.number(),
+  message: z.string(),
+  data: z.array(SkillItem),
+  timestamp: z.string(),
+  path: z.string(),
+});
+
+export type SkillsListResType = z.TypeOf<typeof SkillsListRes>;
+
+// Tags List Response
+export const TagsListRes = z.object({
+  success: z.boolean(),
+  status: z.string(),
+  code: z.number(),
+  message: z.string(),
+  data: z.array(TagItem),
+  timestamp: z.string(),
+  path: z.string(),
+});
+
+export type TagsListResType = z.TypeOf<typeof TagsListRes>;
+
 // Course Item Response
 export const CourseItemRes = z.object({
   id: z.string(),
@@ -15,20 +59,37 @@ export const CourseItemRes = z.object({
   status: CourseStatus,
   level: CourseLevel,
   language: Language,
-  categories: z.array(z.string()),
-  tags: z.array(z.string()),
+  categories: z.array(z.string()).nullable(),
+  // Updated: skills is now array of objects with id, name, thumbnail, category
+  skills: z.array(SkillItem),
+  // Updated: tags is now array of objects with id, name
+  tags: z.array(TagItem),
   objectives: z.array(z.string()),
   requirements: z.array(z.string()),
   instructorId: z.string(),
   thumbnail: z.object({
-    id: z.string(),
+    fileId: z.string().nullable(),
+    name: z.string().nullable(),
+    originalName: z.string().nullable(),
     url: z.string(),
-    secureUrl: z.string(),
+    secureUrl: z.string().nullable(),
+    mimeType: z.string().nullable(),
+    fileSize: z.number().nullable(),
+    width: z.number().nullable(),
+    height: z.number().nullable(),
+    duration: z.number().nullable(),
   }).nullable(),
   introVideo: z.object({
-    id: z.string(),
+    fileId: z.string().nullable(),
+    name: z.string().nullable(),
+    originalName: z.string().nullable(),
     url: z.string(),
-    secureUrl: z.string(),
+    secureUrl: z.string().nullable(),
+    mimeType: z.string().nullable(),
+    fileSize: z.number().nullable(),
+    width: z.number().nullable(),
+    height: z.number().nullable(),
+    duration: z.number().nullable(),
   }).nullable(),
   created: z.string(),
   updated: z.string(),
@@ -99,6 +160,8 @@ export const CreateCourseBody = z.object({
   language: Language,
   status: CourseStatus,
   categories: z.array(z.string()).optional(),
+  // Frontend should send skills (preferred) — kept optional for compatibility
+  skills: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   objectives: z.array(z.string()).optional(),
   requirements: z.array(z.string()).optional(),
@@ -118,11 +181,21 @@ export const UpdateCourseBody = z.object({
   language: Language.optional(),
   status: CourseStatus.optional(),
   categories: z.array(z.string()).optional(),
+  skills: z.array(z.string()).optional(), // Add skills field for backend
   tags: z.array(z.string()).optional(),
   objectives: z.array(z.string()).optional(),
   requirements: z.array(z.string()).optional(),
   thumbnail: z.string().max(500).optional(), // URL string
   introVideo: z.string().max(500).optional(), // URL string
+}).refine((data) => {
+  // If both price and discountPrice are provided, discountPrice must be <= price
+  if (data.price !== undefined && data.discountPrice !== undefined && data.discountPrice > 0) {
+    return data.discountPrice <= data.price;
+  }
+  return true;
+}, {
+  message: "Discount price must be less than or equal to the original price",
+  path: ["discountPrice"],
 });
 
 export type UpdateCourseBodyType = z.TypeOf<typeof UpdateCourseBody>;
@@ -266,6 +339,77 @@ export const UpdateAssetBody = z.object({
 });
 
 export type UpdateAssetBodyType = z.TypeOf<typeof UpdateAssetBody>;
+
+// ============================================
+// EXERCISE SCHEMAS
+// ============================================
+
+export const ExerciseType = z.enum(["MULTIPLE_CHOICE", "CODING", "OPEN_ENDED"]);
+export const TestCaseVisibility = z.enum(["PUBLIC", "PRIVATE"]);
+
+// Test Case Schema
+export const TestCaseItem = z.object({
+  id: z.string().optional(),
+  orderIndex: z.number(),
+  visibility: TestCaseVisibility,
+  input: z.string(),
+  expectedOutput: z.string(),
+  weight: z.number().min(0).max(100),
+  timeoutSeconds: z.number().optional(),
+  sample: z.boolean().optional(),
+  metadata: z.any().optional(),
+});
+
+export type TestCaseItemType = z.TypeOf<typeof TestCaseItem>;
+
+// Exercise Item - Response from backend
+export const ExerciseItem = z.object({
+  id: z.string(),
+  lessonId: z.string(),
+  type: ExerciseType,
+  question: z.string(),
+  orderIndex: z.number(),
+  options: z.any().nullable().optional(), // JSONB for multiple choice options
+  testCases: z.array(TestCaseItem).optional(),
+  lastSubmissionStatus: z.string().nullable().optional(),
+  bestScore: z.number().nullable().optional(),
+  lastSubmittedAt: z.string().nullable().optional(),
+  created: z.string(),
+  updated: z.string(),
+  active: z.boolean(),
+});
+
+export type ExerciseItemType = z.TypeOf<typeof ExerciseItem>;
+
+// Create Exercise Body
+export const CreateExerciseBody = z.object({
+  type: ExerciseType,
+  question: z.string().min(1, "Question is required"),
+  orderIndex: z.number().min(0).optional(),
+  options: z.any().optional(), // For MULTIPLE_CHOICE type
+  testCases: z.array(TestCaseItem).optional(), // For CODING type
+});
+
+export type CreateExerciseBodyType = z.TypeOf<typeof CreateExerciseBody>;
+
+// Update Exercise Body
+export const UpdateExerciseBody = z.object({
+  type: ExerciseType.optional(),
+  question: z.string().min(1).optional(),
+  orderIndex: z.number().min(0).optional(),
+  options: z.any().optional(),
+  testCases: z.array(TestCaseItem).optional(),
+});
+
+export type UpdateExerciseBodyType = z.TypeOf<typeof UpdateExerciseBody>;
+
+// Submit Exercise Body
+export const SubmitExerciseBody = z.object({
+  answer: z.string().min(1, "Answer is required"),
+  submissionData: z.any().optional(),
+});
+
+export type SubmitExerciseBodyType = z.TypeOf<typeof SubmitExerciseBody>;
 
 // ============================================
 // PROGRESS SCHEMAS

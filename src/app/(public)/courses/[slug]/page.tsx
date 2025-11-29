@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import Image from "next/image";
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   BookOpen,
   Clock,
   Users,
   Star,
-  Globe,
   Award,
   CheckCircle,
   PlayCircle,
@@ -17,12 +15,15 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useGetCourseById, useEnrollCourseMutation } from "@/queries/useCourse";
+import { useGetCourseById, useEnrollCourseMutation, useGetSkills, useGetTags } from "@/queries/useCourse";
 import { useGetAccount } from "@/queries/useAccount";
 import {
   extractIdFromSlug,
@@ -38,12 +39,20 @@ import {
   useCourseComments, 
   useAddCourseCommentMutation 
 } from "@/queries/useCourseComments";
+import { 
+  useGetCourseRatings, 
+  useSubmitCourseRatingMutation 
+} from "@/queries/useCourse";
 import { CourseCommentsList } from "@/components/course/CourseCommentsList";
+import { CourseRating } from "@/components/course/CourseRating";
+import Link from 'next/link';
 
 export default function CourseDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const t = useTranslations("Course");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const slug = params.slug as string;
   const courseId = extractIdFromSlug(slug);
 
@@ -51,10 +60,40 @@ export default function CourseDetailPage() {
 
   const { data: courseResponse, isLoading, error } = useGetCourseById(courseId);
   const enrollMutation = useEnrollCourseMutation();
+  
+  // Fetch skills and tags from backend
+  const { data: skillsData } = useGetSkills();
+  const { data: tagsData } = useGetTags();
+  const allSkills = skillsData?.payload?.data ?? [];
+  const allTags = tagsData?.payload?.data ?? [];
 
   const course = courseResponse?.payload?.data;
   const courseSummary = course?.summary;
   const chapters = course?.chapters || [];
+
+  // Transform skills/categories from backend format (could be IDs, names, or objects)
+  // Backend may return: skills array (names or objects) OR categories array
+  const rawSkillsOrCategories = courseSummary?.skills || courseSummary?.categories || [];
+  const rawTags = courseSummary?.tags || [];
+  
+  // Map to actual skill/tag names by looking up in the fetched data
+  const skills = rawSkillsOrCategories.map((item: any) => {
+    if (typeof item === 'string') {
+      // Could be ID or name, try to find in allSkills
+      const found = allSkills.find((s: any) => s.id === item || s.name === item);
+      return found?.name || item;
+    }
+    return item?.name || item;
+  }).filter(Boolean);
+
+  const tags = rawTags.map((item: any) => {
+    if (typeof item === 'string') {
+      // Could be ID or name, try to find in allTags
+      const found = allTags.find((t: any) => t.id === item || t.name === item);
+      return found?.name || item;
+    }
+    return item?.name || item;
+  }).filter(Boolean);
 
   // Fetch course comments
   const { data: commentsResponse, isLoading: isLoadingComments } = useCourseComments(
@@ -63,8 +102,77 @@ export default function CourseDetailPage() {
   );
   const comments = commentsResponse?.payload?.data ?? [];
 
+  // Fetch course ratings
+  const { data: ratingsResponse, isLoading: isLoadingRatings } = useGetCourseRatings(
+    courseId
+  );
+  const ratings = ratingsResponse?.payload?.data;
+
   // Add course comment mutation
   const addCommentMutation = useAddCourseCommentMutation();
+
+  // Submit rating mutation
+  const submitRatingMutation = useSubmitCourseRatingMutation();
+
+  // WebSocket connection for real-time course comments
+  useEffect(() => {
+    if (!courseId) return;
+
+    console.log("[WebSocket] Connecting for course:", courseId);
+    
+    const client = new Client({
+      webSocketFactory: () => {
+        const sockJsUrl = "http://localhost:8082/ws-comment";
+        console.log("[WebSocket] Creating SockJS connection to:", sockJsUrl);
+        return new SockJS(sockJsUrl) as WebSocket;
+      },
+      debug: (str) => {
+        if (str.includes("CONNECT") || str.includes("MESSAGE") || str.includes("ERROR")) {
+          console.log("[STOMP]", str);
+        }
+      },
+      reconnectDelay: 5000,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
+      onConnect: () => {
+        console.log("[WebSocket] Connected! Subscribing to course comments...");
+        
+        const destination = `/topic/course/${courseId}/comments`;
+        console.log("[WebSocket] Subscribing to:", destination);
+        
+        client.subscribe(destination, (message) => {
+          console.log("[WebSocket] Received message:", message.body);
+          try {
+            const data = JSON.parse(message.body);
+            console.log("[WebSocket] New comment received:", data);
+            
+            // Invalidate comments query to refetch
+            queryClient.invalidateQueries({ queryKey: ["course-comments", courseId] });
+            
+            toast({
+              title: "Bình luận mới",
+              description: "Có người vừa bình luận trong khóa học này!",
+            });
+          } catch (e) {
+            console.error("[WebSocket] Error parsing message:", e);
+          }
+        });
+      },
+      onDisconnect: () => {
+        console.log("[WebSocket] Disconnected");
+      },
+      onStompError: (frame) => {
+        console.error("[WebSocket] STOMP Error:", frame.headers["message"]);
+      },
+    });
+
+    client.activate();
+
+    return () => {
+      console.log("[WebSocket] Cleaning up connection...");
+      client.deactivate();
+    };
+  }, [courseId, queryClient, toast]);
 
   const handleSubmitComment = (content: string) => {
     if (!courseId) {
@@ -99,6 +207,26 @@ export default function CourseDetailPage() {
         },
       }
     );
+  };
+
+  const handleSubmitRating = async (score: number) => {
+    if (!courseId) {
+      throw new Error("Không tìm thấy khóa học");
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      submitRatingMutation.mutate(
+        { courseId, score },
+        {
+          onSuccess: () => {
+            resolve();
+          },
+          onError: (error: any) => {
+            reject(error);
+          },
+        }
+      );
+    });
   };
 
   const handleSubmitReply = (parentId: string, content: string) => {
@@ -156,22 +284,8 @@ export default function CourseDetailPage() {
   };
 
   const handleEnroll = async () => {
-    try {
-      await enrollMutation.mutateAsync(courseId);
-      toast({
-        title: "Đăng ký thành công!",
-        description: "Bạn đã đăng ký khóa học thành công.",
-      });
-      
-      // Redirect to learning page
-      window.location.href = `/courses/${slug}/learn`;
-    } catch (error: any) {
-      toast({
-        title: "Đăng ký thất bại",
-        description: error?.message || "Có lỗi xảy ra khi đăng ký khóa học.",
-        variant: "destructive",
-      });
-    }
+    // Redirect to payment page
+    router.push(`/payment/${slug}`);
   };
 
   if (isLoading) {
@@ -211,8 +325,6 @@ export default function CourseDetailPage() {
   const discountPercentage = courseSummary.discountPrice
     ? calculateDiscountPercentage(courseSummary.price, courseSummary.discountPrice)
     : 0;
-
-  const finalPrice = courseSummary.discountPrice || courseSummary.price;
 
   return (
     <main className="min-h-screen bg-background pb-20 pt-16">
@@ -350,6 +462,7 @@ export default function CourseDetailPage() {
                       onClick={() => {
                         if (course.enrolled) {
                           window.location.href = `/courses/${slug}/learn`;
+                          <Link href=""/>;
                         } else {
                           handleEnroll();
                         }
@@ -542,28 +655,42 @@ export default function CourseDetailPage() {
 
           {/* Right Sidebar */}
           <div className="space-y-6 lg:col-span-1">
-            {/* Tags/Categories */}
-            {(courseSummary.categories?.length > 0 || courseSummary.tags?.length > 0) && (
+            {/* Course Rating */}
+            {ratings && (
+              <CourseRating
+                courseId={courseId}
+                averageRating={ratings.averageRating}
+                ratingCount={ratings.ratingCount}
+                userScore={ratings.userScore}
+                isEnrolled={!!course.enrolled}
+                onSubmitRating={handleSubmitRating}
+                isSubmitting={submitRatingMutation.isPending}
+                ratingDistribution={ratings.ratingDistribution}
+              />
+            )}
+
+            {/* Skills & Tags */}
+            {(skills.length > 0 || tags.length > 0) && (
               <Card>
                 <CardContent className="p-6">
-                  {courseSummary.categories && courseSummary.categories.length > 0 && (
+                  {skills.length > 0 && (
                     <div className="mb-4">
-                      <h3 className="mb-2 font-semibold">Danh mục</h3>
+                      <h3 className="mb-2 font-semibold">Kỹ năng</h3>
                       <div className="flex flex-wrap gap-2">
-                        {courseSummary.categories.map((category: string) => (
-                          <Badge key={category} variant="secondary">
-                            {formatTagLabel(category)}
+                        {skills.map((skill: string, idx: number) => (
+                          <Badge key={`${skill}-${idx}`} variant="secondary">
+                            {formatTagLabel(skill)}
                           </Badge>
                         ))}
                       </div>
                     </div>
                   )}
-                  {courseSummary.tags && courseSummary.tags.length > 0 && (
+                  {tags.length > 0 && (
                     <div>
                       <h3 className="mb-2 font-semibold">Thẻ</h3>
                       <div className="flex flex-wrap gap-2">
-                        {courseSummary.tags.map((tag: string) => (
-                          <Badge key={tag} variant="outline">
+                        {tags.map((tag: string, idx: number) => (
+                          <Badge key={`${tag}-${idx}`} variant="outline">
                             #{formatTagLabel(tag)}
                           </Badge>
                         ))}

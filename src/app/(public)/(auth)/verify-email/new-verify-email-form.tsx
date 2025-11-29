@@ -11,13 +11,16 @@ import { useTranslations } from "next-intl";
 import { LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useVerifyEmailMutation, useResendCodeMutation } from "@/queries/useAuth";
 
 interface VerifyEmailFormData {
   code1: string;
   code2: string;
   code3: string;
   code4: string;
+  code5: string;
+  code6: string;
 }
 
 export default function NewVerifyEmailForm() {
@@ -26,6 +29,16 @@ export default function NewVerifyEmailForm() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
   const [isLoading, setIsLoading] = useState(false);
+  const verifyEmailMutation = useVerifyEmailMutation();
+  const resendCodeMutation = useResendCodeMutation();
+
+  // Refs for OTP inputs
+  const code1Ref = useRef<HTMLInputElement | null>(null);
+  const code2Ref = useRef<HTMLInputElement | null>(null);
+  const code3Ref = useRef<HTMLInputElement | null>(null);
+  const code4Ref = useRef<HTMLInputElement | null>(null);
+  const code5Ref = useRef<HTMLInputElement | null>(null);
+  const code6Ref = useRef<HTMLInputElement | null>(null);
 
   const form = useForm<VerifyEmailFormData>({
     defaultValues: {
@@ -33,17 +46,30 @@ export default function NewVerifyEmailForm() {
       code2: "",
       code3: "",
       code4: "",
+      code5: "",
+      code6: "",
     },
   });
 
   const onSubmit = async (data: VerifyEmailFormData) => {
-    const code = `${data.code1}${data.code2}${data.code3}${data.code4}`;
+    const code = `${data.code1}${data.code2}${data.code3}${data.code4}${data.code5}${data.code6}`;
     
-    if (code.length !== 4) {
+    console.log('onSubmit triggered with code:', code);
+    
+    if (code.length !== 6) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Please enter all 4 digits",
+        description: "Please enter all 6 digits",
+      });
+      return;
+    }
+
+    if (!email) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Email is required",
       });
       return;
     }
@@ -51,17 +77,28 @@ export default function NewVerifyEmailForm() {
     setIsLoading(true);
     
     try {
-      // TODO: Call verify email API
-      // const result = await verifyEmailMutation.mutateAsync({ email, code });
+      console.log('Calling verify email API with:', { email, code });
       
-      toast({
-        title: "Success",
-        description: "Email verified successfully",
-      });
+      const result = await verifyEmailMutation.mutateAsync({ email, code });
       
-      setTimeout(() => {
-        router.push("/login");
-      }, 1500);
+      console.log('Verify email API result:', result);
+      
+      if (result.payload.success) {
+        toast({
+          title: "Success",
+          description: "Email verified successfully",
+        });
+        
+        setTimeout(() => {
+          router.push("/login");
+        }, 1500);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.payload.message || "Verification failed",
+        });
+      }
     } catch (error: any) {
       console.error("Verify email error:", error);
       toast({
@@ -75,16 +112,37 @@ export default function NewVerifyEmailForm() {
   };
 
   const handleResend = async () => {
+    if (!email) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Email is required",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // TODO: Call resend code API
-      // const result = await resendCodeMutation.mutateAsync({ email });
+      console.log('Calling resend code API with email:', email);
       
-      toast({
-        title: "Success",
-        description: "Verification code resent",
-      });
+      const result = await resendCodeMutation.mutateAsync({ email });
+      
+      console.log('Resend code API result:', result);
+      
+      if (result.payload.success) {
+        toast({
+          title: "Success",
+          description: "Verification code resent to your email",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.payload.message || "Failed to resend code",
+        });
+      }
     } catch (error: any) {
+      console.error("Resend code error:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -97,30 +155,62 @@ export default function NewVerifyEmailForm() {
 
   const handleCodeInput = (
     e: React.ChangeEvent<HTMLInputElement>,
-    field: string
+    currentField: keyof VerifyEmailFormData,
+    nextRef: React.RefObject<HTMLInputElement | null> | null
   ) => {
-    const value = e.target.value;
+    let value = e.target.value;
     
-    // Only allow single digit
-    if (value.length > 1) {
-      e.target.value = value.slice(0, 1);
-      return;
-    }
+    console.log('handleCodeInput - Before:', { currentField, value, length: value.length });
 
-    // Auto focus next input
-    if (value.length === 1) {
-      const nextField = getNextField(field);
-      if (nextField) {
-        const nextInput = document.getElementById(nextField) as HTMLInputElement;
-        nextInput?.focus();
-      }
+    // Only allow numbers and take only the last character
+    value = value.replace(/\D/g, '').slice(-1);
+    
+    console.log('handleCodeInput - After clean:', { currentField, value, length: value.length });
+    
+    // Update the input value
+    e.target.value = value;
+
+    // Update form value
+    form.setValue(currentField, value);
+    
+    console.log('handleCodeInput - Set value:', { currentField, value });
+
+    // Auto focus to next input
+    if (value && nextRef?.current) {
+      console.log('handleCodeInput - Moving to next field');
+      nextRef.current.focus();
     }
   };
 
-  const getNextField = (currentField: string): string | null => {
-    const fields = ["code1", "code2", "code3", "code4"];
-    const currentIndex = fields.indexOf(currentField);
-    return currentIndex < fields.length - 1 ? fields[currentIndex + 1] : null;
+  const handleCodeKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    prevRef: React.RefObject<HTMLInputElement | null> | null
+  ) => {
+    console.log('handleCodeKeyDown:', { key: e.key, value: e.currentTarget.value });
+    
+    // Move to previous input on backspace if current is empty
+    if (e.key === "Backspace" && !e.currentTarget.value && prevRef?.current) {
+      console.log('handleCodeKeyDown - Moving to previous field');
+      prevRef.current.focus();
+    }
+  };
+
+  const handleCodePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    
+    console.log('handleCodePaste:', { pastedData, length: pastedData.length });
+    
+    if (pastedData.length === 6) {
+      form.setValue("code1", pastedData[0] || "");
+      form.setValue("code2", pastedData[1] || "");
+      form.setValue("code3", pastedData[2] || "");
+      form.setValue("code4", pastedData[3] || "");
+      form.setValue("code5", pastedData[4] || "");
+      form.setValue("code6", pastedData[5] || "");
+      code6Ref.current?.focus();
+      console.log('handleCodePaste - All values set');
+    }
   };
 
   return (
@@ -144,30 +234,44 @@ export default function NewVerifyEmailForm() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* OTP Input Fields */}
-              <div className="flex gap-4 justify-center">
-                {["code1", "code2", "code3", "code4"].map((fieldName, index) => (
-                  <FormField
-                    key={fieldName}
-                    control={form.control}
-                    name={fieldName as keyof VerifyEmailFormData}
-                    render={({ field }) => (
-                      <FormItem>
-                        <Input
-                          {...field}
-                          id={fieldName}
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={1}
-                          className="w-16 h-16 text-center text-2xl font-semibold border-2 focus:border-blue-600"
-                          onChange={(e) => {
-                            field.onChange(e);
-                            handleCodeInput(e, fieldName);
-                          }}
-                        />
-                      </FormItem>
-                    )}
-                  />
-                ))}
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-3 block">
+                  Verification Code
+                </Label>
+                <div className="flex gap-3 justify-between" onPaste={handleCodePaste}>
+                  {[
+                    { name: "code1" as const, ref: code1Ref, next: code2Ref, prev: null },
+                    { name: "code2" as const, ref: code2Ref, next: code3Ref, prev: code1Ref },
+                    { name: "code3" as const, ref: code3Ref, next: code4Ref, prev: code2Ref },
+                    { name: "code4" as const, ref: code4Ref, next: code5Ref, prev: code3Ref },
+                    { name: "code5" as const, ref: code5Ref, next: code6Ref, prev: code4Ref },
+                    { name: "code6" as const, ref: code6Ref, next: null, prev: code5Ref },
+                  ].map((field) => (
+                    <FormField
+                      key={field.name}
+                      control={form.control}
+                      name={field.name}
+                      render={({ field: formField }) => (
+                        <FormItem className="flex-1">
+                          <Input
+                            {...formField}
+                            ref={field.ref}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            className="w-full h-14 text-center text-2xl font-semibold border-2 focus:border-blue-600 rounded-lg"
+                            onChange={(e) => {
+                              console.log('Input onChange triggered:', { field: field.name, value: e.target.value });
+                              formField.onChange(e);
+                              handleCodeInput(e, field.name, field.next);
+                            }}
+                            onKeyDown={(e) => handleCodeKeyDown(e, field.prev)}
+                          />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
               </div>
 
               {/* Submit Button */}
@@ -179,7 +283,7 @@ export default function NewVerifyEmailForm() {
                 {isLoading && (
                   <LoaderCircle className="animate-spin mr-2" size={20} />
                 )}
-                Veryfy Account
+                Verify Account
               </Button>
 
               {/* Resend link */}

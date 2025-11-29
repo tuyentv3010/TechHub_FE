@@ -10,7 +10,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { LoaderCircle, CheckCircle2 } from "lucide-react";
-import { useResetPasswordMutation } from "@/queries/useAuth";
+import { useResetPasswordMutation, useResendResetCodeMutation } from "@/queries/useAuth";
 import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -31,6 +31,7 @@ export default function NewResetPasswordForm() {
   const t = useTranslations("ResetPassword");
   const errorMessageT = useTranslations("ValidationErrors");
   const resetPasswordMutation = useResetPasswordMutation();
+  const resendResetCodeMutation = useResendResetCodeMutation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
@@ -101,6 +102,40 @@ export default function NewResetPasswordForm() {
       form.setValue("otp5", pastedData[4] || "");
       form.setValue("otp6", pastedData[5] || "");
       otp6Ref.current?.focus();
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (!email) {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: t("emailRequired"),
+      });
+      return;
+    }
+
+    try {
+      const result = await resendResetCodeMutation.mutateAsync(email);
+
+      if (result.payload.success) {
+        toast({
+          title: t("success"),
+          description: "Reset code resent to your email",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: t("error"),
+          description: result.payload.message || "Failed to resend code",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: t("error"),
+        description: error.message || "Failed to resend code",
+      });
     }
   };
 
@@ -355,12 +390,14 @@ export default function NewResetPasswordForm() {
               <div className="text-center text-sm text-gray-600 space-y-2">
                 <div>
                   {t("didNotReceiveCode")}{" "}
-                  <Link
-                    href="/forgot-password"
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
                     className="font-medium text-blue-600 hover:text-blue-700"
+                    disabled={resendResetCodeMutation.isPending}
                   >
                     {t("resendCode")}
-                  </Link>
+                  </button>
                 </div>
                 <div>
                   <Link

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,10 +24,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusCircle, X, ImagePlus, Video, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useRef } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
 import { useGetCourseById, useUpdateCourseMutation } from "@/queries/useCourse";
+import { useGetSkills, useGetTags } from "@/queries/useCourse";
 import {
   UpdateCourseBodyType,
   UpdateCourseBody,
@@ -35,6 +36,9 @@ import {
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { useAccountProfile } from "@/queries/useAccount";
 import fileApiRequest from "@/apiRequests/file";
+import SkillManager from "@/components/manage/SkillManager";
+import TagManager from "@/components/manage/TagManager";
+import { CurrencyInputWithSwitch } from "@/components/ui/currency-input-with-switch";
 
 export default function EditCourse({
   id,
@@ -48,6 +52,11 @@ export default function EditCourse({
   const t = useTranslations("ManageCourse");
   const updateCourseMutation = useUpdateCourseMutation();
   const { data, refetch } = useGetCourseById(id!);
+  useEffect(() => {
+    if (id) {
+      console.debug('[FE] EditCourse - requested course id=', id);
+    }
+  }, [id]);
   const { data: profileData } = useAccountProfile();
   const userId = profileData?.payload?.data?.id || '';
 
@@ -64,10 +73,16 @@ export default function EditCourse({
   const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   // Multi-input states
-  const [categoryInput, setCategoryInput] = useState("");
-  const [tagInput, setTagInput] = useState("");
+  // inputs removed: using backend suggestions and managers instead
   const [objectiveInput, setObjectiveInput] = useState("");
   const [requirementInput, setRequirementInput] = useState("");
+  const [showSkillManager, setShowSkillManager] = useState(false);
+  const [showTagManager, setShowTagManager] = useState(false);
+
+  const { data: skillsData } = useGetSkills();
+  const skillsOptions = skillsData?.payload?.data ?? [];
+  const { data: tagsData } = useGetTags();
+  const tagsOptions = tagsData?.payload?.data ?? [];
 
   const form = useForm<UpdateCourseBodyType>({
     resolver: zodResolver(UpdateCourseBody),
@@ -79,6 +94,7 @@ export default function EditCourse({
       language: "VI",
       status: "DRAFT",
       categories: [],
+      skills: [],
       tags: [],
       objectives: [],
       requirements: [],
@@ -88,8 +104,16 @@ export default function EditCourse({
   });
 
   useEffect(() => {
+    if (data) {
+      console.debug('[FE] EditCourse - getCourseById response', data);
+    }
     if (data?.payload?.data?.summary) {
       const course = data.payload.data.summary;
+      console.debug('[FE] EditCourse - course summary', course);
+      // Backend returns skills array (name strings), map to form
+      const skillNames = (course.skills || []).map((s: any) => typeof s === 'string' ? s : s.name);
+      const tagNames = (course.tags || []).map((t: any) => typeof t === 'string' ? t : t.name);
+      
       form.reset({
         title: course.title,
         description: course.description || "",
@@ -99,7 +123,8 @@ export default function EditCourse({
         language: course.language,
         status: course.status,
         categories: course.categories || [],
-        tags: course.tags || [],
+        skills: skillNames,
+        tags: tagNames,
         objectives: course.objectives || [],
         requirements: course.requirements || [],
         thumbnail: course.thumbnail?.url || "",
@@ -111,17 +136,28 @@ export default function EditCourse({
   }, [data, form]);
 
   // Helper functions for array fields
-  const addItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', value: string) => {
+  const addItem = (field: 'categories' | 'skills' | 'tags' | 'objectives' | 'requirements', value: string) => {
     if (!value.trim()) return;
     const current = form.getValues(field) || [];
     if (!current.includes(value.trim())) {
-      form.setValue(field, [...current, value.trim()]);
+      form.setValue(field, [...current, value.trim()], { shouldDirty: true, shouldTouch: true, shouldValidate: true });
     }
   };
 
-  const removeItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', index: number) => {
+  const toggleItem = (field: 'categories' | 'skills' | 'tags' | 'objectives' | 'requirements', value: string) => {
+    if (!value.trim()) return;
     const current = form.getValues(field) || [];
-    form.setValue(field, current.filter((_, i) => i !== index));
+    console.debug('[FE] EditCourse - toggleItem', { field, value, current });
+    if (current.includes(value.trim())) {
+      form.setValue(field, current.filter((v: string) => v !== value.trim()), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    } else {
+      form.setValue(field, [...current, value.trim()], { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    }
+  };
+
+  const removeItem = (field: 'categories' | 'skills' | 'tags' | 'objectives' | 'requirements', index: number) => {
+    const current = form.getValues(field) || [];
+    form.setValue(field, current.filter((_: any, i: number) => i !== index), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
   };
 
   const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,8 +266,19 @@ export default function EditCourse({
 
   const onSubmit = async (data: UpdateCourseBodyType) => {
     if (updateCourseMutation.isPending || !id) return;
+    
+    // Prepare payload with skills field (preferred by backend)
+    const skills = form.getValues('skills') || [];
+    const payload = {
+      ...data,
+      skills: Array.isArray(skills) ? skills : [],
+    };
+    
+    console.debug('[FE] EditCourse - submit payload', { id, body: payload });
+    console.debug('[FE] EditCourse - skills:', payload.skills);
+    
     try {
-      await updateCourseMutation.mutateAsync({ id, body: data });
+      await updateCourseMutation.mutateAsync({ id, body: payload });
       toast({
         title: t("UpdateSuccess"),
         description: t("CourseUpdated"),
@@ -305,21 +352,33 @@ export default function EditCourse({
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="price">{t("PriceLabel")}</Label>
-              <Input
-                id="price"
-                type="number"
-                step="0.01"
-                {...form.register("price", { valueAsNumber: true })}
+              <Controller
+                name="price"
+                control={form.control}
+                render={({ field }) => (
+                  <CurrencyInputWithSwitch
+                    id="price"
+                    placeholder="49 000"
+                    value={field.value}
+                    onChange={(numericValue) => field.onChange(numericValue)}
+                  />
+                )}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="discountPrice">{t("DiscountPriceLabel")}</Label>
-              <Input
-                id="discountPrice"
-                type="number"
-                step="0.01"
-                {...form.register("discountPrice", { valueAsNumber: true })}
+              <Controller
+                name="discountPrice"
+                control={form.control}
+                render={({ field }) => (
+                  <CurrencyInputWithSwitch
+                    id="discountPrice"
+                    placeholder="29 000"
+                    value={field.value}
+                    onChange={(numericValue) => field.onChange(numericValue)}
+                  />
+                )}
               />
             </div>
 
@@ -341,40 +400,26 @@ export default function EditCourse({
             </div>
           </div>
 
-          {/* Categories */}
+          {/* Skills */}
           <div className="space-y-2">
-            <Label>{t("CategoriesLabel")}</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder={t("CategoryPlaceholder")}
-                value={categoryInput}
-                onChange={(e) => setCategoryInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addItem('categories', categoryInput);
-                    setCategoryInput("");
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  addItem('categories', categoryInput);
-                  setCategoryInput("");
-                }}
-              >
-                <PlusCircle className="w-4 h-4" />
-              </Button>
-            </div>
+            <Label>{t("SkillsLabel")}</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShowSkillManager(true)}
+                  className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  {t("ManageSkills") || "Manage"}
+                </Button>
+              </div>
             <div className="flex flex-wrap gap-2 mt-2">
-              {form.watch("categories")?.map((cat, idx) => (
+              {form.watch("skills")?.map((skill, idx) => (
                 <Badge key={idx} variant="secondary" className="gap-1">
-                  {cat}
+                  {skill}
                   <X
                     className="w-3 h-3 cursor-pointer"
-                    onClick={() => removeItem('categories', idx)}
+                    onClick={() => removeItem('skills', idx)}
                   />
                 </Badge>
               ))}
@@ -384,28 +429,14 @@ export default function EditCourse({
           {/* Tags */}
           <div className="space-y-2">
             <Label>{t("TagsLabel")}</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder={t("TagPlaceholder")}
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addItem('tags', tagInput);
-                    setTagInput("");
-                  }
-                }}
-              />
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => {
-                  addItem('tags', tagInput);
-                  setTagInput("");
-                }}
+                variant="ghost"
+                onClick={() => setShowTagManager(true)}
+                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                <PlusCircle className="w-4 h-4" />
+                {t("ManageTags") || "Manage tags"}
               </Button>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
@@ -451,7 +482,7 @@ export default function EditCourse({
             <div className="flex flex-col gap-1 mt-2">
               {form.watch("objectives")?.map((obj, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
-                  <span>• {obj}</span>
+                  <span>{obj}</span>
                   <X
                     className="w-3 h-3 cursor-pointer text-muted-foreground hover:text-destructive"
                     onClick={() => removeItem('objectives', idx)}
@@ -491,7 +522,7 @@ export default function EditCourse({
             <div className="flex flex-col gap-1 mt-2">
               {form.watch("requirements")?.map((req, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
-                  <span>• {req}</span>
+                  <span>{req}</span>
                   <X
                     className="w-3 h-3 cursor-pointer text-muted-foreground hover:text-destructive"
                     onClick={() => removeItem('requirements', idx)}
@@ -615,7 +646,7 @@ export default function EditCourse({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="status">{t("Status")}</Label>
+            <Label htmlFor="status">{t("StatusLabel")}</Label>
             <Select
               value={form.watch("status")}
               onValueChange={(value: any) => form.setValue("status", value)}
@@ -675,6 +706,20 @@ export default function EditCourse({
           />
         </>
       )}
+      <SkillManager
+        open={showSkillManager}
+        onOpenChange={setShowSkillManager}
+        onSelect={(s) => toggleItem('skills', s.name)}
+        selectedItems={form.watch('skills') || []}
+      />
+      <TagManager
+        open={showTagManager}
+        onOpenChange={setShowTagManager}
+        onSelect={(t) => toggleItem('tags', t.name)}
+        selectedItems={form.watch('tags') || []}
+      />
     </Dialog>
   );
 }
+
+

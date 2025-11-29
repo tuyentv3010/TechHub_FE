@@ -49,6 +49,24 @@ const accountApiRequest = {
       },
     });
   },
-};
 
+  // Get user's effective permissions
+  getUserPermissions: (userId: string) =>
+    http.get<{
+      success: boolean;
+      data: Array<{
+        id: string;
+        name: string;
+        url: string;
+        method: string;
+        resource: string;
+        source: string;
+        allowed: boolean;
+      }>;
+    }>(`/app/api/proxy/users/${userId}/permissions/effective`),
+
+  // Get public instructors (no auth required)
+  getPublicInstructors: (page: number = 0, size: number = 4) =>
+    http.get<AccountListResType>(`/app/api/proxy/users/public/instructors?page=${page}&size=${size}`),
+};
 export default accountApiRequest;

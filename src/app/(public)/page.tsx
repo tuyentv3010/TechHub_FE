@@ -2,18 +2,19 @@
 
 import { useTranslations } from "next-intl";
 import { useGetCourseList } from "@/queries/useCourse";
+import { useGetPublicInstructors } from "@/queries/useAccount";
 
 // Import new components
 import { HeroSection } from "@/components/organisms/HeroSection";
 import { CategoriesSection } from "@/components/organisms/NewCategoriesSection";
 import { CoursesGridSection } from "@/components/organisms/CoursesGridSection";
+import { LearningPathsSection } from "@/components/organisms/LearningPathsSection";
 import { SkillsSection } from "@/components/organisms/NewSkillsSection";
 import { CommunitySection } from "@/components/organisms/CommunitySectionNew";
 import { InstructorsSection } from "@/components/organisms/InstructorsSection";
 import { BlogSection } from "@/components/organisms/BlogSection";
 import { NewsletterSection } from "@/components/organisms/NewsletterSection";
 import Footer from "@/components/footer";
-import { Course } from "@/components/molecules/CourseCard";
 
 export default function Home() {
   const t = useTranslations("HomePage");
@@ -24,18 +25,9 @@ export default function Home() {
     size: 6,
     status: "PUBLISHED", // Only show published courses
   });
-  
-  // Mock data - in real app, this would come from API
-  const categories = [
-    { title: t("categories.webDesign"), icon: "🎨", bgColor: "bg-blue-100" },
-    { title: t("categories.dataScience"), icon: "📊", bgColor: "bg-green-100" },
-    { title: t("categories.businessDevelopment"), icon: "💼", bgColor: "bg-purple-100" },
-    { title: t("categories.personalDevelopment"), icon: "🧠", bgColor: "bg-yellow-100" },
-    { title: t("categories.itAndSoftware"), icon: "💻", bgColor: "bg-red-100" },
-    { title: t("categories.graphicDesign"), icon: "🎭", bgColor: "bg-indigo-100" },
-    { title: t("categories.digitalMarketing"), icon: "📱", bgColor: "bg-pink-100" },
-    { title: t("categories.newsAndPhotography"), icon: "📷", bgColor: "bg-orange-100" },
-  ];
+
+  // Fetch instructors from public API (limit to 4)
+  const { data: instructorsData, isLoading: isLoadingInstructors } = useGetPublicInstructors(0, 4);
 
   // Transform API data - keep instructorId for fetching
   const coursesWithInstructorIds = coursesData?.payload?.data?.map((course: any) => ({
@@ -52,7 +44,6 @@ export default function Home() {
     lessons: 0, // Will be calculated from chapters if needed
     students: course.totalEnrollments || 0,
   })) || [];
-
   const communityStats = {
     totalStudents: t("community.stats.totalStudents"),
     totalCourses: t("community.stats.totalCourses"), 
@@ -70,12 +61,12 @@ export default function Home() {
         buttonText={t("hero.buttonText")}
         instructorCount={t("hero.instructorCount")}
         instructorText={t("hero.instructorText")}
+        instructors={instructorsData?.payload?.data || []}
       />
 
       {/* Categories Section */}
       <CategoriesSection
         title={t("categories.title")}
-        categories={categories}
       />
 
       {/* Courses Section */}
@@ -119,6 +110,9 @@ export default function Home() {
         </section>
       )}
 
+      {/* Learning Paths Section */}
+      <LearningPathsSection />
+
       {/* Skills Section */}
       <SkillsSection
         title={t("skillsSection.title")}
@@ -143,10 +137,27 @@ export default function Home() {
       />
 
       {/* Instructors Section */}
-      <InstructorsSection
-        title={t("instructors.title")}
-        subtitle={t("instructors.subtitle")}
-      />
+      {isLoadingInstructors ? (
+        <section className="py-16 bg-gray-50 dark:bg-gray-900">
+          <div className="container mx-auto px-4">
+            <div className="h-10 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-4" />
+            <div className="h-6 w-96 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-12" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+                  <div className="h-80 bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <InstructorsSection
+          title={t("instructors.title")}
+          subtitle={t("instructors.subtitle")}
+          instructors={instructorsData?.payload?.data || []}
+        />
+      )}
 
       {/* Blog Section */}
       <BlogSection

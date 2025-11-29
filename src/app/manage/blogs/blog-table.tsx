@@ -57,6 +57,7 @@ import { BlogListResponseType, BlogType } from "@/schemaValidations/blog.schema"
 import { useDeleteBlogMutation, useGetBlogList } from "@/queries/useBlog";
 import AddBlog from "./add-blog";
 import EditBlog from "./edit-blog";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type BlogItem = BlogListResponseType["data"][0];
 
@@ -140,6 +141,14 @@ export default function BlogTable() {
   const page = searchParams.get("page") ? Number(searchParams.get("page")) : 1;
   const pageIndex = page - 1;
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  
+  // Permission checks
+  const { hasPermission, isLoading: isPermissionsLoading } = usePermissions();
+  const hasAddPermission = hasPermission("POST", "/api/blogs");
+  const hasEditPermission = hasPermission("PUT", "/api/blogs/{id}");
+  const hasDeletePermission = hasPermission("DELETE", "/api/blogs/{id}");
+  
+  console.log("🔐 [BlogTable] Permissions:", { hasAddPermission, hasEditPermission, hasDeletePermission });
 
   const [blogIdEdit, setBlogIdEdit] = useState<string | undefined>();
   const [blogDelete, setBlogDelete] = useState<BlogItem | null>(null);
@@ -229,6 +238,12 @@ export default function BlogTable() {
         const { setBlogIdEdit, setBlogDelete } = useContext(BlogTableContext);
         const openEdit = () => setBlogIdEdit(row.original.id);
         const openDelete = () => setBlogDelete(row.original as BlogItem);
+        
+        // Check if user has any action permissions
+        if (!hasEditPermission && !hasDeletePermission) {
+          return <div className="text-xs text-muted-foreground">-</div>;
+        }
+        
         return (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
@@ -240,8 +255,12 @@ export default function BlogTable() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>{t("Action")}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={openEdit}>{t("Edit")}</DropdownMenuItem>
-              <DropdownMenuItem onClick={openDelete}>{t("Delete")}</DropdownMenuItem>
+              {hasEditPermission && (
+                <DropdownMenuItem onClick={openEdit}>{t("Edit")}</DropdownMenuItem>
+              )}
+              {hasDeletePermission && (
+                <DropdownMenuItem onClick={openDelete}>{t("Delete")}</DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -331,7 +350,7 @@ export default function BlogTable() {
                 className="max-w-sm w-[160px]"
               />
               <div className="ml-auto flex items-center gap-2">
-                <AddBlog />
+                {hasAddPermission && <AddBlog />}
               </div>
             </div>
             <div className="rounded-md border">

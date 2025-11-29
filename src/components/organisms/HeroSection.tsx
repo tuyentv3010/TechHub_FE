@@ -1,6 +1,14 @@
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+interface Instructor {
+  id: string;
+  username: string;
+  avatar?: string;
+  email: string;
+}
 
 interface HeroSectionProps {
   welcomeText: string;
@@ -9,6 +17,7 @@ interface HeroSectionProps {
   buttonText: string;
   instructorCount: string;
   instructorText: string;
+  instructors?: Instructor[];
 }
 
 export function HeroSection({
@@ -18,6 +27,7 @@ export function HeroSection({
   buttonText,
   instructorCount,
   instructorText,
+  instructors = [],
 }: HeroSectionProps) {
   return (
     <section className="relative min-h-[700px] bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden">
@@ -96,21 +106,43 @@ export function HeroSection({
                 
                 {/* Instructor avatars */}
                 <div className="flex -space-x-2">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
-                    <span className="text-white text-sm font-semibold">A</span>
-                  </div>
-                  <div className="w-10 h-10 bg-green-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
-                    <span className="text-white text-sm font-semibold">B</span>
-                  </div>
-                  <div className="w-10 h-10 bg-purple-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
-                    <span className="text-white text-sm font-semibold">C</span>
-                  </div>
-                  <div className="w-10 h-10 bg-orange-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
-                    <span className="text-white text-sm font-semibold">D</span>
-                  </div>
-                  <div className="w-10 h-10 bg-blue-900 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
-                    <span className="text-white text-sm">+</span>
-                  </div>
+                  {instructors.length > 0 ? (
+                    <>
+                      {instructors.slice(0, 4).map((instructor, index) => (
+                        <Avatar key={instructor.id} className="w-10 h-10 border-2 border-white dark:border-gray-800">
+                          <AvatarImage 
+                            src={instructor.avatar || "/instructors/Square.png"} 
+                            alt={instructor.username}
+                            className="object-cover"
+                          />
+                          <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-purple-500 to-blue-500 text-white">
+                            {instructor.username.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {instructors.length > 4 && (
+                        <div className="w-10 h-10 bg-blue-900 dark:bg-blue-800 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
+                          <span className="text-white text-sm font-semibold">+{instructors.length - 4}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    // Fallback avatars when no data
+                    <>
+                      <div className="w-10 h-10 bg-blue-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
+                        <span className="text-white text-sm font-semibold">A</span>
+                      </div>
+                      <div className="w-10 h-10 bg-green-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
+                        <span className="text-white text-sm font-semibold">B</span>
+                      </div>
+                      <div className="w-10 h-10 bg-purple-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
+                        <span className="text-white text-sm font-semibold">C</span>
+                      </div>
+                      <div className="w-10 h-10 bg-orange-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
+                        <span className="text-white text-sm font-semibold">D</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

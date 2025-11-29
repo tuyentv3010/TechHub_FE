@@ -6,17 +6,23 @@ export const TokenType = {
 } as const;
 
 export const Role = {
-  Admin: "Admin",
-  Staff: "Staff",
-  Guest: "Guest",
-  Customer: "Customer",
+  Admin: "ADMIN",
+  SuperAdmin: "SUPER_ADMIN",
+  Staff: "STAFF",
+  Guest: "GUEST",
+  Customer: "CUSTOMER",
+  Instructor: "INSTRUCTOR",
+  Learner: "LEARNER",
 } as const;
 
 export const RoleValues = [
   Role.Admin,
+  Role.SuperAdmin,
   Role.Staff,
   Role.Guest,
   Role.Customer,
+  Role.Instructor,
+  Role.Learner,
 ] as const;
 
 export const TrainStatus = {

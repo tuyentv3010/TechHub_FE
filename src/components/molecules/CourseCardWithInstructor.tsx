@@ -1,5 +1,6 @@
 import { useGetAccount } from "@/queries/useAccount";
-import CourseCard, { Course } from "./CourseCard";
+import CourseCard from "./CourseCard";
+import { Course } from "@/types/course";
 
 interface CourseWithInstructorId extends Omit<Course, 'instructor' | 'instructorAvatar'> {
   id: string; // Course ID for creating slug

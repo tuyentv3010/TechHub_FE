@@ -5,12 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslations } from "next-intl";
 import { useGetCourseById, useGetChapters } from "@/queries/useCourse";
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import dynamic from "next/dynamic";
 import TableSkeleton from "@/components/Skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import LessonManagement from "./lesson-management";
 import AssetManagement from "./asset-management";
+import ExerciseManagement from "./exercise-management";
+import AiExercisePanel from "./ai-exercise-panel";
 
 const ChapterManagement = dynamic(() => import("./chapter-management"));
 const ProgressTracker = dynamic(() => import("./progress-tracker"));
@@ -68,7 +70,7 @@ export default function CourseDetailPage() {
             </div>
             <div>
               <span className="text-muted-foreground">{t("Price")}: </span>
-              <span className="font-medium">${course.price}</span>
+              <span className="font-medium">{course.price.toFixed(2)} USD</span>
             </div>
             <div>
               <span className="text-muted-foreground">{t("Enrollments")}: </span>
@@ -83,6 +85,7 @@ export default function CourseDetailPage() {
         <TabsList>
           <TabsTrigger value="content">{t("CourseContent")}</TabsTrigger>
           <TabsTrigger value="progress">{t("Progress")}</TabsTrigger>
+          <TabsTrigger value="ai-exercises">{t("AiExercises")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="content" className="space-y-6">
@@ -130,17 +133,34 @@ export default function CourseDetailPage() {
                           {chapter.lessons && chapter.lessons.length > 0 && (
                             <div className="space-y-4 pl-6 border-l-2">
                               {chapter.lessons.map((lesson: any) => (
-                                <div key={lesson.id} className="space-y-2">
-                                  <h5 className="text-sm font-medium text-muted-foreground">
-                                    {t("AssetsFor")}: {lesson.title}
-                                  </h5>
-                                  <AssetManagement
-                                    courseId={courseId}
-                                    chapterId={chapter.id}
-                                    lessonId={lesson.id}
-                                    assets={lesson.assets || []}
-                                    onRefresh={refetchChapters}
-                                  />
+                                <div key={lesson.id} className="space-y-4">
+                                  {/* Assets Section */}
+                                  <div className="space-y-2">
+                                    <h5 className="text-sm font-medium text-muted-foreground">
+                                      {t("AssetsFor")}: {lesson.title}
+                                    </h5>
+                                    <AssetManagement
+                                      courseId={courseId}
+                                      chapterId={chapter.id}
+                                      lessonId={lesson.id}
+                                      assets={lesson.assets || []}
+                                      onRefresh={refetchChapters}
+                                    />
+                                  </div>
+
+                                  {/* Exercises Section */}
+                                  <div className="space-y-2">
+                                    <h5 className="text-sm font-medium text-muted-foreground">
+                                      {t("ExercisesFor")}: {lesson.title}
+                                    </h5>
+                                    <ExerciseManagement
+                                      courseId={courseId}
+                                      chapterId={chapter.id}
+                                      lessonId={lesson.id}
+                                      exercises={lesson.exercises || []}
+                                      onRefresh={refetchChapters}
+                                    />
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -159,6 +179,14 @@ export default function CourseDetailPage() {
           <Suspense fallback={<TableSkeleton />}>
             <ProgressTracker courseId={courseId} />
           </Suspense>
+        </TabsContent>
+
+        <TabsContent value="ai-exercises">
+          {chaptersLoading ? (
+            <TableSkeleton />
+          ) : (
+            <AiExercisePanel courseId={courseId} chapters={chapters} />
+          )}
         </TabsContent>
       </Tabs>
     </main>

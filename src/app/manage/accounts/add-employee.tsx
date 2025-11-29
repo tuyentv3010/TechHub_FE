@@ -24,6 +24,7 @@ import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAddAccountMutation } from "@/queries/useAccount";
 import { useAccountProfile } from "@/queries/useAccount";
+import { useGetRoles } from "@/queries/useRole";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -42,6 +43,8 @@ export default function AddEmployee() {
   const fileChangeRef = useRef<number>(0);
   const { data: profileData } = useAccountProfile();
   const userId = profileData?.payload?.data?.id || '';
+  const { data: rolesData, isLoading: isLoadingRoles } = useGetRoles();
+  const availableRoles = rolesData?.payload?.data || [];
 
   const form = useForm<CreateEmployeeAccountBodyType>({
     resolver: zodResolver(CreateEmployeeAccountBody),
@@ -251,7 +254,7 @@ export default function AddEmployee() {
                   <FormItem>
                     <div className="flex gap-2 items-start justify-start">
                       <Avatar className="aspect-square w-[100px] h-[100px] rounded-md object-cover">
-                        <AvatarImage src={previewAvatarFromFile} />
+                        <AvatarImage src={previewAvatarFromFile} className="object-cover" />
                         <AvatarFallback className="rounded-none">
                           {username || "Avatar"}
                         </AvatarFallback>
@@ -373,12 +376,18 @@ export default function AddEmployee() {
                         <select
                           id="roles"
                           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          value={field.value?.[0] || "LEARNER"}
+                          value={field.value?.[0] || ""}
                           onChange={(e) => field.onChange([e.target.value])}
+                          disabled={isLoadingRoles}
                         >
-                          <option value="LEARNER">Learner</option>
-                          <option value="INSTRUCTOR">Instructor</option>
-                          <option value="ADMIN">Admin</option>
+                          <option value="" disabled>
+                            {isLoadingRoles ? t("LoadingRoles") || "Loading roles..." : t("SelectRole") || "Select a role"}
+                          </option>
+                          {availableRoles.map((role: { id: string; name: string }) => (
+                            <option key={role.id} value={role.name}>
+                              {role.name}
+                            </option>
+                          ))}
                         </select>
                         <FormMessage />
                       </div>

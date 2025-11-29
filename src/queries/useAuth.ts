@@ -4,6 +4,8 @@ import {
   RegisterBodyType,
   ForgotPasswordBodyType,
   ResetPasswordBodyType,
+  VerifyCodeBodyType,
+  VerifyEmailBodyType,
 } from "@/schemaValidations/auth.schema";
 import { useMutation } from "@tanstack/react-query";
 
@@ -11,6 +13,27 @@ import { useMutation } from "@tanstack/react-query";
 export const useRegisterMutation = () => {
   return useMutation({
     mutationFn: (body: RegisterBodyType) => authApiRequest.register(body),
+  });
+};
+
+// Verify Email mutation
+export const useVerifyEmailMutation = () => {
+  return useMutation({
+    mutationFn: (body: VerifyCodeBodyType) => authApiRequest.verifyEmail(body),
+  });
+};
+
+// Resend Code mutation
+export const useResendCodeMutation = () => {
+  return useMutation({
+    mutationFn: (body: VerifyEmailBodyType) => authApiRequest.resendCode(body),
+  });
+};
+
+// Resend Reset Password Code mutation
+export const useResendResetCodeMutation = () => {
+  return useMutation({
+    mutationFn: (email: string) => authApiRequest.resendResetCode(email),
   });
 };
 

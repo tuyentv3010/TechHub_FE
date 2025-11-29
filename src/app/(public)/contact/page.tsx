@@ -1,0 +1,246 @@
+"use client";
+
+import Image from "next/image";
+import { useTranslations } from "next-intl";
+import Footer from "@/components/footer";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Mail, Phone, MapPin, Send } from "lucide-react";
+import { useState } from "react";
+import { toast } from "@/components/ui/use-toast";
+
+export default function ContactPage() {
+  const t = useTranslations("ContactPage");
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Handle form submission
+    toast({
+      title: "Message Sent!",
+      description: "We'll get back to you as soon as possible.",
+    });
+    setFormData({ name: "", email: "", subject: "", message: "" });
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  return (
+    <div className="w-full">
+      {/* Hero Section */}
+      <section className="relative py-20 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+              Get In Touch
+            </h1>
+            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
+              Have questions? We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Info & Form Section */}
+      <section className="py-16 bg-white dark:bg-gray-900">
+        <div className="container mx-auto px-4">
+          <div className="grid lg:grid-cols-2 gap-12">
+            {/* Contact Information */}
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+                Contact Information
+              </h2>
+              
+              {/* Contact Cards */}
+              <div className="space-y-6 mb-8">
+                <div className="flex items-start space-x-4 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                  <div className="w-12 h-12 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Email</h3>
+                    <p className="text-gray-600 dark:text-gray-300">support@techhub.com</p>
+                    <p className="text-gray-600 dark:text-gray-300">info@techhub.com</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-4 p-6 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
+                  <div className="w-12 h-12 bg-purple-600 dark:bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Phone</h3>
+                    <p className="text-gray-600 dark:text-gray-300">84+ 0808080808</p>
+                    <p className="text-gray-600 dark:text-gray-300">84+ 0909090908</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-4 p-6 bg-green-50 dark:bg-green-900/20 rounded-xl">
+                  <div className="w-12 h-12 bg-green-600 dark:bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Address</h3>
+                    <p className="text-gray-600 dark:text-gray-300">Trường Đại học Sư phạm Kỹ thuật Thành phố Hồ Chí Minht</p>
+                    <p className="text-gray-600 dark:text-gray-300">01 Đ. Võ Văn Ngân, Linh Chiểu, Thủ Đức, Thành phố Hồ Chí Minh, Việt Nam</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Image Placeholders - 3 images */}
+              <div className="grid grid-cols-3 gap-4">
+                {/* Image Placeholder 1 */}
+                <div className="relative h-40 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 transition-all">
+                  {/* Add your image URL here */}
+                  <Image
+                    src="/aboutUs/image_1.png"
+                    alt="Team member 1"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+
+                {/* Image Placeholder 2 */}
+                <div className="relative h-40 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 transition-all">
+                  {/* Add your image URL here */}
+                  <Image
+                    src="/aboutUs/image_2.png"
+                    alt="Team member 2"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+
+                {/* Image Placeholder 3 */}
+                <div className="relative h-40 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 transition-all">
+                  {/* Add your image URL here */}
+                  <Image
+                    src="/aboutUs/image_3.png"
+                    alt="Team member 3"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Form */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-8">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+                Send us a Message
+              </h2>
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <Label htmlFor="name" className="text-gray-700 dark:text-gray-300">
+                    Your Name
+                  </Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="John Doe"
+                    required
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">
+                    Email Address
+                  </Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="john@example.com"
+                    required
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="subject" className="text-gray-700 dark:text-gray-300">
+                    Subject
+                  </Label>
+                  <Input
+                    id="subject"
+                    name="subject"
+                    value={formData.subject}
+                    onChange={handleChange}
+                    placeholder="How can we help?"
+                    required
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="message" className="text-gray-700 dark:text-gray-300">
+                    Message
+                  </Label>
+                  <Textarea
+                    id="message"
+                    name="message"
+                    value={formData.message}
+                    onChange={handleChange}
+                    placeholder="Tell us more about your inquiry..."
+                    rows={6}
+                    required
+                    className="mt-2"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                >
+                  <Send className="w-5 h-5 mr-2" />
+                  Send Message
+                </Button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Map Section (Placeholder) */}
+      <section className="py-16 bg-gray-50 dark:bg-gray-800">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+            Visit Our Office
+          </h2>
+          <div className="relative h-96 rounded-2xl overflow-hidden">
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3959.3030246301596!2d106.7693381750897!3d10.850632389302671!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752763f23816ab%3A0x282f711441b6916f!2zVHLGsOG7nW5nIMSQ4bqhaSBo4buNYyBTxrAgcGjhuqFtIEvhu7kgdGh14bqtdCBUaMOgbmggcGjhu5EgSOG7kyBDaMOtIE1pbmg!5e1!3m2!1svi!2sus!4v1764214923760!5m2!1svi!2sus"
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="rounded-2xl"
+            ></iframe>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+}

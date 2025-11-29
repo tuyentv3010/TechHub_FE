@@ -15,7 +15,7 @@ export interface TableTokenPayload {
   tokenType: (typeof TokenType)["TableToken"];
 }
 
-export type RoleType = "SUPER_ADMIN" | "ADMIN" | "STAFF" | "GUEST" | "CUSTOMER";
+export type RoleType = "SUPER_ADMIN" | "ADMIN" | "STAFF" | "GUEST" | "CUSTOMER" | "INSTRUCTOR" | "LEARNER";
 
 export type Permission = {
   id: number;

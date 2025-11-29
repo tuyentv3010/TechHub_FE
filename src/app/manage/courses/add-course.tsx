@@ -24,8 +24,9 @@ import { Badge } from "@/components/ui/badge";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusCircle, Upload, X, ImagePlus, Video } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
 import { useCreateCourseMutation } from "@/queries/useCourse";
@@ -37,6 +38,10 @@ import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { useAccountProfile } from "@/queries/useAccount";
 import fileApiRequest from "@/apiRequests/file";
 import { useRef } from "react";
+import { useGetSkills, useGetTags } from "@/queries/useCourse";
+import SkillManager from "@/components/manage/SkillManager";
+import TagManager from "@/components/manage/TagManager";
+import { CurrencyInputWithSwitch } from "@/components/ui/currency-input-with-switch";
 
 export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   const t = useTranslations("ManageCourse");
@@ -58,12 +63,19 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   // Multi-input states
-  const [categoryInput, setCategoryInput] = useState("");
-  const [tagInput, setTagInput] = useState("");
+  // inputs removed: using backend suggestions and managers instead
   const [objectiveInput, setObjectiveInput] = useState("");
   const [requirementInput, setRequirementInput] = useState("");
 
-  const form = useForm<CreateCourseBodyType>({
+  // Suggestions from backend (via react-query)
+  const { data: skillsData } = useGetSkills();
+  const skillsOptions = skillsData?.payload?.data ?? [];
+  const { data: tagsData } = useGetTags();
+  const tagsOptions = tagsData?.payload?.data ?? [];
+
+  
+
+  const form = useForm<any>({
     resolver: zodResolver(CreateCourseBody),
     defaultValues: {
       title: "",
@@ -73,7 +85,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
       level: "BEGINNER",
       language: "VI",
       status: "DRAFT",
-      categories: [],
+      skills: [],
       tags: [],
       objectives: [],
       requirements: [],
@@ -82,8 +94,15 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
     },
   });
 
+  // Ensure 'skills' and 'tags' are registered and initialized as arrays
+  useEffect(() => {
+    form.register("skills", { value: [] });
+    form.register("tags", { value: [] });
+    // keep eslint happy about form
+  }, [form]);
+
   // Helper functions for array fields
-  const addItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', value: string) => {
+  const addItem = (field: 'skills' | 'tags' | 'objectives' | 'requirements', value: string) => {
     if (!value.trim()) return;
     const current = form.getValues(field) || [];
     if (!current.includes(value.trim())) {
@@ -91,9 +110,30 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
     }
   };
 
-  const removeItem = (field: 'categories' | 'tags' | 'objectives' | 'requirements', index: number) => {
+  const toggleItem = (field: 'skills' | 'tags' | 'objectives' | 'requirements', value: string) => {
+    console.log(`[AddCourse] toggleItem called - field: ${field}, value: '${value}'`);
+    if (!value.trim()) {
+      console.log(`[AddCourse] toggleItem - value is empty, returning`);
+      return;
+    }
     const current = form.getValues(field) || [];
-    form.setValue(field, current.filter((_, i) => i !== index));
+    console.log(`[AddCourse] toggleItem - current ${field} values:`, current);
+    const trimmedValue = value.trim();
+    if (current.includes(trimmedValue)) {
+      const newValue = current.filter((v: string) => v !== trimmedValue);
+      console.log(`[AddCourse] toggleItem - removing '${trimmedValue}', new values:`, newValue);
+      form.setValue(field, newValue, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    } else {
+      const newValue = [...current, trimmedValue];
+      console.log(`[AddCourse] toggleItem - adding '${trimmedValue}', new values:`, newValue);
+      form.setValue(field, newValue, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    }
+    console.log(`[AddCourse] toggleItem - final ${field} values:`, form.getValues(field));
+  };
+
+  const removeItem = (field: 'skills' | 'tags' | 'objectives' | 'requirements', index: number) => {
+    const current = form.getValues(field) || [];
+    form.setValue(field, current.filter((_: any, i: number) => i !== index));
   };
 
   const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,10 +240,58 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
     }
   };
 
-  const onSubmit = async (data: CreateCourseBodyType) => {
+  const onSubmit = async (data: any) => {
     if (createCourseMutation.isPending) return;
     try {
-      await createCourseMutation.mutateAsync(data);
+      console.log("[AddCourse] ========== FORM SUBMIT START ==========");
+      console.log("[AddCourse] Raw form data:", data);
+      console.log("[AddCourse] Form data.skills:", data.skills);
+      console.log("[AddCourse] Form data.tags:", data.tags);
+      console.log("[AddCourse] Form data.skills type:", typeof data.skills, Array.isArray(data.skills));
+      console.log("[AddCourse] Form data.tags type:", typeof data.tags, Array.isArray(data.tags));
+      
+      // Double-check by reading from form.getValues()
+      const currentSkills = form.getValues("skills");
+      const currentTags = form.getValues("tags");
+      console.log("[AddCourse] getValues('skills'):", currentSkills);
+      console.log("[AddCourse] getValues('tags'):", currentTags);
+      
+      // Backend now accepts `skills` (preferred). Build skills/tags arrays from form.
+      const skills = Array.isArray(data.skills) ? data.skills : (Array.isArray(currentSkills) ? currentSkills : []);
+      const tags = Array.isArray(data.tags) ? data.tags : (Array.isArray(currentTags) ? currentTags : []);
+      
+      console.log("[AddCourse] Processed skills:", skills);
+      console.log("[AddCourse] Processed tags:", tags);
+      console.log("[AddCourse] Skills length:", skills.length);
+      console.log("[AddCourse] Tags length:", tags.length);
+      
+      const payload: CreateCourseBodyType = {
+        title: data.title,
+        description: data.description,
+        price: data.price,
+        discountPrice: data.discountPrice,
+        level: data.level,
+        language: data.language,
+        status: data.status,
+        // send skills (preferred). Keep categories empty for backward-compatibility if needed.
+        skills: skills,
+        categories: [],
+        tags: tags,
+        objectives: Array.isArray(data.objectives) ? data.objectives : [],
+        requirements: Array.isArray(data.requirements) ? data.requirements : [],
+        thumbnail: data.thumbnail || undefined,
+        introVideo: data.introVideo || undefined,
+      };
+      
+      console.log("[AddCourse] Final payload to send:", JSON.stringify(payload, null, 2));
+      console.log("[AddCourse] Payload.skills:", payload.skills);
+      console.log("[AddCourse] Payload.categories:", payload.categories);
+      console.log("[AddCourse] Payload.tags:", payload.tags);
+
+      const response = await createCourseMutation.mutateAsync(payload);
+      console.log("[AddCourse] API Response received:", response);
+      console.log("[AddCourse] Response data:", response?.payload?.data);
+      console.log("[AddCourse] ========== FORM SUBMIT SUCCESS ==========");
       toast({
         title: t("CreateSuccess"),
         description: t("CourseCreated"),
@@ -217,6 +305,10 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
       handleErrorApi({ error, setError: form.setError });
     }
   };
+
+  // Skill & Tag manager modal state
+  const [showSkillManager, setShowSkillManager] = useState(false);
+  const [showTagManager, setShowTagManager] = useState(false);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -248,7 +340,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               />
               {form.formState.errors.title && (
                 <p className="text-sm text-red-500">
-                  {form.formState.errors.title.message}
+                  {String((form.formState.errors.title as any).message)}
                 </p>
               )}
             </div>
@@ -282,7 +374,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             />
             {form.formState.errors.description && (
               <p className="text-sm text-red-500">
-                {form.formState.errors.description.message}
+                {String((form.formState.errors.description as any).message)}
               </p>
             )}
           </div>
@@ -290,28 +382,38 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="price">{t("PriceLabel")}</Label>
-              <Input
-                id="price"
-                type="number"
-                step="0.01"
-                placeholder="49.99"
-                {...form.register("price", { valueAsNumber: true })}
+              <Controller
+                name="price"
+                control={form.control}
+                render={({ field }) => (
+                  <CurrencyInputWithSwitch
+                    id="price"
+                    placeholder="49 000"
+                    value={field.value}
+                    onChange={(numericValue) => field.onChange(numericValue)}
+                  />
+                )}
               />
               {form.formState.errors.price && (
                 <p className="text-sm text-red-500">
-                  {form.formState.errors.price.message}
+                  {String((form.formState.errors.price as any).message)}
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="discountPrice">{t("DiscountPriceLabel")}</Label>
-              <Input
-                id="discountPrice"
-                type="number"
-                step="0.01"
-                placeholder="29.99"
-                {...form.register("discountPrice", { valueAsNumber: true })}
+              <Controller
+                name="discountPrice"
+                control={form.control}
+                render={({ field }) => (
+                  <CurrencyInputWithSwitch
+                    id="discountPrice"
+                    placeholder="29 000"
+                    value={field.value}
+                    onChange={(numericValue) => field.onChange(numericValue)}
+                  />
+                )}
               />
             </div>
 
@@ -333,40 +435,30 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             </div>
           </div>
 
-          {/* Categories */}
+          {/* Skills (select from backend suggestions) */}
           <div className="space-y-2">
-            <Label>{t("CategoriesLabel")}</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder={t("CategoryPlaceholder")}
-                value={categoryInput}
-                onChange={(e) => setCategoryInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addItem('categories', categoryInput);
-                    setCategoryInput("");
-                  }
-                }}
-              />
+            <Label>{t("SkillsLabel")}</Label>
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => {
-                  addItem('categories', categoryInput);
-                  setCategoryInput("");
-                }}
+                variant="ghost"
+                onClick={() => setShowSkillManager(true)}
+                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                <PlusCircle className="w-4 h-4" />
+                {t("ManageSkills") || "Manage"}
               </Button>
             </div>
+
+            {/* Suggestions from backend */}
+            
+
             <div className="flex flex-wrap gap-2 mt-2">
-              {form.watch("categories")?.map((cat, idx) => (
+              {form.watch("skills")?.map((cat: string, idx: number) => (
                 <Badge key={idx} variant="secondary" className="gap-1">
                   {cat}
                   <X
                     className="w-3 h-3 cursor-pointer"
-                    onClick={() => removeItem('categories', idx)}
+                    onClick={() => removeItem('skills', idx)}
                   />
                 </Badge>
               ))}
@@ -376,32 +468,21 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
           {/* Tags */}
           <div className="space-y-2">
             <Label>{t("TagsLabel")}</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder={t("TagPlaceholder")}
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addItem('tags', tagInput);
-                    setTagInput("");
-                  }
-                }}
-              />
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => {
-                  addItem('tags', tagInput);
-                  setTagInput("");
-                }}
+                variant="ghost"
+                onClick={() => setShowTagManager(true)}
+                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
               >
-                <PlusCircle className="w-4 h-4" />
+                {t("ManageTags") || "Manage tags"}
               </Button>
             </div>
+            {/* Tag suggestions from backend */}
+       
+
             <div className="flex flex-wrap gap-2 mt-2">
-              {form.watch("tags")?.map((tag, idx) => (
+              {form.watch("tags")?.map((tag: string, idx: number) => (
                 <Badge key={idx} variant="secondary" className="gap-1">
                   {tag}
                   <X
@@ -441,7 +522,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               </Button>
             </div>
             <div className="flex flex-col gap-1 mt-2">
-              {form.watch("objectives")?.map((obj, idx) => (
+              {form.watch("objectives")?.map((obj: string, idx: number) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
                   <span>• {obj}</span>
                   <X
@@ -481,7 +562,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               </Button>
             </div>
             <div className="flex flex-col gap-1 mt-2">
-              {form.watch("requirements")?.map((req, idx) => (
+              {form.watch("requirements")?.map((req: string, idx: number) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
                   <span>• {req}</span>
                   <X
@@ -666,6 +747,19 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
           />
         </>
       )}
+      {/* Skill Manager Modal */}
+      <SkillManager
+        open={showSkillManager}
+        onOpenChange={setShowSkillManager}
+        onSelect={(s: any) => toggleItem('skills', s.name)}
+        selectedItems={form.watch('skills') || []}
+      />
+      <TagManager
+        open={showTagManager}
+        onOpenChange={setShowTagManager}
+        onSelect={(t: any) => toggleItem('tags', t.name)}
+        selectedItems={form.watch('tags') || []}
+      />
     </Dialog>
   );
 }

@@ -100,7 +100,7 @@ let clientLogoutRequest: null | Promise<any> = null;
 const isClient = typeof window !== "undefined";
 
 const request = async <Response>(
-  method: "GET" | "POST" | "PUT" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
   url: string,
   options?: CustomOptions | undefined
 ) => {
@@ -191,6 +191,14 @@ const request = async <Response>(
       payload,
     };
 
+    console.log(`✅ HTTP ${method} response:`, {
+      url: fullUrl,
+      status: res.status,
+      payloadPreview: typeof payload === 'object' 
+        ? JSON.stringify(payload).slice(0, 200) + (JSON.stringify(payload).length > 200 ? '...' : '')
+        : payload,
+    });
+
     if (!res.ok) {
       if (
         res.status === ENTITY_ERROR_STATUS &&
@@ -213,7 +221,9 @@ const request = async <Response>(
           }
         );
       } else if (res.status === AUTHENTICATION_ERROR_STATUS) {
+        console.warn('🔐 [HTTP] 401 Unauthorized - Token expired or invalid');
         if (isClient && !clientLogoutRequest) {
+          console.log('🚪 [HTTP] Logging out user...');
           clientLogoutRequest = fetch("/api/auth/logout", {
             method: "POST",
             headers: {
@@ -222,12 +232,15 @@ const request = async <Response>(
           });
           try {
             await clientLogoutRequest;
+            console.log('✅ [HTTP] Logout successful');
           } catch (error) {
-            console.error("Logout error:", error);
+            console.error("❌ [HTTP] Logout error:", error);
           } finally {
             localStorage.removeItem("accessToken");
             localStorage.removeItem("refreshToken");
+            console.log('🧹 [HTTP] Tokens cleared from localStorage');
             clientLogoutRequest = null;
+            console.log('↪️ [HTTP] Redirecting to /login');
             location.href = `/login`;
           }
         } else if (!isClient) {
@@ -348,7 +361,7 @@ const refreshToken = async () => {
 
 // Wrapper for requests with token refresh
 const requestWithRefresh = async <Response>(
-  method: "GET" | "POST" | "PUT" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
   url: string,
   options?: CustomOptions | undefined
 ): Promise<any> => {
@@ -356,8 +369,10 @@ const requestWithRefresh = async <Response>(
     return await request<Response>(method, url, options);
   } catch (error: any) {
     if (error.status === AUTHENTICATION_ERROR_STATUS && isClient) {
+      console.log('🔄 [HTTP] Attempting to refresh token...');
       try {
         const newAccessToken = await refreshToken();
+        console.log('✅ [HTTP] Token refreshed successfully');
         const newOptions = {
           ...options,
           headers: {
@@ -365,8 +380,10 @@ const requestWithRefresh = async <Response>(
             Authorization: `Bearer ${newAccessToken}`,
           },
         };
+        console.log('🔁 [HTTP] Retrying request with new token');
         return await request<Response>(method, url, newOptions);
       } catch (refreshError) {
+        console.error('❌ [HTTP] Token refresh failed:', refreshError);
         throw refreshError;
       }
     }
@@ -400,6 +417,13 @@ const http = {
     options?: Omit<CustomOptions, "body"> | undefined
   ) {
     return requestWithRefresh<Response>("DELETE", url, options);
+  },
+  patch<Response>(
+    url: string,
+    body: any,
+    options?: Omit<CustomOptions, "body"> | undefined
+  ) {
+    return requestWithRefresh<Response>("PATCH", url, { ...options, body });
   },
 };
 

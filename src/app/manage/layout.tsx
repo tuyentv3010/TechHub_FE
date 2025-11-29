@@ -4,6 +4,7 @@ import NavLinks from "@/app/manage/nav-links";
 import MobileNavLinks from "@/app/manage/mobile-nav-links";
 import { SwitchLanguage } from "@/components/switch-language";
 import DropdownAvatar from "./dropdown-avatar";
+import NotificationBell from "@/components/organisms/NotificationBell";
 
 export default function Layout({
   children,
@@ -20,6 +21,7 @@ export default function Layout({
             <div className="flex justify-end gap-3">
               <SwitchLanguage />
               <DarkModeToggle />
+              <NotificationBell/>
             </div>
           </div>
           <DropdownAvatar />
