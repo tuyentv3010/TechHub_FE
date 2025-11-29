@@ -28,13 +28,13 @@ const menuItems: MenuItem[] = [
     title: "Dashboard",
     Icon: Home,
     href: "/manage/dashboard",
-    roles: [Role.Admin, Role.Staff],
-    // No specific permission - available to all logged-in users
+    roles: [Role.Admin], // Chỉ ADMIN
   },
   {
     title: "Nhân viên",
     Icon: Users2,
     href: "/manage/accounts",
+    roles: [Role.Admin], // Chỉ ADMIN
     requiredPermission: {
       method: "GET",
       url: "/api/users",
@@ -44,6 +44,7 @@ const menuItems: MenuItem[] = [
     title: "Vai trò",
     Icon: UserRoundPen,
     href: "/manage/roles",
+    roles: [Role.Admin], // Chỉ ADMIN
     requiredPermission: {
       method: "GET",
       url: "/api/admin/roles",
@@ -53,7 +54,7 @@ const menuItems: MenuItem[] = [
     title: "Bài viết",
     Icon: Newspaper,
     href: "/manage/blogs",
-    roles: [Role.Admin, Role.Staff],
+    roles: [Role.Admin], // Chỉ ADMIN
     requiredPermission: {
       method: "GET",
       url: "/api/blogs",
@@ -63,7 +64,7 @@ const menuItems: MenuItem[] = [
     title: "Quản lý File",
     Icon: FolderOpen,
     href: "/manage/files",
-    roles: [Role.Admin, Role.Staff],
+    roles: [Role.Admin, Role.Instructor], // ADMIN và INSTRUCTOR
     requiredPermission: {
       method: "GET",
       url: "/api/files",
@@ -73,6 +74,7 @@ const menuItems: MenuItem[] = [
     title: "Quyền hạn",
     href: "/manage/permissions",
     Icon: UserCog,
+    roles: [Role.Admin], // Chỉ ADMIN
     requiredPermission: {
       method: "GET",
       url: "/api/admin/permissions",
@@ -82,6 +84,7 @@ const menuItems: MenuItem[] = [
     title: "Khóa Học",
     href: "/manage/courses",
     Icon: School,
+    roles: [Role.Admin, Role.Instructor], // ADMIN và INSTRUCTOR
     requiredPermission: {
       method: "GET",
       url: "/api/courses",
@@ -91,7 +94,7 @@ const menuItems: MenuItem[] = [
     title: "Lộ trình Học tập",
     href: "/manage/learning-paths",
     Icon: Route,
-    roles: [Role.Admin, Role.Staff],
+    roles: [Role.Admin, Role.Instructor], // ADMIN và INSTRUCTOR
     requiredPermission: {
       method: "GET",
       url: "/api/learning-paths",

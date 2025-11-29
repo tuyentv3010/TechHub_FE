@@ -2,6 +2,7 @@
 import { useAccountProfile } from "@/queries/useAccount";
 import menuItems, { MenuItem } from "@/app/manage/menuItems";
 import { usePermissions } from "@/hooks/usePermissions";
+import { Role } from "@/constants/type";
 import {
   Tooltip,
   TooltipContent,
@@ -11,36 +12,65 @@ import {
 import { cn } from "@/lib/utils";
 import { Package2, Settings } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function NavLinks() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data, isLoading: isProfileLoading } = useAccountProfile();
   const { hasPermission, isLoading: isPermissionsLoading } = usePermissions();
   
   const account = data?.payload?.data;
 
-  // Filter menu items based on permissions
+  // Lấy roles từ profile API (array of strings, e.g., ["INSTRUCTOR", "ADMIN"])
+  const userRoles: string[] = account?.roles || [];
+  
+  console.log("🔐 [NavLinks] Profile data:", account);
+  console.log("🔐 [NavLinks] User roles:", userRoles);
+  console.log("🔐 [NavLinks] Role.Learner value:", Role.Learner);
+  
+  // Check if user is LEARNER - redirect to home
+  const isLearner = userRoles.includes(Role.Learner);
+  console.log("🔐 [NavLinks] Is Learner?:", isLearner);
+  useEffect(() => {
+    if (!isProfileLoading && isLearner) {
+      router.push("/");
+    }
+  }, [isProfileLoading, isLearner, router]);
+
+  // If user is LEARNER, don't render anything
+  if (isLearner) {
+    return null;
+  }
+
+  // Filter menu items based on roles from profile API
   const accessibleMenuItems = menuItems.filter((item: MenuItem) => {
-    // If no permission required, show the item
-    if (!item.requiredPermission) {
-      return true;
+    // Check roles - if item has roles defined, user must have at least one matching role
+    if (item.roles && item.roles.length > 0) {
+      const hasRole = item.roles.some(role => userRoles.includes(role));
+      if (!hasRole) {
+        console.log(`🚫 [NavLinks] Menu "${item.title}": HIDDEN (user roles [${userRoles.join(', ')}] don't match required roles [${item.roles.join(', ')}])`);
+        return false;
+      }
     }
 
     // If still loading permissions, don't show permission-restricted items yet
-    if (isPermissionsLoading) {
+    if (item.requiredPermission && isPermissionsLoading) {
       return false;
     }
 
-    // Check if user has the required permission
-    const hasAccess = hasPermission(
-      item.requiredPermission.method,
-      item.requiredPermission.url
-    );
-    
-    console.log(`🔍 [NavLinks] Menu "${item.title}": ${hasAccess ? "✅ SHOW" : "❌ HIDE"} (${item.requiredPermission.method} ${item.requiredPermission.url})`);
-    
-    return hasAccess;
+    // Check permission if required
+    if (item.requiredPermission) {
+      const hasAccess = hasPermission(
+        item.requiredPermission.method,
+        item.requiredPermission.url
+      );
+      console.log(`🔍 [NavLinks] Menu "${item.title}": ${hasAccess ? "✅ SHOW" : "❌ HIDE"} (${item.requiredPermission.method} ${item.requiredPermission.url})`);
+      return hasAccess;
+    }
+
+    return true;
   });
 
   if (isProfileLoading || isPermissionsLoading) {
