@@ -383,7 +383,7 @@ export default function AddEmployee() {
                           <option value="" disabled>
                             {isLoadingRoles ? t("LoadingRoles") || "Loading roles..." : t("SelectRole") || "Select a role"}
                           </option>
-                          {availableRoles.map((role) => (
+                          {availableRoles.map((role: { id: string; name: string }) => (
                             <option key={role.id} value={role.name}>
                               {role.name}
                             </option>

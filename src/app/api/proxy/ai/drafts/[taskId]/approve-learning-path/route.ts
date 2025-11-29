@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
     const authHeader = request.headers.get("authorization");
-    const taskId = params.taskId;
+    const { taskId } = await params;
 
     const response = await fetch(
       `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/api/proxy/ai/drafts/${taskId}/approve-learning-path`,

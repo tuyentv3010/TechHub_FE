@@ -15,7 +15,6 @@ import { InstructorsSection } from "@/components/organisms/InstructorsSection";
 import { BlogSection } from "@/components/organisms/BlogSection";
 import { NewsletterSection } from "@/components/organisms/NewsletterSection";
 import Footer from "@/components/footer";
-import { Course } from "@/components/molecules/CourseCard";
 
 export default function Home() {
   const t = useTranslations("HomePage");
