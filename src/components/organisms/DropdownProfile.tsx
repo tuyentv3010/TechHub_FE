@@ -50,7 +50,7 @@ export function DropdownProfile() {
   const { data, isLoading, isError } = useAccountProfile();
   
   const account = data?.payload?.data;
-
+  console.log("🔐 [userInfo?.roles] Account data:", userInfo?.roles);
   // Load user info from localStorage on mount
   useEffect(() => {
     if (isAuth) {
@@ -209,11 +209,19 @@ export function DropdownProfile() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {role === "ADMIN" && (
+                {userInfo?.roles?.includes("ADMIN") && (
                   <DropdownMenuItem asChild>
                     <Link href="/manage/accounts" className="cursor-pointer">
                       <BarChart3 className="mr-2 h-4 w-4" />
                       {t("dashboard") || "Dashboard"}
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {(userInfo?.roles?.includes("ADMIN") || userInfo?.roles?.includes("INSTRUCTOR")) && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/manage/courses" className="cursor-pointer">
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      {t("manageCourses") || "Manage Courses"}
                     </Link>
                   </DropdownMenuItem>
                 )}
