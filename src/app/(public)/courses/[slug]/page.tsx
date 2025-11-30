@@ -14,6 +14,10 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  Heart,
+  LayoutList,
+  Monitor,
+  Volume2,
 } from "lucide-react";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
@@ -51,7 +55,7 @@ import Link from 'next/link';
 export default function CourseDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const t = useTranslations("Course");
+  const t = useTranslations("courses");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const slug = params.slug as string;
@@ -286,8 +290,32 @@ export default function CourseDetailPage() {
   };
 
   const handleEnroll = async () => {
-    // Redirect to payment page
-    router.push(`/payment/${slug}`);
+    // Check if course is free (price = 0 or discountPrice = 0)
+    const finalPrice = courseSummary?.discountPrice ?? courseSummary?.price ?? 0;
+    
+    if (finalPrice === 0) {
+      // Free course - enroll directly
+      enrollMutation.mutate(courseId, {
+        onSuccess: () => {
+          toast({
+            title: t("enrollSuccess") || "Đăng ký thành công!",
+            description: t("enrollSuccessMessage") || "Bạn đã đăng ký khóa học thành công.",
+          });
+          // Redirect to learn page after successful enrollment
+          router.push(`/courses/${slug}/learn`);
+        },
+        onError: () => {
+          toast({
+            title: t("enrollError") || "Đăng ký thất bại",
+            description: t("enrollErrorMessage") || "Vui lòng đăng nhập và thử lại.",
+            variant: "destructive",
+          });
+        },
+      });
+    } else {
+      // Paid course - redirect to payment page
+      router.push(`/payment/${slug}`);
+    }
   };
 
   if (isLoading) {
@@ -330,23 +358,21 @@ export default function CourseDetailPage() {
 
   return (
     <main className="min-h-screen bg-background pb-20 pt-16">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 py-12 text-white">
+      {/* Hero Section with Background Image */}
+      <section 
+        className="relative py-12 text-white"
+        style={{
+          backgroundImage: courseSummary.thumbnail?.url 
+            ? `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(${courseSummary.thumbnail.url})`
+            : 'linear-gradient(to bottom right, #9333ea, #2563eb, #4338ca)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
         <div className="container mx-auto px-4">
           <div className="grid gap-8 lg:grid-cols-3">
             {/* Left Content */}
             <div className="lg:col-span-2">
-              {/* Thumbnail */}
-              {courseSummary.thumbnail?.url && (
-                <div className="mb-6 overflow-hidden rounded-xl border-4 border-white/20 shadow-2xl">
-                  <img
-                    src={courseSummary.thumbnail.url}
-                    alt={`${courseSummary.title} - Course thumbnail`}
-                    className="h-64 w-full object-cover"
-                  />
-                </div>
-              )}
-                
               <h1 className="mb-4 text-4xl font-bold leading-tight md:text-5xl">
                 {courseSummary.title}
               </h1>
@@ -362,16 +388,16 @@ export default function CourseDetailPage() {
                     {courseSummary.averageRating?.toFixed(1) || "N/A"}
                   </span>
                   <span className="text-white/80">
-                    ({courseSummary.ratingCount} đánh giá)
+                    ({courseSummary.ratingCount} {t("reviews")})
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  <span>{courseSummary.totalEnrollments} học viên</span>
+                  <span>{courseSummary.totalEnrollments} {t("students")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5" />
-                  <span>{course.totalLessons} bài học</span>
+                  <span>{course.totalLessons} {t("lectures")}</span>
                 </div>
                 {course.totalEstimatedDurationMinutes && (
                   <div className="flex items-center gap-2">
@@ -403,10 +429,11 @@ export default function CourseDetailPage() {
               )}
             </div>
 
-            {/* Right - Video Preview */}
+            {/* Right - Payment Card */}
             <div className="lg:col-span-1">
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden shadow-xl">
                 <CardContent className="p-0">
+                  {/* Video/Image Preview */}
                   {courseSummary.introVideo?.url ? (
                     <div className="relative aspect-video bg-black">
                       <video
@@ -436,66 +463,80 @@ export default function CourseDetailPage() {
                   )}
 
                   <div className="p-6">
-                    {/* Price */}
+                    {/* Price Section - Redesigned */}
                     <div className="mb-4">
                       {courseSummary.discountPrice ? (
                         <>
-                          <div className="mb-1 flex items-center gap-2">
-                            <span className="text-3xl font-bold text-purple-600">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-3xl font-bold text-[#3dcbb1]">
                               {formatPrice(courseSummary.discountPrice)}
                             </span>
-                            <Badge variant="destructive" className="text-sm">
-                              -{discountPercentage}%
-                            </Badge>
+                            <span className="text-lg text-muted-foreground line-through">
+                              {formatPrice(courseSummary.price)}
+                            </span>
                           </div>
-                          <div className="text-sm text-muted-foreground line-through">
-                            {formatPrice(courseSummary.price)}
-                          </div>
+                          <Badge className="mt-2 bg-[#3dcbb1] text-white hover:bg-[#35b5a0]">
+                            {discountPercentage}% {t("off")}
+                          </Badge>
                         </>
                       ) : (
-                        <div className="text-3xl font-bold text-purple-600">
+                        <div className="text-3xl font-bold text-[#3dcbb1]">
                           {formatPrice(courseSummary.price)}
                         </div>
                       )}
                     </div>
 
-                    {/* Enroll Button */}
+                    {/* Buy Button */}
                     <Button
                       onClick={() => {
                         if (course.enrolled) {
                           window.location.href = `/courses/${slug}/learn`;
-                          <Link href=""/>;
                         } else {
                           handleEnroll();
                         }
                       }}
                       disabled={enrollMutation.isPending}
-                      className="mb-3 w-full bg-purple-600 py-6 text-lg font-semibold hover:bg-purple-700"
+                      className="mb-3 w-full rounded-full bg-[#3dcbb1] py-6 text-lg font-semibold text-white hover:bg-[#35b5a0]"
                     >
-                      {course.enrolled ? "Vào học ngay" : "Đăng ký ngay"}
+                      {course.enrolled ? t("enterToLearn") : t("buy")}
                     </Button>
 
-                    {/* Course Info */}
-                    <div className="space-y-3 border-t pt-4 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Cấp độ</span>
-                        <span className="font-medium">
-                          {formatCourseLevel(courseSummary.level)}
+                    {/* Wishlist Button */}
+                    <Button
+                      variant="outline"
+                      className="mb-4 w-full rounded-full py-6 text-lg font-medium"
+                    >
+                      <Heart className="mr-2 h-5 w-5" />
+                      {t("wishlist")}
+                    </Button>
+
+                    {/* Course Info - Redesigned */}
+                    <div className="space-y-4 border-t pt-4">
+                      <div className="flex items-center gap-3">
+                        <LayoutList className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm">
+                          {course.totalChapters} {t("sections")}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Ngôn ngữ</span>
-                        <span className="font-medium">
+                      <div className="flex items-center gap-3">
+                        <Monitor className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm">
+                          {course.totalLessons} {t("lectures")}
+                        </span>
+                      </div>
+                      {course.totalEstimatedDurationMinutes && (
+                        <div className="flex items-center gap-3">
+                          <Clock className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-sm">
+                            {formatDuration(course.totalEstimatedDurationMinutes)} {t("totalLength")}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <Volume2 className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm">
                           {formatLanguage(courseSummary.language)}
                         </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Số chương</span>
-                        <span className="font-medium">{course.totalChapters}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Số bài học</span>
-                        <span className="font-medium">{course.totalLessons}</span>
                       </div>
                     </div>
                   </div>
