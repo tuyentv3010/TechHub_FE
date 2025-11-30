@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Link from "next/link";
 
 interface Instructor {
   id: string;
@@ -61,14 +62,19 @@ export function HeroSection({
             
             {/* CTA Button with decorative arrow */}
             <div className="relative">
-              <Button 
-                size="lg"
-                className="bg-blue-900 hover:bg-blue-800 text-white px-8 py-4 rounded-full text-lg font-semibold shadow-lg transition-all duration-300 hover:shadow-xl dark:bg-blue-800 dark:hover:bg-blue-700"
-              >
-                {buttonText}
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              
+            <Link 
+            href="/courses"
+            className="
+              inline-flex items-center justify-center
+              bg-blue-900 hover:bg-blue-800 text-white 
+              px-8 py-4 rounded-full text-lg font-semibold 
+              shadow-lg transition-all duration-300 hover:shadow-xl
+              dark:bg-blue-800 dark:hover:bg-blue-700
+            "
+          >
+            {buttonText}
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Link>
               {/* Decorative dotted line */}
               <div className="hidden lg:block absolute left-full top-1/2 -translate-y-1/2 ml-8">
                 <svg width="200" height="100" viewBox="0 0 200 100" className="text-gray-300 dark:text-gray-600">

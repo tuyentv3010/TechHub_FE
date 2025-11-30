@@ -1,31 +1,32 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
 interface SkillsSectionProps {
-  title: string;
-  subtitle: string;
-  description: string;
-  buttonText: string;
-  yearsText: string;
-  experienceText: string;
-  feature1Title: string;
-  feature1Description: string;
-  feature2Title: string;
-  feature2Description: string;
+  title?: string;
+  subtitle?: string;
+  description?: string;
+  buttonText?: string;
+  yearsText?: string;
+  experienceText?: string;
+  feature1Title?: string;
+  feature1Description?: string;
+  feature2Title?: string;
+  feature2Description?: string;
 }
 
 export function SkillsSection({ 
-  title, 
-  subtitle, 
-  description, 
-  buttonText, 
-  yearsText, 
-  experienceText,
-  feature1Title,
-  feature1Description,
-  feature2Title,
-  feature2Description
+  title = "Nâng cao kỹ năng của bạn với TechHub", 
+  subtitle = "Về chúng tôi", 
+  description = "TechHub là nền tảng học trực tuyến hàng đầu, cung cấp các khóa học chất lượng cao về công nghệ, lập trình và phát triển phần mềm. Chúng tôi cam kết mang đến trải nghiệm học tập tốt nhất cho học viên.", 
+  buttonText = "Tìm hiểu thêm", 
+  yearsText = "5+", 
+  experienceText = "Năm kinh nghiệm",
+  feature1Title = "Giảng viên chuyên nghiệp",
+  feature1Description = "Đội ngũ giảng viên giàu kinh nghiệm thực tế, đến từ các công ty công nghệ hàng đầu, sẵn sàng chia sẻ kiến thức và hướng dẫn bạn.",
+  feature2Title = "Học mọi lúc, mọi nơi",
+  feature2Description = "Truy cập khóa học 24/7 trên mọi thiết bị. Học theo tiến độ riêng của bạn với nội dung được cập nhật liên tục."
 }: SkillsSectionProps) {
   return (
     <section className="py-20 bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
@@ -45,7 +46,7 @@ export function SkillsSection({
               <div className="relative h-48 rounded-2xl overflow-hidden">
                 <Image
                   src="/skills/instructor-office.png"
-                  alt="Instructor in office"
+                  alt="Giảng viên TechHub"
                   fill
                   className="object-cover"
                 />
@@ -55,7 +56,7 @@ export function SkillsSection({
               <div className="relative h-48 rounded-2xl overflow-hidden">
                 <Image
                   src="/skills/building-exterior.png"
-                  alt="Building exterior"
+                  alt="Văn phòng TechHub"
                   fill
                   className="object-cover"
                 />
@@ -65,7 +66,7 @@ export function SkillsSection({
               <div className="col-span-2 relative h-56 rounded-2xl overflow-hidden">
                 <Image
                   src="/skills/team-meeting.png"
-                  alt="Team meeting"
+                  alt="Đội ngũ TechHub"
                   fill
                   className="object-cover"
                 />
@@ -119,12 +120,14 @@ export function SkillsSection({
 
             {/* CTA Button */}
             <div>
-              <Button 
-                className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-full font-medium text-lg shadow-lg transition-all duration-300 hover:shadow-xl"
-              >
-                {buttonText}
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
+              <Link href="/about">
+                <Button 
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-full font-medium text-lg shadow-lg transition-all duration-300 hover:shadow-xl"
+                >
+                  {buttonText}
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

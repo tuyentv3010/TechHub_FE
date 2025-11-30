@@ -78,15 +78,15 @@
     },
     "skillsSection": {
       "subtitle": "Về Chúng Tôi",
-      "title": "Học & Phát Triển Kỹ Năng Từ Mọi Nơi",
-      "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+      "title": "Nâng Cao Kỹ Năng Của Bạn Với TechHub",
+      "description": "TechHub là nền tảng học trực tuyến hàng đầu, cung cấp các khóa học chất lượng cao về công nghệ, lập trình và phát triển phần mềm. Chúng tôi cam kết mang đến trải nghiệm học tập tốt nhất cho học viên.",
       "buttonText": "Tìm Hiểu Thêm",
-      "yearsText": "8+",
+      "yearsText": "5+",
       "experienceText": "Năm Kinh Nghiệm",
-      "feature1Title": "Lớp Học Linh Hoạt",
-      "feature1Description": "Suspendisse ultrices gravida dictum fusce placerat orci nulla pellentesque dignissim enim sit.",
-      "feature2Title": "Lớp Học Linh Hoạt", 
-      "feature2Description": "Suspendisse ultrices gravida dictum fusce placerat orci nulla pellentesque dignissim enim sit."
+      "feature1Title": "Giảng Viên Chuyên Nghiệp",
+      "feature1Description": "Đội ngũ giảng viên giàu kinh nghiệm thực tế, đến từ các công ty công nghệ hàng đầu, sẵn sàng chia sẻ kiến thức và hướng dẫn bạn.",
+      "feature2Title": "Học Mọi Lúc, Mọi Nơi",
+      "feature2Description": "Truy cập khóa học 24/7 trên mọi thiết bị. Học theo tiến độ riêng của bạn với nội dung được cập nhật liên tục."
     },
     "callToAction": {
       "phone": "Gọi Để Đăng Ký Cho Con Em",

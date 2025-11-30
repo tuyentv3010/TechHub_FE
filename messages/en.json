@@ -80,16 +80,16 @@
       "viewAll": "View All"
     },
     "skillsSection": {
-      "subtitle": "Our About Us",
-      "title": "Learn & Grow Your Skills From Anywhere",
-      "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
-      "buttonText": "Load More",
-      "yearsText": "8+",
-      "experienceText": "Years Of Experiences",
-      "feature1Title": "Flexible Classrooms",
-      "feature1Description": "Suspendisse ultrices gravida dictum fusce placerat orci nulla pellentesque dignissim enim sit.",
-      "feature2Title": "Flexible Classrooms",
-      "feature2Description": "Suspendisse ultrices gravida dictum fusce placerat orci nulla pellentesque dignissim enim sit."
+      "subtitle": "About Us",
+      "title": "Enhance Your Skills With TechHub",
+      "description": "TechHub is a leading online learning platform, providing high-quality courses on technology, programming, and software development. We are committed to delivering the best learning experience for our students.",
+      "buttonText": "Learn More",
+      "yearsText": "5+",
+      "experienceText": "Years Of Experience",
+      "feature1Title": "Professional Instructors",
+      "feature1Description": "Our team of experienced instructors comes from top technology companies, ready to share knowledge and guide you.",
+      "feature2Title": "Learn Anytime, Anywhere",
+      "feature2Description": "Access courses 24/7 on any device. Learn at your own pace with continuously updated content."
     },
     "callToAction": {
       "phone": "Call To Enroll Your Child",

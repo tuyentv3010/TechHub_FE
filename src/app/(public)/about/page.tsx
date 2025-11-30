@@ -11,17 +11,29 @@ export default function AboutPage() {
 
   return (
     <div className="w-full">
-      {/* Hero Section */}
-      <section className="relative py-20 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-              About TechHub
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-              Empowering learners worldwide with quality education and cutting-edge technology
-            </p>
-          </div>
+      {/* Hero Section with Background Image */}
+      <section className="relative min-h-[400px] md:min-h-[500px]">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src="/aboutUs/thumbnail2.png" // TODO: Thêm URL ảnh background vào đây
+            alt="Background"
+            fill
+            className="object-cover"
+            priority
+          />
+          {/* Dark Overlay */}
+          <div className="absolute inset-0 bg-black/50" />
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 flex min-h-[400px] flex-col items-center justify-center px-4 text-center md:min-h-[500px]">
+          <h1 className="mb-4 text-3xl font-bold italic text-white md:text-4xl lg:text-5xl">
+            About TechHub
+          </h1>
+          <p className="text-base text-white/90 md:text-lg max-w-3xl">
+            Empowering learners worldwide with quality education and cutting-edge technology
+          </p>
         </div>
       </section>
 
