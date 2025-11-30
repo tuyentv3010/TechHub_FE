@@ -40,6 +40,7 @@ import { useCourseProgress, useMarkLessonCompleteMutation } from "@/queries/useC
 import { useGetExercises } from "@/queries/useCourse";
 import { CourseCommentsList } from "./CourseCommentsList";
 import ExerciseDisplay from "./ExerciseDisplay";
+import envConfig from "@/config";
 
 interface CourseLearningLayoutProps {
   course: any;
@@ -150,7 +151,8 @@ export default function CourseLearningLayout({
     
     const client = new Client({
       webSocketFactory: () => {
-        const sockJsUrl = "http://localhost:8082/ws-comment";
+        const wsBase = envConfig.NEXT_PUBLIC_WS_BASE || envConfig.NEXT_PUBLIC_API_ENDPOINT;
+        const sockJsUrl = `${wsBase}/course-service/ws-comment`;
         console.log("[WebSocket] Creating SockJS connection to:", sockJsUrl);
         return new SockJS(sockJsUrl) as WebSocket;
       },

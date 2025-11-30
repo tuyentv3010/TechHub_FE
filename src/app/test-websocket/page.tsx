@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
+import envConfig from "@/config";
 
 export default function WebSocketTestPage() {
   const [status, setStatus] = useState<string>("Disconnected");
@@ -29,7 +30,8 @@ export default function WebSocketTestPage() {
     setStatus("Connecting...");
     addMessage("🔄 Starting connection...");
 
-    const sockJsUrl = "http://localhost:8081/ws-comment";
+    const wsBase = envConfig.NEXT_PUBLIC_WS_BASE || envConfig.NEXT_PUBLIC_API_ENDPOINT;
+    const sockJsUrl = `${wsBase}/blog-service/ws-comment`;
     addMessage(`📡 SockJS URL: ${sockJsUrl}`);
 
     const stompClient = new Client({
@@ -153,14 +155,14 @@ export default function WebSocketTestPage() {
                 ? "text-red-600"
                 : "text-yellow-600"
             }
-          >
-            {status}
-          </span>
-        </p>
-        <p className="text-sm text-gray-500">
-          Endpoint: ws://localhost:8081/ws-comment
-        </p>
-      </div>
+        >
+          {status}
+        </span>
+      </p>
+      <p className="text-sm text-gray-500">
+          Endpoint: {`${envConfig.NEXT_PUBLIC_WS_BASE || envConfig.NEXT_PUBLIC_API_ENDPOINT}/blog-service/ws-comment`}
+      </p>
+    </div>
 
       <div className="flex gap-2 mb-4">
         <input

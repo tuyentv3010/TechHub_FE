@@ -378,7 +378,8 @@ export default function BlogDetailPage() {
     
     const client = new Client({
       webSocketFactory: () => {
-        const sockJsUrl = "http://localhost:8081/ws-comment";
+        const wsBase = envConfig.NEXT_PUBLIC_WS_BASE || envConfig.NEXT_PUBLIC_API_ENDPOINT;
+        const sockJsUrl = `${wsBase}/blog-service/ws-comment`;
         console.log("[WebSocket] Creating SockJS connection to:", sockJsUrl);
         return new SockJS(sockJsUrl) as WebSocket;
       },
