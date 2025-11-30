@@ -635,7 +635,7 @@ export default function CourseLearningLayout({
         
         {/* Floating Action Buttons - Above navigation */}
         <div className="sticky bottom-20 left-0 right-0 bg-transparent pointer-events-none">  
-          <div className="px-6 py-3 flex justify-center items-center gap-4 pointer-events-auto">
+          <div className="px-6 flex justify-center items-center gap-4 pointer-events-auto">
             {/* Mark Complete Button */}
             {isLessonCompleted(currentLesson?.id) ? (
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-600 text-white shadow-lg">

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -121,45 +122,129 @@ export default function CoursesPage() {
     (priceRange[0] > 0 || priceRange[1] < 10000000 ? 1 : 0);
 
   return (
-    <main className="min-h-screen bg-background pb-20 pt-20">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 py-12 text-white">
-        <div className="container mx-auto px-4">
-          <h1 className="mb-4 text-4xl font-bold md:text-5xl">Khám phá khóa học</h1>
-          <p className="mb-6 text-lg text-white/90">
-            Tìm kiếm và lọc các khóa học phù hợp với nhu cầu của bạn
+    <main className="min-h-screen bg-background pb-20">
+      {/* Hero Section with Background Image */}
+      <section className="relative min-h-[400px] md:min-h-[500px]">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src="/courses/courses.png" 
+            alt="Background"
+            fill
+            className="object-cover"
+            priority
+          />
+          {/* Dark Overlay */}
+          <div className="absolute inset-0 bg-black/50" />
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 flex min-h-[400px] flex-col items-center justify-center px-4 text-center md:min-h-[500px]">
+          <h1 className="mb-4 text-3xl font-bold italic text-white md:text-4xl lg:text-5xl">
+            Learn something new everyday.
+          </h1>
+          <p className="mb-12 text-base text-white/90 md:text-lg">
+            Become professionals and ready to join the world.
           </p>
 
-          {/* Search Bar */}
-          <div className="flex gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Tìm kiếm khóa học..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setPage(0);
-                }}
-                className="h-12 pl-10 text-base"
-              />
+          {/* Search Box */}
+          <div className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-left text-lg font-semibold text-gray-800">
+              What do you want to learn?
+            </h3>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              {/* Search Input */}
+              <div className="relative flex-1">
+                <Input
+                  type="text"
+                  placeholder="Find courses, skills, software, etc"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setPage(0);
+                  }}
+                  className="h-12 border-gray-200 bg-gray-50 text-base text-gray-700 placeholder:text-gray-400"
+                />
+              </div>
+
+              {/* Categories Dropdown */}
+              <div className="w-full md:w-44">
+                <Select value={selectedLevel} onValueChange={setSelectedLevel}>
+                  <SelectTrigger className="h-12 border-gray-200 bg-gray-50">
+                    <SelectValue placeholder="Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Tất cả</SelectItem>
+                    {LEVELS.map((level) => (
+                      <SelectItem key={level.value} value={level.value}>
+                        {level.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Topic Dropdown */}
+              <div className="w-full md:w-44">
+                <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                  <SelectTrigger className="h-12 border-gray-200 bg-gray-50">
+                    <SelectValue placeholder="Topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Tất cả</SelectItem>
+                    {LANGUAGES.map((lang) => (
+                      <SelectItem key={lang.value} value={lang.value}>
+                        {lang.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Search Button */}
+              <Button 
+                size="lg" 
+                className="h-12 px-8 text-base font-semibold"
+                style={{ backgroundColor: '#3dcbb1' }}
+              >
+                <Search className="mr-2 h-5 w-5" />
+                Search
+              </Button>
             </div>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="secondary" size="lg" className="relative">
-                  <SlidersHorizontal className="mr-2 h-5 w-5" />
-                  Bộ lọc
-                  {activeFiltersCount > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="absolute -right-2 -top-2 h-6 w-6 rounded-full p-0 text-xs"
-                    >
-                      {activeFiltersCount}
-                    </Badge>
-                  )}
-                </Button>
-              </SheetTrigger>
+          </div>
+        </div>
+      </section>
+
+      {/* Filters Section */}
+      <section className="border-b bg-gray-50 py-4 dark:bg-gray-900">
+        <div className="container mx-auto flex items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            {activeFiltersCount > 0 && (
+              <span className="text-sm text-muted-foreground">
+                {activeFiltersCount} bộ lọc đang áp dụng
+              </span>
+            )}
+          </div>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="default" 
+                className="relative"
+                style={{ borderColor: '#3dcbb1', color: '#3dcbb1' }}
+              >
+                <SlidersHorizontal className="mr-2 h-5 w-5" />
+                Bộ lọc nâng cao
+                {activeFiltersCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -right-2 -top-2 h-6 w-6 rounded-full p-0 text-xs"
+                  >
+                    {activeFiltersCount}
+                  </Badge>
+                )}
+              </Button>
+            </SheetTrigger>
               <SheetContent className="w-full overflow-y-auto sm:max-w-md">
                 <SheetHeader>
                   <SheetTitle>Bộ lọc khóa học</SheetTitle>
@@ -285,7 +370,6 @@ export default function CoursesPage() {
                 </div>
               </SheetContent>
             </Sheet>
-          </div>
         </div>
       </section>
 

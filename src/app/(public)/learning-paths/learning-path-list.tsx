@@ -23,6 +23,7 @@ import {
   Filter,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { LearningPathItemType } from "@/schemaValidations/learning-path.schema";
 
 export default function LearningPathList() {
@@ -47,6 +48,16 @@ export default function LearningPathList() {
     return matchesSearch;
   });
 
+  const handleSearch = () => {
+    // Search is already reactive via filteredPaths
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="text-center py-12">
@@ -57,26 +68,71 @@ export default function LearningPathList() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder={t("searchPlaceholder")}
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            className="pl-10"
+    <>
+      {/* Hero Section with Background Image */}
+      <section className="relative min-h-[400px] md:min-h-[500px]">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src="/learningPath/Background.png"
+            alt="Background"
+            fill
+            className="object-cover"
+            priority
           />
+          {/* Dark Overlay */}
+          <div className="absolute inset-0 bg-black/50" />
         </div>
-      </div>
 
-      {/* Results Count */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {t("showingResults", { count: filteredPaths.length, total: paths.length })}
-        </p>
-      </div>
+        {/* Content */}
+        <div className="relative z-10 flex min-h-[400px] flex-col items-center justify-center px-4 text-center md:min-h-[500px]">
+          <h1 className="mb-4 text-3xl font-bold italic text-white md:text-4xl lg:text-5xl">
+            {t("heroTitle")}
+          </h1>
+          <p className="mb-12 text-base text-white/90 md:text-lg max-w-3xl">
+            {t("heroDescription")}
+          </p>
+
+          {/* Search Box */}
+          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-left text-lg font-semibold text-gray-800">
+              {t("searchTitle") || "What learning path are you looking for?"}
+            </h3>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              {/* Search Input */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder={t("searchPlaceholder")}
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="h-12 pl-10 border-gray-200 bg-gray-50"
+                />
+              </div>
+
+              {/* Search Button */}
+              <Button
+                onClick={handleSearch}
+                className="h-12 px-8 text-base font-semibold text-white hover:opacity-90"
+                style={{ backgroundColor: '#3dcbb1' }}
+              >
+                <Search className="mr-2 h-5 w-5" />
+                Search
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Learning Paths Content */}
+      <div className="container mx-auto max-w-7xl py-16 px-4 space-y-8">
+        {/* Results Count */}
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {t("showingResults", { count: filteredPaths.length, total: paths.length })}
+          </p>
+        </div>
 
       {/* Learning Paths Grid */}
       {filteredPaths.length === 0 ? (
@@ -171,6 +227,7 @@ export default function LearningPathList() {
           </Button>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

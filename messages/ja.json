@@ -121,7 +121,28 @@
     "description": "説明",
     "reviews": "レビュー",
     "addToCart": "カートに追加",
-    "buyNow": "今すぐ購入"
+    "buyNow": "今すぐ購入",
+    "buy": "購入",
+    "wishlist": "お気に入り",
+    "sections": "セクション",
+    "lectures": "レクチャー",
+    "totalLength": "合計時間",
+    "enterToLearn": "学習開始",
+    "enrollNow": "今すぐ登録",
+    "levelLabel": "レベル",
+    "languageLabel": "言語",
+    "chaptersLabel": "チャプター数",
+    "lessonsLabel": "レッスン数",
+    "off": "OFF",
+    "skills": "スキル",
+    "tags": "タグ",
+    "students": "学生",
+    "enrollSuccess": "登録成功！",
+    "enrollSuccessMessage": "コースへの登録が完了しました。",
+    "enrollError": "登録失敗",
+    "enrollErrorMessage": "ログインして再度お試しください。",
+    "free": "無料",
+    "startLearning": "学習開始"
   },
   "NavItem": {
     "home": "ホーム",
@@ -259,6 +280,59 @@
       "instructorText": "講師",
       "searchPlaceholder": "コースを検索...",
       "searchButton": "検索"
+    },
+    "categories": {
+      "title": "カテゴリで探す",
+      "webDesign": "Webデザイン",
+      "dataScience": "データサイエンス",
+      "businessDevelopment": "ビジネス開発",
+      "personalDevelopment": "自己啓発",
+      "itAndSoftware": "IT＆ソフトウェア",
+      "graphicDesign": "グラフィックデザイン",
+      "digitalMarketing": "デジタルマーケティング",
+      "newsAndPhotography": "ニュース＆写真"
+    },
+    "coursesSection": {
+      "title": "TechHubコースに参加できます。",
+      "viewAll": "すべて見る"
+    },
+    "skillsSection": {
+      "subtitle": "私たちについて",
+      "title": "TechHubでスキルを向上させましょう",
+      "description": "TechHubは、テクノロジー、プログラミング、ソフトウェア開発に関する高品質なコースを提供する、業界をリードするオンライン学習プラットフォームです。私たちは学習者に最高の学習体験を提供することをお約束します。",
+      "buttonText": "詳しく見る",
+      "yearsText": "5+",
+      "experienceText": "年の経験",
+      "feature1Title": "プロフェッショナルな講師陣",
+      "feature1Description": "トップテクノロジー企業出身の経験豊富な講師陣が、知識を共有し、あなたを指導します。",
+      "feature2Title": "いつでも、どこでも学習",
+      "feature2Description": "あらゆるデバイスで24時間365日コースにアクセス。常に更新されるコンテンツで、自分のペースで学習できます。"
+    },
+    "callToAction": {
+      "phone": "登録のためにお電話ください",
+      "phoneNumber": "(+91)956823452"
+    },
+    "community": {
+      "title": "生涯学習者のコミュニティを作る。",
+      "stats": {
+        "totalStudents": "36k+",
+        "totalCourses": "15k+",
+        "totalInstructors": "97k+",
+        "successRate": "100%"
+      }
+    },
+    "instructors": {
+      "title": "人気の講師",
+      "subtitle": "あなたに最適なものを提供します。"
+    },
+    "blog": {
+      "title": "あなたの成長を発見",
+      "mostPopular": "最も人気のある投稿。"
+    },
+    "newsletter": {
+      "title": "ニュースレターに登録",
+      "placeholder": "メールアドレスを入力",
+      "subscribe": "登録"
     },
     "welcomeBack": "おかえりなさい {name}さん！ 👋",
     "subtitle": "モダンプログラミング学習プラットフォーム",

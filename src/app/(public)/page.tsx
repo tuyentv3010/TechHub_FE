@@ -67,6 +67,7 @@ export default function Home() {
       {/* Categories Section */}
       <CategoriesSection
         title={t("categories.title")}
+        variant="orbit"
       />
 
       {/* Courses Section */}
