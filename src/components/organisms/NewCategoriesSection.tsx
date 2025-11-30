@@ -4,11 +4,25 @@ import { useGetSkills } from "@/queries/useCourse";
 import Link from "next/link";
 import Image from "next/image";
 
+// Re-export OrbitCategoriesSection for convenience
+export { OrbitCategoriesSection } from "./OrbitCategoriesSection";
+
 interface CategoriesSectionProps {
   title: string;
+  variant?: "grid" | "orbit";
 }
 
-export function CategoriesSection({ title }: CategoriesSectionProps) {
+export function CategoriesSection({ title, variant = "grid" }: CategoriesSectionProps) {
+  // If orbit variant is requested, dynamically import and render it
+  if (variant === "orbit") {
+    const OrbitCategoriesSection = require("./OrbitCategoriesSection").OrbitCategoriesSection;
+    return <OrbitCategoriesSection title={title} />;
+  }
+
+  return <GridCategoriesSection title={title} />;
+}
+
+function GridCategoriesSection({ title }: { title: string }) {
   const { data: skillsData, isLoading } = useGetSkills();
   const skills = skillsData?.payload?.data ?? [];
 
