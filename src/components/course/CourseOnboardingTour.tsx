@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { X, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -98,7 +98,7 @@ export default function CourseOnboardingTour({
   const currentTourStep = tourSteps[currentStep];
 
   // Text-to-Speech
-  const speak = (text: string) => {
+  const speak = useCallback((text: string) => {
     if (!enableVoice) return;
 
     // Stop current speech
@@ -202,7 +202,7 @@ export default function CourseOnboardingTour({
 
     speechSynthesisRef.current = utterance;
     window.speechSynthesis.speak(utterance);
-  };
+  }, [enableVoice, locale]);
 
   const stopSpeech = () => {
     window.speechSynthesis.cancel();
@@ -223,7 +223,8 @@ export default function CourseOnboardingTour({
     return () => {
       stopSpeech();
     };
-  }, [currentStep, enableVoice]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, enableVoice, speak]);
 
   const handleNext = () => {
     if (currentStep < tourSteps.length - 1) {

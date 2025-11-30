@@ -3,9 +3,10 @@
 import { useGetSkills } from "@/queries/useCourse";
 import Link from "next/link";
 import Image from "next/image";
+import { OrbitCategoriesSection } from "./OrbitCategoriesSection";
 
 // Re-export OrbitCategoriesSection for convenience
-export { OrbitCategoriesSection } from "./OrbitCategoriesSection";
+export { OrbitCategoriesSection };
 
 interface CategoriesSectionProps {
   title: string;
@@ -13,9 +14,8 @@ interface CategoriesSectionProps {
 }
 
 export function CategoriesSection({ title, variant = "grid" }: CategoriesSectionProps) {
-  // If orbit variant is requested, dynamically import and render it
+  // If orbit variant is requested, render OrbitCategoriesSection
   if (variant === "orbit") {
-    const OrbitCategoriesSection = require("./OrbitCategoriesSection").OrbitCategoriesSection;
     return <OrbitCategoriesSection title={title} />;
   }
 

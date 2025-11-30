@@ -218,21 +218,21 @@ export default function NewResetPasswordForm() {
     return (
       <div className="min-h-screen flex">
         {/* Left Side - Success Message */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-gray-900">
           <div className="w-full max-w-md text-center">
             {/* Logo */}
             {/* Success Icon */}
             <div className="mb-6 flex justify-center">
-              <div className="rounded-full bg-green-100 p-4">
-                <CheckCircle2 className="w-16 h-16 text-green-600" />
+              <div className="rounded-full bg-green-100 dark:bg-green-900 p-4">
+                <CheckCircle2 className="w-16 h-16 text-green-600 dark:text-green-400" />
               </div>
             </div>
 
             {/* Success Message */}
-            <h1 className="text-3xl font-bold text-gray-900 mb-3">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
               {t("success")}
             </h1>
-            <p className="text-gray-600 mb-8">
+            <p className="text-gray-600 dark:text-gray-400 mb-8">
               {t("successDescription")}
             </p>
 
@@ -247,7 +247,7 @@ export default function NewResetPasswordForm() {
         </div>
 
         {/* Right Side - Image */}
-        <div className="hidden lg:block lg:w-1/2 relative bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="hidden lg:block lg:w-1/2 relative bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-700">
           <div className="absolute inset-0 flex items-center justify-center p-12">
             <div className="relative w-full h-full max-w-2xl">
               <Image
@@ -267,15 +267,15 @@ export default function NewResetPasswordForm() {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-gray-900">
         <div className="w-full max-w-md">
           {/* Logo */}
           {/* Title */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               {t("title")}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               {t("description")}{" "}
               <span className="font-medium">
                 {email ? email.replace(/(.{2})(.*)(@.*)/, "$1***$3") : ""}
@@ -288,7 +288,7 @@ export default function NewResetPasswordForm() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* OTP Input Fields */}
               <div>
-                <Label className="text-sm font-medium text-gray-700 mb-3 block">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
                   {t("otp")}
                 </Label>
                 <div className="flex gap-3 justify-between" onPaste={handleOTPPaste}>
@@ -312,7 +312,7 @@ export default function NewResetPasswordForm() {
                             type="text"
                             inputMode="numeric"
                             maxLength={1}
-                            className="w-full h-14 text-center text-2xl font-semibold border-2 focus:border-blue-600 rounded-lg"
+                            className="w-full h-14 text-center text-2xl font-semibold border-2 focus:border-blue-600 rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white"
                             onChange={(e) => {
                               formField.onChange(e);
                               handleOTPInput(e, field.name, field.next);
@@ -332,7 +332,7 @@ export default function NewResetPasswordForm() {
                 name="newPassword"
                 render={({ field, formState: { errors } }) => (
                   <FormItem>
-                    <Label htmlFor="newPassword" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="newPassword" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {t("newPassword")}
                     </Label>
                     <Input
@@ -356,7 +356,7 @@ export default function NewResetPasswordForm() {
                 name="confirmPassword"
                 render={({ field, formState: { errors } }) => (
                   <FormItem>
-                    <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {t("confirmPassword")}
                     </Label>
                     <Input
@@ -387,7 +387,7 @@ export default function NewResetPasswordForm() {
               </Button>
 
               {/* Resend & Back to Login links */}
-              <div className="text-center text-sm text-gray-600 space-y-2">
+              <div className="text-center text-sm text-gray-600 dark:text-gray-400 space-y-2">
                 <div>
                   {t("didNotReceiveCode")}{" "}
                   <button
@@ -414,7 +414,7 @@ export default function NewResetPasswordForm() {
       </div>
 
       {/* Right Side - Image */}
-      <div className="hidden lg:block lg:w-1/2 relative bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="hidden lg:block lg:w-1/2 relative bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-700">
         <div className="absolute inset-0 flex items-center justify-center p-12">
           <div className="relative w-full h-full max-w-2xl">
             <Image

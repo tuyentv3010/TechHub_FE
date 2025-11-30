@@ -103,17 +103,17 @@ export default function NewLoginForm() {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-gray-900">
         <div className="w-full max-w-md">
           {/* Logo */}
    
 
           {/* Title */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               {t("title")}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               {t("description")}
             </p>
           </div>
@@ -127,7 +127,7 @@ export default function NewLoginForm() {
                 <Link href={authApiRequest.getGoogleOAuthUrl()}>
                   <Button
                     variant="outline"
-                    className="w-full h-12 border-gray-300 hover:bg-gray-50"
+                    className="w-full h-12 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                     type="button"
                   >
                     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -156,7 +156,7 @@ export default function NewLoginForm() {
                 <Link href={authApiRequest.getGithubOAuthUrl()}>
                   <Button
                     variant="outline"
-                    className="w-full h-12 border-gray-300 hover:bg-gray-50"
+                    className="w-full h-12 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                     type="button"
                   >
                     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -184,10 +184,10 @@ export default function NewLoginForm() {
               {/* Divider */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
+                  <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">or</span>
+                  <span className="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">or</span>
                 </div>
               </div>
 
@@ -197,7 +197,7 @@ export default function NewLoginForm() {
                 name="email"
                 render={({ field, formState: { errors } }) => (
                   <FormItem>
-                    <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {t("email")}
                     </Label>
                     <Input
@@ -221,7 +221,7 @@ export default function NewLoginForm() {
                 name="password"
                 render={({ field, formState: { errors } }) => (
                   <FormItem>
-                    <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                    <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {t("password")}
                     </Label>
                     <Input
@@ -244,18 +244,18 @@ export default function NewLoginForm() {
                   <input
                     type="checkbox"
                     id="remember"
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                   />
                   <label
                     htmlFor="remember"
-                    className="text-sm text-gray-700 cursor-pointer"
+                    className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
                   >
                     Remember for 30 days
                   </label>
                 </div>
                 <Link
                   href="/forgot-password"
-                  className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                  className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600"
                 >
                   {t("forgotPassword")}
                 </Link>
@@ -274,9 +274,9 @@ export default function NewLoginForm() {
               </Button>
 
               {/* Sign up link */}
-              <div className="text-center text-sm text-gray-600">
+              <div className="text-center text-sm text-gray-600 dark:text-gray-400">
                 {t("noAlreadyHaveAccount")}{" "}
-                <Link href="/register" className="font-medium text-gray-900 hover:text-blue-600">
+                <Link href="/register" className="font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600">
                   {t("Register")}
                 </Link>
               </div>
@@ -286,7 +286,7 @@ export default function NewLoginForm() {
       </div>
 
       {/* Right Side - Image */}
-      <div className="hidden lg:block lg:w-1/2 relative bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="hidden lg:block lg:w-1/2 relative bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-700">
         <div className="absolute inset-0 flex items-center justify-center p-12">
           <div className="relative w-full h-full max-w-2xl">
             <Image
