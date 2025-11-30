@@ -302,7 +302,10 @@ export default function CourseOnboardingTour({
   return (
     <>
       {/* Overlay with cut-out for highlighted element */}
-      <div className="fixed inset-0 z-40 pointer-events-none">
+      <div 
+        className="fixed inset-0 z-40 cursor-pointer"
+        onClick={handleSkip}
+      >
         <svg width="100%" height="100%" className="absolute inset-0">
           <defs>
             <mask id="spotlight-mask">
@@ -340,6 +343,7 @@ export default function CourseOnboardingTour({
       <Card
         className="fixed z-50 w-96 p-6 shadow-2xl"
         style={getTooltipPosition()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
