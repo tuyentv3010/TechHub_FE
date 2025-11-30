@@ -266,17 +266,17 @@ export function OrbitCategoriesSection({ title }: OrbitCategoriesSectionProps) {
     return null;
   }
 
-  // Container dimensions - center in the middle
-  const containerHeight = 550;
+  // Container dimensions - center at bottom to show top 1/4 of circles
+  const containerHeight = 450;
   const containerWidth = 1200;
   const centerX = containerWidth / 2;
-  const centerY = containerHeight / 2; // Center in the middle
+  const centerY = containerHeight + 150; // Push center below visible area to show top portion
 
-  // Arc configurations - full circles
+  // Arc configurations - larger circles
   const arcConfigs = [
-    { radius: 120, color: "#22d3ee", skills: arc1Skills, duration: 20, reverse: false },
-    { radius: 190, color: "#a855f7", skills: arc2Skills, duration: 30, reverse: true },
-    { radius: 260, color: "#3b82f6", skills: arc3Skills, duration: 40, reverse: false },
+    { radius: 280, color: "#22d3ee", skills: arc1Skills, duration: 25, reverse: false },
+    { radius: 450, color: "#a855f7", skills: arc2Skills, duration: 35, reverse: true },
+    { radius: 580, color: "#3b82f6", skills: arc3Skills, duration: 45, reverse: false },
   ].filter(arc => arc.skills.length > 0);
 
   return (
