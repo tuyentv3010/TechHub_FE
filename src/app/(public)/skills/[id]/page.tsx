@@ -72,29 +72,41 @@ export default function SkillDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-16">
-        <div className="container mx-auto px-4">
+      {/* Hero Section with Background Image */}
+      <div className="relative py-20 overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src="/courses/Thumbnail.png"
+            alt="Skill background"
+            fill
+            className="object-cover"
+            priority
+          />
+        </div>
+        
+        {/* Content */}
+        <div className="relative z-10 container mx-auto px-4">
           <div className="flex items-center gap-6">
-            <div className="relative w-24 h-24 rounded-full overflow-hidden bg-white/20 flex items-center justify-center">
+            <div className="relative w-28 h-28 rounded-full overflow-hidden bg-white/20 flex items-center justify-center border-4 border-white/30 shadow-xl">
               {skill.thumbnail ? (
                 <Image
                   src={skill.thumbnail}
                   alt={skill.name}
-                  width={96}
-                  height={96}
+                  width={112}
+                  height={112}
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span className="text-5xl font-bold">
+                <span className="text-6xl font-bold text-white">
                   {skill.name.charAt(0).toUpperCase()}
                 </span>
               )}
             </div>
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-2">{skill.name}</h1>
+            <div className="text-white">
+              <h1 className="text-4xl md:text-5xl font-bold mb-3 drop-shadow-lg">{skill.name}</h1>
               {skill.category && (
-                <span className="inline-block px-3 py-1 bg-white/20 rounded-full text-sm capitalize">
+                <span className="inline-block px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-sm capitalize border border-white/30">
                   {skill.category.toLowerCase()}
                 </span>
               )}
