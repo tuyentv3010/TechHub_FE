@@ -18,6 +18,7 @@ import {
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { useQueryClient } from "@tanstack/react-query";
+import envConfig from "@/config";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -122,7 +123,8 @@ export default function CourseDetailPage() {
     
     const client = new Client({
       webSocketFactory: () => {
-        const sockJsUrl = "http://localhost:8082/ws-comment";
+        const wsBase = envConfig.NEXT_PUBLIC_WS_BASE || envConfig.NEXT_PUBLIC_API_ENDPOINT;
+        const sockJsUrl = `${wsBase}/course-service/ws-comment`;
         console.log("[WebSocket] Creating SockJS connection to:", sockJsUrl);
         return new SockJS(sockJsUrl) as WebSocket;
       },
