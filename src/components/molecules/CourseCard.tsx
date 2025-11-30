@@ -6,6 +6,7 @@ import { formatNumber } from "@/lib/utils";
 import { createCourseSlug } from "@/lib/course";
 import { Course, Skill } from "@/types/course";
 import { useGetCourseById } from "@/queries/useCourse";
+import { useTranslations } from "next-intl";
 
 export interface CourseCardProps {
   course: Course;
@@ -13,11 +14,20 @@ export interface CourseCardProps {
 
 // Enhanced course card for homepage
 const CourseCard = ({ course }: CourseCardProps) => {
+  const t = useTranslations("courses");
   const courseSlug = course.id ? createCourseSlug(course.title, course.id) : "#";
   
   // Fetch detailed course information to get lessons count and duration
   const { data: courseDetailResponse } = useGetCourseById(course.id || "");
   const courseDetail = courseDetailResponse?.payload?.data;
+  
+  // Check if user is enrolled
+  const isEnrolled = courseDetail?.enrolled || false;
+  
+  // Get final price (discountPrice or price)
+  const finalPrice = courseDetail?.summary?.discountPrice ?? courseDetail?.summary?.price ?? course.price ?? 0;
+  const isFree = finalPrice === 0;
+  
   // Enhanced course data with fetched details
   const enhancedCourse = {
     ...course,
@@ -25,9 +35,9 @@ const CourseCard = ({ course }: CourseCardProps) => {
     hours: courseDetail?.totalEstimatedDurationMinutes 
       ? Math.round(courseDetail.totalEstimatedDurationMinutes / 60 * 10) / 10 // Round to 1 decimal
       : course.hours || 0,
-    skills: courseDetail?.summary.skills || course.skills || [],
+    skills: courseDetail?.summary?.skills || course.skills || [],
+    price: finalPrice,
   };
-  console.log("sadasdasd asd asd skills " , courseDetail);
 
   
   return (
@@ -44,8 +54,12 @@ const CourseCard = ({ course }: CourseCardProps) => {
         
         {/* Price Badge - Top Right */}
         <div className="absolute top-4 right-4">
-          <span className="bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-full text-sm font-bold shadow-md">
-            {enhancedCourse.price.toFixed(2)} USD
+          <span className={`px-3 py-1 rounded-full text-sm font-bold shadow-md ${
+            isFree 
+              ? 'bg-[#3dcbb1] text-white' 
+              : 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400'
+          }`}>
+            {isFree ? t("free") : `${enhancedCourse.price.toFixed(2)} USD`}
           </span>
         </div>
         
@@ -186,9 +200,20 @@ const CourseCard = ({ course }: CourseCardProps) => {
             </div>
             
             <Button 
-              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-full font-medium transition-colors"
+              className={`px-6 py-2 rounded-full font-medium transition-colors ${
+                isEnrolled 
+                  ? 'bg-[#3dcbb1] hover:bg-[#35b5a0] text-white'
+                  : isFree
+                    ? 'bg-[#3dcbb1] hover:bg-[#35b5a0] text-white'
+                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+              }`}
             >
-              Enroll →
+              {isEnrolled 
+                ? t("enterToLearn") 
+                : isFree 
+                  ? t("startLearning")
+                  : t("enroll")
+              } →
             </Button>
           </div>
         </div>

@@ -51,6 +51,7 @@ import {
 import { CourseCommentsList } from "@/components/course/CourseCommentsList";
 import { CourseRating } from "@/components/course/CourseRating";
 import Link from 'next/link';
+import Image from "next/image";
 
 export default function CourseDetailPage() {
   const params = useParams();
@@ -357,14 +358,12 @@ export default function CourseDetailPage() {
     : 0;
 
   return (
-    <main className="min-h-screen bg-background pb-20 pt-16">
+    <main className="min-h-screen bg-background pb-20 pt-6">
       {/* Hero Section with Background Image */}
       <section 
         className="relative py-12 text-white"
         style={{
-          backgroundImage: courseSummary.thumbnail?.url 
-            ? `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(${courseSummary.thumbnail.url})`
-            : 'linear-gradient(to bottom right, #9333ea, #2563eb, #4338ca)',
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('/courses/Thumbnail.png')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
@@ -373,6 +372,13 @@ export default function CourseDetailPage() {
           <div className="grid gap-8 lg:grid-cols-3">
             {/* Left Content */}
             <div className="lg:col-span-2">
+                <Image 
+                src={courseSummary.thumbnail?.url || "/courses/Thumbnail.png"} 
+                alt={courseSummary.title || "Course Thumbnail"} 
+                width={1000}
+                height={600}
+                className="mb-4 h-96 w-full rounded-xl object-cover border-[5px] border-white"
+              />
               <h1 className="mb-4 text-4xl font-bold leading-tight md:text-5xl">
                 {courseSummary.title}
               </h1>
@@ -465,25 +471,38 @@ export default function CourseDetailPage() {
                   <div className="p-6">
                     {/* Price Section - Redesigned */}
                     <div className="mb-4">
-                      {courseSummary.discountPrice ? (
-                        <>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-[#3dcbb1]">
-                              {formatPrice(courseSummary.discountPrice)}
-                            </span>
-                            <span className="text-lg text-muted-foreground line-through">
-                              {formatPrice(courseSummary.price)}
-                            </span>
+                      {(() => {
+                        const finalPrice = courseSummary.discountPrice ?? courseSummary.price ?? 0;
+                        if (finalPrice === 0) {
+                          return (
+                            <div className="text-3xl font-bold text-[#3dcbb1]">
+                              {t("free")}
+                            </div>
+                          );
+                        }
+                        if (courseSummary.discountPrice) {
+                          return (
+                            <>
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-bold text-[#3dcbb1]">
+                                  {formatPrice(courseSummary.discountPrice)}
+                                </span>
+                                <span className="text-lg text-muted-foreground line-through">
+                                  {formatPrice(courseSummary.price)}
+                                </span>
+                              </div>
+                              <Badge className="mt-2 bg-[#3dcbb1] text-white hover:bg-[#35b5a0]">
+                                {discountPercentage}% {t("off")}
+                              </Badge>
+                            </>
+                          );
+                        }
+                        return (
+                          <div className="text-3xl font-bold text-[#3dcbb1]">
+                            {formatPrice(courseSummary.price)}
                           </div>
-                          <Badge className="mt-2 bg-[#3dcbb1] text-white hover:bg-[#35b5a0]">
-                            {discountPercentage}% {t("off")}
-                          </Badge>
-                        </>
-                      ) : (
-                        <div className="text-3xl font-bold text-[#3dcbb1]">
-                          {formatPrice(courseSummary.price)}
-                        </div>
-                      )}
+                        );
+                      })()}
                     </div>
 
                     {/* Buy Button */}
@@ -498,7 +517,12 @@ export default function CourseDetailPage() {
                       disabled={enrollMutation.isPending}
                       className="mb-3 w-full rounded-full bg-[#3dcbb1] py-6 text-lg font-semibold text-white hover:bg-[#35b5a0]"
                     >
-                      {course.enrolled ? t("enterToLearn") : t("buy")}
+                      {course.enrolled 
+                        ? t("enterToLearn") 
+                        : (courseSummary.discountPrice ?? courseSummary.price ?? 0) === 0 
+                          ? t("startLearning")
+                          : t("buy")
+                      }
                     </Button>
 
                     {/* Wishlist Button */}
