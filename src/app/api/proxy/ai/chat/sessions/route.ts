@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       headers["Authorization"] = authHeader;
     }
 
-    let url = `${envConfig.NEXT_PUBLIC_API_URL}/api/proxy/ai/chat/sessions?userId=${userId}`;
+    let url = `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/ai/chat/sessions?userId=${userId}`;
     if (mode) {
       url += `&mode=${mode}`;
     }

@@ -33,7 +33,7 @@ const CurrencyInputWithSwitch = React.forwardRef<HTMLInputElement, CurrencyInput
   ({ value, onChange, defaultCurrency = 'USD', className, ...props }, ref) => {
     const [currency, setCurrency] = React.useState<Currency>(defaultCurrency);
     const [displayValue, setDisplayValue] = React.useState<string>(() => {
-      if (value === undefined || value === null || value === '') return '';
+      if (value === undefined || value === null) return '';
 
       // Convert USD (from backend) to display currency
       const displayAmount = currency === 'VND' ? convertUSDtoVND(value) : value;
@@ -46,7 +46,7 @@ const CurrencyInputWithSwitch = React.forwardRef<HTMLInputElement, CurrencyInput
     React.useEffect(() => {
       if (isUserTyping) return; // Don't update while user is typing
 
-      if (value === undefined || value === null || value === '') {
+      if (value === undefined || value === null) {
         setDisplayValue('');
       } else {
         // Convert USD (from backend) to display currency

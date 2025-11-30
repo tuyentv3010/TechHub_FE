@@ -311,7 +311,7 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
         title: pathData.title,
         description: pathData.description,
         skills: pathData.skills || [],
-        layoutEdges: pathData.layoutEdges || [],
+        isActive: "Y",
       });
       
       const newPathId = createResponse.payload.data.id;

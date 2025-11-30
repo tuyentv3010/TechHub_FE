@@ -361,7 +361,7 @@ const refreshToken = async () => {
 
 // Wrapper for requests with token refresh
 const requestWithRefresh = async <Response>(
-  method: "GET" | "POST" | "PUT" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
   url: string,
   options?: CustomOptions | undefined
 ): Promise<any> => {

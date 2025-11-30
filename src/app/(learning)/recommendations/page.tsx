@@ -26,33 +26,52 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Slider } from "@/components/ui/slider";
 import { useTranslations } from "next-intl";
 import { useAppContext } from "@/components/app-provider";
+
+interface Recommendation {
+  title: string;
+  description: string;
+  score: number;
+  estimatedDuration?: string;
+  tags?: string[];
+  reason: string;
+}
+
+interface ScheduledHistoryItem {
+  id: string;
+  createdAt: Date;
+  recommendations: Recommendation[];
+}
 
 export default function RecommendationsPage() {
   const { toast } = useToast();
   const t = useTranslations("AiRecommendation");
   const tCommon = useTranslations("common");
-  const { user } = useAppContext();
+  const { isAuth } = useAppContext();
   const [userId, setUserId] = useState<string>("");
   const [language, setLanguage] = useState<string>("vi");
   const [preferredLanguages, setPreferredLanguages] = useState<string[]>([]);
-  const [level, setLevel] = useState<string>("");
-  const [maxDuration, setMaxDuration] = useState<number>(0);
-  const [excludeCompleted, setExcludeCompleted] = useState<boolean>(false);
-  const [recommendations, setRecommendations] = useState<unknown[]>([]);
-  const [showDetails, setShowDetails] = useState<unknown>(null);
-  const [scheduledHistory, setScheduledHistory] = useState<unknown[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [showDetails, setShowDetails] = useState<Recommendation | null>(null);
+  const [scheduledHistory, setScheduledHistory] = useState<ScheduledHistoryItem[]>([]);
 
   const realtimeMutation = useRecommendRealtimeMutation();
   const scheduledMutation = useRecommendScheduledMutation();
 
   useEffect(() => {
-    if (user?.id) {
-      setUserId(user.id);
+    if (typeof window !== "undefined" && isAuth) {
+      const storedUserInfo = localStorage.getItem("userInfo");
+      if (storedUserInfo) {
+        try {
+          const parsed = JSON.parse(storedUserInfo);
+          setUserId(parsed?.id || "");
+        } catch (error) {
+          console.error("Failed to parse user info:", error);
+        }
+      }
     }
-  }, [user]);
+  }, [isAuth]);
 
   const handleLanguageToggle = (lang: string) => {
     setPreferredLanguages((prev) =>
@@ -84,10 +103,10 @@ export default function RecommendationsPage() {
         title: tCommon("success"),
         description: t("foundCourses", { count: response.payload?.data?.recommendations?.length || 0 }),
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: tCommon("error"),
-        description: error?.message || t("error"),
+        description: error instanceof Error ? error.message : t("error"),
         variant: "destructive",
       });
     }
@@ -125,10 +144,10 @@ export default function RecommendationsPage() {
         title: tCommon("success"),
         description: t("scheduledSuccess"),
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: tCommon("error"),
-        description: error?.message || t("scheduledError"),
+        description: error instanceof Error ? error.message : t("scheduledError"),
         variant: "destructive",
       });
     }
@@ -433,7 +452,7 @@ export default function RecommendationsPage() {
                               </p>
                             ) : (
                               <div className="space-y-2">
-                                {(item.recommendations || []).map((rec: any, idx: number) => (
+                                {(item.recommendations || []).map((rec: Recommendation, idx: number) => (
                                   <div key={idx} className="border rounded p-2">
                                     <div className="flex items-center gap-2">
                                       <span className="font-medium">{rec.title}</span>

@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
     const authHeader = request.headers.get("authorization");
-    const taskId = params.taskId;
+    const { taskId } = await params;
     const searchParams = request.nextUrl.searchParams;
     const reason = searchParams.get("reason");
 
