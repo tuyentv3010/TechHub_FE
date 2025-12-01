@@ -108,7 +108,7 @@ export default function LearningPathList() {
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="h-12 pl-10 border-gray-200 bg-gray-50"
+                  className="h-12 pl-10 border-gray-200 bg-gray-50 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600"
                 />
               </div>
 

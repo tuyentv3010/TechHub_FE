@@ -22,6 +22,7 @@ import { useAppContext } from "@/components/app-provider";
 import { useAccountProfile } from "@/queries/useAccount";
 import { useStreamingChat } from "@/hooks/useStreamingChat";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
+import aiApiRequest from "@/apiRequests/ai";
 import {
   MessageCircle,
   Send,
@@ -142,13 +143,43 @@ export default function AiChatPage() {
   useEffect(() => {
     if (sessionsData?.payload?.data) {
       const dbSessions = sessionsData.payload.data;
-      setSessions(
-        dbSessions.map((s: { id: string; userId: string; startedAt: string }, idx: number) => ({
-          id: s.id,
-          label: `${t("session")} ${dbSessions.length - idx}`,
-          startedAt: s.startedAt,
-        }))
-      );
+      
+      // Fetch first message for each session to use as label
+      const fetchSessionLabels = async () => {
+        const sessionsWithLabels = await Promise.all(
+          dbSessions.map(async (s: { id: string; userId: string; startedAt: string }, idx: number) => {
+            try {
+              const messagesRes = await aiApiRequest.getSessionMessages(s.id);
+              const messages = messagesRes.payload?.data || [];
+              // Find first USER message
+              const firstUserMessage = messages.find((m: { sender: string }) => m.sender === "USER");
+              
+              let label = `${t("session")} ${dbSessions.length - idx}`;
+              if (firstUserMessage?.content) {
+                // Get first 5 words
+                const words = firstUserMessage.content.split(/\s+/).slice(0, 5).join(" ");
+                label = words.length < firstUserMessage.content.length ? `${words}...` : words;
+              }
+              
+              return {
+                id: s.id,
+                label,
+                startedAt: s.startedAt,
+              };
+            } catch {
+              return {
+                id: s.id,
+                label: `${t("session")} ${dbSessions.length - idx}`,
+                startedAt: s.startedAt,
+              };
+            }
+          })
+        );
+        
+        setSessions(sessionsWithLabels);
+      };
+      
+      fetchSessionLabels();
       
       // Auto-select most recent session if none selected
       if (!sessionId && dbSessions.length > 0) {
