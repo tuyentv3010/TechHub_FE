@@ -40,6 +40,7 @@ import { useCourseProgress, useMarkLessonCompleteMutation } from "@/queries/useC
 import { useGetExercises } from "@/queries/useCourse";
 import { CourseCommentsList } from "./CourseCommentsList";
 import ExerciseDisplay from "./ExerciseDisplay";
+import VideoPlayer from "./VideoPlayer";
 import envConfig from "@/config";
 
 interface CourseLearningLayoutProps {
@@ -444,18 +445,19 @@ export default function CourseLearningLayout({
         {/* Scrollable Content Area */}
         <ScrollArea className="flex-1">
           {/* Video/Content Player */}
-          <div className="bg-black flex items-center justify-center w-full max-h-[600px]" id="video-player-area">
+          <div className="bg-black flex items-center justify-center w-full" id="video-player-area">
             {currentLesson?.videoUrl ? (
-              <video
+              <VideoPlayer
                 src={currentLesson.videoUrl}
-                controls
-                className="w-full h-full max-h-[600px] object-contain"
-                controlsList="nodownload"
-              >
-                Your browser does not support video.
-              </video>
+                title={currentLesson?.title}
+                subtitle={courseSummary?.instructorName}
+                onEnded={() => {
+                  // Optional: Auto-advance to next lesson
+                  console.log("Video ended");
+                }}
+              />
             ) : (
-              <div className="text-white text-center p-8">
+              <div className="text-white text-center p-8 aspect-video w-full flex flex-col items-center justify-center">
                 <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-50" />
                 <p className="text-xl mb-2">{currentLesson?.title}</p>
                 <p className="text-muted-foreground">
