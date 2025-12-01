@@ -21,13 +21,13 @@ interface ExerciseLeaderboardProps {
 }
 
 // Mock data - replace with API call later
-const mockPlayers: LeaderboardPlayer[] = [
-  { id: "1", rank: 1, name: "Maryam", avatar: "/avatars/avatar-1.png", score: 20, totalQuestions: 20 },
-  { id: "2", rank: 2, name: "Amina", avatar: "/avatars/avatar-2.png", score: 19, totalQuestions: 20 },
-  { id: "3", rank: 3, name: "Areej", avatar: "/avatars/avatar-3.png", score: 18, totalQuestions: 20 },
-  { id: "4", rank: 4, name: "Mohammed Ali", avatar: "/avatars/avatar-4.png", score: 17, totalQuestions: 20 },
-  { id: "5", rank: 5, name: "Salwa", avatar: "/avatars/avatar-5.png", score: 15, totalQuestions: 20 },
-  { id: "6", rank: 6, name: "Karima", avatar: "/avatars/avatar-6.png", score: 15, totalQuestions: 20 },
+const mockData: LeaderboardPlayer[] = [
+  { id: "1", rank: 1, name: "Maryam1", avatar: "/exercise/exercise-1.png", score: 20, totalQuestions: 20 },
+  { id: "2", rank: 2, name: "Amina", avatar: "/exercise/exercise-2.png", score: 19, totalQuestions: 20 },
+  { id: "3", rank: 3, name: "Areej", avatar: "/exercise/exercise-3.png", score: 18, totalQuestions: 20 },
+  { id: "4", rank: 4, name: "Mohammed Ali", avatar: "/exercise/exercise-4.png", score: 17, totalQuestions: 20 },
+  { id: "5", rank: 5, name: "Salwa", avatar: "/exercise/exercise-5.png", score: 15, totalQuestions: 20 },
+  { id: "6", rank: 6, name: "Karima", avatar: "/exercise/exercise-6.png", score: 15, totalQuestions: 20 },
 ];
 
 // Medal images for top 3
@@ -35,6 +35,16 @@ const MEDAL_IMAGES = {
   1: "/leaderboard/medal-gold.png",
   2: "/leaderboard/medal-silver.png", 
   3: "/leaderboard/medal-bronze.png",
+};
+
+// Rank images for all positions
+const RANK_IMAGES = {
+  1: "/leaderboard/rank-1.png",
+  2: "/leaderboard/rank-2.png",
+  3: "/leaderboard/rank-3.png",
+  4: "/leaderboard/rank-4.png",
+  5: "/leaderboard/rank-5.png",
+  6: "/leaderboard/rank-6.png",
 };
 
 // Rank badge colors
@@ -97,19 +107,25 @@ function TopThreePodium({
               }}
             />
           </div>
-          {/* Rank badge */}
-          <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 ${size.badge} rounded-full ${rankColor} flex items-center justify-center text-xs font-bold shadow`}>
-            {player.rank}
+          {/* Rank image */}
+          <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 ${size.badge} rounded-full overflow-hidden border-2 border-white shadow`}>
+            <Image
+              src={RANK_IMAGES[player.rank as keyof typeof RANK_IMAGES] || `/leaderboard/rank-${player.rank}.png`}
+              alt={`Rank ${player.rank}`}
+              width={24}
+              height={24}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/leaderboard/rank-default.png';
+              }}
+            />
           </div>
-          {/* Medal icon for rank 1 */}
-          {player.rank === 1 && (
+          {/* Medal emoji for top 3 */}
+          {player.rank <= 3 && (
             <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-              <span className="text-2xl">🏆</span>
-            </div>
-          )}
-          {player.rank === 3 && (
-            <div className="absolute -top-2 -right-2">
-              <span className="text-lg">🎖️</span>
+              <span className="text-2xl">
+                {player.rank === 1 ? '🏆' : player.rank === 2 ? '🥈' : '🥉'}
+              </span>
             </div>
           )}
         </div>
@@ -146,50 +162,70 @@ function TopThreePodium({
 // Podium/Stage Component
 function PodiumStage() {
   return (
-    <div className="relative flex items-end justify-center h-40 -mt-4">
+    <div className="relative flex items-end justify-center h-28 gap-4">
       {/* Second place podium - left */}
-      <div className="relative z-10">
-        <div className="w-28 h-28 bg-gradient-to-b from-[#C9B896] to-[#A89A7D] rounded-t-lg flex items-center justify-center shadow-lg">
-          <div className="relative">
-            {/* Medal */}
-            <div className="w-14 h-14 rounded-full bg-gradient-to-b from-gray-200 to-gray-400 flex items-center justify-center shadow-inner border-4 border-gray-300">
-              <span className="text-2xl font-bold text-gray-600">2</span>
-            </div>
-            {/* Ribbon */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-4 bg-blue-500 rounded-b-sm" />
-          </div>
+      <div className="relative z-10 flex items-end justify-center h-2">
+        <div className="w-16 h-16">
+          <Image
+            src={MEDAL_IMAGES[2]}
+            alt="Silver Medal"
+            width={64}
+            height={64}
+            className="w-full h-full object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = '🥈';
+                parent.className = 'text-4xl';
+              }
+            }}
+          />
         </div>
       </div>
 
       {/* First place podium - center (tallest) */}
-      <div className="relative z-20 -mx-2">
-        <div className="w-32 h-36 bg-gradient-to-b from-[#D4C5A9] to-[#B8A88C] rounded-t-lg flex items-center justify-center shadow-xl">
-          <div className="relative">
-            {/* Gold medal */}
-            <div className="w-16 h-16 rounded-full bg-gradient-to-b from-yellow-300 to-yellow-500 flex items-center justify-center shadow-inner border-4 border-yellow-400">
-              <span className="text-3xl font-bold text-yellow-700">1</span>
-            </div>
-            {/* Trophy top */}
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              <div className="w-6 h-3 bg-yellow-400 rounded-t-full" />
-            </div>
-            {/* Ribbon */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-10 h-5 bg-red-500 rounded-b-sm" />
-          </div>
+      <div className="relative z-20 flex items-end justify-center h-28">
+        <div className="w-20 h-20">
+          <Image
+            src={MEDAL_IMAGES[1]}
+            alt="Gold Medal"
+            width={80}
+            height={80}
+            className="w-full h-full object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = '🏆';
+                parent.className = 'text-5xl';
+              }
+            }}
+          />
         </div>
       </div>
 
       {/* Third place podium - right */}
-      <div className="relative z-10">
-        <div className="w-28 h-24 bg-gradient-to-b from-[#C9B896] to-[#A89A7D] rounded-t-lg flex items-center justify-center shadow-lg">
-          <div className="relative">
-            {/* Bronze medal */}
-            <div className="w-14 h-14 rounded-full bg-gradient-to-b from-orange-300 to-orange-500 flex items-center justify-center shadow-inner border-4 border-orange-400">
-              <span className="text-2xl font-bold text-orange-700">3</span>
-            </div>
-            {/* Ribbon */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-4 bg-green-500 rounded-b-sm" />
-          </div>
+      <div className="relative z-10 flex items-end justify-center h-16">
+        <div className="w-14 h-14">
+          <Image
+            src={MEDAL_IMAGES[3]}
+            alt="Bronze Medal"
+            width={56}
+            height={56}
+            className="w-full h-full object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = '🥉';
+                parent.className = 'text-3xl';
+              }
+            }}
+          />
         </div>
       </div>
     </div>
@@ -224,7 +260,18 @@ function LeaderboardItem({ player }: { player: LeaderboardPlayer }) {
             }}
           />
         </div>
-        <span className="w-6 text-right font-bold text-gray-700">{player.rank}</span>
+        <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-gray-300 shadow-sm">
+          <Image
+            src={RANK_IMAGES[player.rank as keyof typeof RANK_IMAGES] || `/leaderboard/rank-${player.rank}.png`}
+            alt={`Rank ${player.rank}`}
+            width={32}
+            height={32}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/leaderboard/rank-default.png';
+            }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -232,7 +279,7 @@ function LeaderboardItem({ player }: { player: LeaderboardPlayer }) {
 
 // Main Leaderboard Component
 export default function ExerciseLeaderboard({
-  players = mockPlayers,
+  players = mockData,
   totalQuestions = 20,
   onShare,
   onViewTests,
