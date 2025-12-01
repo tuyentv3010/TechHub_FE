@@ -1,7 +1,9 @@
 {
   "git": {
     "deploymentEnabled": {
-      "TuyenTV_Merge": false
+      "TuyenTV_Merge": false,
+      "develop": false,
+      "main": true
     }
   }
 }
