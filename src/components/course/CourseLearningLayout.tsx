@@ -11,6 +11,7 @@ import {
   CheckCircle2, 
   MessageSquare,
   BookOpen,
+  BookOpenCheck,
   FileText,
   Download,
   ExternalLink,
@@ -38,8 +39,11 @@ import {
 } from "@/queries/useCourseComments";
 import { useCourseProgress, useMarkLessonCompleteMutation } from "@/queries/useCourseProgress";
 import { useGetExercises } from "@/queries/useCourse";
+import { useAccountProfile } from "@/queries/useAccount";
 import { CourseCommentsList } from "./CourseCommentsList";
 import ExerciseDisplay from "./ExerciseDisplay";
+import ExercisePlayer from "./ExercisePlayer";
+import VideoPlayer from "./VideoPlayer";
 import envConfig from "@/config";
 
 interface CourseLearningLayoutProps {
@@ -61,6 +65,10 @@ export default function CourseLearningLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [showContentDescription, setShowContentDescription] = useState(true);
+  
+  // Fetch user profile for avatar
+  const { data: profileData } = useAccountProfile();
+  const userAvatar = profileData?.payload?.data?.avatar || undefined;
   
   const courseSummary = course.summary;
   const chapters = course.chapters || [];
@@ -399,6 +407,107 @@ export default function CourseLearningLayout({
     }
   };
 
+  // Download asset file - fetch as blob then download
+  const handleDownloadAsset = async (e: React.MouseEvent, url: string, title: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔽 Download started:', { url, title });
+    
+    try {
+      // Fetch file as blob
+      console.log('📥 Fetching file...');
+      const response = await fetch(url);
+      console.log('📥 Response status:', response.status, response.statusText);
+      console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      console.log('📦 Blob created:', { size: blob.size, type: blob.type });
+      
+      // Determine filename with extension
+      let filename = title;
+      
+      // Check if title already has extension
+      const hasExtension = /\.[a-zA-Z0-9]+$/.test(title);
+      
+      if (!hasExtension) {
+        // Try to get extension from content-disposition header
+        const contentDisposition = response.headers.get('content-disposition');
+        let ext = '';
+        
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+          if (filenameMatch && filenameMatch[1]) {
+            const originalFilename = filenameMatch[1];
+            const extMatch = originalFilename.match(/\.[a-zA-Z0-9]+$/);
+            if (extMatch) {
+              ext = extMatch[0];
+            }
+          }
+        }
+        
+        // If no extension from content-disposition, try content-type
+        if (!ext) {
+          const contentType = response.headers.get('content-type') || blob.type;
+          const extensionMap: Record<string, string> = {
+            'application/pdf': '.pdf',
+            'application/msword': '.doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+            'application/vnd.ms-excel': '.xls',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+            'application/vnd.ms-powerpoint': '.ppt',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+            'text/plain': '.txt',
+            'image/jpeg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'video/mp4': '.mp4',
+          };
+          ext = extensionMap[contentType] || '';
+        }
+        
+        // If still no extension, try to extract from URL
+        if (!ext) {
+          const urlPath = new URL(url).pathname;
+          const urlExtMatch = urlPath.match(/\.[a-zA-Z0-9]+$/);
+          if (urlExtMatch) {
+            ext = urlExtMatch[0];
+          }
+        }
+        
+        filename = title + ext;
+      }
+      console.log('📄 Filename:', filename);
+      
+      // Create download link
+      const downloadUrl = window.URL.createObjectURL(blob);
+      console.log('🔗 Download URL created:', downloadUrl);
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      console.log('📎 Link element created, clicking...');
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      console.log('✅ Download complete!');
+    } catch (error) {
+      console.error('❌ Download failed:', error);
+      // Fallback: open in new tab
+      console.log('🔄 Fallback: opening in new tab...');
+      window.open(url, '_blank');
+    }
+  };
+
+
+
   return (
     <div className="flex h-screen bg-background">
       {/* Main Content Area */}
@@ -444,18 +553,19 @@ export default function CourseLearningLayout({
         {/* Scrollable Content Area */}
         <ScrollArea className="flex-1">
           {/* Video/Content Player */}
-          <div className="bg-black flex items-center justify-center w-full max-h-[600px]" id="video-player-area">
+          <div className="bg-black flex items-center justify-center w-full" id="video-player-area">
             {currentLesson?.videoUrl ? (
-              <video
+              <VideoPlayer
                 src={currentLesson.videoUrl}
-                controls
-                className="w-full h-full max-h-[600px] object-contain"
-                controlsList="nodownload"
-              >
-                Your browser does not support video.
-              </video>
+                title={currentLesson?.title}
+                subtitle={courseSummary?.instructorName}
+                onEnded={() => {
+                  // Optional: Auto-advance to next lesson
+                  console.log("Video ended");
+                }}
+              />
             ) : (
-              <div className="text-white text-center p-8">
+              <div className="text-white text-center p-8 aspect-video w-full flex flex-col items-center justify-center">
                 <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-50" />
                 <p className="text-xl mb-2">{currentLesson?.title}</p>
                 <p className="text-muted-foreground">
@@ -499,192 +609,216 @@ export default function CourseLearningLayout({
               </div>
             )}
 
-            {/* Learning Outcomes */}
-            <div className="bg-gradient-to-r from-primary/5 to-cyan-500/5 rounded-lg p-4 border border-primary/20">
-              <div className="flex items-center gap-2 mb-3">
-                <Award className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-base">Bạn sẽ làm được gì sau bài học này?</h3>
-              </div>
-              {courseSummary.outcomes && courseSummary.outcomes.length > 0 ? (
-                <ul className="space-y-2">
-                  {courseSummary.outcomes.slice(0, 3).map((outcome: string, index: number) => (
-                    <li key={index} className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                      <span className="text-muted-foreground">{outcome}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                    <span className="text-muted-foreground">Hiểu rõ nội dung của bài học</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                    <span className="text-muted-foreground">Áp dụng kiến thức vào thực tế</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                    <span className="text-muted-foreground">Sẵn sàng cho bài học tiếp theo</span>
-                  </li>
-                </ul>
-              )}
-            </div>
           </div>
 
-          {/* Exercise Section - Always show for testing, hide hasExercise condition */}
-          <div className="p-6 border-b">
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
+          {/* Exercise Section - New Interactive Design */}
+          <div id="exercise-section" className="p-6 border-b">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
               <HelpCircle className="h-5 w-5" />
-              Bài tập
-              {currentLesson?.hasExercise && (
-                <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded">
-                  có hasExercise
-                </span>
-              )}
+              Bài tập thực hành
               {exercises.length > 0 && (
                 <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded ml-2">
-                  {exercises.length} câu từ API
+                  {exercises.length} câu hỏi
                 </span>
               )}
             </h3>
               
-              {!exercisesResponse && (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-sm text-muted-foreground mt-2">Đang tải bài tập...</p>
-                </div>
-              )}
-              
-              {exercisesResponse && exercises.length === 0 && (
-                <div className="text-center py-8">
-                  <HelpCircle className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Bài học này chưa có bài tập</p>
-                </div>
-              )}
-              
-              {exercises.length > 0 && (
-                <div className="space-y-6">
-                  {exercises.map((exercise: any, index: number) => (
-                    <div key={exercise.id}>
-                      {index > 0 && <div className="border-t my-6"></div>}
-                      <div className="mb-3">
-                        <h4 className="text-sm font-medium text-muted-foreground">
-                          Bài tập {index + 1} - {exercise.type === "MULTIPLE_CHOICE" ? "Trắc nghiệm" : 
-                            exercise.type === "CODING" ? "Lập trình" : "Tự luận"}
-                        </h4>
-                      </div>
-                      <ExerciseDisplay 
-                        exercise={{
-                          id: exercise.id,
-                          type: exercise.type,
-                          question: exercise.question,
-                          options: exercise.options,
-                          testCases: exercise.testCases
-                        }}
-                        onComplete={(exerciseId, isCorrect) => {
-                          console.log('Exercise completed:', exerciseId, isCorrect);
-                          if (isCorrect) {
-                            // Trigger confetti for correct answer
-                            confetti({
-                              particleCount: 100,
-                              spread: 70,
-                              origin: { y: 0.6 }
-                            });
-                          }
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+            {!exercisesResponse && (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-sm text-muted-foreground mt-2">Đang tải bài tập...</p>
+              </div>
+            )}
+            
+            {exercisesResponse && exercises.length === 0 && (
+              <div 
+                className="text-center py-12 rounded-2xl"
+                style={{ backgroundColor: '#FFF8DD' }}
+              >
+                <HelpCircle className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600">Bài học này chưa có bài tập</p>
+              </div>
+            )}
+            
+            {exercises.length > 0 && (
+              <ExercisePlayer
+                exercises={exercises.map((exercise: any) => ({
+                  id: exercise.id,
+                  type: exercise.type,
+                  question: exercise.question,
+                  options: exercise.options,
+                  testCases: exercise.testCases
+                }))}
+                lessonTitle={currentLesson?.title}
+                lessonSlug={courseSummary?.slug}
+                userAvatar={userAvatar}
+                onComplete={(results) => {
+                  console.log('All exercises completed:', results);
+                  const allCorrect = results.every(r => r.isCorrect);
+                  if (allCorrect) {
+                    confetti({
+                      particleCount: 150,
+                      spread: 100,
+                      origin: { y: 0.6 }
+                    });
+                  }
+                }}
+                onNextLesson={() => {
+                  // Navigate to next lesson if available
+                  if (currentLessonIndex < allLessons.length - 1) {
+                    onLessonChange(currentLessonIndex + 1);
+                  }
+                }}
+              />
+            )}
+          </div>
 
-            </div>
+          {/* DEBUG: Check currentLesson data */}
+          {console.log('🔍 DEBUG currentLesson:', {
+            hasLesson: !!currentLesson,
+            lessonId: currentLesson?.id,
+            lessonTitle: currentLesson?.title,
+            hasAssets: !!currentLesson?.assets,
+            assetsLength: currentLesson?.assets?.length,
+            assets: currentLesson?.assets
+          })}
 
           {/* Lesson Assets/Resources */}
           {currentLesson?.assets && currentLesson.assets.length > 0 && (
             <div className="p-6 border-b">
               <h3 className="font-semibold mb-3">Tài liệu & Link</h3>
               <div className="space-y-2">
-                {currentLesson.assets.map((asset: any) => (
-                  <a
-                    key={asset.id}
-                    href={asset.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted transition-colors"
-                  >
-                    <div className="p-2 rounded bg-primary/10">
-                      {getAssetIcon(asset.assetType)}
+                {currentLesson.assets.map((asset: any) => {
+                  const assetUrl = asset.externalUrl || asset.url;
+                  const isDocument = asset.assetType === 'DOCUMENT';
+                  
+                  // DEBUG: Log asset data
+                  console.log('🔍 Asset data:', {
+                    id: asset.id,
+                    title: asset.title,
+                    assetType: asset.assetType,
+                    url: asset.url,
+                    externalUrl: asset.externalUrl,
+                    resolvedUrl: assetUrl,
+                    allFields: Object.keys(asset)
+                  });
+                  
+                  return (
+                    <div
+                      key={asset.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted transition-colors"
+                    >
+                      <div className="p-2 rounded bg-primary/10">
+                        {getAssetIcon(asset.assetType)}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{asset.title}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{asset.assetType}</p>
+                      </div>
+                      {/* Download button for DOCUMENT type */}
+                      {isDocument && assetUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleDownloadAsset(e, assetUrl, asset.title)}
+                          title="Tải xuống"
+                          className="text-blue-500 hover:text-blue-600"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {/* External link for non-document types */}
+                      {!isDocument && (
+                        <a
+                          href={assetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Mở trong tab mới"
+                        >
+                          <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                        </a>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{asset.title}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{asset.assetType}</p>
-                    </div>
-                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  </a>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
 
           {/* Spacing for sticky navigation */}
-          <div className="h-32"></div>
+          <div className="h-24"></div>
         </ScrollArea>
-        
-        {/* Floating Action Buttons - Above navigation */}
-        <div className="sticky bottom-20 left-0 right-0 bg-transparent pointer-events-none">  
-          <div className="px-6 flex justify-center items-center gap-4 pointer-events-auto">
-            {/* Mark Complete Button */}
-            {isLessonCompleted(currentLesson?.id) ? (
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-600 text-white shadow-lg">
-                <CheckCircle2 className="h-5 w-5" />
-                <span className="text-sm font-medium">Đã hoàn thành</span>
-              </div>
-            ) : (
-              <Button
-                onClick={handleMarkComplete}
-                disabled={markCompleteMutation.isPending}
-                className="h-12 px-6 rounded-full bg-green-600 hover:bg-green-700 shadow-lg"
-              >
-                <CheckCircle2 className="h-5 w-5 mr-2" />
-                <span className="font-medium">Hoàn thành</span>
-              </Button>
-            )}
-
-            {/* Hỏi đáp Button */}
-            <Button 
-              onClick={() => setShowCommentModal(true)}
-              variant="default"
-              size="icon"
-              className="h-12 w-12 rounded-full bg-orange-500 hover:bg-orange-600 shadow-lg"
-              id="qa-button"
-            >
-              <MessageSquare className="h-6 w-6" />
-            </Button>
-          </div>
-        </div>
 
         {/* Navigation Buttons - Sticky at bottom */}
         <div className="sticky bottom-0 left-0 right-0 bg-background">
-          {/* Hỏi đáp Button - Above navigation */}
- 
           {/* Navigation Buttons */}
           <div className="px-6 py-4 border-t">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
+              {/* Bài trước */}
               <Button
                 variant="outline"
                 disabled={currentLessonIndex === 0}
                 onClick={() => onLessonChange(currentLessonIndex - 1)}
+                className="flex-shrink-0"
               >
                 <ChevronLeft className="h-4 w-4 mr-2" />
                 BÀI TRƯỚC
               </Button>
+
+              {/* Hoàn thành + Hỏi đáp - Ở giữa */}
+              <div className="flex items-center gap-2">
+                {/* Mark Complete Button */}
+                {isLessonCompleted(currentLesson?.id) ? (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-green-600 text-white shadow-md">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-xs font-medium hidden sm:inline">Đã hoàn thành</span>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={handleMarkComplete}
+                    disabled={markCompleteMutation.isPending}
+                    size="sm"
+                    className="rounded-full bg-green-600 hover:bg-green-700 shadow-md"
+                  >
+                    <CheckCircle2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline font-medium">Hoàn thành</span>
+                  </Button>
+                )}
+
+                {/* Hỏi đáp Button */}
+                <Button 
+                  onClick={() => setShowCommentModal(true)}
+                  variant="default"
+                  size="icon"
+                  className="h-9 w-9 rounded-full bg-orange-500 hover:bg-orange-600 shadow-md"
+                  id="qa-button"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                </Button>
+
+                {/* Bài tập Button */}
+                <Button 
+                  onClick={() => {
+                    const exerciseSection = document.getElementById('exercise-section');
+                    if (exerciseSection) {
+                      exerciseSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
+                  variant="default"
+                  size="icon"
+                  className="h-9 w-9 rounded-full bg-purple-500 hover:bg-purple-600 shadow-md"
+                  title="Bài tập"
+                >
+                  <BookOpenCheck className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Bài tiếp theo */}
               <Button
                 disabled={currentLessonIndex >= allLessons.length - 1}
                 onClick={() => onLessonChange(currentLessonIndex + 1)}
-                className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+                className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 flex-shrink-0"
               >
                 BÀI TIẾP THEO
                 <ChevronRight className="h-4 w-4 ml-2" />

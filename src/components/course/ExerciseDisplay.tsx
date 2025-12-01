@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle2, XCircle, HelpCircle, Code } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import ExerciseLeaderboard from "./ExerciseLeaderboard";
 
 interface Choice {
   text: string;
@@ -38,6 +39,7 @@ export default function ExerciseDisplay({ exercise, onComplete }: ExerciseDispla
   const [choices, setChoices] = useState<Choice[]>([]);
   const [showResult, setShowResult] = useState(false);
   const [isMultipleChoice, setIsMultipleChoice] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   // Debug log
   useEffect(() => {
@@ -162,6 +164,17 @@ export default function ExerciseDisplay({ exercise, onComplete }: ExerciseDispla
     setSubmitted(false);
     setShowResult(false);
     setIsCorrect(false);
+    setShowLeaderboard(false);
+  };
+
+  const handleShare = () => {
+    // Implement share functionality
+    console.log('Share leaderboard');
+  };
+
+  const handleViewTests = () => {
+    // Implement view tests functionality  
+    console.log('View tests');
   };
 
   const handleMultipleChoiceChange = (index: string, checked: boolean) => {
@@ -400,15 +413,27 @@ export default function ExerciseDisplay({ exercise, onComplete }: ExerciseDispla
                 Làm lại
               </Button>
               {isCorrect && (
-                <Button className="flex-1 bg-green-600 hover:bg-green-700">
+                <Button 
+                  onClick={() => setShowLeaderboard(true)}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Hoàn thành
+                  Xem bảng xếp hạng
                 </Button>
               )}
             </>
           )}
         </div>
-      </CardContent>
+
+        {/* Exercise Leaderboard */}
+        {showLeaderboard && (
+          <div className="mt-6">
+            <ExerciseLeaderboard 
+              onShare={handleShare}
+            />
+          </div>
+        )}
+      </CardContent>  
     </Card>
   );
 }
