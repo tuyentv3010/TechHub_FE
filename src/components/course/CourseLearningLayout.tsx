@@ -39,6 +39,7 @@ import {
 } from "@/queries/useCourseComments";
 import { useCourseProgress, useMarkLessonCompleteMutation } from "@/queries/useCourseProgress";
 import { useGetExercises } from "@/queries/useCourse";
+import { useAccountProfile } from "@/queries/useAccount";
 import { CourseCommentsList } from "./CourseCommentsList";
 import ExerciseDisplay from "./ExerciseDisplay";
 import ExercisePlayer from "./ExercisePlayer";
@@ -64,6 +65,10 @@ export default function CourseLearningLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [showContentDescription, setShowContentDescription] = useState(true);
+  
+  // Fetch user profile for avatar
+  const { data: profileData } = useAccountProfile();
+  const userAvatar = profileData?.payload?.data?.avatar || undefined;
   
   const courseSummary = course.summary;
   const chapters = course.chapters || [];
@@ -544,6 +549,7 @@ export default function CourseLearningLayout({
                   testCases: exercise.testCases
                 }))}
                 lessonTitle={currentLesson?.title}
+                userAvatar={userAvatar}
                 onComplete={(results) => {
                   console.log('All exercises completed:', results);
                   const allCorrect = results.every(r => r.isCorrect);

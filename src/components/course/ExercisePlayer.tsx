@@ -110,79 +110,36 @@ function ExerciseStartScreen({
         <Music className="w-6 h-6 text-gray-400" />
       </div>
 
-      {/* Main Illustration Area */}
-      <div className="relative mb-8">
-        {/* Universe/Space themed illustration placeholder */}
-        <div 
-          className="w-80 h-56 rounded-[40%_60%_55%_45%/50%_40%_60%_50%] flex items-center justify-center relative overflow-hidden"
-          style={{ 
-            background: 'linear-gradient(135deg, #1a1a4e 0%, #2d2d7a 50%, #1a1a4e 100%)',
-            boxShadow: '0 20px 60px rgba(26, 26, 78, 0.3)'
-          }}
-        >
-          {/* Stars */}
-          <div className="absolute inset-0">
-            {[...Array(20)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-1 h-1 bg-white rounded-full animate-pulse"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 2}s`
-                }}
-              />
-            ))}
+      {/* Main Illustration Area - Full width */}
+      <div className="absolute inset-0">
+        {/* Custom illustration - replace src with your image URL */}
+        <img 
+          src="/hero/exercise-start.png" 
+          alt="Exercise illustration"
+          className="w-full h-full object-cover"
+        />
+        
+        {/* Overlay with text and play button */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30">
+          {/* Info Text */}
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">
+              {lessonTitle || "Bài tập thực hành"}
+            </h2>
+            <p className="text-white/90 drop-shadow">
+              {exerciseCount} câu hỏi • Nhấn play để bắt đầu
+            </p>
           </div>
-          
-          {/* Planets */}
-          <div className="absolute w-6 h-6 bg-yellow-400 rounded-full top-8 left-12 shadow-lg" />
-          <div className="absolute w-4 h-4 bg-orange-500 rounded-full top-16 right-16 shadow-lg" />
-          <div className="absolute w-5 h-5 bg-blue-400 rounded-full bottom-12 left-20 shadow-lg" />
-          <div className="absolute w-8 h-8 bg-amber-200 rounded-full bottom-8 right-8 shadow-lg">
-            <div className="absolute inset-1 border-2 border-amber-400/50 rounded-full" />
-          </div>
-          
-          {/* Orbit rings */}
-          <div className="absolute w-40 h-40 border border-white/20 rounded-full" />
-          <div className="absolute w-56 h-32 border border-white/10 rounded-full" />
           
           {/* Central Play Button */}
           <button
             onClick={onStart}
-            className="relative z-10 w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-all hover:scale-110 group"
+            className="w-20 h-20 bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/40 transition-all hover:scale-110 group"
           >
-            <Play className="w-8 h-8 text-white fill-white ml-1 group-hover:scale-110 transition-transform" />
+            <Play className="w-10 h-10 text-white fill-white ml-1 group-hover:scale-110 transition-transform" />
           </button>
         </div>
-        
-        {/* Book illustration at bottom */}
-        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2">
-          <div className="w-24 h-12 bg-gradient-to-b from-gray-100 to-gray-200 rounded-t-sm shadow-lg relative">
-            <div className="absolute inset-x-0 top-0 h-1 bg-blue-300" />
-            <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gray-300" />
-          </div>
-        </div>
       </div>
-
-      {/* Info Text */}
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          {lessonTitle || "Bài tập thực hành"}
-        </h2>
-        <p className="text-gray-600">
-          {exerciseCount} câu hỏi • Nhấn play để bắt đầu
-        </p>
-      </div>
-
-      {/* Start Button */}
-      <button
-        onClick={onStart}
-        className="px-8 py-3 bg-[#4A90D9] hover:bg-[#3A7BC8] text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-2"
-      >
-        <Play className="w-5 h-5 fill-white" />
-        Bắt đầu làm bài
-      </button>
     </div>
   );
 }
@@ -974,7 +931,16 @@ export default function ExercisePlayer({
   };
 
   const handleRetry = () => {
-    handleStart();
+    // Reset all states and go back to start screen
+    setCurrentIndex(0);
+    setResults([]);
+    setTimeSpent(0);
+    setTotalTime(0);
+    setSubmitted(false);
+    setSelectedAnswers([]);
+    setCountdown(TIME_LIMIT);
+    setShowAnswerCountdown(SHOW_ANSWER_DURATION);
+    setGameState('start');
   };
 
   // If no exercises
