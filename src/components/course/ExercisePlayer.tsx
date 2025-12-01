@@ -35,9 +35,11 @@ interface Exercise {
 interface ExercisePlayerProps {
   exercises: Exercise[];
   lessonTitle?: string;
+  lessonSlug?: string;
   userAvatar?: string;
   onComplete?: (results: ExerciseResult[]) => void;
   onClose?: () => void;
+  onNextLesson?: () => void;
 }
 
 interface ExerciseResult {
@@ -62,11 +64,13 @@ const parseChoices = (options: string | undefined): Choice[] => {
 function ExerciseStartScreen({ 
   exerciseCount, 
   lessonTitle, 
-  onStart 
+  onStart,
+  onShowLeaderboard,
 }: { 
   exerciseCount: number; 
   lessonTitle?: string; 
   onStart: () => void;
+  onShowLeaderboard?: () => void;
 }) {
   return (
     <div 
@@ -110,6 +114,17 @@ function ExerciseStartScreen({
       <div className="absolute bottom-24 right-1/4 opacity-20">
         <Music className="w-6 h-6 text-gray-400" />
       </div>
+
+      {/* Leaderboard button - top right */}
+      {onShowLeaderboard && (
+        <button
+          onClick={onShowLeaderboard}
+          className="absolute top-4 right-4 z-20 px-3 py-2 bg-[#F7B731] text-white font-semibold rounded-lg hover:bg-[#E5A620] transition-colors flex items-center gap-2 shadow-lg"
+        >
+          <Star className="w-4 h-4" />
+          Bảng xếp hạng
+        </button>
+      )}
 
       {/* Main Illustration Area - Full width */}
       <div className="absolute inset-0">
@@ -601,16 +616,14 @@ function ResultScreen({
   results,
   totalTime,
   onRetry,
-  onClose,
-  userScore,
-  totalQuestions,
+  onComplete,
+  lessonSlug,
 }: {
   results: ExerciseResult[];
   totalTime: number;
   onRetry: () => void;
-  onClose: () => void;
-  userScore?: number;
-  totalQuestions?: number;
+  onComplete: () => void;
+  lessonSlug?: string;
 }) {
   const correctCount = results.filter(r => r.isCorrect).length;
   const totalCount = results.length;
@@ -627,20 +640,11 @@ function ResultScreen({
     }
   }, [percentage]);
 
-  const handleShare = () => {
-    // Implement share functionality
-    console.log('Share leaderboard');
-  };
-
-  const handleViewTests = () => {
-    // Implement view tests functionality  
-    console.log('View tests');
-  };
-
   return (
     <ExerciseLeaderboard 
-      onShare={handleShare}
-      onViewTests={handleViewTests}
+      onRetry={onRetry}
+      onComplete={onComplete}
+      lessonSlug={lessonSlug}
     />
   );
 }
@@ -649,14 +653,16 @@ function ResultScreen({
 export default function ExercisePlayer({
   exercises,
   lessonTitle,
+  lessonSlug,
   userAvatar,
   onComplete,
   onClose,
+  onNextLesson,
 }: ExercisePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   
   // States
-  const [gameState, setGameState] = useState<'start' | 'playing' | 'result'>('start');
+  const [gameState, setGameState] = useState<'start' | 'playing' | 'result' | 'leaderboard'>('start');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [results, setResults] = useState<ExerciseResult[]>([]);
   const [timeSpent, setTimeSpent] = useState(0);
@@ -928,6 +934,7 @@ export default function ExercisePlayer({
           exerciseCount={multipleChoiceExercises.length}
           lessonTitle={lessonTitle}
           onStart={handleStart}
+          onShowLeaderboard={() => setGameState('leaderboard')}
         />
       )}
 
@@ -967,7 +974,22 @@ export default function ExercisePlayer({
           results={results}
           totalTime={totalTime}
           onRetry={handleRetry}
-          onClose={handleClose}
+          onComplete={() => {
+            onNextLesson?.();
+            onClose?.();
+          }}
+          lessonSlug={lessonSlug}
+        />
+      )}
+
+      {gameState === 'leaderboard' && (
+        <ExerciseLeaderboard 
+          onRetry={handleRetry}
+          onComplete={() => {
+            onNextLesson?.();
+            onClose?.();
+          }}
+          lessonSlug={lessonSlug}
         />
       )}
     </div>

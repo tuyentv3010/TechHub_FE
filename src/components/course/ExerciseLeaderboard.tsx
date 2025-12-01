@@ -1,7 +1,8 @@
 "use client";
 
-import { Share2 } from "lucide-react";
+import { Share2, RotateCcw, CheckCircle } from "lucide-react";
 import Image from "next/image";
+import envConfig from "@/config";
 
 // Types
 interface LeaderboardPlayer {
@@ -17,7 +18,10 @@ interface ExerciseLeaderboardProps {
   players?: LeaderboardPlayer[];
   totalQuestions?: number;
   onShare?: () => void;
-  onViewTests?: () => void;
+  onRetry?: () => void;
+  onComplete?: () => void;
+  exerciseId?: string;
+  lessonSlug?: string;
 }
 
 // Mock data - replace with API call later
@@ -83,13 +87,12 @@ function TopThreePodium({
     if (!player) return null;
 
     const sizes = {
-      first: { avatar: 'w-20 h-20', badge: 'w-6 h-6', text: 'text-lg' },
-      second: { avatar: 'w-16 h-16', badge: 'w-5 h-5', text: 'text-base' },
-      third: { avatar: 'w-16 h-16', badge: 'w-5 h-5', text: 'text-base' },
+      first: { avatar: 'w-20 h-20', badge: 'w-8 h-8', text: 'text-lg' },
+      second: { avatar: 'w-16 h-16', badge: 'w-7 h-7', text: 'text-base' },
+      third: { avatar: 'w-16 h-16', badge: 'w-7 h-7', text: 'text-base' },
     };
 
     const size = sizes[position];
-    const rankColor = RANK_BADGE_COLORS[player.rank as 1 | 2 | 3];
 
     return (
       <div className="flex flex-col items-center">
@@ -140,96 +143,97 @@ function TopThreePodium({
   };
 
   return (
-    <div className="relative flex items-end justify-center gap-2 mb-4">
-      {/* Second place - left */}
-      <div className="flex flex-col items-center pb-8">
-        {renderTopPlayer(player2, 'second')}
-      </div>
+    <div className="relative pt-8">
+      {/* Podium with avatars */}
+      <div className="flex items-end justify-center gap-4">
+        {/* Second place - left */}
+        <div className="flex flex-col items-center">
+          {/* Avatar section */}
+          <div className="mb-2 relative z-10">
+            {renderTopPlayer(player2, 'second')}
+          </div>
+          {/* Medal podium */}
+          <div className="w-28 h-28">
+            <Image
+              src={MEDAL_IMAGES[2]}
+              alt="Silver Medal"
+              width={112}
+              height={112}
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent) {
+                  parent.innerHTML = '🥈';
+                  parent.className = 'text-6xl flex items-center justify-center';
+                }
+              }}
+            />
+          </div>
+        </div>
 
-      {/* First place - center (highest) */}
-      <div className="flex flex-col items-center pb-16 -mx-4 z-10">
-        {renderTopPlayer(player1, 'first')}
-      </div>
+        {/* First place - center (tallest) */}
+        <div className="flex flex-col items-center z-10 -mt-8">
+          {/* Avatar section - positioned higher */}
+          <div className="mb-2 relative z-10">
+            {renderTopPlayer(player1, 'first')}
+          </div>
+          {/* Medal podium */}
+          <div className="w-36 h-36">
+            <Image
+              src={MEDAL_IMAGES[1]}
+              alt="Gold Medal"
+              width={144}
+              height={144}
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent) {
+                  parent.innerHTML = '🏆';
+                  parent.className = 'text-7xl flex items-center justify-center';
+                }
+              }}
+            />
+          </div>
+        </div>
 
-      {/* Third place - right */}
-      <div className="flex flex-col items-center">
-        {renderTopPlayer(player3, 'third')}
+        {/* Third place - right */}
+        <div className="flex flex-col items-center mt-4">
+          {/* Avatar section */}
+          <div className="mb-2 relative z-10">
+            {renderTopPlayer(player3, 'third')}
+          </div>
+          {/* Medal podium */}
+          <div className="w-24 h-24">
+            <Image
+              src={MEDAL_IMAGES[3]}
+              alt="Bronze Medal"
+              width={96}
+              height={96}
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent) {
+                  parent.innerHTML = '🥉';
+                  parent.className = 'text-5xl flex items-center justify-center';
+                }
+              }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-// Podium/Stage Component
+// Podium/Stage Component - No longer needed, integrated into TopThreePodium
 function PodiumStage() {
-  return (
-    <div className="relative flex items-end justify-center h-28 gap-4">
-      {/* Second place podium - left */}
-      <div className="relative z-10 flex items-end justify-center h-2">
-        <div className="w-16 h-16">
-          <Image
-            src={MEDAL_IMAGES[2]}
-            alt="Silver Medal"
-            width={64}
-            height={64}
-            className="w-full h-full object-contain"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              const parent = target.parentElement;
-              if (parent) {
-                parent.innerHTML = '🥈';
-                parent.className = 'text-4xl';
-              }
-            }}
-          />
-        </div>
-      </div>
-
-      {/* First place podium - center (tallest) */}
-      <div className="relative z-20 flex items-end justify-center h-28">
-        <div className="w-20 h-20">
-          <Image
-            src={MEDAL_IMAGES[1]}
-            alt="Gold Medal"
-            width={80}
-            height={80}
-            className="w-full h-full object-contain"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              const parent = target.parentElement;
-              if (parent) {
-                parent.innerHTML = '🏆';
-                parent.className = 'text-5xl';
-              }
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Third place podium - right */}
-      <div className="relative z-10 flex items-end justify-center h-16">
-        <div className="w-14 h-14">
-          <Image
-            src={MEDAL_IMAGES[3]}
-            alt="Bronze Medal"
-            width={56}
-            height={56}
-            className="w-full h-full object-contain"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              const parent = target.parentElement;
-              if (parent) {
-                parent.innerHTML = '🥉';
-                parent.className = 'text-3xl';
-              }
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }
 
 // Leaderboard List Item
@@ -282,10 +286,49 @@ export default function ExerciseLeaderboard({
   players = mockData,
   totalQuestions = 20,
   onShare,
-  onViewTests,
+  onRetry,
+  onComplete,
+  exerciseId,
+  lessonSlug,
 }: ExerciseLeaderboardProps) {
   const top3 = players.slice(0, 3);
   const restPlayers = players.slice(3);
+
+  // Handle share - generate share URL from env
+  const handleShare = () => {
+    const baseUrl = envConfig.NEXT_PUBLIC_URL;
+    const shareUrl = lessonSlug 
+      ? `${baseUrl}/courses/${lessonSlug}` 
+      : baseUrl;
+    
+    // Try to use Web Share API, fallback to clipboard
+    if (navigator.share) {
+      navigator.share({
+        title: 'Kết quả bài tập',
+        text: 'Xem kết quả bài tập của tôi!',
+        url: shareUrl,
+      }).catch(() => {
+        // Fallback to clipboard
+        navigator.clipboard.writeText(shareUrl);
+        alert('Đã sao chép link chia sẻ!');
+      });
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      alert('Đã sao chép link chia sẻ!');
+    }
+    
+    onShare?.();
+  };
+
+  // Handle retry - go back to start screen
+  const handleRetry = () => {
+    onRetry?.();
+  };
+
+  // Handle complete - go to next lesson
+  const handleComplete = () => {
+    onComplete?.();
+  };
 
   return (
     <div 
@@ -316,19 +359,27 @@ export default function ExerciseLeaderboard({
         </div>
 
         {/* Action buttons */}
-        <div className="flex justify-center gap-4 mt-6">
+        <div className="flex justify-center gap-3 mt-6">
           <button
-            onClick={onViewTests}
-            className="px-6 py-3 bg-white border-2 border-[#8B7355] text-[#8B7355] font-semibold rounded-lg hover:bg-[#8B7355] hover:text-white transition-colors"
+            onClick={handleRetry}
+            className="px-5 py-2.5 bg-white border-2 border-[#8B7355] text-[#8B7355] font-semibold rounded-lg hover:bg-[#8B7355] hover:text-white transition-colors flex items-center gap-2"
           >
-            الإختبارات
+            <RotateCcw className="w-4 h-4" />
+            Làm lại
           </button>
           <button
-            onClick={onShare}
-            className="px-6 py-3 bg-[#8B7355] text-white font-semibold rounded-lg hover:bg-[#7A6548] transition-colors flex items-center gap-2"
+            onClick={handleComplete}
+            className="px-5 py-2.5 bg-[#22C55E] text-white font-semibold rounded-lg hover:bg-[#16A34A] transition-colors flex items-center gap-2"
           >
-            <Share2 className="w-5 h-5" />
-            شارك
+            <CheckCircle className="w-4 h-4" />
+            Hoàn thành
+          </button>
+          <button
+            onClick={handleShare}
+            className="px-5 py-2.5 bg-[#8B7355] text-white font-semibold rounded-lg hover:bg-[#7A6548] transition-colors flex items-center gap-2"
+          >
+            <Share2 className="w-4 h-4" />
+            Chia sẻ
           </button>
         </div>
       </div>

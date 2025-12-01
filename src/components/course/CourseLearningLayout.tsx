@@ -549,6 +549,7 @@ export default function CourseLearningLayout({
                   testCases: exercise.testCases
                 }))}
                 lessonTitle={currentLesson?.title}
+                lessonSlug={courseSummary?.slug}
                 userAvatar={userAvatar}
                 onComplete={(results) => {
                   console.log('All exercises completed:', results);
@@ -559,6 +560,12 @@ export default function CourseLearningLayout({
                       spread: 100,
                       origin: { y: 0.6 }
                     });
+                  }
+                }}
+                onNextLesson={() => {
+                  // Navigate to next lesson if available
+                  if (currentLessonIndex < allLessons.length - 1) {
+                    onLessonChange(currentLessonIndex + 1);
                   }
                 }}
               />
