@@ -434,7 +434,7 @@ export default function ExerciseDisplay({ exercise, onComplete }: ExerciseDispla
             />
           </div>
         )}
-      </CardContent>
+      </CardContent>  
     </Card>
   );
 }

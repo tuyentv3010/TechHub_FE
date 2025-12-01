@@ -49,7 +49,9 @@ import {
   Image as ImageIcon,
   Paperclip,
   Upload,
-  FolderOpen
+  FolderOpen,
+  Download,
+  Eye
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
@@ -745,6 +747,128 @@ export default function CourseContentManagementPage() {
       refetch();
     } catch (error) {
       handleErrorApi({ error });
+    }
+  };
+
+  // Download asset file - fetch as blob then download
+  const handleDownloadAsset = async (url: string, title: string) => {
+    console.log('🔽 Download started:', { url, title });
+    
+    try {
+      // Fetch file as blob
+      console.log('📥 Fetching file...');
+      const response = await fetch(url);
+      console.log('📥 Response status:', response.status, response.statusText);
+      console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      console.log('📦 Blob created:', { size: blob.size, type: blob.type });
+      
+      // Determine filename with extension
+      let filename = title;
+      
+      // Check if title already has extension
+      const hasExtension = /\.[a-zA-Z0-9]+$/.test(title);
+      
+      if (!hasExtension) {
+        // Try to get extension from content-disposition header
+        const contentDisposition = response.headers.get('content-disposition');
+        let ext = '';
+        
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+          if (filenameMatch && filenameMatch[1]) {
+            const originalFilename = filenameMatch[1];
+            const extMatch = originalFilename.match(/\.[a-zA-Z0-9]+$/);
+            if (extMatch) {
+              ext = extMatch[0];
+            }
+          }
+        }
+        
+        // If no extension from content-disposition, try content-type
+        if (!ext) {
+          const contentType = response.headers.get('content-type') || blob.type;
+          const extensionMap: Record<string, string> = {
+            'application/pdf': '.pdf',
+            'application/msword': '.doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+            'application/vnd.ms-excel': '.xls',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+            'application/vnd.ms-powerpoint': '.ppt',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+            'text/plain': '.txt',
+            'image/jpeg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'video/mp4': '.mp4',
+          };
+          ext = extensionMap[contentType] || '';
+        }
+        
+        // If still no extension, try to extract from URL
+        if (!ext) {
+          const urlPath = new URL(url).pathname;
+          const urlExtMatch = urlPath.match(/\.[a-zA-Z0-9]+$/);
+          if (urlExtMatch) {
+            ext = urlExtMatch[0];
+          }
+        }
+        
+        filename = title + ext;
+      }
+      console.log('📄 Filename:', filename);
+      
+      // Create download link
+      const downloadUrl = window.URL.createObjectURL(blob);
+      console.log('🔗 Download URL created:', downloadUrl);
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      console.log('📎 Link element created, clicking...');
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      console.log('✅ Download complete!');
+      
+      toast({
+        title: t("Success"),
+        description: "Đã tải xuống file",
+      });
+    } catch (error) {
+      console.error('❌ Download failed:', error);
+      toast({
+        title: t("Error"),
+        description: "Không thể tải file xuống",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Preview asset file - open in new tab using Google Docs Viewer for documents
+  const handlePreviewAsset = (url: string) => {
+    // Get file extension from URL or try to detect type
+    const urlLower = url.toLowerCase();
+    
+    // Check if it's a file type that browser can preview directly
+    const browserPreviewable = ['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.mp4', '.webm', '.mp3', '.wav', '.txt'];
+    const canPreviewDirectly = browserPreviewable.some(ext => urlLower.includes(ext));
+    
+    if (canPreviewDirectly) {
+      // Browser can preview these directly
+      window.open(url, '_blank');
+    } else {
+      // Use Google Docs Viewer for Word, Excel, PowerPoint, etc.
+      const googleDocsViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+      window.open(googleDocsViewerUrl, '_blank');
     }
   };
 
@@ -1444,6 +1568,28 @@ export default function CourseContentManagementPage() {
                                                                 </a>
                                                               )}
                                                             </div>
+                                                            {/* Preview button for DOCUMENT type */}
+                                                            {asset.assetType === 'DOCUMENT' && asset.externalUrl && (
+                                                              <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handlePreviewAsset(asset.externalUrl)}
+                                                                title="Xem trước"
+                                                              >
+                                                                <Eye className="h-3 w-3 text-green-500" />
+                                                              </Button>
+                                                            )}
+                                                            {/* Download button for DOCUMENT type */}
+                                                            {asset.assetType === 'DOCUMENT' && asset.externalUrl && (
+                                                              <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleDownloadAsset(asset.externalUrl, asset.title)}
+                                                                title="Tải xuống"
+                                                              >
+                                                                <Download className="h-3 w-3 text-blue-500" />
+                                                              </Button>
+                                                            )}
                                                             <Button
                                                               variant="ghost"
                                                               size="sm"
@@ -2700,8 +2846,16 @@ function AssetDialog({
 
       const response = await fileApiRequest.uploadFile(formData);
       const fileUrl = response.payload.data.cloudinarySecureUrl;
+      const originalName = response.payload.data.originalName || file.name;
       
       setValue('externalUrl', fileUrl);
+      
+      // Auto-fill title with original filename if title is empty
+      const currentTitle = watch('title');
+      if (!currentTitle || currentTitle.trim() === '') {
+        setValue('title', originalName);
+      }
+      
       toast({ 
         title: t("Success") || "Success", 
         description: t("FileUploaded") || "File uploaded successfully" 
@@ -2723,6 +2877,13 @@ function AssetDialog({
 
   const handleMediaSelect = (file: any) => {
     setValue('externalUrl', file.cloudinarySecureUrl);
+    
+    // Auto-fill title with original filename if title is empty
+    const currentTitle = watch('title');
+    if (!currentTitle || currentTitle.trim() === '') {
+      setValue('title', file.originalName || file.name);
+    }
+    
     setShowMediaLibrary(false);
     toast({ 
       title: t("Success") || "Success", 
