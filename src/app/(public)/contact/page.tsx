@@ -166,7 +166,7 @@ export default function ContactPage() {
                     onChange={handleChange}
                     placeholder="John Doe"
                     required
-                    className="mt-2"
+                    className="mt-2 bg-white dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600"
                   />
                 </div>
 
@@ -182,7 +182,7 @@ export default function ContactPage() {
                     onChange={handleChange}
                     placeholder="john@example.com"
                     required
-                    className="mt-2"
+                    className="mt-2 bg-white dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600"
                   />
                 </div>
 
@@ -197,7 +197,7 @@ export default function ContactPage() {
                     onChange={handleChange}
                     placeholder="How can we help?"
                     required
-                    className="mt-2"
+                    className="mt-2 bg-white dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600"
                   />
                 </div>
 
@@ -213,7 +213,7 @@ export default function ContactPage() {
                     placeholder="Tell us more about your inquiry..."
                     rows={6}
                     required
-                    className="mt-2"
+                    className="mt-2 bg-white dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600"
                   />
                 </div>
 
