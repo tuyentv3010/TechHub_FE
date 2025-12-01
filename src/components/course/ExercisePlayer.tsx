@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { 
   Play, 
   Star, 
@@ -204,6 +204,13 @@ function QuestionScreen({
   // Local state for multiple choice selection
   const [localSelected, setLocalSelected] = useState<string[]>([]);
 
+  // Random image for this question (based on question number for consistency)
+  const questionImage = useMemo(() => {
+    // Use question number as seed for consistent random image per question
+    const imageIndex = (questionNumber % 10) + 1; // Assumes you have exercise-1.png to exercise-10.png
+    return `/exercise/exercise-${imageIndex}.png`;
+  }, [questionNumber]);
+
   // Reset local selection when question changes
   useEffect(() => {
     setLocalSelected([]);
@@ -340,9 +347,23 @@ function QuestionScreen({
         </div>
       </div>
 
-      {/* Question Card */}
+      {/* Question Card with Image */}
       <div className="pt-6 px-4 md:px-8">
         <div className="bg-gray-900/80 rounded-xl p-4 md:p-6 mb-6 max-w-3xl mx-auto">
+          {/* Question Image */}
+          <div className="w-full h-40 md:h-52 rounded-lg overflow-hidden mb-4">
+            <img 
+              src={questionImage}
+              alt={`Question ${questionNumber} illustration`}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to a default image if the specific one doesn't exist
+                (e.target as HTMLImageElement).src = '/exercise/default.png';
+              }}
+            />
+          </div>
+          
+          {/* Question Text */}
           <h2 className="text-lg md:text-2xl font-bold text-white text-center">
             {exercise.question}
           </h2>
