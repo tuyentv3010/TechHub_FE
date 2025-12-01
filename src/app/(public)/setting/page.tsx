@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -8,11 +9,13 @@ import { SwitchLanguage } from "@/components/switch-language";
 import { Globe, Palette, Sun } from "lucide-react";
 
 export default function SettingPage() {
+  const t = useTranslations("SettingsPage");
+  
   return (
     <div className="container max-w-4xl mx-auto py-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">Manage your application preferences</p>
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("description")}</p>
       </div>
 
       <div className="space-y-6">
@@ -21,16 +24,16 @@ export default function SettingPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Globe className="w-5 h-5" />
-              Language
+              {t("language")}
             </CardTitle>
-            <CardDescription>Choose your preferred language</CardDescription>
+            <CardDescription>{t("languageDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Display Language</Label>
+                <Label>{t("displayLanguage")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Select the language for the user interface
+                  {t("displayLanguageDescription")}
                 </p>
               </div>
               <SwitchLanguage />
@@ -45,16 +48,16 @@ export default function SettingPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Palette className="w-5 h-5" />
-              Appearance
+              {t("appearance")}
             </CardTitle>
-            <CardDescription>Customize how the application looks</CardDescription>
+            <CardDescription>{t("appearanceDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Theme Mode</Label>
+                <Label>{t("themeMode")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Switch between light and dark mode
+                  {t("themeModeDescription")}
                 </p>
               </div>
               <ThemeToggle />
@@ -64,9 +67,9 @@ export default function SettingPage() {
             
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Color Theme</Label>
+                <Label>{t("colorTheme")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Choose your preferred color scheme
+                  {t("colorThemeDescription")}
                 </p>
               </div>
               <ThemeColorToggle />

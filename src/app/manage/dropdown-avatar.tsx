@@ -193,7 +193,7 @@ export default function DropdownAvatar() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/manage/setting" className="cursor-pointer">
+          <Link href="/setting" className="cursor-pointer">
             <Settings className="mr-2 h-4 w-4" />
             {t("settings") || "Settings"}
           </Link>

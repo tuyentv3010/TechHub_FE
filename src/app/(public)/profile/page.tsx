@@ -18,8 +18,10 @@ import authApiRequest from "@/apiRequests/auth";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { useTranslations } from "next-intl";
 
 export default function ProfilePage() {
+  const t = useTranslations("ProfilePage");
   const { data: profileData, isLoading } = useAccountProfile();
   const updateProfileMutation = useUpdateProfileMutation();
   const [isUploading, setIsUploading] = useState(false);
@@ -155,19 +157,19 @@ export default function ProfilePage() {
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Profile</h1>
-        <p className="text-muted-foreground">Manage your account information and security</p>
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="profile">
             <UserIcon className="w-4 h-4 mr-2" />
-            Profile Information
+            {t("profileTab")}
           </TabsTrigger>
           <TabsTrigger value="password">
             <Lock className="w-4 h-4 mr-2" />
-            Change Password
+            {t("passwordTab")}
           </TabsTrigger>
         </TabsList>
 
@@ -175,8 +177,8 @@ export default function ProfilePage() {
         <TabsContent value="profile">
           <Card>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-              <CardDescription>Update your profile information and avatar</CardDescription>
+              <CardTitle>{t("profileInfo")}</CardTitle>
+              <CardDescription>{t("profileInfoDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...profileForm}>
@@ -200,10 +202,10 @@ export default function ProfilePage() {
                         name="avatar"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Avatar URL</FormLabel>
+                            <FormLabel>{t("avatarUrl")}</FormLabel>
                             <div className="flex gap-2">
                               <Input 
-                                placeholder="Enter avatar URL or upload" 
+                                placeholder={t("avatarUrl")} 
                                 value={field.value || ''} 
                                 onChange={(e) => field.onChange(e.target.value || null)}
                               />
@@ -214,7 +216,7 @@ export default function ProfilePage() {
                                 disabled={isUploading}
                               >
                                 <ImageIcon className="w-4 h-4 mr-2" />
-                                Choose
+                                {t("selectAvatar")}
                               </Button>
                               <Button 
                                 type="button" 
@@ -223,7 +225,7 @@ export default function ProfilePage() {
                                 disabled={isUploading}
                               >
                                 <Upload className="w-4 h-4 mr-2" />
-                                {isUploading ? "Uploading..." : "Upload"}
+                                {isUploading ? t("uploading") : t("upload")}
                               </Button>
                               <input
                                 ref={fileInputRef}
@@ -248,8 +250,8 @@ export default function ProfilePage() {
                     name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Username</FormLabel>
-                        <Input placeholder="Enter your username" {...field} />
+                        <FormLabel>{t("username")}</FormLabel>
+                        <Input placeholder={t("username")} {...field} />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -257,14 +259,14 @@ export default function ProfilePage() {
 
                   {/* Email (Read-only) */}
                   <div className="space-y-2">
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t("email")}</FormLabel>
                     <Input value={account?.email || ''} disabled />
-                    <p className="text-sm text-muted-foreground">Email cannot be changed</p>
+                    <p className="text-sm text-muted-foreground">{t("emailCannotChange")}</p>
                   </div>
 
                   {/* Role (Read-only) */}
                   <div className="space-y-2">
-                    <FormLabel>Role</FormLabel>
+                    <FormLabel>{t("role")}</FormLabel>
                     <div className="flex gap-2">
                       {account?.roles?.map((role: string) => (
                         <span
@@ -283,10 +285,10 @@ export default function ProfilePage() {
                       {updateProfileMutation.isPending ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Updating...
+                          {t("updating")}
                         </>
                       ) : (
-                        "Save Changes"
+                        t("saveChanges")
                       )}
                     </Button>
                   </div>
@@ -300,8 +302,8 @@ export default function ProfilePage() {
         <TabsContent value="password">
           <Card>
             <CardHeader>
-              <CardTitle>Change Password</CardTitle>
-              <CardDescription>Update your password to keep your account secure</CardDescription>
+              <CardTitle>{t("changePassword")}</CardTitle>
+              <CardDescription>{t("changePasswordDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...passwordForm}>
@@ -312,10 +314,10 @@ export default function ProfilePage() {
                     name="currentPassword"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Current Password</FormLabel>
+                        <FormLabel>{t("currentPassword")}</FormLabel>
                         <Input 
                           type="password" 
-                          placeholder="Enter your current password" 
+                          placeholder={t("currentPassword")} 
                           {...field} 
                         />
                         <FormMessage />
@@ -331,14 +333,14 @@ export default function ProfilePage() {
                     name="newPassword"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>New Password</FormLabel>
+                        <FormLabel>{t("newPassword")}</FormLabel>
                         <Input 
                           type="password" 
-                          placeholder="Enter your new password" 
+                          placeholder={t("newPassword")} 
                           {...field} 
                         />
                         <p className="text-sm text-muted-foreground">
-                          Password must be at least 6 characters long
+                          {t("passwordRequirement")}
                         </p>
                         <FormMessage />
                       </FormItem>
@@ -351,10 +353,10 @@ export default function ProfilePage() {
                     name="confirmPassword"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Confirm New Password</FormLabel>
+                        <FormLabel>{t("confirmNewPassword")}</FormLabel>
                         <Input 
                           type="password" 
-                          placeholder="Confirm your new password" 
+                          placeholder={t("confirmNewPassword")} 
                           {...field} 
                         />
                         <FormMessage />
@@ -368,12 +370,12 @@ export default function ProfilePage() {
                       {isChangingPassword ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Changing Password...
+                          {t("changingPassword")}
                         </>
                       ) : (
                         <>
                           <Lock className="mr-2 h-4 w-4" />
-                          Change Password
+                          {t("changePassword")}
                         </>
                       )}
                     </Button>
@@ -395,7 +397,7 @@ export default function ProfilePage() {
         }}
         userId={userId}
         mediaType="IMAGE"
-        title="Select Avatar"
+        title={t("selectAvatar")}
       />
     </div>
   );
