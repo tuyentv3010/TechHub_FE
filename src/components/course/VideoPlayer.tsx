@@ -368,7 +368,7 @@ export default function VideoPlayer({
               {title}
             </h2>
           )}
-          {subtitle && (
+          {subtitle && (    
             <p className="text-white/80 text-sm sm:text-base mt-1">by {subtitle}</p>
           )}
         </div>

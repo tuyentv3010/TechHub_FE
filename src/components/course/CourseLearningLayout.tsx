@@ -40,6 +40,7 @@ import { useCourseProgress, useMarkLessonCompleteMutation } from "@/queries/useC
 import { useGetExercises } from "@/queries/useCourse";
 import { CourseCommentsList } from "./CourseCommentsList";
 import ExerciseDisplay from "./ExerciseDisplay";
+import ExercisePlayer from "./ExercisePlayer";
 import VideoPlayer from "./VideoPlayer";
 import envConfig from "@/config";
 
@@ -501,108 +502,61 @@ export default function CourseLearningLayout({
               </div>
             )}
 
-            {/* Learning Outcomes */}
-            <div className="bg-gradient-to-r from-primary/5 to-cyan-500/5 rounded-lg p-4 border border-primary/20">
-              <div className="flex items-center gap-2 mb-3">
-                <Award className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-base">Bạn sẽ làm được gì sau bài học này?</h3>
-              </div>
-              {courseSummary.outcomes && courseSummary.outcomes.length > 0 ? (
-                <ul className="space-y-2">
-                  {courseSummary.outcomes.slice(0, 3).map((outcome: string, index: number) => (
-                    <li key={index} className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                      <span className="text-muted-foreground">{outcome}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                    <span className="text-muted-foreground">Hiểu rõ nội dung của bài học</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                    <span className="text-muted-foreground">Áp dụng kiến thức vào thực tế</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                    <span className="text-muted-foreground">Sẵn sàng cho bài học tiếp theo</span>
-                  </li>
-                </ul>
-              )}
-            </div>
           </div>
 
-          {/* Exercise Section - Always show for testing, hide hasExercise condition */}
+          {/* Exercise Section - New Interactive Design */}
           <div className="p-6 border-b">
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
               <HelpCircle className="h-5 w-5" />
-              Bài tập
-              {currentLesson?.hasExercise && (
-                <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded">
-                  có hasExercise
-                </span>
-              )}
+              Bài tập thực hành
               {exercises.length > 0 && (
                 <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded ml-2">
-                  {exercises.length} câu từ API
+                  {exercises.length} câu hỏi
                 </span>
               )}
             </h3>
               
-              {!exercisesResponse && (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-sm text-muted-foreground mt-2">Đang tải bài tập...</p>
-                </div>
-              )}
-              
-              {exercisesResponse && exercises.length === 0 && (
-                <div className="text-center py-8">
-                  <HelpCircle className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Bài học này chưa có bài tập</p>
-                </div>
-              )}
-              
-              {exercises.length > 0 && (
-                <div className="space-y-6">
-                  {exercises.map((exercise: any, index: number) => (
-                    <div key={exercise.id}>
-                      {index > 0 && <div className="border-t my-6"></div>}
-                      <div className="mb-3">
-                        <h4 className="text-sm font-medium text-muted-foreground">
-                          Bài tập {index + 1} - {exercise.type === "MULTIPLE_CHOICE" ? "Trắc nghiệm" : 
-                            exercise.type === "CODING" ? "Lập trình" : "Tự luận"}
-                        </h4>
-                      </div>
-                      <ExerciseDisplay 
-                        exercise={{
-                          id: exercise.id,
-                          type: exercise.type,
-                          question: exercise.question,
-                          options: exercise.options,
-                          testCases: exercise.testCases
-                        }}
-                        onComplete={(exerciseId, isCorrect) => {
-                          console.log('Exercise completed:', exerciseId, isCorrect);
-                          if (isCorrect) {
-                            // Trigger confetti for correct answer
-                            confetti({
-                              particleCount: 100,
-                              spread: 70,
-                              origin: { y: 0.6 }
-                            });
-                          }
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-            </div>
+            {!exercisesResponse && (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-sm text-muted-foreground mt-2">Đang tải bài tập...</p>
+              </div>
+            )}
+            
+            {exercisesResponse && exercises.length === 0 && (
+              <div 
+                className="text-center py-12 rounded-2xl"
+                style={{ backgroundColor: '#FFF8DD' }}
+              >
+                <HelpCircle className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600">Bài học này chưa có bài tập</p>
+              </div>
+            )}
+            
+            {exercises.length > 0 && (
+              <ExercisePlayer
+                exercises={exercises.map((exercise: any) => ({
+                  id: exercise.id,
+                  type: exercise.type,
+                  question: exercise.question,
+                  options: exercise.options,
+                  testCases: exercise.testCases
+                }))}
+                lessonTitle={currentLesson?.title}
+                onComplete={(results) => {
+                  console.log('All exercises completed:', results);
+                  const allCorrect = results.every(r => r.isCorrect);
+                  if (allCorrect) {
+                    confetti({
+                      particleCount: 150,
+                      spread: 100,
+                      origin: { y: 0.6 }
+                    });
+                  }
+                }}
+              />
+            )}
+          </div>
 
           {/* Lesson Assets/Resources */}
           {currentLesson?.assets && currentLesson.assets.length > 0 && (
