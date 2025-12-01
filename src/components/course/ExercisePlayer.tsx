@@ -186,12 +186,23 @@ function ExerciseStartScreen({
   );
 }
 
+// Kahoot-style answer colors
+const ANSWER_COLORS = [
+  { bg: 'bg-[#C5A900]', hover: 'hover:bg-[#A38900]', gradient: 'from-[#C5A900] to-[#9A7D00]' }, // Yellow/Gold
+  { bg: 'bg-[#9B59B6]', hover: 'hover:bg-[#8E44AD]', gradient: 'from-[#9B59B6] to-[#7D3C98]' }, // Purple
+  { bg: 'bg-[#E67E22]', hover: 'hover:bg-[#D35400]', gradient: 'from-[#E67E22] to-[#C56A00]' }, // Orange
+  { bg: 'bg-[#1ABC9C]', hover: 'hover:bg-[#16A085]', gradient: 'from-[#1ABC9C] to-[#138D75]' }, // Teal
+];
+
+const TIME_LIMIT = 10; // 10 seconds per question
+const SHOW_ANSWER_DURATION = 5; // 5 seconds to show answer
+
 // Question Screen Component
 function QuestionScreen({
   exercise,
   questionNumber,
   totalQuestions,
-  timeSpent,
+  countdown,
   onAnswer,
   onShowHelp,
   onNextQuestion,
@@ -204,11 +215,12 @@ function QuestionScreen({
   submitted,
   selectedAnswers,
   isCorrect,
+  showAnswerCountdown,
 }: {
   exercise: Exercise;
   questionNumber: number;
   totalQuestions: number;
-  timeSpent: number;
+  countdown: number;
   onAnswer: (answers: string[]) => void;
   onShowHelp: () => void;
   onNextQuestion: () => void;
@@ -221,304 +233,267 @@ function QuestionScreen({
   submitted: boolean;
   selectedAnswers: string[];
   isCorrect: boolean;
+  showAnswerCountdown: number;
 }) {
   const choices = parseChoices(exercise.options);
   const correctCount = choices.filter(c => c.isCorrect).length;
   const isMultipleChoice = correctCount > 1;
-  const [localSelected, setLocalSelected] = useState<string[]>(selectedAnswers);
+  
+  // Local state for multiple choice selection
+  const [localSelected, setLocalSelected] = useState<string[]>([]);
 
-  // Format time display
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  // Reset local selection when question changes
+  useEffect(() => {
+    setLocalSelected([]);
+  }, [exercise.id]);
 
   // Handle choice selection
   const handleChoiceClick = (index: number) => {
     if (submitted) return;
     
     const indexStr = index.toString();
+    
     if (isMultipleChoice) {
-      setLocalSelected(prev => 
-        prev.includes(indexStr) 
-          ? prev.filter(i => i !== indexStr)
-          : [...prev, indexStr]
-      );
+      // Multiple choice: toggle selection
+      let newSelected: string[];
+      if (localSelected.includes(indexStr)) {
+        // Deselect
+        newSelected = localSelected.filter(i => i !== indexStr);
+        setLocalSelected(newSelected);
+      } else {
+        // Select - add to list
+        newSelected = [...localSelected, indexStr];
+        setLocalSelected(newSelected);
+        
+        // Auto submit when selected enough answers
+        if (newSelected.length === correctCount) {
+          onAnswer(newSelected);
+        }
+      }
     } else {
-      setLocalSelected([indexStr]);
+      // Single choice: auto submit immediately
+      onAnswer([indexStr]);
     }
   };
 
-  // Submit answer
-  const handleSubmit = () => {
-    if (localSelected.length === 0) return;
-    onAnswer(localSelected);
-  };
+  // Get display selected answers (use local for multiple choice before submit)
+  const displaySelected = isMultipleChoice && !submitted ? localSelected : selectedAnswers;
+
+  // Determine if time ran out (no answer selected and countdown is 0)
+  const timedOut = submitted && selectedAnswers.length === 0;
 
   return (
-    <div className="relative w-full min-h-[600px] rounded-2xl overflow-hidden" style={{ backgroundColor: '#FFF8DD' }}>
-      {/* Header */}
-      <div className="relative px-4 py-3" style={{ backgroundColor: '#FDDF2F' }}>
-        <div className="flex items-center justify-between">
-          {/* Left: Avatar & Progress Stars */}
-          <div className="flex items-center gap-3">
-            {/* Avatar placeholder */}
-            <div className="w-10 h-10 rounded-full bg-white/50 border-2 border-white overflow-hidden">
-              <img 
-                src="/avatars/default-avatar.png" 
-                alt="Avatar"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><circle cx="12" cy="8" r="4"/><path d="M12 14c-6 0-8 3-8 6v2h16v-2c0-3-2-6-8-6z"/></svg>';
-                }}
-              />
-            </div>
-            
-            {/* Progress Stars */}
-            <div className="flex items-center gap-1">
-              {[...Array(totalQuestions)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={cn(
-                    "w-6 h-6 transition-all",
-                    i < questionNumber - 1 
-                      ? "text-yellow-500 fill-yellow-500" 
-                      : i === questionNumber - 1 
-                        ? "text-yellow-500 fill-yellow-500 scale-110" 
-                        : "text-gray-300 fill-gray-300"
-                  )}
-                />
-              ))}
-            </div>
+    <div className="relative w-full min-h-[600px] rounded-2xl overflow-hidden" style={{ backgroundColor: '#2D1B4E' }}>
+      {/* Question number badge */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+        <div className="bg-gray-800/80 text-white px-4 py-1 rounded-full text-sm font-medium">
+          {questionNumber}/{totalQuestions}
+        </div>
+      </div>
+
+      {/* Countdown Timer - Top right */}
+      {!submitted && (
+        <div className="absolute top-4 right-4 z-10">
+          <div className={cn(
+            "w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg",
+            countdown <= 3 ? "bg-red-500 animate-pulse" : "bg-gray-700"
+          )}>
+            {countdown}
           </div>
-
-          {/* Right: Title */}
-          <div className="text-right">
-            <h1 className="text-lg font-bold text-gray-800">
-              Câu hỏi {questionNumber}
-            </h1>
-          </div>
-        </div>
-      </div>
-
-      {/* Decorative elements */}
-      <div className="absolute top-20 left-4">
-        <div className="w-10 h-10 text-[#FF6B6B]">
-          <X className="w-full h-full" strokeWidth={3} />
-        </div>
-      </div>
-      <div className="absolute top-16 right-1/3">
-        <div className="w-8 h-8 text-[#FF6B6B]">
-          <X className="w-full h-full" strokeWidth={3} />
-        </div>
-      </div>
-      <div className="absolute top-1/2 left-6">
-        <div className="w-8 h-8 text-[#7BC74D]">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
-          </svg>
-        </div>
-      </div>
-
-      {/* Side buttons */}
-      <div className="absolute right-4 top-24 flex flex-col gap-2">
-        {/* Timer */}
-        <button className="w-12 h-12 rounded-xl bg-[#4A90D9] shadow-lg flex items-center justify-center text-white">
-          <Clock className="w-6 h-6" />
-        </button>
-        
-        {/* Sound */}
-        <button 
-          onClick={onToggleSound}
-          className={cn(
-            "w-12 h-12 rounded-xl shadow-lg flex items-center justify-center transition-colors",
-            soundEnabled ? "bg-[#4A90D9] text-white" : "bg-gray-300 text-gray-500"
-          )}
-        >
-          <Volume2 className="w-6 h-6" />
-        </button>
-        
-        {/* Music */}
-        <button 
-          onClick={onToggleMusic}
-          className={cn(
-            "w-12 h-12 rounded-xl shadow-lg flex items-center justify-center transition-colors",
-            musicEnabled ? "bg-[#4A90D9] text-white" : "bg-gray-300 text-gray-500"
-          )}
-        >
-          <Music className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* Next button */}
-      {submitted && (
-        <div className="absolute right-4 top-1/2">
-          <button 
-            onClick={onNextQuestion}
-            className="px-4 py-2 bg-[#4A90D9] text-white rounded-lg shadow-lg flex items-center gap-1 hover:bg-[#3A7BC8] transition-colors"
-          >
-            Tiếp <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
       )}
 
-      {/* Main content */}
-      <div className="px-8 py-6 max-w-2xl mx-auto">
-        {/* Question Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-          {/* Question header */}
-          <div className="text-center mb-4">
-            <p className="text-gray-500 text-sm mb-2">Câu hỏi {questionNumber}:</p>
-            <h2 className="text-xl font-semibold text-gray-800">
-              {exercise.question}
-            </h2>
-            {isMultipleChoice && (
-              <p className="text-sm text-blue-600 mt-2">
-                (Chọn {correctCount} đáp án đúng)
-              </p>
-            )}
+      {/* Show answer countdown */}
+      {submitted && (
+        <div className="absolute top-4 right-4 z-10">
+          <div className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg bg-blue-500">
+            {showAnswerCountdown}
           </div>
+        </div>
+      )}
 
-          {/* Answer choices */}
-          <div className="space-y-3 mt-6">
-            {choices.map((choice, index) => {
-              const isSelected = localSelected.includes(index.toString());
-              const choiceLetter = String.fromCharCode(65 + index); // A, B, C, D...
-              
-              // Determine styling based on state
-              let bgColor = "bg-white border-2 border-gray-200 hover:border-[#FDDF2F]";
-              let textColor = "text-gray-800";
-              let badgeColor = "bg-gray-100 text-gray-600";
-              
-              if (submitted) {
-                if (choice.isCorrect) {
-                  bgColor = "bg-gradient-to-r from-green-400 to-green-500 border-2 border-green-500";
-                  textColor = "text-white";
-                  badgeColor = "bg-white/30 text-white";
-                } else if (isSelected && !choice.isCorrect) {
-                  bgColor = "bg-gradient-to-r from-red-400 to-red-500 border-2 border-red-500";
-                  textColor = "text-white";
-                  badgeColor = "bg-white/30 text-white";
-                }
-              } else if (isSelected) {
-                bgColor = "bg-[#F7E8B1] border-2 border-[#FDDF2F]";
-              }
-
-              return (
-                <button
-                  key={index}
-                  onClick={() => handleChoiceClick(index)}
-                  disabled={submitted}
-                  className={cn(
-                    "w-full px-4 py-3 rounded-full flex items-center gap-3 transition-all",
-                    bgColor,
-                    textColor,
-                    !submitted && "cursor-pointer hover:shadow-md",
-                    submitted && "cursor-default"
-                  )}
-                >
-                  <span className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm",
-                    badgeColor
-                  )}>
-                    {choiceLetter}
-                  </span>
-                  <span className="flex-1 text-left font-medium">{choice.text}</span>
-                  {submitted && choice.isCorrect && (
-                    <CheckCircle2 className="w-5 h-5 text-white" />
-                  )}
-                  {submitted && isSelected && !choice.isCorrect && (
-                    <XCircle className="w-5 h-5 text-white" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Result message after submit */}
-          {submitted && (
-            <div className={cn(
-              "mt-6 p-4 rounded-xl text-center",
-              isCorrect ? "bg-green-50" : "bg-red-50"
-            )}>
-              <div className="flex items-center justify-center gap-2 mb-2">
-                {isCorrect ? (
-                  <>
-                    <CheckCircle2 className="w-6 h-6 text-green-600" />
-                    <span className="text-lg font-bold text-green-600">Chính xác!</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="w-6 h-6 text-red-600" />
-                    <span className="text-lg font-bold text-red-600">Chưa chính xác</span>
-                  </>
-                )}
-              </div>
-              {!isCorrect && (
-                <p className="text-sm text-gray-600">
-                  Đáp án đúng: {choices.filter(c => c.isCorrect).map(c => c.text).join(", ")}
-                </p>
-              )}
-            </div>
+      {/* Sound toggle */}
+      <div className="absolute top-4 right-20 z-10">
+        <button 
+          onClick={onToggleSound}
+          className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+            soundEnabled ? "bg-white/20 text-white" : "bg-gray-600 text-gray-400"
           )}
-        </div>
+        >
+          <Volume2 className="w-5 h-5" />
+        </button>
+      </div>
 
-        {/* Submit button */}
-        {!submitted && (
-          <div className="flex justify-center">
-            <button
-              onClick={handleSubmit}
-              disabled={localSelected.length === 0}
-              className={cn(
-                "px-8 py-3 rounded-lg font-semibold transition-all",
-                localSelected.length > 0
-                  ? "bg-[#4A90D9] text-white hover:bg-[#3A7BC8] shadow-lg hover:shadow-xl"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              )}
-            >
-              Xác nhận đáp án
-            </button>
-          </div>
-        )}
-
-        {/* Help mascot */}
-        <div className="absolute bottom-4 left-4">
-          <button
-            onClick={onShowHelp}
-            className="relative group"
-          >
-            <div className="w-16 h-16 rounded-full bg-[#4A90D9] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-              <span className="text-3xl">🦜</span>
-            </div>
-            <div className="absolute -top-2 -right-2 bg-yellow-400 text-yellow-800 text-xs font-bold px-2 py-1 rounded-full">
-              Trợ giúp
-            </div>
-          </button>
-        </div>
-
-        {/* Fullscreen button */}
-        <div className="absolute bottom-4 right-4">
-          <button
-            onClick={onFullscreen}
-            className="p-2 hover:bg-black/5 rounded-lg transition-colors"
-          >
-            <Maximize2 className="w-6 h-6 text-gray-600" />
-          </button>
+      {/* Question Card */}
+      <div className="pt-16 px-8">
+        <div className="bg-gray-900/80 rounded-xl p-6 mb-8 max-w-3xl mx-auto">
+          <h2 className="text-xl md:text-2xl font-bold text-white text-center">
+            {exercise.question}
+          </h2>
+          {isMultipleChoice && !submitted && (
+            <p className="text-sm text-blue-300 mt-2 text-center">
+              (Chọn {correctCount} đáp án đúng)
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Timer display */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-        <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow">
-          <span className="text-gray-600 font-mono">{formatTime(timeSpent)}</span>
+      {/* Kahoot-style Answer Grid */}
+      <div className="px-4 pb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-5xl mx-auto">
+          {choices.map((choice, index) => {
+            const isSelected = displaySelected.includes(index.toString());
+            const colorScheme = ANSWER_COLORS[index % ANSWER_COLORS.length];
+            
+            // Determine styling based on state
+            let extraClasses = '';
+            let showIcon = null;
+            
+            if (submitted) {
+              if (choice.isCorrect) {
+                extraClasses = 'ring-4 ring-white ring-offset-2 ring-offset-transparent scale-105';
+                showIcon = <CheckCircle2 className="w-8 h-8 text-white" />;
+              } else if (isSelected && !choice.isCorrect) {
+                extraClasses = 'opacity-60';
+                showIcon = <XCircle className="w-8 h-8 text-white" />;
+              } else if (timedOut) {
+                extraClasses = 'opacity-40';
+              } else {
+                extraClasses = 'opacity-40';
+              }
+            } else if (isSelected && isMultipleChoice) {
+              // Show selection state for multiple choice before submit
+              extraClasses = 'ring-4 ring-white ring-offset-2 ring-offset-transparent';
+            }
+
+            return (
+              <button
+                key={index}
+                onClick={() => handleChoiceClick(index)}
+                disabled={submitted}
+                className={cn(
+                  "relative min-h-[140px] md:min-h-[180px] rounded-lg flex flex-col items-center justify-center p-4 transition-all duration-300",
+                  colorScheme.bg,
+                  !submitted && colorScheme.hover,
+                  !submitted && "cursor-pointer hover:scale-105 hover:shadow-xl active:scale-95",
+                  submitted && "cursor-default",
+                  extraClasses
+                )}
+              >
+                {/* Selection indicator for multiple choice */}
+                {!submitted && isMultipleChoice && isSelected && (
+                  <div className="absolute top-3 right-3">
+                    <CheckCircle2 className="w-8 h-8 text-white" />
+                  </div>
+                )}
+                
+                {/* Icon indicator after submit */}
+                {submitted && showIcon && (
+                  <div className="absolute top-3 right-3">
+                    {showIcon}
+                  </div>
+                )}
+                
+                {/* Answer text */}
+                <span className="text-white font-bold text-lg md:text-xl text-center leading-tight">
+                  {choice.text}
+                </span>
+              </button>
+            );
+          })}
         </div>
+        
+        {/* Selection indicator for multiple choice */}
+        {isMultipleChoice && !submitted && (
+          <div className="flex justify-center mt-4">
+            <div className="bg-gray-800/80 text-white px-4 py-2 rounded-full text-sm font-medium">
+              Đã chọn {localSelected.length}/{correctCount} đáp án
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Result message after submit */}
+      {submitted && (
+        <div className="px-8 pb-6">
+          <div className={cn(
+            "max-w-xl mx-auto p-4 rounded-xl text-center",
+            timedOut ? "bg-yellow-500/20" : isCorrect ? "bg-green-500/20" : "bg-red-500/20"
+          )}>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              {timedOut ? (
+                <>
+                  <Clock className="w-6 h-6 text-yellow-400" />
+                  <span className="text-lg font-bold text-yellow-400">Hết thời gian!</span>
+                </>
+              ) : isCorrect ? (
+                <>
+                  <CheckCircle2 className="w-6 h-6 text-green-400" />
+                  <span className="text-lg font-bold text-green-400">Chính xác!</span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-6 h-6 text-red-400" />
+                  <span className="text-lg font-bold text-red-400">Chưa chính xác</span>
+                </>
+              )}
+            </div>
+            {(!isCorrect || timedOut) && (
+              <p className="text-sm text-gray-300">
+                Đáp án đúng: {choices.filter(c => c.isCorrect).map(c => c.text).join(", ")}
+              </p>
+            )}
+            <p className="text-xs text-gray-400 mt-2">
+              Tự động chuyển sau {showAnswerCountdown}s...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Progress Stars at bottom */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+        <div className="flex items-center gap-1 bg-black/30 px-4 py-2 rounded-full">
+          {[...Array(totalQuestions)].map((_, i) => (
+            <Star
+              key={i}
+              className={cn(
+                "w-5 h-5 transition-all",
+                i < questionNumber - 1 
+                  ? "text-yellow-500 fill-yellow-500" 
+                  : i === questionNumber - 1 
+                    ? "text-yellow-500 fill-yellow-500 scale-110" 
+                    : "text-gray-500 fill-gray-500"
+              )}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Fullscreen button */}
+      <div className="absolute bottom-4 right-4">
+        <button
+          onClick={onFullscreen}
+          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+        >
+          <Maximize2 className="w-6 h-6 text-gray-400" />
+        </button>
+      </div>
+
+      {/* Help mascot */}
+      <div className="absolute bottom-4 left-4">
+        <button
+          onClick={onShowHelp}
+          className="relative group"
+        >
+          <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+            <span className="text-2xl">🦜</span>
+          </div>
+        </button>
       </div>
     </div>
   );
-}
-
-// Help Modal Component
+}// Help Modal Component
 function HelpModal({
   isOpen,
   onClose,
@@ -748,22 +723,121 @@ export default function ExercisePlayer({
   const [submitted, setSubmitted] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
   const [isCorrect, setIsCorrect] = useState(false);
-
-  // Timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (gameState === 'playing') {
-      interval = setInterval(() => {
-        setTimeSpent(prev => prev + 1);
-        setTotalTime(prev => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [gameState]);
+  const [countdown, setCountdown] = useState(TIME_LIMIT);
+  const [showAnswerCountdown, setShowAnswerCountdown] = useState(SHOW_ANSWER_DURATION);
 
   // Filter multiple choice exercises only
   const multipleChoiceExercises = exercises.filter(e => e.type === 'MULTIPLE_CHOICE');
   const currentExercise = multipleChoiceExercises[currentIndex];
+
+  // Use ref to track if we're transitioning to prevent double execution
+  const isTransitioning = useRef(false);
+
+  // Debug log
+  useEffect(() => {
+    console.log('[ExercisePlayer] State:', { 
+      currentIndex, 
+      submitted, 
+      countdown, 
+      showAnswerCountdown,
+      gameState,
+      exerciseId: currentExercise?.id 
+    });
+  }, [currentIndex, submitted, countdown, showAnswerCountdown, gameState, currentExercise?.id]);
+
+  // Countdown timer for answering (10s)
+  useEffect(() => {
+    if (gameState !== 'playing' || submitted) return;
+    
+    console.log('[Timer] Starting countdown for question', currentIndex + 1);
+    
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        console.log('[Timer] Countdown:', prev - 1);
+        if (prev <= 1) {
+          // Time's up - auto fail
+          console.log('[Timer] Time up! Auto fail');
+          setSelectedAnswers([]);
+          setIsCorrect(false);
+          setSubmitted(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+      setTimeSpent(prev => prev + 1);
+      setTotalTime(prev => prev + 1);
+    }, 1000);
+    
+    return () => {
+      console.log('[Timer] Clearing countdown interval');
+      clearInterval(interval);
+    };
+  }, [gameState, submitted, currentIndex]);
+
+  // Show answer countdown (5s) then auto-next
+  useEffect(() => {
+    if (gameState !== 'playing' || !submitted) return;
+    
+    console.log('[ShowAnswer] Starting show answer countdown for question', currentIndex + 1);
+    isTransitioning.current = false;
+    let localCountdown = SHOW_ANSWER_DURATION;
+    setShowAnswerCountdown(SHOW_ANSWER_DURATION);
+    
+    const interval = setInterval(() => {
+      localCountdown -= 1;
+      console.log('[ShowAnswer] Countdown:', localCountdown);
+      setShowAnswerCountdown(localCountdown);
+      
+      if (localCountdown <= 0 && !isTransitioning.current) {
+        isTransitioning.current = true;
+        console.log('[ShowAnswer] Moving to next question. Current:', currentIndex + 1, 'Total:', multipleChoiceExercises.length);
+        
+        // Save result
+        const result: ExerciseResult = {
+          exerciseId: currentExercise?.id || '',
+          isCorrect,
+          selectedAnswers,
+          timeSpent,
+        };
+        
+        setResults(prev => [...prev, result]);
+        
+        // Check if last question
+        if (currentIndex >= multipleChoiceExercises.length - 1) {
+          console.log('[ShowAnswer] Last question - showing results');
+          setResults(prev => {
+            onComplete?.(prev);
+            return prev;
+          });
+          setGameState('result');
+        } else {
+          // Move to next question
+          console.log('[ShowAnswer] Moving to question', currentIndex + 2);
+          setCurrentIndex(currentIndex + 1);
+          setSubmitted(false);
+          setSelectedAnswers([]);
+          setIsCorrect(false);
+          setTimeSpent(0);
+          setCountdown(TIME_LIMIT);
+        }
+        
+        clearInterval(interval);
+      }
+    }, 1000);
+    
+    return () => {
+      console.log('[ShowAnswer] Clearing show answer interval');
+      clearInterval(interval);
+    };
+  }, [submitted, currentIndex, gameState]);
+
+  // Handle timeout - auto submit as fail
+  const handleTimeOut = useCallback(() => {
+    if (submitted) return;
+    setSelectedAnswers([]);
+    setIsCorrect(false);
+    setSubmitted(true);
+  }, [submitted]);
 
   // Start game
   const handleStart = () => {
@@ -774,10 +848,14 @@ export default function ExercisePlayer({
     setTotalTime(0);
     setSubmitted(false);
     setSelectedAnswers([]);
+    setCountdown(TIME_LIMIT);
+    setShowAnswerCountdown(SHOW_ANSWER_DURATION);
   };
 
-  // Handle answer
-  const handleAnswer = (answers: string[]) => {
+  // Handle answer - auto submit on click
+  const handleAnswer = useCallback((answers: string[]) => {
+    if (submitted) return;
+    
     const choices = parseChoices(currentExercise.options);
     const correctCount = choices.filter(c => c.isCorrect).length;
     const isMultiple = correctCount > 1;
@@ -797,6 +875,7 @@ export default function ExercisePlayer({
     setSelectedAnswers(answers);
     setIsCorrect(correct);
     setSubmitted(true);
+    setShowAnswerCountdown(SHOW_ANSWER_DURATION);
 
     // Trigger confetti for correct answer
     if (correct) {
@@ -806,10 +885,10 @@ export default function ExercisePlayer({
         origin: { y: 0.7 }
       });
     }
-  };
+  }, [submitted, currentExercise]);
 
   // Go to next question
-  const handleNextQuestion = () => {
+  const handleNextQuestion = useCallback(() => {
     // Save result
     const result: ExerciseResult = {
       exerciseId: currentExercise.id,
@@ -826,11 +905,13 @@ export default function ExercisePlayer({
       setSelectedAnswers([]);
       setIsCorrect(false);
       setTimeSpent(0);
+      setCountdown(TIME_LIMIT);
+      setShowAnswerCountdown(SHOW_ANSWER_DURATION);
     } else {
       setGameState('result');
       onComplete?.([...results, result]);
     }
-  };
+  }, [currentExercise, isCorrect, selectedAnswers, timeSpent, currentIndex, multipleChoiceExercises.length, results, onComplete]);
 
   // Fullscreen
   const handleFullscreen = async () => {
@@ -887,7 +968,7 @@ export default function ExercisePlayer({
             exercise={currentExercise}
             questionNumber={currentIndex + 1}
             totalQuestions={multipleChoiceExercises.length}
-            timeSpent={timeSpent}
+            countdown={countdown}
             onAnswer={handleAnswer}
             onShowHelp={() => setShowHelp(true)}
             onNextQuestion={handleNextQuestion}
@@ -900,6 +981,7 @@ export default function ExercisePlayer({
             submitted={submitted}
             selectedAnswers={selectedAnswers}
             isCorrect={isCorrect}
+            showAnswerCountdown={showAnswerCountdown}
           />
           <HelpModal
             isOpen={showHelp}
