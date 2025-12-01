@@ -6,6 +6,7 @@ import { decodeToken } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import envConfig from "@/config";
+import authApiRequest from "@/apiRequests/auth";
 
 export default function OauthPage() {
   const { setRole, setIsAuth } = useAppContext();
@@ -21,18 +22,38 @@ export default function OauthPage() {
 
     const processOAuth = async () => {
       try {
+        console.log("🔐 Login OAuth - Starting processOAuth");
+        console.log("🔐 Login OAuth - Full URL:", window.location.href);
+        console.log("🔐 Login OAuth - Search params:", searchParams.toString());
+        
         // Check if this is a direct token response (from existing flow)
         const accessToken = searchParams.get("accessToken");
         const refreshToken = searchParams.get("refreshToken");
         const message = searchParams.get("message");
 
+        console.log("🔐 Login OAuth - accessToken exists:", !!accessToken);
+        console.log("🔐 Login OAuth - refreshToken exists:", !!refreshToken);
+
         if (accessToken && refreshToken) {
           // Existing flow - tokens already generated
-          console.log("Processing existing OAuth flow with tokens");
+          console.log("🔐 Login OAuth - Processing existing OAuth flow with tokens");
           const { role } = decodeToken(accessToken);
+          console.log("🔐 Login OAuth - Decoded role:", role);
           
           localStorage.setItem("accessToken", accessToken);
           localStorage.setItem("refreshToken", refreshToken);
+          
+          // Set tokens to cookies for middleware auth check
+          console.log("🔐 Login OAuth - Setting tokens to cookies");
+          try {
+            await authApiRequest.setTokenToCookie({
+              accessToken,
+              refreshToken,
+            });
+            console.log("🔐 Login OAuth - Cookies set successfully");
+          } catch (cookieError) {
+            console.error("🔐 Login OAuth - Failed to set cookies:", cookieError);
+          }
           
           setRole(role);
           setIsAuth(true);
@@ -42,6 +63,7 @@ export default function OauthPage() {
             description: message || "You have successfully logged in!",
           });
           
+          console.log("🔐 Login OAuth - Redirecting, role:", role);
           router.push(role === "ADMIN" ? "/manage/accounts" : "/");
           return;
         }
@@ -89,10 +111,16 @@ export default function OauthPage() {
             throw new Error(data.message || "Failed to exchange OAuth result");
           }
 
-          // Store tokens and user info
+          // Store tokens in localStorage
           localStorage.setItem("accessToken", data.accessToken);
           localStorage.setItem("refreshToken", data.refreshToken);
           localStorage.setItem("userInfo", JSON.stringify(data.user));
+
+          // Set tokens to cookies for middleware auth check
+          await authApiRequest.setTokenToCookie({
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+          });
 
           // Get user role
           const userRole = data.user.roles[0] || "USER";

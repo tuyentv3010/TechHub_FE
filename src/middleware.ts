@@ -5,7 +5,7 @@ import { Role } from "@/constants/type";
 import { RoleType } from "@/types/jwt.types";
 
 const guestPath = ["/guest"];
-const unAuthPaths = ["/login", "/register", "/forgot-password", "/verify-email"];
+const unAuthPaths = ["/login", "/register", "/forgot-password", "/verify-email", "/oauth2"];
 const managePaths = ["/manage"];
 const authRequiredPaths = ["/courses", "/learning-paths", "/blog"];
 const privatePaths = [...managePaths, ...guestPath];
