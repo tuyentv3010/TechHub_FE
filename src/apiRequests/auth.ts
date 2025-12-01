@@ -54,14 +54,14 @@ const authApiRequest = {
 
   // Set token to cookie (for OAuth flow)
   setTokenToCookie: (body: { accessToken: string; refreshToken: string }) =>
-    http.post("/app/api/auth/token", body, {
+    http.post("/api/auth/token", body, {
       baseUrl: "",
     }),
 
   // Logout
   logout: () =>
     http.post(
-      "/app/api/auth/logout",
+      "/api/auth/logout",
       {},
       {
         baseUrl: "",
@@ -75,11 +75,12 @@ const authApiRequest = {
   sLogin: (body: LoginBodyType) =>
     http.post<LoginResType>("/app/api/proxy/auth/login", body),
 
-  sLogout: (body: {
-    accessToken: string;
-    refreshToken: string;
-  }) =>
-    http.post("/app/api/proxy/auth/logout", body),
+  sLogout: (accessToken: string) =>
+    http.post("/app/api/proxy/auth/logout", null, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }),
 
   sRefreshToken: (body: { refreshToken: string }) =>
     http.post<LoginResType>("/auth/refresh-token", body),

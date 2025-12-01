@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/components/ui/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { LoaderCircle } from "lucide-react";
 import Link from "next/link";
@@ -23,7 +23,11 @@ export default function NewLoginForm() {
   const errorMessageT = useTranslations("ValidationErrors");
   const loginMutation = useLoginMutation();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get("redirect");
   const { setIsAuth, setRole } = useAppContext();
+
+  console.log("🔐 Login Form - redirectUrl from searchParams:", redirectUrl);
 
   const form = useForm<LoginBodyType>({
     resolver: zodResolver(LoginBody),
@@ -63,9 +67,15 @@ export default function NewLoginForm() {
         return;
       }
 
-      // Store tokens
+      // Store tokens in localStorage
       localStorage.setItem("accessToken", result.payload.data.accessToken);
       localStorage.setItem("refreshToken", result.payload.data.refreshToken);
+      
+      // Set tokens to cookies for middleware auth check
+      await authApiRequest.setTokenToCookie({
+        accessToken: result.payload.data.accessToken,
+        refreshToken: result.payload.data.refreshToken,
+      });
       
       // Store user info for header display
       localStorage.setItem("userInfo", JSON.stringify(result.payload.data.user));
@@ -83,9 +93,11 @@ export default function NewLoginForm() {
         description: result.payload.message || `Welcome ${result.payload.data.user.username}!`,
       });
 
-      // Redirect based on role
+      // Redirect based on role or redirectUrl
       if (userRole === "ADMIN") {
         router.push("/manage/accounts");
+      } else if (redirectUrl) {
+        router.push(redirectUrl);
       } else {
         router.push("/");
       }

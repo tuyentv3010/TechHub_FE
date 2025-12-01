@@ -1,11 +1,15 @@
 import authApiRequest from "@/apiRequests/auth";
 import { cookies } from "next/headers";
+
 export async function POST() {
   const cookieStore = cookies();
   const accessToken = (await cookieStore).get("accessToken")?.value;
   const refreshToken = (await cookieStore).get("refreshToken")?.value;
+  
+  // Delete cookies first (so user is logged out on frontend regardless of backend response)
   (await cookieStore).delete("refreshToken");
   (await cookieStore).delete("accessToken");
+  
   if (!accessToken || !refreshToken) {
     return Response.json(
       {
@@ -16,11 +20,9 @@ export async function POST() {
       }
     );
   }
+  
   try {
-    const result = await authApiRequest.sLogout({
-      accessToken,
-      refreshToken,
-    });
+    const result = await authApiRequest.sLogout(accessToken);
     return Response.json(result.payload);
   } catch (error) {
     console.log(error);

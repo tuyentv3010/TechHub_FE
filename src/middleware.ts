@@ -5,8 +5,9 @@ import { Role } from "@/constants/type";
 import { RoleType } from "@/types/jwt.types";
 
 const guestPath = ["/guest"];
-const unAuthPaths = ["/login"];
+const unAuthPaths = ["/login", "/register", "/forgot-password", "/verify-email"];
 const managePaths = ["/manage"];
+const authRequiredPaths = ["/courses", "/learning-paths", "/blog"];
 const privatePaths = [...managePaths, ...guestPath];
 
 export function middleware(request: NextRequest) {
@@ -14,9 +15,33 @@ export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get("accessToken")?.value;
   const refreshToken = request.cookies.get("refreshToken")?.value;
 
-  // Redirect authenticated users from login page
+  // Debug logs
+  console.log("🔐 Middleware - pathname:", pathname);
+  console.log("🔐 Middleware - accessToken exists:", !!accessToken);
+  console.log("🔐 Middleware - refreshToken exists:", !!refreshToken);
+
+  // Redirect authenticated users from login/register pages
   if (refreshToken && unAuthPaths.some((path) => pathname.startsWith(path))) {
+    console.log("🔐 Middleware - Redirecting authenticated user from auth page to /");
     return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // Check auth for home page
+  if (pathname === "/" && !accessToken && !refreshToken) {
+    console.log("🔐 Middleware - Redirecting unauthenticated user from home to /login");
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Check auth for protected public pages (courses, learning-paths, blog)
+  if (
+    authRequiredPaths.some((path) => pathname.startsWith(path)) &&
+    !accessToken &&
+    !refreshToken
+  ) {
+    console.log("🔐 Middleware - Redirecting unauthenticated user to /login with redirect:", pathname);
+    const url = new URL("/login", request.url);
+    url.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(url);
   }
 
   // Handle private paths
@@ -50,5 +75,16 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/manage/:path*", "/login", "/", "/guest/:path*"],
+  matcher: [
+    "/manage/:path*",
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/verify-email",
+    "/",
+    "/guest/:path*",
+    "/courses/:path*",
+    "/learning-paths/:path*",
+    "/blog/:path*",
+  ],
 };

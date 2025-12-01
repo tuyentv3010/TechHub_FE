@@ -54,7 +54,7 @@ export default function CoursesPage() {
   const [page, setPage] = useState(0);
   const [size] = useState(12);
 
-  // Fetch data
+  // Fetch skills and tags
   const { data: skillsData } = useGetSkills();
   const { data: tagsData } = useGetTags();
   const skills = skillsData?.payload?.data ?? [];
@@ -73,18 +73,7 @@ export default function CoursesPage() {
     tagIds: selectedTags.length > 0 ? selectedTags : undefined,
   };
 
-  console.log("========== FRONTEND FILTER PARAMS ==========");
-  console.log("Filter params:", JSON.stringify(filterParams, null, 2));
-  console.log("Selected skills count:", selectedSkills.length);
-  console.log("Selected tags count:", selectedTags.length);
-
   const { data: coursesResponse, isLoading, error } = useGetCourseList(filterParams);
-  
-  console.log("Courses API response:", coursesResponse);
-  console.log("Is loading:", isLoading);
-  if (error) {
-    console.error("API Error:", error);
-  }
   
   const courses = coursesResponse?.payload?.data ?? [];
   const pagination = coursesResponse?.payload?.pagination;

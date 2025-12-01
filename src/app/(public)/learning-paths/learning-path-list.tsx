@@ -31,6 +31,7 @@ export default function LearningPathList() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [page, setPage] = useState(0);
 
+  // Fetch learning paths
   const { data, isLoading } = useGetLearningPathList({
     page,
     size: 9,
