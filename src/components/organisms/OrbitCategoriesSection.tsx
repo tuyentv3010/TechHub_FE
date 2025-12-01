@@ -224,7 +224,7 @@ function MobileGrid({ skills, title }: { skills: Skill[]; title?: string }) {
 // Main Component
 export function OrbitCategoriesSection({ title }: OrbitCategoriesSectionProps) {
   const { data: skillsData, isLoading } = useGetSkills();
-  const skills = (skillsData?.payload?.data ?? []) as Skill[];
+  const skills = ((skillsData?.payload?.data ?? []) as Skill[]).slice(0, 16);
 
   // Distribute skills across arcs
   const { arc1Skills, arc2Skills, arc3Skills } = useMemo(() => {
