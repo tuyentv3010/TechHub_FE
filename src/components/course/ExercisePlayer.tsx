@@ -252,9 +252,9 @@ function QuestionScreen({
   const timedOut = submitted && selectedAnswers.length === 0;
 
   return (
-    <div className="relative w-full min-h-[600px] rounded-2xl overflow-hidden" style={{ backgroundColor: '#0A5CAC' }}>
-      {/* Header with Avatar, Progress Stars, and Title */}
-      <div className="relative px-4 py-3" style={{ backgroundColor: '#FDDF2F' }}>
+    <div className="relative w-full min-h-[600px] rounded-2xl overflow-hidden">
+      {/* Header with Avatar, Progress Stars, and Title - z-20 to stay on top */}
+      <div className="relative z-20 px-4 py-3" style={{ backgroundColor: '#FDDF2F' }}>
         <div className="flex items-center justify-between gap-4">
           {/* Left: Question number indicator */}
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -306,7 +306,7 @@ function QuestionScreen({
                           className={cn(
                             "w-6 h-6 transition-all duration-300 drop-shadow-md",
                             isCompleted && "text-[#0A5CAC] fill-[#0A5CAC]",
-                            isCurrent && "text-[#FDDF2F] fill-[#FDDF2F] scale-125 drop-shadow-lg",
+                            isCurrent && "text-[#00FF7F] fill-[#00FF7F] scale-125 drop-shadow-lg",
                             isPending && "text-white fill-white/50"
                           )}
                           style={{
@@ -347,22 +347,23 @@ function QuestionScreen({
         </div>
       </div>
 
-      {/* Question Card with Image */}
-      <div className="pt-6 px-4 md:px-8">
-        <div className="bg-gray-900/80 rounded-xl p-4 md:p-6 mb-6 max-w-3xl mx-auto">
-          {/* Question Image */}
-          <div className="w-full h-40 md:h-52 rounded-lg overflow-hidden mb-4">
-            <img 
-              src={questionImage}
-              alt={`Question ${questionNumber} illustration`}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                // Fallback to a default image if the specific one doesn't exist
-                (e.target as HTMLImageElement).src = '/exercise/default.png';
-              }}
-            />
-          </div>
-          
+      {/* Background Image - positioned below header */}
+      <div className="absolute inset-0 top-[60px] z-0">
+        <img 
+          src={questionImage}
+          alt={`Question ${questionNumber} background`}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = '/exercise/default.png';
+          }}
+        />
+        {/* Overlay for readability - reduced opacity */}
+        <div className="absolute inset-0 bg-[#0A5CAC]/50" />
+      </div>
+
+      {/* Question Card */}
+      <div className="relative z-10 pt-6 px-4 md:px-8">
+        <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 max-w-3xl mx-auto">
           {/* Question Text */}
           <h2 className="text-lg md:text-2xl font-bold text-white text-center">
             {exercise.question}
@@ -376,7 +377,7 @@ function QuestionScreen({
       </div>
 
       {/* Kahoot-style Answer Grid */}
-      <div className="px-4 pb-8">
+      <div className="relative z-10 px-4 pb-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-5xl mx-auto">
           {choices.map((choice, index) => {
             const isSelected = displaySelected.includes(index.toString());
@@ -452,10 +453,10 @@ function QuestionScreen({
 
       {/* Result message after submit */}
       {submitted && (
-        <div className="px-8 pb-6">
+        <div className="relative z-10 px-8 pb-6">
           <div className={cn(
             "max-w-xl mx-auto p-4 rounded-xl text-center",
-            timedOut ? "bg-yellow-500/20" : isCorrect ? "bg-green-500/20" : "bg-red-500/20"
+            timedOut ? "bg-yellow-500" : isCorrect ? "bg-green-500" : "bg-red-500"
           )}>
             <div className="flex items-center justify-center gap-2 mb-2">
               {timedOut ? (
@@ -476,11 +477,11 @@ function QuestionScreen({
               )}
             </div>
             {(!isCorrect || timedOut) && (
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-white">
                 Đáp án đúng: {choices.filter(c => c.isCorrect).map(c => c.text).join(", ")}
               </p>
             )}
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-white mt-2">
               Tự động chuyển sau {showAnswerCountdown}s...
             </p>
           </div>
@@ -743,6 +744,16 @@ export default function ExercisePlayer({
   const [isCorrect, setIsCorrect] = useState(false);
   const [countdown, setCountdown] = useState(TIME_LIMIT);
   const [showAnswerCountdown, setShowAnswerCountdown] = useState(SHOW_ANSWER_DURATION);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Listen for fullscreen change
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   // Filter multiple choice exercises only
   const multipleChoiceExercises = exercises.filter(e => e.type === 'MULTIPLE_CHOICE');
@@ -980,7 +991,13 @@ export default function ExercisePlayer({
   }
 
   return (
-    <div ref={containerRef} className="w-full">
+    <div 
+      ref={containerRef} 
+      className={cn(
+        "w-full",
+        isFullscreen && "h-screen bg-black flex items-center justify-center"
+      )}
+    >
       {gameState === 'start' && (
         <ExerciseStartScreen
           exerciseCount={multipleChoiceExercises.length}
