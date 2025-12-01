@@ -147,22 +147,22 @@ export default function LearningPathList() {
           {filteredPaths.map((path: LearningPathItemType) => (
             <Card 
               key={path.id} 
-              className="group hover:shadow-lg transition-all duration-300 hover:border-primary/50 overflow-hidden"
+              className="group hover:shadow-lg transition-all duration-300 hover:border-primary/50 overflow-hidden flex flex-col h-full"
             >
-              <CardHeader className="space-y-3">
+              <CardHeader className="space-y-3 flex-shrink-0">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 space-y-2">
-                    <CardTitle className="text-xl line-clamp-2 group-hover:text-primary transition-colors">
+                    <CardTitle className="text-xl line-clamp-2 group-hover:text-primary transition-colors min-h-[3.5rem]">
                       {path.title}
                     </CardTitle>
                   </div>
                 </div>
-                <CardDescription className="line-clamp-3">
+                <CardDescription className="line-clamp-3 min-h-[4.5rem]">
                   {path.description || t("noDescription")}
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 flex-1 flex flex-col">
                 {/* Stats */}
                 <div className="flex items-center gap-2 text-sm pt-4 border-t">
                   <BookOpen className="h-4 w-4 text-muted-foreground" />
@@ -172,29 +172,33 @@ export default function LearningPathList() {
                 </div>
 
                 {/* Skills */}
-                {path.skills && path.skills.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4" />
-                      {t("skills")}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {path.skills.slice(0, 4).map((skill: string, idx: number) => (
-                        <Badge key={idx} variant="secondary" className="text-xs">
-                          {skill}
-                        </Badge>
-                      ))}
-                      {path.skills.length > 4 && (
-                        <Badge variant="secondary" className="text-xs">
-                          +{path.skills.length - 4}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                )}
+                <div className="space-y-2 flex-1">
+                  {path.skills && path.skills.length > 0 ? (
+                    <>
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4" />
+                        {t("skills")}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {path.skills.slice(0, 4).map((skill: string, idx: number) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
+                        {path.skills.length > 4 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{path.skills.length - 4}
+                          </Badge>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="min-h-[3rem]"></div>
+                  )}
+                </div>
 
                 {/* Action Button */}
-                <Link href={`/learning-paths/${path.id}`} className="block">
+                <Link href={`/learning-paths/${path.id}`} className="block mt-auto">
                   <Button className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                     {t("viewPath")}
                     <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />

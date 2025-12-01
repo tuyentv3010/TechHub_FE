@@ -852,6 +852,7 @@
     "AddSelected": "Add Selected"
   },
   "LearningPaths": {
+    "searchTitle" : "Search Learning Path",
     "heroTitle": "Structured Learning Paths",
     "heroDescription": "Follow curated learning paths designed by experts to master new skills step by step",
     "loading": "Loading learning paths...",
@@ -889,8 +890,11 @@
       "BEGINNER": "Beginner",
       "INTERMEDIATE": "Intermediate",
       "ADVANCED": "Advanced",
-      "ALL_LEVELS": "All Levels"
+      "ALL_LEVELS": "All Levels",
+      "undefined": "Not specified",
+      "null": "Not specified"
     },
+    "linkCopied": "Link copied!",
     "skillsYouWillLearn": "Skills You'll Learn",
     "coursesInPath": "Courses in This Path",
     "coursesTotal": "courses",

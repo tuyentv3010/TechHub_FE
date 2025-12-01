@@ -894,8 +894,11 @@
       "BEGINNER": "初級",
       "INTERMEDIATE": "中級",
       "ADVANCED": "上級",
-      "ALL_LEVELS": "すべてのレベル"
+      "ALL_LEVELS": "すべてのレベル",
+      "undefined": "未指定",
+      "null": "未指定"
     },
+    "linkCopied": "リンクをコピーしました！",
     "skillsYouWillLearn": "習得できるスキル",
     "coursesInPath": "このパスのコース",
     "coursesTotal": "コース",

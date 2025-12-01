@@ -115,6 +115,7 @@
       "subscribe": "Đăng Ký"
     },
     "learningPaths": {
+       "searchTitle" : "Tìm Kiếm Lộ Trình",
       "badge": "Lộ trình có cấu trúc",
       "title": "Lộ Trình Học Dành Riêng Cho Bạn",
       "subtitle": "Chúng tôi xây dựng lộ trình học cá nhân hóa, cung cấp khóa học miễn phí và tài liệu chất lượng, giúp bạn dễ dàng bắt đầu hành trình học tập một cách bài bản và hiệu quả.",
@@ -847,6 +848,7 @@
     "AddSelected": "Thêm Khóa học đã chọn"
   },
   "LearningPaths": {
+    "searchTitle": "Tìm Kiếm Lộ Trình Học Tập",
     "heroTitle": "Lộ Trình Học Tập Có Cấu Trúc",
     "heroDescription": "Theo dõi các lộ trình học tập được thiết kế bởi chuyên gia để làm chủ kỹ năng mới từng bước",
     "loading": "Đang tải lộ trình học tập...",
@@ -884,8 +886,11 @@
       "BEGINNER": "Sơ cấp",
       "INTERMEDIATE": "Trung cấp",
       "ADVANCED": "Nâng cao",
-      "ALL_LEVELS": "Mọi cấp độ"
+      "ALL_LEVELS": "Mọi cấp độ",
+      "undefined": "Chưa xác định",
+      "null": "Chưa xác định"
     },
+    "linkCopied": "Đã sao chép liên kết!",
     "skillsYouWillLearn": "Kỹ Năng Bạn Sẽ Học",
     "coursesInPath": "Khóa Học Trong Lộ Trình",
     "coursesTotal": "khóa học",

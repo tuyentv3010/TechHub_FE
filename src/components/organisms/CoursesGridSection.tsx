@@ -3,6 +3,7 @@ import CourseCardWithInstructor from "@/components/molecules/CourseCardWithInstr
 import { PrimaryButton } from "@/components/atoms/PrimaryButton";
 import { useGetCourses } from "@/queries/useCourse";
 import { Course, transformApiCourse } from "@/types/course";
+import Link from "next/link";
 
 interface CourseWithInstructorId extends Omit<Course, 'instructor' | 'instructorAvatar' | 'id'> {
   id: string;
@@ -59,9 +60,10 @@ export function CoursesGridSection({
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
               {title}
             </h2>
-            <PrimaryButton variant="outline">
+            <Link href="/courses" className="text-blue-600 dark:text-blue-400 font-medium">
               {viewAllText}
-            </PrimaryButton>
+            </Link>
+     
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -101,11 +103,12 @@ export function CoursesGridSection({
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
             {title}
           </h2>
-          <PrimaryButton variant="outline">
+            <Link href="/courses" className="text-blue-600 dark:text-blue-400 font-medium">    
+            <PrimaryButton variant="outline">
             {viewAllText}
           </PrimaryButton>
+          </Link>
         </div>
-        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {displayCoursesWithInstructors.length > 0 ? (
             displayCoursesWithInstructors.map((course, index) => (

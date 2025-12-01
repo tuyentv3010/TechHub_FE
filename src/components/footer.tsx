@@ -3,10 +3,23 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { useBlogs } from "@/queries/useBlog";
+import { useGetSkills } from "@/queries/useCourse";
 
 export default function Footer() {
   const t = useTranslations("HomePage");
   const footerT = useTranslations("Footer");
+
+  // Fetch latest 6 blogs for gallery
+  const { data: blogsData } = useBlogs({ page: 1, size: 6 });
+  const blogs = blogsData?.payload?.data || [];
+
+  // Fetch skills
+  const { data: skillsData } = useGetSkills();
+  const skills = skillsData?.payload?.data || [];
+
+  console.log("🔐 Footer - blogs:", blogs);
+  console.log("🔐 Footer - skills:", skills);
 
   return (
     <footer className="bg-slate-900 text-white py-12 px-4 md:px-8">
@@ -19,10 +32,9 @@ export default function Footer() {
               <Link href="/" className="flex items-center space-x-2">
                 <Image src="/logo.png" alt="TechHub Logo" width={80} height={80} />
               </Link>
-
             </div>
             <p className="text-gray-300 text-sm leading-relaxed mb-4">
-              Interdum velit laoreet id donec ultrices tincidunt arcu. Tincidunt tortor aliquam nulla facilisi cras fermentum odio eu.
+              TechHub - Nền tảng học tập công nghệ trực tuyến hàng đầu. Khám phá các khóa học chất lượng cao, lộ trình học tập cá nhân hóa và cộng đồng học viên năng động.
             </p>
             {/* Social Media Icons */}
             <div className="flex items-center gap-3">
@@ -43,7 +55,7 @@ export default function Footer() {
                 className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center hover:bg-pink-600 transition-colors"
               >
                 <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987c6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.637.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.611-3.197-1.559-.748-.948-1.197-2.265-1.197-3.702 0-1.437.449-2.754 1.197-3.702.749-.948 1.9-1.559 3.197-1.559 1.297 0 2.448.611 3.197 1.559.748.948 1.197 2.265 1.197 3.702 0 1.437-.449 2.754-1.197 3.702-.749.948-1.9 1.559-3.197 1.559zm7.138 0c-1.297 0-2.448-.611-3.197-1.559-.748-.948-1.197-2.265-1.197-3.702 0-1.437.449-2.754 1.197-3.702.749-.948 1.9-1.559 3.197-1.559 1.297 0 2.448.611 3.197 1.559.748.948 1.197 2.265 1.197 3.702 0 1.437-.449 2.754-1.197 3.702-.749.948-1.9 1.559-3.197 1.559z"/>
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                 </svg>
               </Link>
               <Link
@@ -69,128 +81,148 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Our Services */}
+          {/* Skills */}
           <div>
-            <h3 className="text-white font-semibold text-lg mb-4">Our Services:</h3>
+            <h3 className="text-white font-semibold text-lg mb-4">Kỹ năng:</h3>
             <ul className="space-y-3">
-              <li>
-                <Link href="/web-development" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Web Development
-                </Link>
-              </li>
-              <li>
-                <Link href="/ui-ux-design" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  UI/UX Design
-                </Link>
-              </li>
-              <li>
-                <Link href="/management" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Management
-                </Link>
-              </li>
-              <li>
-                <Link href="/digital-marketing" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Digital Marketing
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog-news" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Blog News
-                </Link>
-              </li>
+              {skills.slice(0, 6).map((skill: any) => (
+                <li key={skill.id}>
+                  <Link 
+                    href={`/skills/${skill.id}`} 
+                    className="text-gray-300 hover:text-white transition-colors text-sm"
+                  >
+                    {skill.name}
+                  </Link>
+                </li>
+              ))}
+              {skills.length === 0 && (
+                <>
+                  <li><span className="text-gray-300 text-sm">Web Development</span></li>
+                  <li><span className="text-gray-300 text-sm">Mobile Development</span></li>
+                  <li><span className="text-gray-300 text-sm">Data Science</span></li>
+                  <li><span className="text-gray-300 text-sm">DevOps</span></li>
+                  <li><span className="text-gray-300 text-sm">UI/UX Design</span></li>
+                </>
+              )}
             </ul>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-white font-semibold text-lg mb-4">Quick Links:</h3>
+            <h3 className="text-white font-semibold text-lg mb-4">Liên kết nhanh:</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/templates" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Templates
+                <Link href="/about-us" className="text-gray-300 hover:text-white transition-colors text-sm">
+                  Về chúng tôi
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="text-gray-300 hover:text-white transition-colors text-sm">
+                  Liên hệ
+                </Link>
+              </li>
+              <li>
+                <Link href="/courses" className="text-gray-300 hover:text-white transition-colors text-sm">
+                  Khóa học
+                </Link>
+              </li>
+              <li>
+                <Link href="/learning-paths" className="text-gray-300 hover:text-white transition-colors text-sm">
+                  Lộ trình học tập
                 </Link>
               </li>
               <li>
                 <Link href="/blog" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Blog And Article
-                </Link>
-              </li>
-              <li>
-                <Link href="/integrations" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Integrations
-                </Link>
-              </li>
-              <li>
-                <Link href="/webinars" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Webinars
+                  Blog & Tin tức
                 </Link>
               </li>
               <li>
                 <Link href="/privacy-policy" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Privacy & Policy
+                  Chính sách bảo mật
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Gallery */}
+          {/* Blog Gallery */}
           <div>
-            <h3 className="text-white font-semibold text-lg mb-4">Gallery</h3>
+            <h3 className="text-white font-semibold text-lg mb-4">Bài viết mới</h3>
             <div className="grid grid-cols-3 gap-2">
-              <div className="aspect-square bg-gray-700 rounded overflow-hidden">
-                <Image
-                  src="/gallery/gallery-1.jpg"
-                  alt="Gallery image 1"
-                  width={80}
-                  height={80}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="aspect-square bg-gray-700 rounded overflow-hidden">
-                <Image
-                  src="/gallery/gallery-2.jpg"
-                  alt="Gallery image 2"
-                  width={80}
-                  height={80}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="aspect-square bg-gray-700 rounded overflow-hidden">
-                <Image
-                  src="/gallery/gallery-3.jpg"
-                  alt="Gallery image 3"
-                  width={80}
-                  height={80}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="aspect-square bg-gray-700 rounded overflow-hidden">
-                <Image
-                  src="/gallery/gallery-4.jpg"
-                  alt="Gallery image 4"
-                  width={80}
-                  height={80}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="aspect-square bg-gray-700 rounded overflow-hidden">
-                <Image
-                  src="/gallery/gallery-5.jpg"
-                  alt="Gallery image 5"
-                  width={80}
-                  height={80}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="aspect-square bg-gray-700 rounded overflow-hidden">
-                <Image
-                  src="/gallery/gallery-6.jpg"
-                  alt="Gallery image 6"
-                  width={80}
-                  height={80}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              {blogs.length > 0 ? (
+                blogs.slice(0, 6).map((blog: any) => (
+                  <Link 
+                    key={blog.id} 
+                    href={`/blog/${blog.slug || blog.id}`}
+                    className="aspect-square bg-gray-700 rounded overflow-hidden hover:opacity-80 transition-opacity"
+                  >
+                    <Image
+                      src={blog.thumbnail || blog.coverImage || "/blogs/default-blog.jpg"}
+                      alt={blog.title || "Blog image"}
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                    />
+                  </Link>
+                ))
+              ) : (
+                // Fallback images when no blogs
+                <>
+                  <div className="aspect-square bg-gray-700 rounded overflow-hidden">
+                    <Image
+                      src="/gallery/gallery-1.jpg"
+                      alt="Gallery image 1"
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="aspect-square bg-gray-700 rounded overflow-hidden">
+                    <Image
+                      src="/gallery/gallery-2.jpg"
+                      alt="Gallery image 2"
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="aspect-square bg-gray-700 rounded overflow-hidden">
+                    <Image
+                      src="/gallery/gallery-3.jpg"
+                      alt="Gallery image 3"
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="aspect-square bg-gray-700 rounded overflow-hidden">
+                    <Image
+                      src="/gallery/gallery-4.jpg"
+                      alt="Gallery image 4"
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="aspect-square bg-gray-700 rounded overflow-hidden">
+                    <Image
+                      src="/gallery/gallery-5.jpg"
+                      alt="Gallery image 5"
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="aspect-square bg-gray-700 rounded overflow-hidden">
+                    <Image
+                      src="/gallery/gallery-6.jpg"
+                      alt="Gallery image 6"
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -199,7 +231,7 @@ export default function Footer() {
         <div className="border-t border-gray-700 pt-6">
           <div className="text-center">
             <p className="text-gray-400 text-sm">
-              Copyright © 2024 <span className="text-white font-medium">edunity</span> || All Rights Reserved
+              Copyright © 2024 <span className="text-white font-medium">TechHub</span> || All Rights Reserved
             </p>
           </div>
         </div>

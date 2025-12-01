@@ -12,7 +12,6 @@ import { baseOpenGraph } from "@/shared-metadata";
 import GoogleTag from "@/components/google-tag";
 import { AppProvider } from "@/components/app-provider";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AiLearningPathProvider } from "@/contexts/AiLearningPathContext";
 import Image from "next/image";
 
 const fontSans = FontSans({
@@ -51,31 +50,16 @@ export default async function RootLayout({
         <NextTopLoader showSpinner={false} color="hsl(var(--foreground))" />
         <NextIntlClientProvider messages={messages}>
           <AppProvider>
-            <AiLearningPathProvider>
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="system"
-                enableSystem
-                disableTransitionOnChange
-              >
-                {children}
-                <a
-                  href="/ai-chat"
-                  className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2"
-                >
-                  <Image
-                    src="/ai/TechHub_Logo.png"
-                    alt="AI Chat Assistant"
-                    width={60}
-                    height={60}
-                    className="rounded-full object-cover shadow-2xl"
-                    priority={true}
-                  />
-                </a>
-                {/* <Footer /> */}
-                <Toaster />
-              </ThemeProvider>
-            </AiLearningPathProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+              {/* <Footer /> */}
+              <Toaster />
+            </ThemeProvider>
           </AppProvider>
         </NextIntlClientProvider>
         <GoogleTag />
