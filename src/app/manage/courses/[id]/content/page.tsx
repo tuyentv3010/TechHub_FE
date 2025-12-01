@@ -50,8 +50,7 @@ import {
   Paperclip,
   Upload,
   FolderOpen,
-  Download,
-  Eye
+  Download
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
@@ -853,24 +852,7 @@ export default function CourseContentManagementPage() {
     }
   };
 
-  // Preview asset file - open in new tab using Google Docs Viewer for documents
-  const handlePreviewAsset = (url: string) => {
-    // Get file extension from URL or try to detect type
-    const urlLower = url.toLowerCase();
-    
-    // Check if it's a file type that browser can preview directly
-    const browserPreviewable = ['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.mp4', '.webm', '.mp3', '.wav', '.txt'];
-    const canPreviewDirectly = browserPreviewable.some(ext => urlLower.includes(ext));
-    
-    if (canPreviewDirectly) {
-      // Browser can preview these directly
-      window.open(url, '_blank');
-    } else {
-      // Use Google Docs Viewer for Word, Excel, PowerPoint, etc.
-      const googleDocsViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
-      window.open(googleDocsViewerUrl, '_blank');
-    }
-  };
+
 
   const handleCreateExercise = async (data: CreateExerciseBodyType) => {
     console.log('➕ handleCreateExercise called with:', {
@@ -1568,17 +1550,6 @@ export default function CourseContentManagementPage() {
                                                                 </a>
                                                               )}
                                                             </div>
-                                                            {/* Preview button for DOCUMENT type */}
-                                                            {asset.assetType === 'DOCUMENT' && asset.externalUrl && (
-                                                              <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => handlePreviewAsset(asset.externalUrl)}
-                                                                title="Xem trước"
-                                                              >
-                                                                <Eye className="h-3 w-3 text-green-500" />
-                                                              </Button>
-                                                            )}
                                                             {/* Download button for DOCUMENT type */}
                                                             {asset.assetType === 'DOCUMENT' && asset.externalUrl && (
                                                               <Button

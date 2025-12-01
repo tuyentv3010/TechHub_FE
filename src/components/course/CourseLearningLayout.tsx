@@ -23,8 +23,7 @@ import {
   Award,
   Video,
   HelpCircle,
-  Badge,
-  Eye
+  Badge
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -507,12 +506,7 @@ export default function CourseLearningLayout({
     }
   };
 
-  // Preview asset file - open in new tab
-  const handlePreviewAsset = (e: React.MouseEvent, url: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    window.open(url, '_blank');
-  };
+
 
   return (
     <div className="flex h-screen bg-background">
@@ -721,18 +715,6 @@ export default function CourseLearningLayout({
                         <p className="font-medium text-sm">{asset.title}</p>
                         <p className="text-xs text-muted-foreground capitalize">{asset.assetType}</p>
                       </div>
-                      {/* Preview button for DOCUMENT type */}
-                      {isDocument && assetUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handlePreviewAsset(e, assetUrl)}
-                          title="Xem trước"
-                          className="text-green-500 hover:text-green-600"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      )}
                       {/* Download button for DOCUMENT type */}
                       {isDocument && assetUrl && (
                         <Button

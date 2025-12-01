@@ -430,7 +430,6 @@ export default function ExerciseDisplay({ exercise, onComplete }: ExerciseDispla
           <div className="mt-6">
             <ExerciseLeaderboard 
               onShare={handleShare}
-              onViewTests={handleViewTests}
             />
           </div>
         )}
