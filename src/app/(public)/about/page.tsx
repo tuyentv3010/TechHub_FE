@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
@@ -171,18 +172,33 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-800 dark:to-purple-800">
-        <div className="container mx-auto px-4 text-center">
+      {/* CTA Section with Background Image */}
+      <section className="relative py-20">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src="/aboutUs/cta-background.jpg"
+            alt="CTA Background"
+            fill
+            className="object-cover"
+          />
+          {/* Dark Overlay */}
+          <div className="absolute inset-0 bg-black/60" />
+        </div>
+        
+        {/* Content */}
+        <div className="relative z-10 container mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
             {t("ctaTitle")}
           </h2>
           <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
             {t("ctaSubtitle")}
           </p>
-          <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
-            {t("getStarted")}
-          </Button>
+          <Link href="/login">
+            <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
+              {t("getStarted")}
+            </Button>
+          </Link>
         </div>
       </section>
 
