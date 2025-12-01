@@ -34,6 +34,7 @@ interface Exercise {
 interface ExercisePlayerProps {
   exercises: Exercise[];
   lessonTitle?: string;
+  userAvatar?: string;
   onComplete?: (results: ExerciseResult[]) => void;
   onClose?: () => void;
 }
@@ -216,6 +217,8 @@ function QuestionScreen({
   selectedAnswers,
   isCorrect,
   showAnswerCountdown,
+  userAvatar,
+  lessonTitle,
 }: {
   exercise: Exercise;
   questionNumber: number;
@@ -234,6 +237,8 @@ function QuestionScreen({
   selectedAnswers: string[];
   isCorrect: boolean;
   showAnswerCountdown: number;
+  userAvatar?: string;
+  lessonTitle?: string;
 }) {
   const choices = parseChoices(exercise.options);
   const correctCount = choices.filter(c => c.isCorrect).length;
@@ -283,52 +288,105 @@ function QuestionScreen({
   const timedOut = submitted && selectedAnswers.length === 0;
 
   return (
-    <div className="relative w-full min-h-[600px] rounded-2xl overflow-hidden" style={{ backgroundColor: '#2D1B4E' }}>
-      {/* Question number badge */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-        <div className="bg-gray-800/80 text-white px-4 py-1 rounded-full text-sm font-medium">
-          {questionNumber}/{totalQuestions}
-        </div>
-      </div>
+    <div className="relative w-full min-h-[600px] rounded-2xl overflow-hidden" style={{ backgroundColor: '#0A5CAC' }}>
+      {/* Header with Avatar, Progress Stars, and Title */}
+      <div className="relative px-4 py-3" style={{ backgroundColor: '#FDDF2F' }}>
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Question number indicator */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-white/80 flex items-center justify-center shadow">
+              <span className="text-sm font-bold text-gray-700">#{questionNumber}</span>
+            </div>
+          </div>
 
-      {/* Countdown Timer - Top right */}
-      {!submitted && (
-        <div className="absolute top-4 right-4 z-10">
+          {/* Center: Avatar + Progress Stars Bar */}
+          <div className="flex-1 flex items-center gap-3">
+            {/* User Avatar */}
+            <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden shadow-md flex-shrink-0">
+              <img 
+                src={userAvatar || "/avatars/default-avatar.png"}
+                alt="Avatar"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><circle cx="12" cy="8" r="4"/><path d="M12 14c-6 0-8 3-8 6v2h16v-2c0-3-2-6-8-6z"/></svg>';
+                }}
+              />
+            </div>
+            
+            {/* Progress Stars Bar */}
+            <div className="flex-1 flex items-center">
+              {/* Stars with connecting line */}
+              <div className="relative flex items-center w-full">
+                {/* Background line */}
+                <div className="absolute left-0 right-0 h-1 bg-gray-400/50 rounded-full" />
+                
+                {/* Progress line (completed) */}
+                <div 
+                  className="absolute left-0 h-1 rounded-full transition-all duration-500"
+                  style={{ 
+                    width: `${((questionNumber - 1) / (totalQuestions - 1)) * 100}%`,
+                    background: 'linear-gradient(90deg, #0A5CAC, #0A5CAC)'
+                  }}
+                />
+                
+                {/* Stars */}
+                <div className="relative flex items-center justify-between w-full">
+                  {[...Array(totalQuestions)].map((_, i) => {
+                    const isCompleted = i < questionNumber - 1;
+                    const isCurrent = i === questionNumber - 1;
+                    const isPending = i > questionNumber - 1;
+                    
+                    return (
+                      <div key={i} className="relative z-10">
+                        <Star
+                          className={cn(
+                            "w-6 h-6 transition-all duration-300 drop-shadow-md",
+                            isCompleted && "text-[#0A5CAC] fill-[#0A5CAC]",
+                            isCurrent && "text-[#FDDF2F] fill-[#FDDF2F] scale-125 drop-shadow-lg",
+                            isPending && "text-white fill-white/50"
+                          )}
+                          style={{
+                            filter: isCurrent ? 'drop-shadow(0 0 8px rgba(253, 223, 47, 0.8))' : undefined
+                          }}
+                        />
+                        {isCurrent && (
+                          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#FDDF2F] rounded-full animate-pulse" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Title */}
+          <div className="text-right flex-shrink-0">
+            <h1 className="text-base md:text-lg font-bold text-gray-800 leading-tight">
+              {lessonTitle || `Câu hỏi ${questionNumber}`}
+            </h1>
+          </div>
+        </div>
+
+        {/* Countdown Timer - Inside header on right */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2">
           <div className={cn(
-            "w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg",
-            countdown <= 3 ? "bg-red-500 animate-pulse" : "bg-gray-700"
+            "w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-lg transition-all",
+            submitted 
+              ? "bg-[#0A5CAC] text-white" 
+              : countdown <= 3 
+                ? "bg-red-500 text-white animate-pulse" 
+                : "bg-white text-gray-800"
           )}>
-            {countdown}
+            {submitted ? showAnswerCountdown : countdown}
           </div>
         </div>
-      )}
-
-      {/* Show answer countdown */}
-      {submitted && (
-        <div className="absolute top-4 right-4 z-10">
-          <div className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg bg-blue-500">
-            {showAnswerCountdown}
-          </div>
-        </div>
-      )}
-
-      {/* Sound toggle */}
-      <div className="absolute top-4 right-20 z-10">
-        <button 
-          onClick={onToggleSound}
-          className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
-            soundEnabled ? "bg-white/20 text-white" : "bg-gray-600 text-gray-400"
-          )}
-        >
-          <Volume2 className="w-5 h-5" />
-        </button>
       </div>
 
       {/* Question Card */}
-      <div className="pt-16 px-8">
-        <div className="bg-gray-900/80 rounded-xl p-6 mb-8 max-w-3xl mx-auto">
-          <h2 className="text-xl md:text-2xl font-bold text-white text-center">
+      <div className="pt-6 px-4 md:px-8">
+        <div className="bg-gray-900/80 rounded-xl p-4 md:p-6 mb-6 max-w-3xl mx-auto">
+          <h2 className="text-lg md:text-2xl font-bold text-white text-center">
             {exercise.question}
           </h2>
           {isMultipleChoice && !submitted && (
@@ -451,32 +509,13 @@ function QuestionScreen({
         </div>
       )}
 
-      {/* Progress Stars at bottom */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-        <div className="flex items-center gap-1 bg-black/30 px-4 py-2 rounded-full">
-          {[...Array(totalQuestions)].map((_, i) => (
-            <Star
-              key={i}
-              className={cn(
-                "w-5 h-5 transition-all",
-                i < questionNumber - 1 
-                  ? "text-yellow-500 fill-yellow-500" 
-                  : i === questionNumber - 1 
-                    ? "text-yellow-500 fill-yellow-500 scale-110" 
-                    : "text-gray-500 fill-gray-500"
-              )}
-            />
-          ))}
-        </div>
-      </div>
-
       {/* Fullscreen button */}
       <div className="absolute bottom-4 right-4">
         <button
           onClick={onFullscreen}
           className="p-2 hover:bg-white/10 rounded-lg transition-colors"
         >
-          <Maximize2 className="w-6 h-6 text-gray-400" />
+          <Maximize2 className="w-6 h-6 text-white/60" />
         </button>
       </div>
 
@@ -486,7 +525,7 @@ function QuestionScreen({
           onClick={onShowHelp}
           className="relative group"
         >
-          <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
             <span className="text-2xl">🦜</span>
           </div>
         </button>
@@ -706,6 +745,7 @@ function ResultScreen({
 export default function ExercisePlayer({
   exercises,
   lessonTitle,
+  userAvatar,
   onComplete,
   onClose,
 }: ExercisePlayerProps) {
@@ -982,6 +1022,8 @@ export default function ExercisePlayer({
             selectedAnswers={selectedAnswers}
             isCorrect={isCorrect}
             showAnswerCountdown={showAnswerCountdown}
+            userAvatar={userAvatar}
+            lessonTitle={lessonTitle}
           />
           <HelpModal
             isOpen={showHelp}

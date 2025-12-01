@@ -11,6 +11,7 @@ import {
   CheckCircle2, 
   MessageSquare,
   BookOpen,
+  BookOpenCheck,
   FileText,
   Download,
   ExternalLink,
@@ -505,7 +506,7 @@ export default function CourseLearningLayout({
           </div>
 
           {/* Exercise Section - New Interactive Design */}
-          <div className="p-6 border-b">
+          <div id="exercise-section" className="p-6 border-b">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <HelpCircle className="h-5 w-5" />
               Bài tập thực hành
@@ -586,61 +587,78 @@ export default function CourseLearningLayout({
           )}
 
           {/* Spacing for sticky navigation */}
-          <div className="h-32"></div>
+          <div className="h-24"></div>
         </ScrollArea>
-        
-        {/* Floating Action Buttons - Above navigation */}
-        <div className="sticky bottom-20 left-0 right-0 bg-transparent pointer-events-none">  
-          <div className="px-6 flex justify-center items-center gap-4 pointer-events-auto">
-            {/* Mark Complete Button */}
-            {isLessonCompleted(currentLesson?.id) ? (
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-600 text-white shadow-lg">
-                <CheckCircle2 className="h-5 w-5" />
-                <span className="text-sm font-medium">Đã hoàn thành</span>
-              </div>
-            ) : (
-              <Button
-                onClick={handleMarkComplete}
-                disabled={markCompleteMutation.isPending}
-                className="h-12 px-6 rounded-full bg-green-600 hover:bg-green-700 shadow-lg"
-              >
-                <CheckCircle2 className="h-5 w-5 mr-2" />
-                <span className="font-medium">Hoàn thành</span>
-              </Button>
-            )}
-
-            {/* Hỏi đáp Button */}
-            <Button 
-              onClick={() => setShowCommentModal(true)}
-              variant="default"
-              size="icon"
-              className="h-12 w-12 rounded-full bg-orange-500 hover:bg-orange-600 shadow-lg"
-              id="qa-button"
-            >
-              <MessageSquare className="h-6 w-6" />
-            </Button>
-          </div>
-        </div>
 
         {/* Navigation Buttons - Sticky at bottom */}
         <div className="sticky bottom-0 left-0 right-0 bg-background">
-          {/* Hỏi đáp Button - Above navigation */}
- 
           {/* Navigation Buttons */}
           <div className="px-6 py-4 border-t">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
+              {/* Bài trước */}
               <Button
                 variant="outline"
                 disabled={currentLessonIndex === 0}
                 onClick={() => onLessonChange(currentLessonIndex - 1)}
+                className="flex-shrink-0"
               >
                 <ChevronLeft className="h-4 w-4 mr-2" />
                 BÀI TRƯỚC
               </Button>
+
+              {/* Hoàn thành + Hỏi đáp - Ở giữa */}
+              <div className="flex items-center gap-2">
+                {/* Mark Complete Button */}
+                {isLessonCompleted(currentLesson?.id) ? (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-green-600 text-white shadow-md">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-xs font-medium hidden sm:inline">Đã hoàn thành</span>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={handleMarkComplete}
+                    disabled={markCompleteMutation.isPending}
+                    size="sm"
+                    className="rounded-full bg-green-600 hover:bg-green-700 shadow-md"
+                  >
+                    <CheckCircle2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline font-medium">Hoàn thành</span>
+                  </Button>
+                )}
+
+                {/* Hỏi đáp Button */}
+                <Button 
+                  onClick={() => setShowCommentModal(true)}
+                  variant="default"
+                  size="icon"
+                  className="h-9 w-9 rounded-full bg-orange-500 hover:bg-orange-600 shadow-md"
+                  id="qa-button"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                </Button>
+
+                {/* Bài tập Button */}
+                <Button 
+                  onClick={() => {
+                    const exerciseSection = document.getElementById('exercise-section');
+                    if (exerciseSection) {
+                      exerciseSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
+                  variant="default"
+                  size="icon"
+                  className="h-9 w-9 rounded-full bg-purple-500 hover:bg-purple-600 shadow-md"
+                  title="Bài tập"
+                >
+                  <BookOpenCheck className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Bài tiếp theo */}
               <Button
                 disabled={currentLessonIndex >= allLessons.length - 1}
                 onClick={() => onLessonChange(currentLessonIndex + 1)}
-                className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+                className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 flex-shrink-0"
               >
                 BÀI TIẾP THEO
                 <ChevronRight className="h-4 w-4 ml-2" />
