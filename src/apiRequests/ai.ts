@@ -226,10 +226,17 @@ const aiApiRequest = {
   // DRAFT MANAGEMENT
   // ============================================
 
-  // Get exercise drafts
+  // Get exercise drafts for a single lesson
   getExerciseDrafts: (lessonId: string) =>
     http.get<{ payload: { data: DraftItemType[] } }>(
       `/app/api/proxy/ai/drafts/exercises?lessonId=${lessonId}`
+    ),
+
+  // Get exercise drafts for multiple lessons (batch request)
+  getExerciseDraftsBatch: (lessonIds: string[]) =>
+    http.post<{ payload: { data: DraftItemType[] } }>(
+      `/app/api/proxy/ai/drafts/exercises/batch`,
+      { lessonIds }
     ),
 
   // Get latest exercise draft for a lesson
