@@ -98,10 +98,6 @@ export const UpdateLearningPathBody = z.object({
     target: z.string(),
   })).optional(),
   isActive: z.string().optional(), // "Y" or "N"
-  layoutEdges: z.array(z.object({
-    source: z.string(),
-    target: z.string(),
-  })).optional(), // Visual designer edges (stored as JSON in backend)
 });
 
 export type UpdateLearningPathBodyType = z.TypeOf<typeof UpdateLearningPathBody>;
