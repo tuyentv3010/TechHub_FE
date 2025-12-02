@@ -1,0 +1,10 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "TuyenTV_Merge": false,
+      "develop": false,
+      "main": true
+    }
+  },
+  "installCommand": "npm install --legacy-peer-deps"
+}

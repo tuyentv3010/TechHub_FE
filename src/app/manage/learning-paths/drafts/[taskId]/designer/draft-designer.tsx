@@ -340,6 +340,27 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
         console.log("✅ Courses added successfully");
       }
       
+      // Step 4: Save layoutEdges to learning path
+      // Get current edges from UI state (may have been modified by user)
+      const currentLayoutEdges = edges.map(edge => ({
+        source: edge.source,
+        target: edge.target,
+      }));
+      
+      if (currentLayoutEdges.length > 0) {
+        console.log("📤 Step 4: Saving layout edges...");
+        console.log("📦 Layout edges:", currentLayoutEdges);
+        
+        await learningPathApiRequest.updateLearningPath(newPathId, {
+          title: pathData.title,
+          description: pathData.description,
+          skills: pathData.skills || [],
+          layoutEdges: currentLayoutEdges,
+        });
+        
+        console.log("✅ Layout edges saved successfully");
+      }
+      
       toast({
         title: tCommon("success"),
         description: "Learning path approved and created successfully",

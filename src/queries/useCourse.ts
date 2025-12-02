@@ -56,10 +56,13 @@ export const useGetCourseList = (params?: {
   minPrice?: number;
   maxPrice?: number;
   instructorId?: string;
+  enabled?: boolean;
 }) => {
+  const { enabled = true, ...queryParams } = params || {};
   return useQuery({
-    queryKey: ["course-list", params],
-    queryFn: () => courseApiRequest.getCourseList(params),
+    queryKey: ["course-list", queryParams],
+    queryFn: () => courseApiRequest.getCourseList(queryParams),
+    enabled,
   });
 };
 

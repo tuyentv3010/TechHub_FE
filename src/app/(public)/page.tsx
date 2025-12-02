@@ -13,7 +13,6 @@ import { SkillsSection } from "@/components/organisms/NewSkillsSection";
 import { CommunitySection } from "@/components/organisms/CommunitySectionNew";
 import { InstructorsSection } from "@/components/organisms/InstructorsSection";
 import { BlogSection } from "@/components/organisms/BlogSection";
-import { NewsletterSection } from "@/components/organisms/NewsletterSection";
 import Footer from "@/components/footer";
 
 export default function Home() {
@@ -167,13 +166,7 @@ export default function Home() {
       />
 
       {/* Newsletter Section */}
-      <NewsletterSection
-        title={t("newsletter.title")}
-        placeholder={t("newsletter.placeholder")}
-        buttonText={t("newsletter.subscribe")}
-      />
       <Footer />
-
     </div>
   );
 }

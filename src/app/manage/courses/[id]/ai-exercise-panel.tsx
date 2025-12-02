@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   useApproveExerciseDraftMutation,
   useRejectDraftMutation,
+  useGetExerciseDraftsBatch,
 } from "@/queries/useAi";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, Loader2 } from "lucide-react";
@@ -33,20 +34,24 @@ export default function AiExercisePanel({
   const approveDraftMutation = useApproveExerciseDraftMutation();
   const rejectDraftMutation = useRejectDraftMutation();
 
-  // Collect all exercise drafts from lessons across chapters
-  const exerciseDrafts = useMemo(() => {
-    const drafts: any[] = [];
+  // Collect all lesson IDs from chapters
+  const lessonIds = useMemo(() => {
+    const ids: string[] = [];
     (chapters as any[]).forEach((chapter: any) => {
       if (chapter.lessons && Array.isArray(chapter.lessons)) {
         chapter.lessons.forEach((lesson: any) => {
-          if (lesson.exerciseDrafts && Array.isArray(lesson.exerciseDrafts)) {
-            drafts.push(...lesson.exerciseDrafts);
+          if (lesson.id) {
+            ids.push(lesson.id);
           }
         });
       }
     });
-    return drafts;
+    return ids;
   }, [chapters]);
+
+  // Fetch all exercise drafts for all lessons in the course
+  const { data: draftsData, isLoading: draftsLoading } = useGetExerciseDraftsBatch(lessonIds);
+  const exerciseDrafts = draftsData?.payload?.data || [];
 
   const handleApproveDraft = async (taskId: string) => {
     try {
@@ -117,7 +122,11 @@ export default function AiExercisePanel({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {exerciseDrafts.length === 0 ? (
+            {draftsLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : exerciseDrafts.length === 0 ? (
               <div className="text-sm text-muted-foreground">{tAiDrafts("noDrafts")}</div>
             ) : (
               <div className="space-y-3">
@@ -126,6 +135,7 @@ export default function AiExercisePanel({
                   taskType: string;
                   status: string;
                   createdAt: string;
+                  targetReference?: string;
                   metadata?: { lessonTitle?: string };
                 }>).map((draft) => (
                   <Card key={draft.taskId}>
@@ -140,6 +150,11 @@ export default function AiExercisePanel({
                         <div className="text-xs text-muted-foreground">
                           {new Date(draft.createdAt).toLocaleString()}
                         </div>
+                        {draft.targetReference && (
+                          <div className="text-xs text-muted-foreground">
+                            Lesson ID: {draft.targetReference.substring(0, 8)}...
+                          </div>
+                        )}
                         {draft.metadata?.lessonTitle && (
                           <div className="text-sm font-medium">
                             {t("lesson")}: {draft.metadata.lessonTitle}
@@ -153,16 +168,6 @@ export default function AiExercisePanel({
                           onClick={() => router.push(`/manage/courses/${courseId}/exercise-drafts/${draft.taskId}`)}
                         >
                           {tAiDrafts("view")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          disabled={approveDraftMutation.isPending}
-                          onClick={() => handleApproveDraft(draft.taskId)}
-                        >
-                          {approveDraftMutation.isPending ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : null}
-                          {tAiDrafts("approve")}
                         </Button>
                         <Button
                           size="sm"

@@ -18,10 +18,13 @@ export const useGetLearningPathList = (params?: {
   size?: number;
   sortBy?: string;
   sortDirection?: string;
+  enabled?: boolean;
 }) => {
+  const { enabled = true, ...queryParams } = params || {};
   return useQuery({
-    queryKey: ["learning-path-list", params],
-    queryFn: () => learningPathApiRequest.getLearningPathList(params),
+    queryKey: ["learning-path-list", queryParams],
+    queryFn: () => learningPathApiRequest.getLearningPathList(queryParams),
+    enabled,
   });
 };
 

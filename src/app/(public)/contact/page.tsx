@@ -24,8 +24,8 @@ export default function ContactPage() {
     e.preventDefault();
     // Handle form submission
     toast({
-      title: "Message Sent!",
-      description: "We'll get back to you as soon as possible.",
+      title: t("messageSent"),
+      description: t("messageSentDescription"),
     });
     setFormData({ name: "", email: "", subject: "", message: "" });
   };
@@ -44,7 +44,7 @@ export default function ContactPage() {
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
-            src="/aboutUs/Thumbnail.png" // TODO: Thêm URL ảnh background vào đây
+            src="/aboutUs/Thumbnail.png"
             alt="Background"
             fill
             className="object-cover"
@@ -57,10 +57,10 @@ export default function ContactPage() {
         {/* Content */}
         <div className="relative z-10 flex min-h-[400px] flex-col items-center justify-center px-4 text-center md:min-h-[500px]">
           <h1 className="mb-4 text-3xl font-bold italic text-white md:text-4xl lg:text-5xl">
-            Get In Touch
+            {t("heroTitle")}
           </h1>
           <p className="text-base text-white/90 md:text-lg max-w-3xl">
-            Have questions? We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
+            {t("heroDescription")}
           </p>
         </div>
       </section>
@@ -72,7 +72,7 @@ export default function ContactPage() {
             {/* Contact Information */}
             <div>
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-                Contact Information
+                {t("contactInfo")}
               </h2>
               
               {/* Contact Cards */}
@@ -82,7 +82,7 @@ export default function ContactPage() {
                     <Mail className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Email</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{t("email")}</h3>
                     <p className="text-gray-600 dark:text-gray-300">support@techhub.com</p>
                     <p className="text-gray-600 dark:text-gray-300">info@techhub.com</p>
                   </div>
@@ -93,7 +93,7 @@ export default function ContactPage() {
                     <Phone className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Phone</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{t("phone")}</h3>
                     <p className="text-gray-600 dark:text-gray-300">84+ 0808080808</p>
                     <p className="text-gray-600 dark:text-gray-300">84+ 0909090908</p>
                   </div>
@@ -104,8 +104,8 @@ export default function ContactPage() {
                     <MapPin className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Address</h3>
-                    <p className="text-gray-600 dark:text-gray-300">Trường Đại học Sư phạm Kỹ thuật Thành phố Hồ Chí Minht</p>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{t("address")}</h3>
+                    <p className="text-gray-600 dark:text-gray-300">Trường Đại học Sư phạm Kỹ thuật Thành phố Hồ Chí Minh</p>
                     <p className="text-gray-600 dark:text-gray-300">01 Đ. Võ Văn Ngân, Linh Chiểu, Thủ Đức, Thành phố Hồ Chí Minh, Việt Nam</p>
                   </div>
                 </div>
@@ -151,28 +151,28 @@ export default function ContactPage() {
             {/* Contact Form */}
             <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-8">
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-                Send us a Message
+                {t("sendMessage")}
               </h2>
               
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <Label htmlFor="name" className="text-gray-700 dark:text-gray-300">
-                    Your Name
+                    {t("yourName")}
                   </Label>
                   <Input
                     id="name"
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    placeholder="John Doe"
+                    placeholder={t("namePlaceholder")}
                     required
-                    className="mt-2"
+                    className="mt-2 bg-white dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600"
                   />
                 </div>
 
                 <div>
                   <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">
-                    Email Address
+                    {t("emailAddress")}
                   </Label>
                   <Input
                     id="email"
@@ -180,40 +180,40 @@ export default function ContactPage() {
                     type="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="john@example.com"
+                    placeholder={t("emailPlaceholder")}
                     required
-                    className="mt-2"
+                    className="mt-2 bg-white dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600"
                   />
                 </div>
 
                 <div>
                   <Label htmlFor="subject" className="text-gray-700 dark:text-gray-300">
-                    Subject
+                    {t("subject")}
                   </Label>
                   <Input
                     id="subject"
                     name="subject"
                     value={formData.subject}
                     onChange={handleChange}
-                    placeholder="How can we help?"
+                    placeholder={t("subjectPlaceholder")}
                     required
-                    className="mt-2"
+                    className="mt-2 bg-white dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600"
                   />
                 </div>
 
                 <div>
                   <Label htmlFor="message" className="text-gray-700 dark:text-gray-300">
-                    Message
+                    {t("message")}
                   </Label>
                   <Textarea
                     id="message"
                     name="message"
                     value={formData.message}
                     onChange={handleChange}
-                    placeholder="Tell us more about your inquiry..."
+                    placeholder={t("messagePlaceholder")}
                     rows={6}
                     required
-                    className="mt-2"
+                    className="mt-2 bg-white dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600"
                   />
                 </div>
 
@@ -223,7 +223,7 @@ export default function ContactPage() {
                   className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
                 >
                   <Send className="w-5 h-5 mr-2" />
-                  Send Message
+                  {t("sendButton")}
                 </Button>
               </form>
             </div>
@@ -235,7 +235,7 @@ export default function ContactPage() {
       <section className="py-16 bg-gray-50 dark:bg-gray-800">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
-            Visit Our Office
+            {t("visitOffice")}
           </h2>
           <div className="relative h-96 rounded-2xl overflow-hidden">
             <iframe

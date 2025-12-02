@@ -18,6 +18,8 @@ import {
   Target,
   Network,
   List,
+  Copy,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDateTimeToLocaleString } from "@/lib/utils";
@@ -27,6 +29,8 @@ import courseApiRequest from "@/apiRequests/course";
 import { CourseItemResType } from "@/schemaValidations/course.schema";
 import { CourseInPathType } from "@/schemaValidations/learning-path.schema";
 import PathViewer from "./path-viewer";
+import envConfig from "@/config";
+import { toast } from "sonner";
 
 interface LearningPathDetailProps {
   pathId: string;
@@ -38,6 +42,20 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
   const [courseDetailsMap, setCourseDetailsMap] = useState<Map<string, CourseItemResType>>(new Map());
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [viewMode, setViewMode] = useState<"diagram" | "list">("diagram");
+  const [copied, setCopied] = useState(false);
+
+  // Copy link to clipboard
+  const handleCopyLink = async () => {
+    const link = `${envConfig.NEXT_PUBLIC_URL}/learning-paths/${pathId}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      toast.success(t("linkCopied"));
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy link:", err);
+    }
+  };
 
   // Fetch course details
   useEffect(() => {
@@ -121,8 +139,8 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
 
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Badge className={getLevelColor(path.level)}>
-              {t(`level.${path.level}`)}
+            <Badge className={getLevelColor(path.level || "")}>
+              {t(`level.${path.level || "undefined"}`)}
             </Badge>
             <Badge variant="outline">
               <BookOpen className="h-3 w-3 mr-1" />
@@ -130,7 +148,7 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
             </Badge>
             <Badge variant="outline">
               <Clock className="h-3 w-3 mr-1" />
-              {path.estimatedDuration} {t("hours")}
+              {path.estimatedDuration || 0} {t("hours")}
             </Badge>
           </div>
 
@@ -307,7 +325,7 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
                 <div>
                   <p className="font-medium">{t("duration")}</p>
                   <p className="text-muted-foreground">
-                    {path.estimatedDuration} {t("hours")}
+                    {path.estimatedDuration || 0} {t("hours")}
                   </p>
                 </div>
               </div>
@@ -319,7 +337,7 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
                 <div>
                   <p className="font-medium">{t("level")}</p>
                   <p className="text-muted-foreground">
-                    {t(`level.${path.level}`)}
+                    {t(`level.${path.level || "undefined"}`)}
                   </p>
                 </div>
               </div>
@@ -366,8 +384,18 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
               <p className="text-sm text-muted-foreground mb-4">
                 {t("shareDescription")}
               </p>
-              <Button variant="outline" className="w-full">
-                {t("copyLink")}
+              <Button variant="outline" className="w-full" onClick={handleCopyLink}>
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    {t("linkCopied")}
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 mr-2" />
+                    {t("copyLink")}
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>

@@ -17,7 +17,88 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
 import TableSkeleton from "@/components/Skeleton";
 import courseApiRequest from "@/apiRequests/course";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, memo } from "react";
+
+// Memoized MCQ Option component to prevent re-renders
+const MCQOption = memo(function MCQOption({ 
+  option, 
+  optIdx, 
+  isSelected, 
+  onToggle 
+}: { 
+  option: string; 
+  optIdx: number; 
+  isSelected: boolean; 
+  onToggle: () => void;
+}) {
+  return (
+    <div
+      onClick={onToggle}
+      className={`p-3 rounded border cursor-pointer transition-colors ${
+        isSelected
+          ? "border-primary bg-primary/10 hover:bg-primary/20"
+          : "border-border bg-card hover:bg-accent"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <Checkbox
+          checked={isSelected}
+          onClick={(e) => e.stopPropagation()}
+          className="mt-0.5 pointer-events-none"
+        />
+        <span className="font-semibold text-primary min-w-[24px]">
+          {String.fromCharCode(65 + optIdx)}.
+        </span>
+        <span className="flex-1">{option}</span>
+        {isSelected && (
+          <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+        )}
+      </div>
+    </div>
+  );
+});
+
+// Memoized MCQ Options list component
+const MCQOptionsList = memo(function MCQOptionsList({
+  exerciseIdx,
+  options,
+  selectedOptions,
+  onToggle,
+  selectLabel,
+  selectedLabel
+}: {
+  exerciseIdx: number;
+  options: string[];
+  selectedOptions: number[];
+  onToggle: (exerciseIdx: number, optionIdx: number) => void;
+  selectLabel: string;
+  selectedLabel: string;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium">{selectLabel}:</p>
+        {selectedOptions.length > 0 && (
+          <Badge variant="secondary" className="gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            {selectedOptions.length} {selectedLabel}
+          </Badge>
+        )}
+      </div>
+      <div className="space-y-2">
+        {options.map((option, optIdx) => (
+          <MCQOption
+            key={optIdx}
+            option={option}
+            optIdx={optIdx}
+            isSelected={selectedOptions.includes(optIdx)}
+            onToggle={() => onToggle(exerciseIdx, optIdx)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+});
 
 export default function ExerciseDraftDetailPage() {
   const params = useParams();
@@ -34,20 +115,21 @@ export default function ExerciseDraftDetailPage() {
   const approveDraftMutation = useApproveExerciseDraftMutation();
   const rejectDraftMutation = useRejectDraftMutation();
 
-  // Parse draft and exercises
+  // Parse draft and exercises - memoized to prevent re-parsing on each render
   const draft = draftData?.payload?.data;
   
-  // Extract exercises from the nested JSON structure
-  let exercises = null;
-  try {
-    if (draft?.resultPayload?.choices?.[0]?.message?.content) {
-      const contentStr = draft.resultPayload.choices[0].message.content;
-      const parsedContent = JSON.parse(contentStr);
-      exercises = parsedContent.exercises;
+  const exercises = useMemo(() => {
+    try {
+      if (draft?.resultPayload?.choices?.[0]?.message?.content) {
+        const contentStr = draft.resultPayload.choices[0].message.content;
+        const parsedContent = JSON.parse(contentStr);
+        return parsedContent.exercises || null;
+      }
+    } catch (e) {
+      console.error("Failed to parse exercise content:", e);
     }
-  } catch (e) {
-    console.error("Failed to parse exercise content:", e);
-  }
+    return null;
+  }, [draft?.resultPayload]);
 
   // State to track selected correct answers for each exercise
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number[]>>({});
@@ -71,13 +153,20 @@ export default function ExerciseDraftDetailPage() {
 
   const handleApprove = async () => {
     try {
+      console.log("🚀 handleApprove started");
+      console.log("📋 Exercises:", exercises);
+      console.log("📋 Selected answers:", selectedAnswers);
+      
       // Validate that all MCQ exercises have correct answers selected
       if (exercises && exercises.length > 0) {
         for (let i = 0; i < exercises.length; i++) {
           const exercise = exercises[i];
+          console.log(`📝 Exercise ${i}: type=${exercise.type}`);
           if (exercise.type === "MCQ") {
             const selected = selectedAnswers[i] || [];
+            console.log(`📝 MCQ ${i}: selected answers = ${JSON.stringify(selected)}`);
             if (selected.length === 0) {
+              console.log(`❌ MCQ ${i} has no selected answers - showing error toast`);
               toast({
                 title: tCommon("error"),
                 description: `${t("pleaseSelectCorrectAnswer") || "Vui lòng chọn đáp án đúng cho"} ${t("mcq")} ${i + 1}`,
@@ -306,52 +395,16 @@ export default function ExerciseDraftDetailPage() {
                     <CardContent className="space-y-3 pt-4">
                       <p className="font-medium">{exercise.question}</p>
                       
-                      {/* MCQ Options */}
+                      {/* MCQ Options - Using memoized component */}
                       {exercise.type === "MCQ" && exercise.options && (
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium">
-                              {t("selectCorrectAnswers") || "Chọn đáp án đúng"}:
-                            </p>
-                            {selectedAnswers[idx] && selectedAnswers[idx].length > 0 && (
-                              <Badge variant="secondary" className="gap-1">
-                                <CheckCircle2 className="h-3 w-3" />
-                                {selectedAnswers[idx].length} {t("selected") || "đã chọn"}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            {exercise.options.map((option, optIdx) => {
-                              const isSelected = selectedAnswers[idx]?.includes(optIdx) ?? false;
-                              return (
-                                <div
-                                  key={optIdx}
-                                  onClick={() => toggleAnswer(idx, optIdx)}
-                                  className={`p-3 rounded border cursor-pointer transition-colors ${
-                                    isSelected
-                                      ? "border-primary bg-primary/10 hover:bg-primary/20"
-                                      : "border-border bg-card hover:bg-accent"
-                                  }`}
-                                >
-                                  <div className="flex items-start gap-3">
-                                    <Checkbox
-                                      checked={isSelected}
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="mt-0.5 pointer-events-none"
-                                    />
-                                    <span className="font-semibold text-primary min-w-[24px]">
-                                      {String.fromCharCode(65 + optIdx)}.
-                                    </span>
-                                    <span className="flex-1">{option}</span>
-                                    {isSelected && (
-                                      <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
+                        <MCQOptionsList
+                          exerciseIdx={idx}
+                          options={exercise.options}
+                          selectedOptions={selectedAnswers[idx] || []}
+                          onToggle={toggleAnswer}
+                          selectLabel={t("selectCorrectAnswers") || "Chọn đáp án đúng"}
+                          selectedLabel={t("selected") || "đã chọn"}
+                        />
                       )}
 
                       {/* Test Cases for Coding */}

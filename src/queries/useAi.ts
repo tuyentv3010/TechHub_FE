@@ -22,17 +22,27 @@ export const useGenerateExercisesMutation = () => {
       queryClient.invalidateQueries({
         queryKey: ["exercise-drafts", variables.lessonId],
       });
+      queryClient.invalidateQueries({ queryKey: ["exercise-drafts-batch"] });
       queryClient.invalidateQueries({ queryKey: ["drafts"] });
     },
   });
 };
 
-// Get exercise drafts
+// Get exercise drafts for a single lesson
 export const useGetExerciseDrafts = (lessonId: string) => {
   return useQuery({
     queryKey: ["exercise-drafts", lessonId],
     queryFn: () => aiApiRequest.getExerciseDrafts(lessonId),
     enabled: !!lessonId,
+  });
+};
+
+// Get exercise drafts for multiple lessons (batch request)
+export const useGetExerciseDraftsBatch = (lessonIds: string[]) => {
+  return useQuery({
+    queryKey: ["exercise-drafts-batch", lessonIds],
+    queryFn: () => aiApiRequest.getExerciseDraftsBatch(lessonIds),
+    enabled: lessonIds.length > 0,
   });
 };
 
@@ -211,6 +221,7 @@ export const useApproveExerciseDraftMutation = () => {
     mutationFn: (taskId: string) => aiApiRequest.approveExerciseDraft(taskId),
     onSuccess: (_data, taskId) => {
       queryClient.invalidateQueries({ queryKey: ["exercise-drafts"] });
+      queryClient.invalidateQueries({ queryKey: ["exercise-drafts-batch"] });
       queryClient.invalidateQueries({ queryKey: ["draft", taskId] });
     },
   });
@@ -236,6 +247,7 @@ export const useRejectDraftMutation = () => {
       aiApiRequest.rejectDraft(taskId, reason),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["exercise-drafts"] });
+      queryClient.invalidateQueries({ queryKey: ["exercise-drafts-batch"] });
       queryClient.invalidateQueries({ queryKey: ["learning-path-drafts"] });
       queryClient.invalidateQueries({ queryKey: ["draft", variables.taskId] });
     },

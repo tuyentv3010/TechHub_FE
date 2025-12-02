@@ -20,13 +20,14 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Check, Route, User } from "lucide-react";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useGetLearningPathById } from "@/queries/useLearningPath";
 import { CourseInPathType } from "@/schemaValidations/learning-path.schema";
 import courseApiRequest from "@/apiRequests/course";
 import { CourseItemResType } from "@/schemaValidations/course.schema";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 interface PathViewerProps {
   pathId: string;
@@ -74,7 +75,14 @@ const CourseNode = ({ data }: any) => {
         className="w-4 h-4 !bg-blue-500"
       />
       
-      <Card className="p-3 min-w-[280px] max-w-[320px] border-2 shadow-md hover:shadow-lg transition-shadow">
+      <Card 
+        className="p-3 min-w-[280px] max-w-[320px] border-2 shadow-md hover:shadow-lg hover:border-primary transition-all cursor-pointer"
+        onClick={() => {
+          if (data.courseId) {
+            window.location.href = `/courses/${data.courseId}`;
+          }
+        }}
+      >
         <div className="flex flex-col gap-2">
           {/* Thumbnail */}
           {data.thumbnail ? (
@@ -95,7 +103,7 @@ const CourseNode = ({ data }: any) => {
           
           {/* Content */}
           <div className="flex-1">
-            <h4 className="font-semibold text-sm mb-1 line-clamp-2">{data.title || "Untitled Course"}</h4>
+            <h4 className="font-semibold text-sm mb-1 line-clamp-2 hover:text-primary transition-colors">{data.title || "Untitled Course"}</h4>
             <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
               {data.description || "No description available"}
             </p>
@@ -198,6 +206,7 @@ export default function PathViewer({ pathId }: PathViewerProps) {
             type: "courseNode",
             position,
             data: {
+              courseId: course.courseId,
               title: courseDetail?.title || course.title || "Untitled Course",
               description: courseDetail?.description || course.description || "",
               thumbnail: courseDetail?.thumbnail?.secureUrl || courseDetail?.thumbnail?.url,
