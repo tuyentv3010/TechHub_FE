@@ -79,6 +79,10 @@ export const CreateLearningPathBody = z.object({
   title: z.string().min(1, "Title is required").max(255),
   description: z.string().optional(),
   skills: z.array(z.string()).min(1, "At least one skill is required"),
+  layoutEdges: z.array(z.object({
+    source: z.string(),
+    target: z.string(),
+  })).optional(),
   isActive: z.string().default("Y"), // "Y" or "N"
 });
 
@@ -89,6 +93,10 @@ export const UpdateLearningPathBody = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
   skills: z.array(z.string()).optional(),
+  layoutEdges: z.array(z.object({
+    source: z.string(),
+    target: z.string(),
+  })).optional(),
   isActive: z.string().optional(), // "Y" or "N"
 });
 

@@ -184,28 +184,25 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
         console.log('📦 Draft data received:', draft);
         console.log('📦 resultPayload:', draft.resultPayload);
 
-        // Extract learning path data from OpenAI response structure
-        // resultPayload.choices[0].message.content contains the JSON string
+        // Extract learning path data from resultPayload
+        // New format: resultPayload directly contains { title, courses, ... }
+        // Old format: resultPayload.choices[0].message.content contains JSON string
         let parsedPathData;
         
-        if (draft.resultPayload.choices && draft.resultPayload.choices[0]?.message?.content) {
-          // Parse the content which is a JSON string
+        if (draft.resultPayload.title && draft.resultPayload.courses) {
+          // New format: already parsed object with title and courses
+          console.log('✅ Already learning path object (new format)');
+          parsedPathData = draft.resultPayload;
+        } else if (draft.resultPayload.choices && draft.resultPayload.choices[0]?.message?.content) {
+          // Old format: Parse the content which is a JSON string
           const contentString = draft.resultPayload.choices[0].message.content;
-          console.log('🔄 Parsing content from OpenAI response...');
+          console.log('🔄 Parsing content from OpenAI response (old format)...');
           parsedPathData = JSON.parse(contentString);
         } else if (typeof draft.resultPayload === 'string') {
           console.log('🔄 Parsing JSON string...');
           parsedPathData = JSON.parse(draft.resultPayload);
-        } else if (draft.resultPayload && typeof draft.resultPayload === 'object') {
-          // Fallback: check if it's already the learning path data
-          if (draft.resultPayload.title && draft.resultPayload.courses) {
-            console.log('✅ Already learning path object');
-            parsedPathData = draft.resultPayload;
-          } else {
-            throw new Error('Invalid resultPayload format - missing choices or learning path data');
-          }
         } else {
-          throw new Error('Invalid resultPayload format');
+          throw new Error('Invalid resultPayload format - missing title/courses or choices');
         }
 
         console.log('✅ Path data:', parsedPathData);
@@ -303,14 +300,22 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
       console.log("📤 Step 1: Approving draft in AI Service...");
       await approveMutation.mutateAsync(taskId);
       
-      // Step 2: Tạo Learning Path qua proxy-client
+      // Prepare layoutEdges from current UI state (may have been modified by user)
+      const currentLayoutEdges = edges.map(edge => ({
+        source: edge.source,
+        target: edge.target,
+      }));
+      
+      // Step 2: Tạo Learning Path qua proxy-client (with layoutEdges)
       console.log("📤 Step 2: Creating learning path via proxy-client...");
       console.log("📦 Path data:", pathData);
+      console.log("📦 Layout edges:", currentLayoutEdges);
       
       const createResponse = await learningPathApiRequest.createLearningPath({
         title: pathData.title,
         description: pathData.description,
         skills: pathData.skills || [],
+        layoutEdges: currentLayoutEdges,
         isActive: "Y",
       });
       
@@ -338,27 +343,6 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
         );
         
         console.log("✅ Courses added successfully");
-      }
-      
-      // Step 4: Save layoutEdges to learning path
-      // Get current edges from UI state (may have been modified by user)
-      const currentLayoutEdges = edges.map(edge => ({
-        source: edge.source,
-        target: edge.target,
-      }));
-      
-      if (currentLayoutEdges.length > 0) {
-        console.log("📤 Step 4: Saving layout edges...");
-        console.log("📦 Layout edges:", currentLayoutEdges);
-        
-        await learningPathApiRequest.updateLearningPath(newPathId, {
-          title: pathData.title,
-          description: pathData.description,
-          skills: pathData.skills || [],
-          layoutEdges: currentLayoutEdges,
-        });
-        
-        console.log("✅ Layout edges saved successfully");
       }
       
       toast({
@@ -438,7 +422,7 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
             </p>
             <div className="flex gap-2 mt-3">
               <Badge variant="outline">
-                {nodes.length - 1} Courses
+                {Math.max(0, nodes.length - 1)} Courses
               </Badge>
             </div>
           </Card>
