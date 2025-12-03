@@ -80,6 +80,14 @@ export default function AiChatPage() {
   const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
   const [showTour, setShowTour] = useState<boolean>(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Function to scroll to bottom
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior });
+    }
+  };
 
   const chatMutation = useSendChatMessageMutation();
   const createSessionMutation = useCreateSessionMutation();
@@ -252,18 +260,20 @@ export default function AiChatPage() {
           timestamp: new Date(m.timestamp),
         }))
       );
+      // Scroll to bottom after messages are loaded with a small delay
+      setTimeout(() => scrollToBottom("instant"), 100);
     } else if (sessionId && !messagesData) {
       // Clear messages when switching to session with no messages yet
       setMessages([]);
     }
   }, [messagesData, sessionId]);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when new messages are added (streaming or sent)
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    if (isStreaming || streamingMessage) {
+      scrollToBottom("smooth");
     }
-  }, [messages, streamingMessage]);
+  }, [streamingMessage, isStreaming]);
 
   // Update streaming message in real-time
   useEffect(() => {
@@ -1168,6 +1178,8 @@ export default function AiChatPage() {
                 </div>
               ))
             )}
+            {/* Scroll anchor - always at bottom */}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
