@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslations, useLocale } from "next-intl";
+import Image from "next/image";
 
 interface TourStep {
   id: number;
@@ -334,7 +335,14 @@ export default function AiChatOnboardingTour({
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold">
-                🤖
+                <Image
+                src="/ai/TechHub_Logo.png"
+                alt="Student learning"
+                width={80}
+                height={80}
+                className="object-cover rounded-full"
+                priority
+                />
               </div>
               <div>
                 <h3 className="font-bold text-lg">{currentTourStep.title}</h3>

@@ -1099,6 +1099,7 @@
     "authRequiredDesc": "Please login to use AI chat feature and save your chat history",
     "regenerate": "Regenerate",
     "upgradeToPro": "Upgrade to Pro",
+    "guide": "Guide",
     "sessionDeleted": "Session deleted",
     "sessionDeletedSuccess": "Session has been deleted successfully",
     "deleteSession": "Delete session",

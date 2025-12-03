@@ -731,7 +731,7 @@ export default function AiChatPage() {
       {/* Left Sidebar */}
       <div className={`
         fixed lg:relative inset-y-0 left-0 z-50
-        w-72 sm:w-80 bg-white dark:bg-gray-950 
+        w-85 sm:w-85 bg-white dark:bg-gray-950 
         border-r border-gray-200 dark:border-gray-800 
         flex flex-col
         transform transition-transform duration-300 ease-in-out
@@ -766,25 +766,26 @@ export default function AiChatPage() {
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 space-y-3" id="ai-mode-selector">
               <div className="space-y-2">
                 <Label className="text-xs">{t("mode")}</Label>
-                <Select value={mode} onValueChange={(v: string) => setMode(v as "GENERAL" | "ADVISOR")}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="GENERAL">
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="h-3 w-3" />
-                        {t("modeGeneral")}
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="ADVISOR">
-                      <div className="flex items-center gap-2">
-                        <GraduationCap className="h-3 w-3" />
-                        {t("modeAdvisor")}
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Button
+                    variant={mode === "GENERAL" ? "default" : "outline"}
+                    size="sm"
+                    className={`flex-1 text-xs ${mode === "GENERAL" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+                    onClick={() => setMode("GENERAL")}
+                  >
+                    <MessageSquare className="h-3 w-3 mr-1" />
+                    {t("modeGeneral")}
+                  </Button>
+                  <Button
+                    variant={mode === "ADVISOR" ? "default" : "outline"}
+                    size="sm"
+                    className={`flex-1 text-xs ${mode === "ADVISOR" ? "bg-pink-600 hover:bg-pink-700" : ""}`}
+                    onClick={() => setMode("ADVISOR")}
+                  >
+                    <GraduationCap className="h-3 w-3 mr-1" />
+                    {t("modeAdvisor")}
+                  </Button>
+                </div>
               </div>
               {mode === "ADVISOR" && (
                 <div className="flex items-center space-x-2">

@@ -1058,6 +1058,7 @@
     "authRequiredDesc": "AIチャット機能を使用し、チャット履歴を保存するにはログインしてください",
     "regenerate": "再生成",
     "upgradeToPro": "Proにアップグレード",
+    "guide": "ガイド",
     "sessionDeleted": "セッションが削除されました",
     "sessionDeletedSuccess": "セッションが正常に削除されました",
     "deleteSession": "セッションを削除",
