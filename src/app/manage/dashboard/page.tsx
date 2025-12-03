@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,8 @@ import {
   TrendingUp,
   Clock,
   Sparkles,
+  BarChart3,
+  PieChart,
 } from "lucide-react";
 import {
   Dialog,
@@ -44,6 +46,12 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslations } from "next-intl";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { Bar, BarChart, Pie, PieChart as RechartsPieChart, Cell, XAxis, YAxis, CartesianGrid } from "recharts";
 
 export default function DashboardPage() {
   const t = useTranslations("AiDashboard");
@@ -167,6 +175,51 @@ export default function DashboardPage() {
     }
   };
 
+  // Prepare chart data
+  const vectorChartData = useMemo(() => {
+    if (!qdrantStats?.collections) return [];
+    return [
+      {
+        name: "Courses",
+        value: qdrantStats.collections.courses?.vectorCount || 0,
+        fill: "hsl(var(--chart-1))",
+      },
+      {
+        name: "Lessons",
+        value: qdrantStats.collections.lessons?.vectorCount || 0,
+        fill: "hsl(var(--chart-2))",
+      },
+    ];
+  }, [qdrantStats]);
+
+  const pieChartData = useMemo(() => {
+    if (!qdrantStats?.collections) return [];
+    const courses = qdrantStats.collections.courses?.vectorCount || 0;
+    const lessons = qdrantStats.collections.lessons?.vectorCount || 0;
+    const total = courses + lessons;
+    if (total === 0) return [];
+    return [
+      {
+        name: "Courses",
+        value: courses,
+        percentage: ((courses / total) * 100).toFixed(1),
+      },
+      {
+        name: "Lessons",
+        value: lessons,
+        percentage: ((lessons / total) * 100).toFixed(1),
+      },
+    ];
+  }, [qdrantStats]);
+
+  const chartConfig = {
+    value: {
+      label: "Vectors",
+    },
+  };
+
+  const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))"];
+
   return (
     <main className="p-4 sm:px-6 sm:py-4 md:p-8 space-y-6">
       {/* Header */}
@@ -180,7 +233,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Overview Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -188,8 +241,8 @@ export default function DashboardPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pendingDrafts.length}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-3xl font-bold">{pendingDrafts.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">
               {t("aiContent")}
             </p>
           </CardContent>
@@ -201,10 +254,10 @@ export default function DashboardPage() {
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {qdrantStats?.collections?.courses?.vectorCount || "N/A"}
+            <div className="text-3xl font-bold">
+              {qdrantStats?.collections?.courses?.vectorCount || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-1">
               {t("vectorsInQdrant")}
             </p>
           </CardContent>
@@ -216,10 +269,10 @@ export default function DashboardPage() {
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {qdrantStats?.collections?.lessons?.vectorCount || "N/A"}
+            <div className="text-3xl font-bold">
+              {qdrantStats?.collections?.lessons?.vectorCount || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-1">
               {t("vectorsInQdrant")}
             </p>
           </CardContent>
@@ -231,7 +284,7 @@ export default function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-2">
               {qdrantStats?.healthy ? (
                 <>
                   <CheckCircle className="h-5 w-5 text-green-500" />
@@ -256,6 +309,177 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Vector Count Bar Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Thống kê Vectors theo Collection
+            </CardTitle>
+            <CardDescription>
+              Số lượng vectors được lưu trữ trong Qdrant
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {vectorChartData.length > 0 ? (
+              <ChartContainer config={chartConfig} className="h-[300px]">
+                <BarChart data={vectorChartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="name" 
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                  />
+                  <YAxis 
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="hsl(var(--chart-1))" />
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                <p>Không có dữ liệu để hiển thị</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Distribution Pie Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="h-5 w-5" />
+              Phân bố Vectors
+            </CardTitle>
+            <CardDescription>
+              Tỷ lệ phân bố giữa Courses và Lessons
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {pieChartData.length > 0 ? (
+              <div className="space-y-4">
+                <ChartContainer config={chartConfig} className="h-[250px]">
+                  <RechartsPieChart>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Pie
+                      data={pieChartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percentage }) => `${name}: ${percentage}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {pieChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </RechartsPieChart>
+                </ChartContainer>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  {pieChartData.map((item, index) => (
+                    <div key={item.name} className="text-center p-3 rounded-lg bg-muted/50">
+                      <div className="text-2xl font-bold">{item.value}</div>
+                      <div className="text-sm text-muted-foreground">{item.name}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{item.percentage}%</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                <p>Không có dữ liệu để hiển thị</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Detailed Statistics Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Thống kê chi tiết Qdrant Collections
+          </CardTitle>
+          <CardDescription>
+            Thông tin chi tiết về các collections và trạng thái của chúng
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {qdrantStats?.collections ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Collection</TableHead>
+                    <TableHead className="text-right">Vector Count</TableHead>
+                    <TableHead className="text-right">Points Count</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Health</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(qdrantStats.collections).map(([collectionName, stats]: [string, any]) => (
+                    <TableRow key={collectionName}>
+                      <TableCell className="font-medium capitalize">{collectionName}</TableCell>
+                      <TableCell className="text-right font-mono">
+                        {stats.vectorCount?.toLocaleString() || 0}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {stats.pointsCount?.toLocaleString() || 0}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            stats.status === "green" || stats.status === "ok"
+                              ? "default"
+                              : stats.status === "error"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
+                          {stats.status || "unknown"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {stats.status === "green" || stats.status === "ok" ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-500" />
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {qdrantStats.version && (
+                    <TableRow>
+                      <TableCell colSpan={2} className="font-medium">
+                        Qdrant Version
+                      </TableCell>
+                      <TableCell colSpan={3} className="font-mono">
+                        {qdrantStats.version}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Không có dữ liệu thống kê</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Vector Database Management */}
