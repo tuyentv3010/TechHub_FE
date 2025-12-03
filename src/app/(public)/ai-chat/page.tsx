@@ -174,6 +174,9 @@ export default function AiChatPage() {
     setShowTour(true);
   };
 
+  // Cache for session labels to avoid refetching
+  const sessionLabelsCache = useRef<Map<string, string>>(new Map());
+
   // Sync sessions from DB
   useEffect(() => {
     if (sessionsData?.payload?.data) {
@@ -183,6 +186,15 @@ export default function AiChatPage() {
       const fetchSessionLabels = async () => {
         const sessionsWithLabels = await Promise.all(
           dbSessions.map(async (s: { id: string; userId: string; startedAt: string }, idx: number) => {
+            // Check cache first
+            if (sessionLabelsCache.current.has(s.id)) {
+              return {
+                id: s.id,
+                label: sessionLabelsCache.current.get(s.id)!,
+                startedAt: s.startedAt,
+              };
+            }
+            
             try {
               const messagesRes = await aiApiRequest.getSessionMessages(s.id);
               const messages = messagesRes.payload?.data || [];
@@ -196,15 +208,20 @@ export default function AiChatPage() {
                 label = words.length < firstUserMessage.content.length ? `${words}...` : words;
               }
               
+              // Store in cache
+              sessionLabelsCache.current.set(s.id, label);
+              
               return {
                 id: s.id,
                 label,
                 startedAt: s.startedAt,
               };
             } catch {
+              const fallbackLabel = `${t("session")} ${dbSessions.length - idx}`;
+              sessionLabelsCache.current.set(s.id, fallbackLabel);
               return {
                 id: s.id,
-                label: `${t("session")} ${dbSessions.length - idx}`,
+                label: fallbackLabel,
                 startedAt: s.startedAt,
               };
             }
@@ -221,7 +238,7 @@ export default function AiChatPage() {
         setSessionId(dbSessions[0].id);
       }
     }
-  }, [sessionsData, t, sessionId]);
+  }, [sessionsData, t]); // Removed sessionId from dependencies
 
   // Sync messages from DB when session changes
   useEffect(() => {
