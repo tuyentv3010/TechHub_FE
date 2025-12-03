@@ -23,6 +23,7 @@ import { useAccountProfile } from "@/queries/useAccount";
 import { useStreamingChat } from "@/hooks/useStreamingChat";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
 import aiApiRequest from "@/apiRequests/ai";
+import AiChatOnboardingTour, { AiChatTourButton } from "@/components/ai/AiChatOnboardingTour";
 import {
   MessageCircle,
   Send,
@@ -45,6 +46,7 @@ import {
   Menu,
   X,
   ChevronLeft,
+  HelpCircle,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -76,6 +78,7 @@ export default function AiChatPage() {
   const [showSettings, setShowSettings] = useState<boolean>(true);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
+  const [showTour, setShowTour] = useState<boolean>(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const chatMutation = useSendChatMessageMutation();
@@ -138,6 +141,38 @@ export default function AiChatPage() {
       }
     }
   }, [isAuth]);
+
+  // Check if user has seen tour before
+  useEffect(() => {
+    if (userId && typeof window !== "undefined") {
+      const tourKey = `ai_chat_tour_${userId}`;
+      const hasSeenTour = localStorage.getItem(tourKey);
+      if (!hasSeenTour) {
+        // Delay tour start to ensure UI is rendered
+        setTimeout(() => setShowTour(true), 500);
+      }
+    }
+  }, [userId]);
+
+  const handleTourComplete = () => {
+    if (userId) {
+      const tourKey = `ai_chat_tour_${userId}`;
+      localStorage.setItem(tourKey, "true");
+      setShowTour(false);
+    }
+  };
+
+  const handleTourSkip = () => {
+    if (userId) {
+      const tourKey = `ai_chat_tour_${userId}`;
+      localStorage.setItem(tourKey, "true");
+      setShowTour(false);
+    }
+  };
+
+  const handleStartTour = () => {
+    setShowTour(true);
+  };
 
   // Sync sessions from DB
   useEffect(() => {
@@ -696,7 +731,7 @@ export default function AiChatPage() {
       {/* Left Sidebar */}
       <div className={`
         fixed lg:relative inset-y-0 left-0 z-50
-        w-72 sm:w-80 bg-white dark:bg-gray-950 
+        w-85 sm:w-85 bg-white dark:bg-gray-950 
         border-r border-gray-200 dark:border-gray-800 
         flex flex-col
         transform transition-transform duration-300 ease-in-out
@@ -705,40 +740,52 @@ export default function AiChatPage() {
       `}>
         {/* Settings Section */}
         <div className="p-3 sm:p-4 space-y-3">
-          {/* Settings Button */}
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm"
-            onClick={() => setShowSettings(!showSettings)}
-          >
-            <Settings className="h-4 w-4 mr-3" />
-            {t("settings") || "Settings"}
-          </Button>
+          {/* Settings & Guide Buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              className="flex-1 justify-start text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm"
+              onClick={() => setShowSettings(!showSettings)}
+            >
+              <Settings className="h-4 w-4 mr-3" />
+              {t("settings") || "Settings"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-900/20"
+              onClick={handleStartTour}
+              title={t("guide") || "Hướng dẫn"}
+            >
+              <HelpCircle className="h-5 w-5" />
+            </Button>
+          </div>
 
           {/* Settings Panel (collapsible) */}
           {showSettings && (
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 space-y-3">
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 space-y-3" id="ai-mode-selector">
               <div className="space-y-2">
                 <Label className="text-xs">{t("mode")}</Label>
-                <Select value={mode} onValueChange={(v: string) => setMode(v as "GENERAL" | "ADVISOR")}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="GENERAL">
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="h-3 w-3" />
-                        {t("modeGeneral")}
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="ADVISOR">
-                      <div className="flex items-center gap-2">
-                        <GraduationCap className="h-3 w-3" />
-                        {t("modeAdvisor")}
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Button
+                    variant={mode === "GENERAL" ? "default" : "outline"}
+                    size="sm"
+                    className={`flex-1 text-xs ${mode === "GENERAL" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+                    onClick={() => setMode("GENERAL")}
+                  >
+                    <MessageSquare className="h-3 w-3 mr-1" />
+                    {t("modeGeneral")}
+                  </Button>
+                  <Button
+                    variant={mode === "ADVISOR" ? "default" : "outline"}
+                    size="sm"
+                    className={`flex-1 text-xs ${mode === "ADVISOR" ? "bg-pink-600 hover:bg-pink-700" : ""}`}
+                    onClick={() => setMode("ADVISOR")}
+                  >
+                    <GraduationCap className="h-3 w-3 mr-1" />
+                    {t("modeAdvisor")}
+                  </Button>
+                </div>
               </div>
               {mode === "ADVISOR" && (
                 <div className="flex items-center space-x-2">
@@ -771,7 +818,7 @@ export default function AiChatPage() {
         </div>
 
         {/* New Chat Button & Search */}
-        <div className="px-3 sm:px-4 pb-4 flex gap-2">
+        <div className="px-3 sm:px-4 pb-4 flex gap-2" id="ai-new-chat-button">
           <Button
             onClick={() => {
               handleNewSession();
@@ -808,7 +855,7 @@ export default function AiChatPage() {
         </div>
 
         {/* Session List */}
-        <ScrollArea className="flex-1 px-2">
+        <ScrollArea className="flex-1 px-2" id="ai-session-list">
           <div className="space-y-1">
             {groupedSessions.today.length > 0 && (
               <>
@@ -946,7 +993,7 @@ export default function AiChatPage() {
         <ScrollArea className="flex-1 px-3 sm:px-6 py-4" ref={scrollAreaRef}>
           <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-[50vh] sm:h-[60vh] text-center px-4">
+              <div className="flex flex-col items-center justify-center h-[50vh] sm:h-[60vh] text-center px-4" id="ai-chat-welcome">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full">
                <Image
                   src="/ai/TechHub_Logo.png"
@@ -965,7 +1012,7 @@ export default function AiChatPage() {
                 </p>
                 
                 {/* Suggested Prompts */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mt-6 sm:mt-8 w-full max-w-2xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mt-6 sm:mt-8 w-full max-w-2xl" id="ai-preset-prompts">
                   {presetPrompts[mode].slice(0, 4).map((prompt, idx) => (
                     <Button
                       key={idx}
@@ -1110,7 +1157,7 @@ export default function AiChatPage() {
         {/* Input Area */}
         <div className="border-t border-gray-200 dark:border-gray-800 p-2 sm:p-4">
           <div className="max-w-4xl mx-auto">
-            <div className="relative flex items-end gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-3 sm:px-4 py-1.5 sm:py-2">
+            <div className="relative flex items-end gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-3 sm:px-4 py-1.5 sm:py-2" id="ai-chat-input">
               <Avatar className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 mb-0.5 sm:mb-1 hidden sm:flex">
                 <AvatarImage 
                   src={userProfile?.avatar} 
@@ -1159,6 +1206,15 @@ export default function AiChatPage() {
           {t("upgradeToPro") || "Upgrade to Pro"}
         </Button>
       </div>
+
+      {/* AI Chat Onboarding Tour */}
+      {showTour && userProfile && (
+        <AiChatOnboardingTour
+          userName={userProfile.fullName || userProfile.username || "bạn"}
+          onComplete={handleTourComplete}
+          onSkip={handleTourSkip}
+        />
+      )}
     </div>
   );
 }

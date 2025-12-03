@@ -779,6 +779,38 @@
     "start": "開始",
     "stepOf": "ステップ {current}/{total}"
   },
+  "AiChatOnboarding": {
+    "step1": {
+      "title": "AIチャットへようこそ！ 🤖",
+      "content": "こんにちは{userName}さん！TechHubのAIアシスタントです。このAIチャットページの使い方をご案内します。始めましょう！"
+    },
+    "step2": {
+      "title": "チャットモード 🎯",
+      "content": "ここでチャットモードを選択します。「一般Q&A」で何でも質問でき、「学習アドバイザー」であなたに合った学習パスやコースをAIが提案します！"
+    },
+    "step3": {
+      "title": "メッセージ入力 💬",
+      "content": "ここにAIへの質問を入力します。プログラミング、コース、学習パスについて何でも自由に質問してください。AIが即座に回答します！"
+    },
+    "step4": {
+      "title": "おすすめの質問 ⚡",
+      "content": "何を聞けばいいかわからない場合は、こちらのサンプル質問をお勧めします。クリックするだけですぐに送信されます！"
+    },
+    "step5": {
+      "title": "会話履歴 📚",
+      "content": "すべての会話はここに保存されます。いつでも戻って確認できるので、とても便利ですね！"
+    },
+    "step6": {
+      "title": "新しいチャットを作成 ✨",
+      "content": "新しいトピックを始めたい場合は、このボタンをクリックして新しい会話を作成してください。AIとの楽しい会話をお楽しみください！ 💕"
+    },
+    "enableVoice": "AIの声を聞く 🎵",
+    "previous": "戻る",
+    "next": "次へ",
+    "finish": "チャット開始！",
+    "stepOf": "ステップ {current}/{total}",
+    "tourButton": "ガイド"
+  },
   "ManageLearningPath": {
     "Title": "学習パス管理",
     "Description": "学習パスの作成と管理",
@@ -1026,6 +1058,7 @@
     "authRequiredDesc": "AIチャット機能を使用し、チャット履歴を保存するにはログインしてください",
     "regenerate": "再生成",
     "upgradeToPro": "Proにアップグレード",
+    "guide": "ガイド",
     "sessionDeleted": "セッションが削除されました",
     "sessionDeletedSuccess": "セッションが正常に削除されました",
     "deleteSession": "セッションを削除",
