@@ -770,6 +770,38 @@
     "start": "Bắt đầu",
     "stepOf": "Bước {current}/{total}"
   },
+  "AiChatOnboarding": {
+    "step1": {
+      "title": "Chào mừng đến AI Chat! 🤖",
+      "content": "Xin chào {userName}! Mình là trợ lý AI của TechHub. Mình sẽ giúp cậu hiểu cách sử dụng trang chat AI này nhé. Bắt đầu thôi nào!"
+    },
+    "step2": {
+      "title": "Chế độ Chat 🎯",
+      "content": "Đây là nơi cậu chọn chế độ chat. Có 2 chế độ: \"Hỏi đáp chung\" để hỏi bất cứ điều gì, và \"Tư vấn học tập\" để được AI gợi ý lộ trình và khóa học phù hợp với cậu!"
+    },
+    "step3": {
+      "title": "Ô nhập tin nhắn 💬",
+      "content": "Đây là nơi cậu gõ câu hỏi cho AI. Cứ thoải mái hỏi bất cứ điều gì về lập trình, khóa học, hay lộ trình học tập nhé. AI sẽ trả lời ngay lập tức!"
+    },
+    "step4": {
+      "title": "Gợi ý câu hỏi ⚡",
+      "content": "Nếu cậu chưa biết hỏi gì, đây là những câu hỏi mẫu mà mình gợi ý cho cậu. Chỉ cần click vào là câu hỏi sẽ được gửi đi luôn đó!"
+    },
+    "step5": {
+      "title": "Lịch sử hội thoại 📚",
+      "content": "Tất cả các cuộc trò chuyện của cậu sẽ được lưu ở đây. Cậu có thể quay lại xem bất cứ lúc nào, rất tiện lợi phải không nào!"
+    },
+    "step6": {
+      "title": "Tạo cuộc trò chuyện mới ✨",
+      "content": "Khi muốn bắt đầu một chủ đề mới, cậu click vào nút này để tạo cuộc trò chuyện mới nhé. Chúc cậu có những cuộc trò chuyện thú vị với AI! 💕"
+    },
+    "enableVoice": "Nghe giọng AI 🎵",
+    "previous": "Quay lại",
+    "next": "Tiếp theo",
+    "finish": "Bắt đầu chat!",
+    "stepOf": "Bước {current}/{total}",
+    "tourButton": "Hướng dẫn"
+  },
   "ManageLearningPath": {
     "Title": "Quản lý Lộ trình Học tập",
     "Description": "Tạo và quản lý lộ trình học tập cho học viên",

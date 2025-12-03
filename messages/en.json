@@ -774,6 +774,38 @@
     "start": "Start",
     "stepOf": "Step {current}/{total}"
   },
+  "AiChatOnboarding": {
+    "step1": {
+      "title": "Welcome to AI Chat! 🤖",
+      "content": "Hello {userName}! I'm TechHub's AI assistant. Let me show you how to use this AI chat page. Let's get started!"
+    },
+    "step2": {
+      "title": "Chat Mode 🎯",
+      "content": "This is where you select the chat mode. There are 2 modes: \"General Q&A\" to ask anything, and \"Learning Advisor\" to get AI suggestions for learning paths and courses that suit you!"
+    },
+    "step3": {
+      "title": "Message Input 💬",
+      "content": "This is where you type your questions for the AI. Feel free to ask anything about programming, courses, or learning paths. The AI will respond instantly!"
+    },
+    "step4": {
+      "title": "Suggested Questions ⚡",
+      "content": "If you don't know what to ask, here are some sample questions I suggest for you. Just click on one and it will be sent right away!"
+    },
+    "step5": {
+      "title": "Conversation History 📚",
+      "content": "All your conversations will be saved here. You can come back to view them anytime, very convenient right!"
+    },
+    "step6": {
+      "title": "Create New Chat ✨",
+      "content": "When you want to start a new topic, click this button to create a new conversation. Have fun chatting with the AI! 💕"
+    },
+    "enableVoice": "Listen to AI voice 🎵",
+    "previous": "Previous",
+    "next": "Next",
+    "finish": "Start chatting!",
+    "stepOf": "Step {current}/{total}",
+    "tourButton": "Guide"
+  },
   "ManageLearningPath": {
     "Title": "Manage Learning Paths",
     "Description": "Create and manage learning paths for students",
