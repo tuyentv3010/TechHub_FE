@@ -80,6 +80,14 @@ export default function AiChatPage() {
   const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
   const [showTour, setShowTour] = useState<boolean>(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Function to scroll to bottom
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior });
+    }
+  };
 
   const chatMutation = useSendChatMessageMutation();
   const createSessionMutation = useCreateSessionMutation();
@@ -174,6 +182,9 @@ export default function AiChatPage() {
     setShowTour(true);
   };
 
+  // Cache for session labels to avoid refetching
+  const sessionLabelsCache = useRef<Map<string, string>>(new Map());
+
   // Sync sessions from DB
   useEffect(() => {
     if (sessionsData?.payload?.data) {
@@ -183,6 +194,15 @@ export default function AiChatPage() {
       const fetchSessionLabels = async () => {
         const sessionsWithLabels = await Promise.all(
           dbSessions.map(async (s: { id: string; userId: string; startedAt: string }, idx: number) => {
+            // Check cache first
+            if (sessionLabelsCache.current.has(s.id)) {
+              return {
+                id: s.id,
+                label: sessionLabelsCache.current.get(s.id)!,
+                startedAt: s.startedAt,
+              };
+            }
+            
             try {
               const messagesRes = await aiApiRequest.getSessionMessages(s.id);
               const messages = messagesRes.payload?.data || [];
@@ -196,15 +216,20 @@ export default function AiChatPage() {
                 label = words.length < firstUserMessage.content.length ? `${words}...` : words;
               }
               
+              // Store in cache
+              sessionLabelsCache.current.set(s.id, label);
+              
               return {
                 id: s.id,
                 label,
                 startedAt: s.startedAt,
               };
             } catch {
+              const fallbackLabel = `${t("session")} ${dbSessions.length - idx}`;
+              sessionLabelsCache.current.set(s.id, fallbackLabel);
               return {
                 id: s.id,
-                label: `${t("session")} ${dbSessions.length - idx}`,
+                label: fallbackLabel,
                 startedAt: s.startedAt,
               };
             }
@@ -221,7 +246,7 @@ export default function AiChatPage() {
         setSessionId(dbSessions[0].id);
       }
     }
-  }, [sessionsData, t, sessionId]);
+  }, [sessionsData, t]); // Removed sessionId from dependencies
 
   // Sync messages from DB when session changes
   useEffect(() => {
@@ -235,18 +260,20 @@ export default function AiChatPage() {
           timestamp: new Date(m.timestamp),
         }))
       );
+      // Scroll to bottom after messages are loaded with a small delay
+      setTimeout(() => scrollToBottom("instant"), 100);
     } else if (sessionId && !messagesData) {
       // Clear messages when switching to session with no messages yet
       setMessages([]);
     }
   }, [messagesData, sessionId]);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when new messages are added (streaming or sent)
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    if (isStreaming || streamingMessage) {
+      scrollToBottom("smooth");
     }
-  }, [messages, streamingMessage]);
+  }, [streamingMessage, isStreaming]);
 
   // Update streaming message in real-time
   useEffect(() => {
@@ -1151,6 +1178,8 @@ export default function AiChatPage() {
                 </div>
               ))
             )}
+            {/* Scroll anchor - always at bottom */}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
