@@ -62,6 +62,9 @@ export function DropdownProfile() {
           console.error("Failed to parse user info:", e);
         }
       }
+    } else {
+      // Clear userInfo when logged out
+      setUserInfo(null);
     }
   }, [isAuth]);
 

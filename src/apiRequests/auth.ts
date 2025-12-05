@@ -83,7 +83,7 @@ const authApiRequest = {
     }),
 
   sRefreshToken: (body: { refreshToken: string }) =>
-    http.post<LoginResType>("/auth/refresh-token", body),
+    http.post<LoginResType>("/app/api/proxy/auth/refresh-token", body),
 
   // OAuth2 URLs - Direct backend endpoints (no HTTP wrapper needed)
   getGoogleOAuthUrl: () => `${process.env.NEXT_PUBLIC_API_ENDPOINT}/oauth2/authorization/google`,

@@ -287,23 +287,31 @@ const request = async <Response>(
 
     if (isClient) {
       const normalizeUrl = normalizePath(url);
-      if (["api/proxy/auth/login", "api/v1/auth/login"].includes(normalizeUrl)) {
+      if (["app/api/proxy/auth/login", "api/proxy/auth/login", "api/v1/auth/login"].includes(normalizeUrl)) {
         if (payload.success && payload.data) {
           const { accessToken, refreshToken } = payload.data;
           localStorage.setItem("accessToken", accessToken);
           localStorage.setItem("refreshToken", refreshToken);
+          // Also set in cookies for middleware
+          document.cookie = `accessToken=${accessToken}; path=/; max-age=${24 * 60 * 60}`; // 24 hours
+          document.cookie = `refreshToken=${refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 days
         }
-      } else if ("api/v1/auth/token" === normalizeUrl) {
-        const { accessToken, refreshToken } = payload as {
-          accessToken: string;
-          refreshToken: string;
-        };
-        localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("refreshToken", refreshToken);
-      } else if (["api/proxy/auth/logout", "api/v1/auth/logout"].includes(normalizeUrl)) {
+      } else if (["app/api/proxy/auth/refresh-token", "api/proxy/auth/refresh-token", "api/v1/auth/token"].includes(normalizeUrl)) {
+        if (payload.success && payload.data) {
+          const { accessToken, refreshToken } = payload.data;
+          localStorage.setItem("accessToken", accessToken);
+          localStorage.setItem("refreshToken", refreshToken);
+          // Also set in cookies for middleware
+          document.cookie = `accessToken=${accessToken}; path=/; max-age=${24 * 60 * 60}`; // 24 hours
+          document.cookie = `refreshToken=${refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 days
+        }
+      } else if (["app/api/proxy/auth/logout", "api/proxy/auth/logout", "api/v1/auth/logout"].includes(normalizeUrl)) {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("userInfo");
+        // Also remove from cookies
+        document.cookie = "accessToken=; path=/; max-age=0";
+        document.cookie = "refreshToken=; path=/; max-age=0";
       }
     }
 
@@ -330,7 +338,7 @@ const refreshToken = async () => {
   }
   try {
     const response = await fetch(
-      `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/api/v1/auth/token`,
+      `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/app/api/proxy/auth/refresh-token`,
       {
         method: "POST",
         headers: {
@@ -346,14 +354,31 @@ const refreshToken = async () => {
         message: "Failed to refresh token",
       });
     }
-    const { accessToken, refreshToken: newRefreshToken } =
-      await response.json();
-    localStorage.setItem("accessToken", accessToken);
-    localStorage.setItem("refreshToken", newRefreshToken);
-    return accessToken;
+    const result = await response.json();
+    
+    // Handle response format: { success: true, data: { accessToken, refreshToken, ... } }
+    if (result.success && result.data) {
+      const { accessToken, refreshToken: newRefreshToken } = result.data;
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("refreshToken", newRefreshToken);
+      // Also set in cookies for middleware
+      document.cookie = `accessToken=${accessToken}; path=/; max-age=${24 * 60 * 60}`; // 24 hours
+      document.cookie = `refreshToken=${newRefreshToken}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 days
+      return accessToken;
+    } else {
+      throw new HttpError({
+        status: 401,
+        payload: result,
+        message: result.message || "Failed to refresh token",
+      });
+    }
   } catch (error) {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
+    localStorage.removeItem("userInfo"); // Also clear user info
+    // Also remove from cookies
+    document.cookie = "accessToken=; path=/; max-age=0";
+    document.cookie = "refreshToken=; path=/; max-age=0";
     location.href = "/login";
     throw error;
   }

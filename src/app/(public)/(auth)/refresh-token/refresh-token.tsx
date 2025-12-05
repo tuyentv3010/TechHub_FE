@@ -13,15 +13,21 @@ export default function RefreshTokenPage() {
     if (ref.current) return;
     ref.current = true;
 
+    console.log('[RefreshTokenPage] Starting refresh, redirect to:', redirectPathname);
+
     checkAndRefreshToken({
+      force: true, // Force refresh regardless of token expiry time
       onSuccess: () => {
+        console.log('[RefreshTokenPage] Refresh successful, redirecting to:', redirectPathname || "/");
         router.push(redirectPathname || "/");
       },
       onError: () => {
-        router.push("/login");
+        console.log('[RefreshTokenPage] Refresh failed, redirecting to login');
+        // Force full page reload to clear cached user info
+        window.location.href = "/login";
       },
     });
   }, [router, redirectPathname]);
 
-  return <div>Refreshing token...</div>;
+  return null; // Don't show anything during refresh
 }

@@ -20,14 +20,48 @@ export function middleware(request: NextRequest) {
   console.log("🔐 Middleware - accessToken exists:", !!accessToken);
   console.log("🔐 Middleware - refreshToken exists:", !!refreshToken);
 
+  // Check if refresh token is expired
+  let isRefreshTokenExpired = false;
+  let isAccessTokenExpired = false;
+  
+  if (refreshToken) {
+    try {
+      const decodedRefresh = decodeToken(refreshToken);
+      const now = Math.round(new Date().getTime() / 1000);
+      isRefreshTokenExpired = decodedRefresh.exp <= now;
+      console.log("🔐 Middleware - Refresh token expired:", isRefreshTokenExpired);
+    } catch (error) {
+      console.log("🔐 Middleware - Failed to decode refresh token");
+      isRefreshTokenExpired = true;
+    }
+  }
+  
+  if (accessToken) {
+    try {
+      const decodedAccess = decodeToken(accessToken);
+      const now = Math.round(new Date().getTime() / 1000);
+      isAccessTokenExpired = decodedAccess.exp <= now;
+      console.log("🔐 Middleware - Access token expired:", isAccessTokenExpired);
+    } catch (error) {
+      console.log("🔐 Middleware - Failed to decode access token");
+      isAccessTokenExpired = true;
+    }
+  }
+  
+  // If refresh token is expired, redirect to login
+  if (refreshToken && isRefreshTokenExpired && pathname !== "/login") {
+    console.log("🔐 Middleware - Refresh token expired, redirecting to login");
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   // Redirect authenticated users from login/register pages
-  if (refreshToken && unAuthPaths.some((path) => pathname.startsWith(path))) {
+  if (refreshToken && !isRefreshTokenExpired && unAuthPaths.some((path) => pathname.startsWith(path))) {
     console.log("🔐 Middleware - Redirecting authenticated user from auth page to /");
     return NextResponse.redirect(new URL("/", request.url));
   }
 
   // Check auth for home page
-  if (pathname === "/" && !accessToken && !refreshToken) {
+  if (pathname === "/" && !refreshToken) {
     console.log("🔐 Middleware - Redirecting unauthenticated user from home to /login");
     return NextResponse.redirect(new URL("/login", request.url));
   }
@@ -35,7 +69,6 @@ export function middleware(request: NextRequest) {
   // Check auth for protected public pages (courses, learning-paths, blog)
   if (
     authRequiredPaths.some((path) => pathname.startsWith(path)) &&
-    !accessToken &&
     !refreshToken
   ) {
     console.log("🔐 Middleware - Redirecting unauthenticated user to /login with redirect:", pathname);
@@ -44,15 +77,25 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Handle private paths
+  // Handle private paths - redirect to refresh if access token missing/expired but refresh token valid
   if (
     privatePaths.some((path) => pathname.startsWith(path)) &&
-    !accessToken &&
-    refreshToken
+    (!accessToken || isAccessTokenExpired) &&
+    refreshToken &&
+    !isRefreshTokenExpired
   ) {
     const url = new URL("/refresh-token", request.url);
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
+  }
+  
+  // If trying to access private path but no valid refresh token, redirect to login
+  if (
+    privatePaths.some((path) => pathname.startsWith(path)) &&
+    (!refreshToken || isRefreshTokenExpired)
+  ) {
+    console.log("🔐 Middleware - No valid refresh token, redirecting to login");
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Role-based access control
