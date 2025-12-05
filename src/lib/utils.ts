@@ -131,6 +131,57 @@ export const checkAndRefreshToken = async (param?: {
       (decodedAccessToken.exp - decodedAccessToken.iat) / 3
   ) {
     // goi api refresh token
+    try {
+      const response = await fetch(
+        `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/api/v1/auth/token`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ refreshToken }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to refresh token:", errorText);
+        removeTokenFromLocalStorage();
+        return param?.onError && param.onError();
+      }
+
+      const data = await response.json();
+      
+      // Extract tokens from response - check different possible response structures
+      let newAccessToken: string;
+      let newRefreshToken: string;
+      
+      if (data.accessToken && data.refreshToken) {
+        newAccessToken = data.accessToken;
+        newRefreshToken = data.refreshToken;
+      } else if (data.data?.accessToken && data.data?.refreshToken) {
+        newAccessToken = data.data.accessToken;
+        newRefreshToken = data.data.refreshToken;
+      } else if (data.payload?.data?.accessToken && data.payload?.data?.refreshToken) {
+        newAccessToken = data.payload.data.accessToken;
+        newRefreshToken = data.payload.data.refreshToken;
+      } else {
+        console.error("Unexpected refresh token response structure:", data);
+        removeTokenFromLocalStorage();
+        return param?.onError && param.onError();
+      }
+
+      // Update tokens in localStorage
+      setAccessTokenToLocalStorage(newAccessToken);
+      setRefreshTokenToLocalStorage(newRefreshToken);
+      
+      console.log("✅ Token refreshed successfully");
+      return param?.onSuccess && param.onSuccess();
+    } catch (error) {
+      console.error("Error refreshing token:", error);
+      removeTokenFromLocalStorage();
+      return param?.onError && param.onError();
+    }
   }
 };
 ///
@@ -300,6 +351,24 @@ export const getTableLink = ({
 
 export const decodeToken = (token: string) => {
   return jwt.decode(token) as TokenPayload;
+};
+
+/**
+ * Check if a token is expired
+ * @param token - JWT token string
+ * @returns true if token is expired or invalid, false otherwise
+ */
+export const isTokenExpired = (token: string | null): boolean => {
+  if (!token) return true;
+  try {
+    const decoded = decodeToken(token);
+    if (!decoded || !decoded.exp) return true;
+    const now = Math.round(new Date().getTime() / 1000);
+    return decoded.exp <= now;
+  } catch (error) {
+    console.error("Error decoding token:", error);
+    return true;
+  }
 };
 
 export function removeAccents(str: string) {

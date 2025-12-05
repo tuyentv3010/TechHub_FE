@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, useState, useEffect } from "react";
 import { RoleType, Permission, TokenPayload } from "@/types/jwt.types";
-import { getAccessTokenFromLocalStorage, decodeToken } from "@/lib/utils";
+import { getAccessTokenFromLocalStorage, decodeToken, isTokenExpired, removeTokenFromLocalStorage } from "@/lib/utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import RefreshToken from "@/components/refresh-token";
@@ -35,16 +35,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const token = getAccessTokenFromLocalStorage();
     if (token) {
       try {
+        // Check if token is expired
+        if (isTokenExpired(token)) {
+          console.warn("Token is expired, clearing auth state");
+          removeTokenFromLocalStorage();
+          setIsAuth(false);
+          setRole(null);
+          setPermissions(null);
+          // Redirect to login if we're on a protected page
+          if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/register")) {
+            window.location.href = "/login";
+          }
+          return;
+        }
+        
         setIsAuth(true);
         const decoded = decodeToken(token);
         setRole(decoded?.role || null);
         // Permissions are fetched separately after login
       } catch (error) {
         console.error("Failed to decode token:", error);
+        removeTokenFromLocalStorage();
         setIsAuth(false);
         setRole(null);
         setPermissions(null);
       }
+    } else {
+      setIsAuth(false);
+      setRole(null);
+      setPermissions(null);
     }
   }, []);
 

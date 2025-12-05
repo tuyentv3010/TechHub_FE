@@ -96,7 +96,6 @@ export class ForbiddenError extends HttpError {
   }
 }
 
-let clientLogoutRequest: null | Promise<any> = null;
 const isClient = typeof window !== "undefined";
 
 const request = async <Response>(
@@ -222,33 +221,13 @@ const request = async <Response>(
         );
       } else if (res.status === AUTHENTICATION_ERROR_STATUS) {
         console.warn('🔐 [HTTP] 401 Unauthorized - Token expired or invalid');
-        if (isClient && !clientLogoutRequest) {
-          console.log('🚪 [HTTP] Logging out user...');
-          clientLogoutRequest = fetch("/api/auth/logout", {
-            method: "POST",
-            headers: {
-              ...baseHeaders,
-            } as any,
-          });
-          try {
-            await clientLogoutRequest;
-            console.log('✅ [HTTP] Logout successful');
-          } catch (error) {
-            console.error("❌ [HTTP] Logout error:", error);
-          } finally {
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("refreshToken");
-            console.log('🧹 [HTTP] Tokens cleared from localStorage');
-            clientLogoutRequest = null;
-            console.log('↪️ [HTTP] Redirecting to /login');
-            location.href = `/login`;
-          }
-        } else if (!isClient) {
-          const token = (options?.headers as any)?.Authorization?.split(
-            "Bearer "
-          )[1];
-          redirect(`/logout?accessToken=${token}`);
-        }
+        // Throw error instead of immediately logging out
+        // This allows requestWithRefresh to catch and attempt token refresh
+        throw new HttpError({
+          status: AUTHENTICATION_ERROR_STATUS,
+          payload,
+          message: "Unauthorized - Token expired or invalid",
+        });
       } else if (res.status === FORBIDDEN_ERROR_STATUS) {
         let message = "Không có quyền truy cập.";
         if (
@@ -352,9 +331,7 @@ const refreshToken = async () => {
     localStorage.setItem("refreshToken", newRefreshToken);
     return accessToken;
   } catch (error) {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    location.href = "/login";
+    // Don't redirect here - let requestWithRefresh handle it
     throw error;
   }
 };
@@ -384,6 +361,27 @@ const requestWithRefresh = async <Response>(
         return await request<Response>(method, url, newOptions);
       } catch (refreshError) {
         console.error('❌ [HTTP] Token refresh failed:', refreshError);
+        // Only logout and redirect if refresh token failed
+        console.log('🚪 [HTTP] Logging out user due to refresh token failure...');
+        try {
+          await fetch("/api/auth/logout", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+        } catch (logoutError) {
+          console.error("❌ [HTTP] Logout error:", logoutError);
+        } finally {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+          localStorage.removeItem("userInfo");
+          console.log('🧹 [HTTP] Tokens cleared from localStorage');
+          console.log('↪️ [HTTP] Redirecting to /login');
+          if (typeof window !== "undefined") {
+            window.location.href = `/login`;
+          }
+        }
         throw refreshError;
       }
     }

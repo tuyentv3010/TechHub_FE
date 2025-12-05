@@ -24,10 +24,30 @@ export async function POST() {
   try {
     const result = await authApiRequest.sLogout(accessToken);
     return Response.json(result.payload);
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    console.log("Logout error:", error);
+    
+    // If token is expired (401), consider logout successful since user is already logged out
+    // Cookies are already deleted above, so user is effectively logged out on frontend
+    if (error?.status === 401) {
+      return Response.json(
+        { 
+          message: "Token expired - already logged out",
+          success: true 
+        },
+        {
+          status: 200,
+        }
+      );
+    }
+    
+    // For other errors, still return success since cookies are already cleared
+    // User is logged out on frontend regardless of backend response
     return Response.json(
-      { message: "Loi khi goi api den server backend" },
+      { 
+        message: "Logged out successfully (backend call failed but frontend cleared)",
+        success: true 
+      },
       {
         status: 200,
       }
