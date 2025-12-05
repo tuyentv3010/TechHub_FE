@@ -1,41 +1,86 @@
 "use client";
 
-// import authApiRequest from "@/apiRequests/auth";
-// import socket from "@/lib/socket";
 import {
   checkAndRefreshToken,
   getAccessTokenFromLocalStorage,
   getRefreshTokenFromLocalStorage,
-  setAccessTokenToLocalStorage,
-  setRefreshTokenToLocalStorage,
+  removeTokenFromLocalStorage,
+  decodeToken,
 } from "@/lib/utils";
-import jwt from "jsonwebtoken";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 
-// Nhung page sau se khong check refresh token
-const UNAUTHENTICATED_PATH = ["/login", "logout", "refresh-token"];
+// Pages that don't require auth check
+const UNAUTHENTICATED_PATH = ["/login", "/logout", "/refresh-token", "/register", "/forgot-password", "/verify-email"];
 
 export default function RefreshToken() {
   const pathName = usePathname();
   const router = useRouter();
 
+  const handleLogout = useCallback(() => {
+    console.log("🔐 RefreshToken - Token expired, logging out");
+    removeTokenFromLocalStorage();
+    // Clear cookies by calling logout API or redirect
+    router.push("/login");
+    // Force page reload to clear any cached state
+    window.location.href = "/login";
+  }, [router]);
+
   useEffect(() => {
-    console.log(pathName);
-    if (UNAUTHENTICATED_PATH.includes(pathName)) return;
-    // const interval: ReturnType<typeof setInterval> | null = null;
-    //Phai goi lan dau tien vi interval se chay sau thoi gian time out
+    // Skip check for unauthenticated paths
+    if (UNAUTHENTICATED_PATH.some(path => pathName.startsWith(path))) {
+      return;
+    }
+
+    // Check if tokens exist and are valid
+    const accessToken = getAccessTokenFromLocalStorage();
+    const refreshToken = getRefreshTokenFromLocalStorage();
+
+    // If no tokens at all, redirect to login
+    if (!accessToken && !refreshToken) {
+      console.log("🔐 RefreshToken - No tokens found, redirecting to login");
+      router.push("/login");
+      return;
+    }
+
+    // Check if refresh token is expired
+    if (refreshToken) {
+      try {
+        const decoded = decodeToken(refreshToken);
+        const now = Math.round(Date.now() / 1000);
+        if (decoded.exp <= now) {
+          console.log("🔐 RefreshToken - Refresh token expired");
+          handleLogout();
+          return;
+        }
+      } catch (error) {
+        console.log("🔐 RefreshToken - Error decoding refresh token:", error);
+        handleLogout();
+        return;
+      }
+    }
+
+    // Call refresh token check
     const onRefreshToken = (force?: boolean) => {
       checkAndRefreshToken({
         onError: () => {
-          // clearInterval(interval);
-          router.push("/login");
+          console.log("🔐 RefreshToken - checkAndRefreshToken error");
+          handleLogout();
         },
         force,
       });
     };
+
+    // Initial check
     onRefreshToken();
-  }, [pathName, router]);
+
+    // Set up interval to periodically check token
+    const interval = setInterval(() => {
+      onRefreshToken();
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [pathName, router, handleLogout]);
 
   return null;
 }
