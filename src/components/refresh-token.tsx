@@ -23,18 +23,26 @@ export default function RefreshToken() {
   useEffect(() => {
     console.log(pathName);
     if (UNAUTHENTICATED_PATH.includes(pathName)) return;
-    // const interval: ReturnType<typeof setInterval> | null = null;
-    //Phai goi lan dau tien vi interval se chay sau thoi gian time out
+    
     const onRefreshToken = (force?: boolean) => {
       checkAndRefreshToken({
         onError: () => {
-          // clearInterval(interval);
-          router.push("/login");
+          // Force full page reload to clear cached user info
+          window.location.href = "/login";
         },
         force,
       });
     };
+    
+    // Check immediately on mount
     onRefreshToken();
+    
+    // Check every 5 seconds (5000ms)
+    const interval = setInterval(() => {
+      onRefreshToken();
+    }, 5000);
+    
+    return () => clearInterval(interval);
   }, [pathName, router]);
 
   return null;

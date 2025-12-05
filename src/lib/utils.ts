@@ -88,14 +88,30 @@ export const getRefreshTokenFromLocalStorage = () => {
 };
 
 export const setAccessTokenToLocalStorage = (value: string) => {
-  return isBrowser && localStorage.setItem("accessToken", value);
+  if (!isBrowser) return;
+  localStorage.setItem("accessToken", value);
+  // Also set in cookies for middleware
+  document.cookie = `accessToken=${value}; path=/; max-age=${24 * 60 * 60}`; // 24 hours
 };
+
 export const setRefreshTokenToLocalStorage = (value: string) => {
-  return isBrowser && localStorage.setItem("refreshToken", value);
+  if (!isBrowser) return;
+  localStorage.setItem("refreshToken", value);
+  // Also set in cookies for middleware
+  document.cookie = `refreshToken=${value}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 days
 };
+
 export const removeTokenFromLocalStorage = () => {
-  isBrowser && localStorage.removeItem("accessToken");
-  isBrowser && localStorage.removeItem("refreshToken");
+  if (!isBrowser) return;
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("userInfo"); // Also clear user info
+  // Also remove from cookies
+  document.cookie = "accessToken=; path=/; max-age=0";
+  document.cookie = "refreshToken=; path=/; max-age=0";
+  
+  // Dispatch custom event to notify app-provider
+  window.dispatchEvent(new Event("auth-logout"));
 };
 ////
 export const checkAndRefreshToken = async (param?: {
@@ -108,19 +124,51 @@ export const checkAndRefreshToken = async (param?: {
   // tranh hien tuong bug no lay access va refresh token cu o lan dau roi goi cho cac lan goi tiep theo
   const accessToken = getAccessTokenFromLocalStorage();
   const refreshToken = getRefreshTokenFromLocalStorage();
+  
+  console.log('[checkAndRefreshToken] Starting check...', {
+    hasAccessToken: !!accessToken,
+    hasRefreshToken: !!refreshToken,
+    force: param?.force
+  });
+  
   // Chua dang nhap thi cung khong cho chay
-  if (!accessToken || !refreshToken) return;
+  if (!accessToken || !refreshToken) {
+    console.log('[checkAndRefreshToken] No tokens found, skipping');
+    return;
+  }
+  
   const decodedAccessToken = decodeToken(accessToken);
   const decodedRefreshToken = decodeToken(refreshToken);
   //Thoi diem het han cua token tinh theo epoch time(s)
   // Con khi cac ban dung cu phap new Date().getTime() thi no se tra ve epoch time (ms)
   const now = Math.round(new Date().getTime() / 1000);
+  
+  // Check if access token is already expired
+  const isAccessTokenExpired = decodedAccessToken.exp <= now;
+  
+  console.log('[checkAndRefreshToken] Token status:', {
+    accessTokenExp: new Date(decodedAccessToken.exp * 1000).toLocaleTimeString(),
+    refreshTokenExp: new Date(decodedRefreshToken.exp * 1000).toLocaleTimeString(),
+    now: new Date(now * 1000).toLocaleTimeString(),
+    isAccessTokenExpired,
+    isRefreshTokenExpired: decodedRefreshToken.exp <= now,
+    timeUntilAccessExpiry: decodedAccessToken.exp - now,
+    timeUntilRefreshExpiry: decodedRefreshToken.exp - now
+  });
+  
   // Truong hop refresh token het han thi khong xu li nua
-
   if (decodedRefreshToken.exp <= now) {
+    console.log('[checkAndRefreshToken] Refresh token expired, logging out');
     removeTokenFromLocalStorage();
     return param?.onError && param.onError();
   }
+  
+  // If access token expired but refresh token still valid, force refresh
+  if (isAccessTokenExpired) {
+    console.log('[checkAndRefreshToken] Access token expired, forcing refresh');
+    param = { ...param, force: true };
+  }
+  
   // Vi du access token cua chung ta co thoi gian het han la 10s
   // thi minh se kiem tra con 1/3 thoi gian (3s) thi minh se cho refresh token lai
   // thoi gian con lai se tinh dua tren cong thuc :decodedAccessToken.exp - now
@@ -130,7 +178,29 @@ export const checkAndRefreshToken = async (param?: {
     decodedAccessToken.exp - now <
       (decodedAccessToken.exp - decodedAccessToken.iat) / 3
   ) {
-    // goi api refresh token
+    // Call API refresh token
+    console.log('[checkAndRefreshToken] Calling refresh token API...');
+    try {
+      const authApiRequest = (await import("@/apiRequests/auth")).default;
+      const result = await authApiRequest.sRefreshToken({ refreshToken });
+      
+      console.log('[checkAndRefreshToken] Refresh successful:', result);
+      
+      // Update tokens in localStorage
+      if (result.payload.data) {
+        setAccessTokenToLocalStorage(result.payload.data.accessToken);
+        setRefreshTokenToLocalStorage(result.payload.data.refreshToken);
+        param?.onSuccess && param.onSuccess();
+      } else {
+        throw new Error("Invalid refresh token response");
+      }
+    } catch (error) {
+      console.error("[checkAndRefreshToken] Failed to refresh token:", error);
+      removeTokenFromLocalStorage();
+      param?.onError && param.onError();
+    }
+  } else {
+    console.log('[checkAndRefreshToken] Token still valid, no refresh needed');
   }
 };
 ///

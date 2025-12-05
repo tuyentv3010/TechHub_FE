@@ -32,20 +32,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<Permission[] | null>(null);
 
   useEffect(() => {
-    const token = getAccessTokenFromLocalStorage();
-    if (token) {
-      try {
-        setIsAuth(true);
-        const decoded = decodeToken(token);
-        setRole(decoded?.role || null);
-        // Permissions are fetched separately after login
-      } catch (error) {
-        console.error("Failed to decode token:", error);
+    const checkAuth = () => {
+      const token = getAccessTokenFromLocalStorage();
+      if (token) {
+        try {
+          setIsAuth(true);
+          const decoded = decodeToken(token);
+          setRole(decoded?.role || null);
+          // Permissions are fetched separately after login
+        } catch (error) {
+          console.error("Failed to decode token:", error);
+          setIsAuth(false);
+          setRole(null);
+          setPermissions(null);
+        }
+      } else {
+        // No token - user is logged out
         setIsAuth(false);
         setRole(null);
         setPermissions(null);
       }
-    }
+    };
+
+    // Check on mount
+    checkAuth();
+
+    // Listen to storage changes (for logout in other tabs or auto-logout)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "accessToken" || e.key === "refreshToken") {
+        checkAuth();
+      }
+    };
+
+    // Listen to custom event for same-tab logout
+    const handleLogout = () => {
+      checkAuth();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("auth-logout", handleLogout);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("auth-logout", handleLogout);
+    };
   }, []);
 
   return (

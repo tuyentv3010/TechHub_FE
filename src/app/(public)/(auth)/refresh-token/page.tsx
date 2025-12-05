@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import RefreshToken from "@/components/refresh-token";
+import RefreshTokenPage from "./refresh-token";
 
-export default function LogoutPage() {
+export default function RefreshTokenPageWrapper() {
   return (
     <Suspense>
-      <RefreshToken />
+      <RefreshTokenPage />
     </Suspense>
   );
 }

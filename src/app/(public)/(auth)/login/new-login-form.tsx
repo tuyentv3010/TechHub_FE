@@ -17,6 +17,7 @@ import { useAppContext } from "@/components/app-provider";
 import envConfig from "@/config";
 import Image from "next/image";
 import authApiRequest from "@/apiRequests/auth";
+import { useEffect } from "react";
 
 export default function NewLoginForm() {
   const t = useTranslations("Login");
@@ -28,6 +29,17 @@ export default function NewLoginForm() {
   const { setIsAuth, setRole } = useAppContext();
 
   console.log("🔐 Login Form - redirectUrl from searchParams:", redirectUrl);
+  
+  // Clear any stale data when login page loads
+  useEffect(() => {
+    // Only clear if there's no valid token
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      localStorage.removeItem("userInfo");
+      setIsAuth(false);
+      setRole(null);
+    }
+  }, [setIsAuth, setRole]);
 
   const form = useForm<LoginBodyType>({
     resolver: zodResolver(LoginBody),
