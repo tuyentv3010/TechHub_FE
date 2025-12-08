@@ -29,9 +29,16 @@ export function middleware(request: NextRequest) {
       const decodedRefresh = decodeToken(refreshToken);
       const now = Math.round(new Date().getTime() / 1000);
       isRefreshTokenExpired = decodedRefresh.exp <= now;
-      console.log("🔐 Middleware - Refresh token expired:", isRefreshTokenExpired);
+      console.log("🔐 Middleware - Refresh token:", {
+        expired: isRefreshTokenExpired,
+        exp: decodedRefresh.exp,
+        expDate: new Date(decodedRefresh.exp * 1000).toISOString(),
+        now: now,
+        nowDate: new Date(now * 1000).toISOString(),
+        timeLeftSeconds: decodedRefresh.exp - now,
+      });
     } catch (error) {
-      console.log("🔐 Middleware - Failed to decode refresh token");
+      console.log("🔐 Middleware - Failed to decode refresh token:", error);
       isRefreshTokenExpired = true;
     }
   }
@@ -41,29 +48,61 @@ export function middleware(request: NextRequest) {
       const decodedAccess = decodeToken(accessToken);
       const now = Math.round(new Date().getTime() / 1000);
       isAccessTokenExpired = decodedAccess.exp <= now;
-      console.log("🔐 Middleware - Access token expired:", isAccessTokenExpired);
+      console.log("🔐 Middleware - Access token:", {
+        expired: isAccessTokenExpired,
+        exp: decodedAccess.exp,
+        expDate: new Date(decodedAccess.exp * 1000).toISOString(),
+        now: now,
+        nowDate: new Date(now * 1000).toISOString(),
+        timeLeftSeconds: decodedAccess.exp - now,
+        role: decodedAccess.role,
+      });
     } catch (error) {
-      console.log("🔐 Middleware - Failed to decode access token");
+      console.log("🔐 Middleware - Failed to decode access token:", error);
       isAccessTokenExpired = true;
     }
   }
   
-  // If refresh token is expired, redirect to login
-  if (refreshToken && isRefreshTokenExpired && pathname !== "/login") {
-    console.log("🔐 Middleware - Refresh token expired, redirecting to login");
-    return NextResponse.redirect(new URL("/login", request.url));
+  // If refresh token is expired, redirect to logout
+  if (refreshToken && isRefreshTokenExpired && pathname !== "/login" && pathname !== "/logout") {
+    console.log("🔐 Middleware - Refresh token expired, redirecting to logout");
+    const response = NextResponse.redirect(new URL("/logout", request.url));
+    response.cookies.set("accessToken", "", { path: "/", maxAge: 0 });
+    response.cookies.set("refreshToken", "", { path: "/", maxAge: 0 });
+    return response;
   }
 
-  // Redirect authenticated users from login/register pages
-  if (refreshToken && !isRefreshTokenExpired && unAuthPaths.some((path) => pathname.startsWith(path))) {
+  // Nếu có refreshToken còn hạn NHƯNG không có accessToken -> redirect về /logout
+  // Vì không có accessToken thì không thể gọi API được
+  if (refreshToken && !isRefreshTokenExpired && (!accessToken || isAccessTokenExpired)) {
+    console.log("🔐 Middleware - Has refreshToken but accessToken missing/expired, redirecting to logout");
+    // Nếu đang ở /login hoặc /logout thì cho qua
+    if (pathname === "/login" || pathname === "/logout") {
+      const response = NextResponse.next();
+      response.cookies.set("accessToken", "", { path: "/", maxAge: 0 });
+      response.cookies.set("refreshToken", "", { path: "/", maxAge: 0 });
+      return response;
+    }
+    const response = NextResponse.redirect(new URL("/logout", request.url));
+    response.cookies.set("accessToken", "", { path: "/", maxAge: 0 });
+    response.cookies.set("refreshToken", "", { path: "/", maxAge: 0 });
+    return response;
+  }
+
+  // isAuthenticated = có CẢ accessToken VÀ refreshToken còn hạn
+  const isAuthenticated = accessToken && !isAccessTokenExpired && refreshToken && !isRefreshTokenExpired;
+  console.log("🔐 Middleware - isAuthenticated:", isAuthenticated);
+
+  // Redirect authenticated users from login/register pages to HOME
+  if (isAuthenticated && unAuthPaths.some((path) => pathname.startsWith(path))) {
     console.log("🔐 Middleware - Redirecting authenticated user from auth page to /");
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // Check auth for home page
-  if (pathname === "/" && !refreshToken) {
-    console.log("🔐 Middleware - Redirecting unauthenticated user from home to /login");
-    return NextResponse.redirect(new URL("/login", request.url));
+  // Check auth for home page - nếu chưa login thì redirect về /logout
+  if (pathname === "/" && !isAuthenticated) {
+    console.log("🔐 Middleware - Redirecting unauthenticated user from home to /logout");
+    return NextResponse.redirect(new URL("/logout", request.url));
   }
 
   // Check auth for protected public pages (courses, learning-paths, blog)
@@ -71,8 +110,8 @@ export function middleware(request: NextRequest) {
     authRequiredPaths.some((path) => pathname.startsWith(path)) &&
     !refreshToken
   ) {
-    console.log("🔐 Middleware - Redirecting unauthenticated user to /login with redirect:", pathname);
-    const url = new URL("/login", request.url);
+    console.log("🔐 Middleware - Redirecting unauthenticated user to /logout with redirect:", pathname);
+    const url = new URL("/logout", request.url);
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
@@ -94,8 +133,8 @@ export function middleware(request: NextRequest) {
     privatePaths.some((path) => pathname.startsWith(path)) &&
     (!refreshToken || isRefreshTokenExpired)
   ) {
-    console.log("🔐 Middleware - No valid refresh token, redirecting to login");
-    return NextResponse.redirect(new URL("/login", request.url));
+    console.log("🔐 Middleware - No valid refresh token, redirecting to logout");
+    return NextResponse.redirect(new URL("/logout", request.url));
   }
 
   // Role-based access control
@@ -121,6 +160,7 @@ export const config = {
   matcher: [
     "/manage/:path*",
     "/login",
+    "/logout",
     "/register",
     "/forgot-password",
     "/verify-email",
