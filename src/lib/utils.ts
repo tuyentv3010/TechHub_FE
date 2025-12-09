@@ -91,14 +91,32 @@ export const setAccessTokenToLocalStorage = (value: string) => {
   if (!isBrowser) return;
   localStorage.setItem("accessToken", value);
   // Also set in cookies for middleware
-  document.cookie = `accessToken=${value}; path=/; max-age=${24 * 60 * 60}`; // 24 hours
+  // Use secure and sameSite flags for better security
+  const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
+  const cookieOptions = [
+    `accessToken=${value}`,
+    "path=/",
+    `max-age=${24 * 60 * 60}`, // 24 hours
+    "sameSite=Lax",
+    ...(isSecure ? ["secure"] : []),
+  ].join("; ");
+  document.cookie = cookieOptions;
 };
 
 export const setRefreshTokenToLocalStorage = (value: string) => {
   if (!isBrowser) return;
   localStorage.setItem("refreshToken", value);
   // Also set in cookies for middleware
-  document.cookie = `refreshToken=${value}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 days
+  // Use secure and sameSite flags for better security
+  const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
+  const cookieOptions = [
+    `refreshToken=${value}`,
+    "path=/",
+    `max-age=${7 * 24 * 60 * 60}`, // 7 days
+    "sameSite=Lax",
+    ...(isSecure ? ["secure"] : []),
+  ].join("; ");
+  document.cookie = cookieOptions;
 };
 
 export const removeTokenFromLocalStorage = () => {
@@ -106,9 +124,17 @@ export const removeTokenFromLocalStorage = () => {
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("userInfo"); // Also clear user info
-  // Also remove from cookies
-  document.cookie = "accessToken=; path=/; max-age=0";
-  document.cookie = "refreshToken=; path=/; max-age=0";
+  // Also remove from cookies - clear with all possible options
+  const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
+  const clearCookieOptions = [
+    "path=/",
+    "max-age=0",
+    "expires=Thu, 01 Jan 1970 00:00:00 GMT",
+    "sameSite=Lax",
+    ...(isSecure ? ["secure"] : []),
+  ].join("; ");
+  document.cookie = `accessToken=; ${clearCookieOptions}`;
+  document.cookie = `refreshToken=; ${clearCookieOptions}`;
   
   // Dispatch custom event to notify app-provider
   window.dispatchEvent(new Event("auth-logout"));
@@ -178,25 +204,52 @@ export const checkAndRefreshToken = async (param?: {
     decodedAccessToken.exp - now <
       (decodedAccessToken.exp - decodedAccessToken.iat) / 3
   ) {
-    // Call API refresh token
+    // Call Next.js API route for refresh token
+    // This allows server-side to clear httpOnly cookies when token is revoked
     console.log('[checkAndRefreshToken] Calling refresh token API...');
     try {
-      const authApiRequest = (await import("@/apiRequests/auth")).default;
-      const result = await authApiRequest.sRefreshToken({ refreshToken });
+      const response = await fetch("/api/auth/refresh-token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // Important: include cookies for httpOnly cookies
+      });
       
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Failed to refresh token" }));
+        throw new Error(errorData.message || "Failed to refresh token");
+      }
+      
+      const result = await response.json();
       console.log('[checkAndRefreshToken] Refresh successful:', result);
       
       // Update tokens in localStorage
-      if (result.payload.data) {
-        setAccessTokenToLocalStorage(result.payload.data.accessToken);
-        setRefreshTokenToLocalStorage(result.payload.data.refreshToken);
+      // Cookies are already set by server-side API route with httpOnly flag
+      if (result.success && result.data) {
+        setAccessTokenToLocalStorage(result.data.accessToken);
+        setRefreshTokenToLocalStorage(result.data.refreshToken);
         param?.onSuccess && param.onSuccess();
       } else {
         throw new Error("Invalid refresh token response");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("[checkAndRefreshToken] Failed to refresh token:", error);
+      // Clear tokens immediately when refresh fails
+      // This handles the case where refresh token was revoked (token rotation)
+      // Cookies are already cleared by server-side API route when error occurs
       removeTokenFromLocalStorage();
+      
+      // If refresh token not found in database (revoked), force redirect to login
+      // This happens when token was rotated but old token still in cookies
+      if (error?.status === 401 || error?.message?.includes("not found") || error?.message?.includes("revoked") || error?.message?.includes("Cant not find")) {
+        console.log("[checkAndRefreshToken] Refresh token revoked or invalid, redirecting to login");
+        // Use window.location for full page reload to clear all state
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+      }
+      
       param?.onError && param.onError();
     }
   } else {

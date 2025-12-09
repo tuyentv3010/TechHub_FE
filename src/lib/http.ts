@@ -292,26 +292,64 @@ const request = async <Response>(
           const { accessToken, refreshToken } = payload.data;
           localStorage.setItem("accessToken", accessToken);
           localStorage.setItem("refreshToken", refreshToken);
-          // Also set in cookies for middleware
-          document.cookie = `accessToken=${accessToken}; path=/; max-age=${24 * 60 * 60}`; // 24 hours
-          document.cookie = `refreshToken=${refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 days
+          // Also set in cookies for middleware with proper flags
+          const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
+          const accessTokenCookieOptions = [
+            `accessToken=${accessToken}`,
+            "path=/",
+            `max-age=${24 * 60 * 60}`, // 24 hours
+            "sameSite=Lax",
+            ...(isSecure ? ["secure"] : []),
+          ].join("; ");
+          const refreshTokenCookieOptions = [
+            `refreshToken=${refreshToken}`,
+            "path=/",
+            `max-age=${7 * 24 * 60 * 60}`, // 7 days
+            "sameSite=Lax",
+            ...(isSecure ? ["secure"] : []),
+          ].join("; ");
+          document.cookie = accessTokenCookieOptions;
+          document.cookie = refreshTokenCookieOptions;
         }
       } else if (["app/api/proxy/auth/refresh-token", "api/proxy/auth/refresh-token", "api/v1/auth/token"].includes(normalizeUrl)) {
         if (payload.success && payload.data) {
           const { accessToken, refreshToken } = payload.data;
           localStorage.setItem("accessToken", accessToken);
           localStorage.setItem("refreshToken", refreshToken);
-          // Also set in cookies for middleware
-          document.cookie = `accessToken=${accessToken}; path=/; max-age=${24 * 60 * 60}`; // 24 hours
-          document.cookie = `refreshToken=${refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 days
+          // Also set in cookies for middleware with proper flags
+          const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
+          const accessTokenCookieOptions = [
+            `accessToken=${accessToken}`,
+            "path=/",
+            `max-age=${24 * 60 * 60}`, // 24 hours
+            "sameSite=Lax",
+            ...(isSecure ? ["secure"] : []),
+          ].join("; ");
+          const refreshTokenCookieOptions = [
+            `refreshToken=${refreshToken}`,
+            "path=/",
+            `max-age=${7 * 24 * 60 * 60}`, // 7 days
+            "sameSite=Lax",
+            ...(isSecure ? ["secure"] : []),
+          ].join("; ");
+          document.cookie = accessTokenCookieOptions;
+          document.cookie = refreshTokenCookieOptions;
         }
       } else if (["app/api/proxy/auth/logout", "api/proxy/auth/logout", "api/v1/auth/logout"].includes(normalizeUrl)) {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("userInfo");
-        // Also remove from cookies
-        document.cookie = "accessToken=; path=/; max-age=0";
-        document.cookie = "refreshToken=; path=/; max-age=0";
+        // Also remove from cookies - clear with all possible options
+        const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
+        const clearCookieOptions = [
+          "path=/",
+          "max-age=0",
+          "expires=Thu, 01 Jan 1970 00:00:00 GMT",
+          "sameSite=Lax",
+          ...(isSecure ? ["secure"] : []),
+        ].join("; ");
+        document.cookie = `accessToken=; ${clearCookieOptions}`;
+        document.cookie = `refreshToken=; ${clearCookieOptions}`;
       }
     }
 
@@ -327,6 +365,7 @@ const request = async <Response>(
 };
 
 // Token refresh logic
+// Use Next.js API route instead of direct backend call to enable server-side cookie clearing
 const refreshToken = async () => {
   const refreshToken = localStorage.getItem("refreshToken");
   if (!refreshToken) {
@@ -337,23 +376,25 @@ const refreshToken = async () => {
     });
   }
   try {
-    const response = await fetch(
-      `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/app/api/proxy/auth/refresh-token`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refreshToken }),
-      }
-    );
+    // Use Next.js API route instead of direct backend call
+    // This allows server-side to clear httpOnly cookies on error
+    const response = await fetch("/api/auth/refresh-token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include", // Important: include cookies
+    });
+    
     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: "Failed to refresh token" }));
       throw new HttpError({
         status: response.status,
-        payload: await response.text(),
-        message: "Failed to refresh token",
+        payload: errorData,
+        message: errorData.message || "Failed to refresh token",
       });
     }
+    
     const result = await response.json();
     
     // Handle response format: { success: true, data: { accessToken, refreshToken, ... } }
@@ -361,9 +402,8 @@ const refreshToken = async () => {
       const { accessToken, refreshToken: newRefreshToken } = result.data;
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("refreshToken", newRefreshToken);
-      // Also set in cookies for middleware
-      document.cookie = `accessToken=${accessToken}; path=/; max-age=${24 * 60 * 60}`; // 24 hours
-      document.cookie = `refreshToken=${newRefreshToken}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 days
+      // Cookies are already set by server-side API route with httpOnly flag
+      // But we also set in localStorage for client-side access
       return accessToken;
     } else {
       throw new HttpError({
@@ -376,9 +416,18 @@ const refreshToken = async () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("userInfo"); // Also clear user info
-    // Also remove from cookies
-    document.cookie = "accessToken=; path=/; max-age=0";
-    document.cookie = "refreshToken=; path=/; max-age=0";
+    // Cookies are cleared by server-side API route when error occurs
+    // But try to clear non-httpOnly cookies just in case
+    const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
+    const clearCookieOptions = [
+      "path=/",
+      "max-age=0",
+      "expires=Thu, 01 Jan 1970 00:00:00 GMT",
+      "sameSite=Lax",
+      ...(isSecure ? ["secure"] : []),
+    ].join("; ");
+    document.cookie = `accessToken=; ${clearCookieOptions}`;
+    document.cookie = `refreshToken=; ${clearCookieOptions}`;
     location.href = "/login";
     throw error;
   }
