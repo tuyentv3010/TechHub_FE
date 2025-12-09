@@ -1,28 +1,68 @@
-import { Suspense } from "react";
-import LearningPathList from "./learning-path-list";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Metadata } from "next";
+import { cookies } from "next/headers";
+import envConfig from "@/config";
+import LearningPathsClient from "./LearningPathsClient";
 
-export default async function LearningPathsPage() {
-  return (
-    <main className="min-h-screen bg-background">
-      <Suspense fallback={<LoadingSkeleton />}>
-        <LearningPathList />
-      </Suspense>
-    </main>
-  );
+export const metadata: Metadata = {
+  title: "Lộ trình học tập - TechHub",
+  description: "Khám phá các lộ trình học tập có cấu trúc, giúp bạn phát triển kỹ năng một cách bài bản và hiệu quả.",
+  openGraph: {
+    title: "Lộ trình học tập - TechHub",
+    description: "Khám phá các lộ trình học tập có cấu trúc, giúp bạn phát triển kỹ năng một cách bài bản và hiệu quả.",
+    type: "website",
+  },
+};
+
+async function getAccessToken() {
+  const cookieStore = await cookies();
+  return cookieStore.get("accessToken")?.value;
 }
 
-function LoadingSkeleton() {
+async function getLearningPaths(accessToken?: string) {
+  const url = `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/app/api/proxy/learning-paths?page=0&size=9&sortBy=created&sortDirection=DESC`;
+
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    };
+
+    if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    }
+
+    const res = await fetch(url, {
+      next: { revalidate: 60 },
+      headers,
+    });
+
+    if (!res.ok) {
+      console.error("[Learning Paths SSR] Failed to fetch learning paths:", res.status);
+      return { data: [], pagination: null };
+    }
+
+    const json = await res.json();
+
+    return {
+      data: json.data ?? [],
+      pagination: json.pagination ?? null,
+    };
+  } catch (error) {
+    console.error("[Learning Paths SSR] Error fetching learning paths:", error);
+    return { data: [], pagination: null };
+  }
+}
+
+export default async function LearningPathsPage() {
+  const accessToken = await getAccessToken();
+  const result = await getLearningPaths(accessToken);
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="space-y-4">
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-6 w-3/4" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-2/3" />
-        </div>
-      ))}
-    </div>
+    <main className="min-h-screen bg-background">
+      <LearningPathsClient
+        initialPaths={result.data}
+        initialPagination={result.pagination}
+      />
+    </main>
   );
 }
