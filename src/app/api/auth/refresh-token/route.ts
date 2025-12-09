@@ -44,17 +44,22 @@ export async function POST(request: Request) {
     });
     return Response.json(payload);
   } catch (error: any) {
-    if (error instanceof HttpError) {
-      return Response.json(error.payload, {
-        status: error.status,
-      });
-    } else {
-      return Response.json(
-        { message: error.message ?? "Co Loi Xay Ra" },
-        {
-          status: 401,
-        }
-      );
-    }
+    // Clear cookies when refresh token fails (token revoked, expired, or invalid)
+    const response = error instanceof HttpError
+      ? Response.json(error.payload, {
+          status: error.status,
+        })
+      : Response.json(
+          { message: error.message ?? "Co Loi Xay Ra" },
+          {
+            status: 401,
+          }
+        );
+    
+    // Clear cookies on error - important because client-side cannot clear httpOnly cookies
+    (await cookieStore).delete("accessToken");
+    (await cookieStore).delete("refreshToken");
+    
+    return response;
   }
 }

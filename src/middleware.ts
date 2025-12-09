@@ -48,10 +48,14 @@ export function middleware(request: NextRequest) {
     }
   }
   
-  // If refresh token is expired, redirect to login
+  // If refresh token is expired, clear cookies and redirect to login
   if (refreshToken && isRefreshTokenExpired && pathname !== "/login") {
-    console.log("🔐 Middleware - Refresh token expired, redirecting to login");
-    return NextResponse.redirect(new URL("/login", request.url));
+    console.log("🔐 Middleware - Refresh token expired, clearing cookies and redirecting to login");
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    // Clear cookies when token is expired
+    response.cookies.delete("accessToken");
+    response.cookies.delete("refreshToken");
+    return response;
   }
 
   // Redirect authenticated users from login/register pages
@@ -63,7 +67,11 @@ export function middleware(request: NextRequest) {
   // Check auth for home page
   if (pathname === "/" && !refreshToken) {
     console.log("🔐 Middleware - Redirecting unauthenticated user from home to /login");
-    return NextResponse.redirect(new URL("/login", request.url));
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    // Clear any invalid cookies
+    response.cookies.delete("accessToken");
+    response.cookies.delete("refreshToken");
+    return response;
   }
 
   // Check auth for protected public pages (courses, learning-paths, blog)
@@ -74,7 +82,11 @@ export function middleware(request: NextRequest) {
     console.log("🔐 Middleware - Redirecting unauthenticated user to /login with redirect:", pathname);
     const url = new URL("/login", request.url);
     url.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(url);
+    // Clear any invalid cookies
+    response.cookies.delete("accessToken");
+    response.cookies.delete("refreshToken");
+    return response;
   }
 
   // Handle private paths - redirect to refresh if access token missing/expired but refresh token valid
@@ -89,13 +101,17 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
   
-  // If trying to access private path but no valid refresh token, redirect to login
+  // If trying to access private path but no valid refresh token, clear cookies and redirect to login
   if (
     privatePaths.some((path) => pathname.startsWith(path)) &&
     (!refreshToken || isRefreshTokenExpired)
   ) {
-    console.log("🔐 Middleware - No valid refresh token, redirecting to login");
-    return NextResponse.redirect(new URL("/login", request.url));
+    console.log("🔐 Middleware - No valid refresh token, clearing cookies and redirecting to login");
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    // Clear cookies when token is invalid
+    response.cookies.delete("accessToken");
+    response.cookies.delete("refreshToken");
+    return response;
   }
 
   // Role-based access control
