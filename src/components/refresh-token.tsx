@@ -21,12 +21,17 @@ export default function RefreshToken() {
   const router = useRouter();
 
   useEffect(() => {
-    console.log(pathName);
-    if (UNAUTHENTICATED_PATH.includes(pathName)) return;
+    console.log('[RefreshToken] useEffect triggered, pathname:', pathName);
+    if (UNAUTHENTICATED_PATH.includes(pathName)) {
+      console.log('[RefreshToken] Skipping - unauthenticated path');
+      return;
+    }
     
     const onRefreshToken = (force?: boolean) => {
+      console.log('[RefreshToken] Checking token...', { force });
       checkAndRefreshToken({
         onError: () => {
+          console.log('[RefreshToken] Token check failed, redirecting to login');
           // Force full page reload to clear cached user info
           window.location.href = "/login";
         },
@@ -35,14 +40,20 @@ export default function RefreshToken() {
     };
     
     // Check immediately on mount
+    console.log('[RefreshToken] Initial token check');
     onRefreshToken();
     
     // Check every 5 seconds (5000ms)
+    console.log('[RefreshToken] Setting up interval check every 5 seconds');
     const interval = setInterval(() => {
+      console.log('[RefreshToken] Interval check triggered');
       onRefreshToken();
     }, 5000);
     
-    return () => clearInterval(interval);
+    return () => {
+      console.log('[RefreshToken] Cleanup - clearing interval');
+      clearInterval(interval);
+    };
   }, [pathName, router]);
 
   return null;
