@@ -299,6 +299,29 @@ export const QdrantStatsResponse = z.object({
 
 export type QdrantStatsResponseType = z.TypeOf<typeof QdrantStatsResponse>;
 
+export const AiProviderConfigResponse = z.object({
+  provider: z.enum(["openai", "gemini"]),
+  activeChatModel: z.string().optional(),
+  models: z.object({
+    openai: z.string(),
+    gemini: z.string(),
+  }).optional(),
+  supportedProviders: z.array(z.enum(["openai", "gemini"])).optional(),
+  supportedChatModels: z.object({
+    openai: z.array(z.string()),
+    gemini: z.array(z.string()),
+  }).optional(),
+});
+
+export type AiProviderConfigResponseType = z.TypeOf<typeof AiProviderConfigResponse>;
+
+export const UpdateAiProviderRequest = z.object({
+  provider: z.enum(["openai", "gemini"]),
+  chatModel: z.string().optional(),
+});
+
+export type UpdateAiProviderRequestType = z.TypeOf<typeof UpdateAiProviderRequest>;
+
 // ============================================
 // DRAFT SCHEMAS (for future use when BE exposes endpoints)
 // ============================================

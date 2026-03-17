@@ -46,11 +46,11 @@ export default function NotificationsPage() {
     readFilter
   );
 
-  const notifications = notificationsData?.payload?.data?.content || [];
-  const totalPages = notificationsData?.payload?.data?.totalPages || 0;
-  const totalElements = notificationsData?.payload?.data?.totalElements || 0;
-  const isFirstPage = notificationsData?.payload?.data?.first ?? true;
-  const isLastPage = notificationsData?.payload?.data?.last ?? true;
+  const notifications = notificationsData?.payload?.data || [];
+  const totalPages = notificationsData?.payload?.pagination?.totalPages || 0;
+  const totalElements = notificationsData?.payload?.pagination?.totalElements || 0;
+  const isFirstPage = notificationsData?.payload?.pagination?.first ?? true;
+  const isLastPage = notificationsData?.payload?.pagination?.last ?? true;
 
   // Mutations
   const markAsReadMutation = useMarkAsReadMutation();

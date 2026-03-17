@@ -47,15 +47,37 @@ export type NotificationPageType = z.TypeOf<typeof NotificationPageSchema>;
 
 // API Response wrapper
 export const NotificationResSchema = z.object({
-  statusCode: z.number(),
+  success: z.boolean().optional(),
+  status: z.string().optional(),
+  code: z.number().optional(),
+  statusCode: z.number().optional(),
   message: z.string(),
   data: NotificationSchema,
+  timestamp: z.string().optional(),
+  path: z.string().optional(),
 });
 
 export const NotificationListResSchema = z.object({
-  statusCode: z.number(),
+  success: z.boolean().optional(),
+  status: z.string().optional(),
+  code: z.number().optional(),
+  statusCode: z.number().optional(),
   message: z.string(),
-  data: NotificationPageSchema,
+  data: z.array(NotificationSchema),
+  pagination: z
+    .object({
+      page: z.number(),
+      size: z.number(),
+      totalElements: z.number(),
+      totalPages: z.number(),
+      first: z.boolean(),
+      last: z.boolean(),
+      hasNext: z.boolean(),
+      hasPrevious: z.boolean(),
+    })
+    .optional(),
+  timestamp: z.string().optional(),
+  path: z.string().optional(),
 });
 
 export type NotificationResType = z.TypeOf<typeof NotificationResSchema>;
@@ -63,9 +85,14 @@ export type NotificationListResType = z.TypeOf<typeof NotificationListResSchema>
 
 // Unread count response
 export const UnreadCountResSchema = z.object({
-  statusCode: z.number(),
+  success: z.boolean().optional(),
+  status: z.string().optional(),
+  code: z.number().optional(),
+  statusCode: z.number().optional(),
   message: z.string(),
   data: z.number(),
+  timestamp: z.string().optional(),
+  path: z.string().optional(),
 });
 
 export type UnreadCountResType = z.TypeOf<typeof UnreadCountResSchema>;

@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  techhub-fe-container:
+    image: ${TECHHUB_FE_IMAGE:-toandeptroai/techhub-fe:0.1.0}
+    container_name: techhub-fe-container
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXT_PUBLIC_API_ENDPOINT=${NEXT_PUBLIC_API_ENDPOINT}
+      - NEXT_PUBLIC_URL=${NEXT_PUBLIC_URL}
+      - NEXT_PUBLIC_WS_BASE=${NEXT_PUBLIC_WS_BASE}
+    networks:
+      - techhub
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+networks:
+  techhub:
+    external: true

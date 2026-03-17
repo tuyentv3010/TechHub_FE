@@ -45,8 +45,8 @@ export function NotificationBell({ className }: NotificationBellProps) {
   const { data: notificationsData, isLoading: isLoadingNotifications } =
     useGetUnreadNotifications(0, 5, isOpen);
 
-  const notifications: NotificationType[] = notificationsData?.payload?.data?.content || [];
-  const totalUnread = notificationsData?.payload?.data?.totalElements || unreadCount;
+  const notifications: NotificationType[] = notificationsData?.payload?.data || [];
+  const totalUnread = notificationsData?.payload?.pagination?.totalElements || unreadCount;
   console.log("sadasdasdasdasda" , notificationsData);
   // Debug logs
   console.log("🔔 [NotificationBell] isOpen:", isOpen);

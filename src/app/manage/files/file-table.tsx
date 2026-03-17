@@ -83,6 +83,26 @@ const formatFileSize = (bytes: number): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 };
 
+const getFilePreviewUrl = (file: FileType) => {
+  if (file.fileType === 'VIDEO') {
+    return file.thumbnailUrl || '/placeholder-image.png';
+  }
+
+  return file.secureUrl || file.publicUrl || file.cloudinarySecureUrl;
+};
+
+const getProcessingBadgeVariant = (status?: string | null): 'secondary' | 'destructive' | 'outline' => {
+  if (status === 'FAILED') {
+    return 'destructive';
+  }
+
+  if (status === 'READY') {
+    return 'secondary';
+  }
+
+  return 'outline';
+};
+
 export default function FileTable() {
   const router = useRouter();
   const { toast } = useToast();
@@ -344,14 +364,14 @@ export default function FileTable() {
                     <div className="w-16 h-16 relative rounded overflow-hidden bg-muted">
                       {file.fileType === 'IMAGE' ? (
                         <Image
-                          src={file.cloudinarySecureUrl}
+                          src={getFilePreviewUrl(file)}
                           alt={file.name}
                           fill
                           className="object-cover"
                         />
                       ) : file.fileType === 'VIDEO' ? (
                         <Image
-                          src={file.cloudinarySecureUrl.replace(/\.(mp4|mov|avi|webm|mkv)$/, '.jpg')}
+                          src={getFilePreviewUrl(file)}
                           alt={file.name}
                           fill
                           className="object-cover"
@@ -378,6 +398,11 @@ export default function FileTable() {
                   <TableCell>
                     <div className="max-w-[300px]">
                       <p className="font-medium truncate">{file.name}</p>
+                      {file.fileType === 'VIDEO' && file.processingStatus && file.processingStatus !== 'READY' && (
+                        <Badge variant={getProcessingBadgeVariant(file.processingStatus)} className="mt-1 text-xs">
+                          {file.processingStatus}
+                        </Badge>
+                      )}
                       {file.tags && Array.isArray(file.tags) && file.tags.length > 0 && (
                         <div className="flex gap-1 mt-1 flex-wrap">
                           {file.tags
@@ -516,7 +541,7 @@ export default function FileTable() {
               {previewFile.fileType === 'IMAGE' && (
                 <div className="relative w-full h-[400px] bg-muted rounded-lg overflow-hidden">
                   <Image
-                    src={previewFile.cloudinarySecureUrl}
+                    src={getFilePreviewUrl(previewFile)}
                     alt={previewFile.name}
                     fill
                     className="object-contain"

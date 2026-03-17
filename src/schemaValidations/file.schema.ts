@@ -17,6 +17,16 @@ export const FileSchema = z.object({
   cloudinaryPublicId: z.string(),
   cloudinaryUrl: z.string().url(),
   cloudinarySecureUrl: z.string().url(),
+  storageProvider: z.string().nullable().optional(),
+  bucketName: z.string().nullable().optional(),
+  objectKey: z.string().nullable().optional(),
+  publicUrl: z.string().url().nullable().optional(),
+  secureUrl: z.string().url().nullable().optional(),
+  thumbnailObjectKey: z.string().nullable().optional(),
+  thumbnailUrl: z.string().url().nullable().optional(),
+  processingStatus: z.string().nullable().optional(),
+  processingError: z.string().nullable().optional(),
+  processedAt: z.string().nullable().optional(),
   fileType: FileTypeEnum,
   fileSize: z.number(),
   mimeType: z.string(),
@@ -121,18 +131,23 @@ export type TrackFileUsageBodyType = z.infer<typeof TrackFileUsageBody>;
 
 // Response wrappers
 export const FileResponseSchema = z.object({
+  success: z.boolean().optional(),
   status: z.string(),
   message: z.string().optional(),
   data: FileSchema,
+  timestamp: z.string().optional(),
+  path: z.string().optional(),
+  code: z.number().optional(),
 });
 
 export type FileResponseType = z.infer<typeof FileResponseSchema>;
 
 export const FileListResponseSchema = z.object({
+  success: z.boolean().optional(),
   status: z.string(),
   message: z.string().optional(),
   data: z.union([
-    z.array(FileSchema), // For /upload/multiple
+    z.array(FileSchema), // New global paged format and /upload/multiple
     z.object({
       content: z.array(FileSchema),
       pageable: z.object({
@@ -162,30 +177,57 @@ export const FileListResponseSchema = z.object({
       empty: z.boolean(),
     }), // For paginated list
   ]),
+  pagination: z
+    .object({
+      page: z.number(),
+      size: z.number(),
+      totalElements: z.number(),
+      totalPages: z.number(),
+      first: z.boolean(),
+      last: z.boolean(),
+      hasNext: z.boolean(),
+      hasPrevious: z.boolean(),
+    })
+    .optional(),
+  timestamp: z.string().optional(),
+  path: z.string().optional(),
+  code: z.number().optional(),
 });
 
 export type FileListResponseType = z.infer<typeof FileListResponseSchema>;
 
 export const FolderResponseSchema = z.object({
+  success: z.boolean().optional(),
   status: z.string(),
   message: z.string().optional(),
   data: FolderSchema,
+  timestamp: z.string().optional(),
+  path: z.string().optional(),
+  code: z.number().optional(),
 });
 
 export type FolderResponseType = z.infer<typeof FolderResponseSchema>;
 
 export const FolderListResponseSchema = z.object({
+  success: z.boolean().optional(),
   status: z.string(),
   message: z.string().optional(),
   data: z.array(FolderSchema),
+  timestamp: z.string().optional(),
+  path: z.string().optional(),
+  code: z.number().optional(),
 });
 
 export type FolderListResponseType = z.infer<typeof FolderListResponseSchema>;
 
 export const FileStatisticsResponseSchema = z.object({
+  success: z.boolean().optional(),
   status: z.string(),
   message: z.string().optional(),
   data: FileStatisticsSchema,
+  timestamp: z.string().optional(),
+  path: z.string().optional(),
+  code: z.number().optional(),
 });
 
 export type FileStatisticsResponseType = z.infer<
@@ -193,9 +235,13 @@ export type FileStatisticsResponseType = z.infer<
 >;
 
 export const FileUsageListResponseSchema = z.object({
+  success: z.boolean().optional(),
   status: z.string(),
   message: z.string().optional(),
   data: z.array(FileUsageSchema),
+  timestamp: z.string().optional(),
+  path: z.string().optional(),
+  code: z.number().optional(),
 });
 
 export type FileUsageListResponseType = z.infer<
@@ -203,8 +249,12 @@ export type FileUsageListResponseType = z.infer<
 >;
 
 export const DeleteResponseSchema = z.object({
+  success: z.boolean().optional(),
   status: z.string(),
   message: z.string().optional(),
+  timestamp: z.string().optional(),
+  path: z.string().optional(),
+  code: z.number().optional(),
 });
 
 export type DeleteResponseType = z.infer<typeof DeleteResponseSchema>;

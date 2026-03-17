@@ -10,6 +10,8 @@ import {
   useReindexLessonsMutation,
   useReindexAllMutation,
   useGetQdrantStats,
+  useGetAiProviderConfig,
+  useUpdateAiProviderConfigMutation,
   useGetLearningPathDrafts,
   useApproveLearningPathDraftMutation,
   useRejectDraftMutation,
@@ -36,6 +38,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -60,11 +63,15 @@ export default function DashboardPage() {
   const [reindexResults, setReindexResults] = useState<any>(null);
   const [showStatsDialog, setShowStatsDialog] = useState<boolean>(false);
   const [showResultDialog, setShowResultDialog] = useState<boolean>(false);
+  const [selectedProvider, setSelectedProvider] = useState<"openai" | "gemini">("gemini");
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
 
   const reindexCoursesMutation = useReindexCoursesMutation();
   const reindexLessonsMutation = useReindexLessonsMutation();
   const reindexAllMutation = useReindexAllMutation();
   const { data: qdrantStatsData, refetch: refetchQdrantStats, isLoading: qdrantStatsLoading } = useGetQdrantStats();
+  const { data: providerConfigData, isLoading: providerConfigLoading } = useGetAiProviderConfig();
+  const updateProviderMutation = useUpdateAiProviderConfigMutation();
 
   // Update qdrant stats from query data
   useEffect(() => {
@@ -72,6 +79,38 @@ export default function DashboardPage() {
       setQdrantStats(qdrantStatsData.payload.data);
     }
   }, [qdrantStatsData]);
+
+  useEffect(() => {
+    const provider = providerConfigData?.payload?.data?.provider;
+    if (provider === "openai" || provider === "gemini") {
+      setSelectedProvider(provider);
+    }
+
+    const providerModels = providerConfigData?.payload?.data?.models;
+    if (provider && providerModels && providerModels[provider]) {
+      setSelectedModel(providerModels[provider]);
+      return;
+    }
+
+    const activeChatModel = providerConfigData?.payload?.data?.activeChatModel;
+    if (activeChatModel) {
+      setSelectedModel(activeChatModel);
+    }
+  }, [providerConfigData]);
+
+  const modelOptions = useMemo(() => {
+    const supportedModels = providerConfigData?.payload?.data?.supportedChatModels;
+    if (selectedProvider === "openai") {
+      return supportedModels?.openai || ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1"];
+    }
+    return supportedModels?.gemini || ["gemini-2.5-flash", "gemini-2.5-pro"];
+  }, [providerConfigData, selectedProvider]);
+
+  useEffect(() => {
+    if (!modelOptions.includes(selectedModel)) {
+      setSelectedModel(modelOptions[0] || "");
+    }
+  }, [modelOptions, selectedModel]);
 
   // Get pending drafts
   const { data: pathDraftsData } = useGetLearningPathDrafts();
@@ -175,6 +214,25 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSaveProvider = async () => {
+    try {
+      await updateProviderMutation.mutateAsync({
+        provider: selectedProvider,
+        chatModel: selectedModel,
+      });
+      toast({
+        title: "Success",
+        description: `AI switched to ${selectedProvider} (${selectedModel})`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to update AI provider",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Prepare chart data
   const vectorChartData = useMemo(() => {
     if (!qdrantStats?.collections) return [];
@@ -219,6 +277,11 @@ export default function DashboardPage() {
   };
 
   const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))"];
+  const activeProvider = providerConfigData?.payload?.data?.provider || selectedProvider;
+  const activeModel =
+    providerConfigData?.payload?.data?.activeChatModel ||
+    providerConfigData?.payload?.data?.models?.[activeProvider] ||
+    selectedModel;
 
   return (
     <main className="p-4 sm:px-6 sm:py-4 md:p-8 space-y-6">
@@ -296,6 +359,11 @@ export default function DashboardPage() {
                   <span className="text-lg font-bold">{t("unknown")}</span>
                 </>
               )}
+            </div>
+            <div className="mb-2">
+              <Badge variant="secondary" className="text-[10px]">
+                {`${String(activeProvider).toUpperCase()} · ${activeModel}`}
+              </Badge>
             </div>
             <Button
               variant="link"
@@ -494,6 +562,63 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="rounded-lg border p-4 space-y-3">
+              <p className="text-sm font-medium">AI Provider</p>
+              <p className="text-xs text-muted-foreground">
+                Runtime switch for chat, stream and embedding services.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Select
+                  value={selectedProvider}
+                  onValueChange={(value) => {
+                    const nextProvider = value as "openai" | "gemini";
+                    setSelectedProvider(nextProvider);
+                    const configuredModel = providerConfigData?.payload?.data?.models?.[nextProvider];
+                    if (configuredModel) {
+                      setSelectedModel(configuredModel);
+                    }
+                  }}
+                  disabled={providerConfigLoading || updateProviderMutation.isPending}
+                >
+                  <SelectTrigger className="sm:w-[220px]">
+                    <SelectValue placeholder="Select provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gemini">Gemini (2.5 Flash)</SelectItem>
+                    <SelectItem value="openai">OpenAI</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={selectedModel}
+                  onValueChange={setSelectedModel}
+                  disabled={providerConfigLoading || updateProviderMutation.isPending || modelOptions.length === 0}
+                >
+                  <SelectTrigger className="sm:w-[260px]">
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {modelOptions.map((model) => (
+                      <SelectItem key={model} value={model}>{model}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={handleSaveProvider}
+                  disabled={providerConfigLoading || updateProviderMutation.isPending || !selectedModel}
+                  variant="secondary"
+                >
+                  {updateProviderMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save provider"
+                  )}
+                </Button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-3">
               <Button
                 onClick={handleReindexCourses}
