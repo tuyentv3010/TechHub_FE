@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
-import NewLoginForm from "./new-login-form";
+import AuthForm from "../_components/auth-form";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Login");
@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function Login() {
   return (
     <Suspense>
-      <NewLoginForm />
+      <AuthForm initialMode="login" />
     </Suspense>
   );
 }
