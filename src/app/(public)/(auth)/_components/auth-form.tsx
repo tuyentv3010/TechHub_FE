@@ -18,10 +18,38 @@ import { useLoginMutation, useRegisterMutation } from "@/queries/useAuth";
 import { useAppContext } from "@/components/app-provider";
 import Image from "next/image";
 import authApiRequest from "@/apiRequests/auth";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type AuthMode = "login" | "register";
+
+const CAROUSEL_IMAGES = [
+  "/hero/new-login-image-1.png",
+  "/hero/new-login-image-2.png",
+  "/hero/new-login-image-3.png",
+  "/hero/new-login-image-4.png",
+  "/hero/new-login-image-5.png",
+];
+
+const CAROUSEL_INTERVAL = 5000;
+
+const carouselVariants = {
+  enter: (dir: number) => ({
+    opacity: 0,
+    scale: 1.04,
+    x: dir > 0 ? 60 : -60,
+  }),
+  center: {
+    opacity: 1,
+    scale: 1,
+    x: 0,
+  },
+  exit: (dir: number) => ({
+    opacity: 0,
+    scale: 0.98,
+    x: dir > 0 ? -60 : 60,
+  }),
+};
 
 const INPUT_CLASS =
   "w-full h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 transition-all duration-200";
@@ -62,6 +90,28 @@ export default function AuthForm({
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // ── Image Carousel ──
+  const [currentImage, setCurrentImage] = useState(0);
+  const [carouselDirection, setCarouselDirection] = useState(1);
+
+  const goToImage = useCallback(
+    (index: number) => {
+      setCarouselDirection(index > currentImage ? 1 : -1);
+      setCurrentImage(index);
+    },
+    [currentImage]
+  );
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCarouselDirection(1);
+      setCurrentImage((prev) =>
+        prev === CAROUSEL_IMAGES.length - 1 ? 0 : prev + 1
+      );
+    }, CAROUSEL_INTERVAL);
+    return () => clearInterval(timer);
+  }, []);
 
   const isLogin = mode === "login";
   const t = isLogin ? tLogin : tRegister;
@@ -213,18 +263,31 @@ export default function AuthForm({
           </span>
         </div>
 
-        {/* Image frame */}
+        {/* Image Carousel */}
         <div className="flex-1 flex items-center justify-center px-10 py-6">
           <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-black/50 dark:shadow-black/70 ring-1 ring-white/10 dark:ring-white/5 dark:border dark:border-white/8">
-            <Image
-              src="/hero/new-login-image-2.png"
-              alt="Student learning on TechHub"
-              fill
-              className="object-cover object-center dark:brightness-75 dark:saturate-75"
-              priority
-            />
+            <AnimatePresence initial={false} custom={carouselDirection}>
+              <motion.div
+                key={currentImage}
+                custom={carouselDirection}
+                variants={carouselVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+                className="absolute inset-0"
+              >
+                <Image
+                  src={CAROUSEL_IMAGES[currentImage]}
+                  alt={`TechHub learning ${currentImage + 1}`}
+                  fill
+                  className="object-cover object-center dark:brightness-75 dark:saturate-75"
+                  priority={currentImage === 0}
+                />
+              </motion.div>
+            </AnimatePresence>
             {/* Vignette */}
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/30 via-transparent to-transparent dark:from-black/60 dark:via-black/10 dark:to-transparent" />
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/30 via-transparent to-transparent dark:from-black/60 dark:via-black/10 dark:to-transparent pointer-events-none" />
           </div>
         </div>
 
@@ -247,11 +310,11 @@ export default function AuthForm({
               <footer className="text-xs text-white/60 font-medium">
                 Samin &mdash; Graphic Designer
               </footer>
-              <div className="flex items-center gap-1.5">
+              {/* <div className="flex items-center gap-1.5">
                 <span className="w-4 h-1 rounded-full bg-white/80" />
                 <span className="w-1 h-1 rounded-full bg-white/30" />
                 <span className="w-1 h-1 rounded-full bg-white/30" />
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
