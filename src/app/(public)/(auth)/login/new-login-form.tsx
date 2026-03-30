@@ -1,23 +1,20 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/components/ui/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { LoginBody, LoginBodyType } from "@/schemaValidations/auth.schema";
 import { useLoginMutation } from "@/queries/useAuth";
 import { useAppContext } from "@/components/app-provider";
-import envConfig from "@/config";
 import Image from "next/image";
 import authApiRequest from "@/apiRequests/auth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function NewLoginForm() {
   const t = useTranslations("Login");
@@ -27,12 +24,9 @@ export default function NewLoginForm() {
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get("redirect");
   const { setIsAuth, setRole } = useAppContext();
+  const [showPassword, setShowPassword] = useState(false);
 
-  console.log("🔐 Login Form - redirectUrl from searchParams:", redirectUrl);
-  
-  // Clear any stale data when login page loads
   useEffect(() => {
-    // Only clear if there's no valid token
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
       localStorage.removeItem("userInfo");
@@ -43,21 +37,14 @@ export default function NewLoginForm() {
 
   const form = useForm<LoginBodyType>({
     resolver: zodResolver(LoginBody),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = async (data: LoginBodyType) => {
-    if (loginMutation.isPending) {
-      return;
-    }
+    if (loginMutation.isPending) return;
     try {
       const result = await loginMutation.mutateAsync(data);
-      console.log("Login result:", result);
 
-      // Check if login was successful
       if (!result.payload.success) {
         toast({
           variant: "destructive",
@@ -67,7 +54,6 @@ export default function NewLoginForm() {
         return;
       }
 
-      // Check user status
       const userStatus = result.payload.data.user.status;
       if (userStatus === "INACTIVE" || userStatus === "PENDING") {
         toast({
@@ -79,33 +65,25 @@ export default function NewLoginForm() {
         return;
       }
 
-      // Store tokens in localStorage
       localStorage.setItem("accessToken", result.payload.data.accessToken);
       localStorage.setItem("refreshToken", result.payload.data.refreshToken);
-      
-      // Set tokens to cookies for middleware auth check
       await authApiRequest.setTokenToCookie({
         accessToken: result.payload.data.accessToken,
         refreshToken: result.payload.data.refreshToken,
       });
-      
-      // Store user info for header display
       localStorage.setItem("userInfo", JSON.stringify(result.payload.data.user));
 
-      // Get user role (first role in array)
       const userRole = result.payload.data.user.roles[0] || "USER";
-
-      // Update app context
       setIsAuth(true);
       setRole(userRole);
-      
-      // Success toast
+
       toast({
         title: t("loginSuccess") || "Login Successful",
-        description: result.payload.message || `Welcome ${result.payload.data.user.username}!`,
+        description:
+          result.payload.message ||
+          `Welcome ${result.payload.data.user.username}!`,
       });
 
-      // Redirect based on role or redirectUrl
       if (userRole === "ADMIN") {
         router.push("/manage/accounts");
       } else if (redirectUrl) {
@@ -114,124 +92,137 @@ export default function NewLoginForm() {
         router.push("/");
       }
     } catch (error: any) {
-      console.error("Login error:", error);
-      
       toast({
         variant: "destructive",
         title: t("loginError") || "Login Failed",
-        description: error.message || error.payload?.message || t("loginErrorMessage"),
+        description:
+          error.message || error.payload?.message || t("loginErrorMessage"),
       });
     }
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-gray-900">
-        <div className="w-full max-w-md">
-          {/* Logo */}
-   
+    <div className="h-[calc(100vh-4rem)] w-full flex overflow-hidden bg-white dark:bg-gray-950">
 
-          {/* Title */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+      {/* ── Left Panel: Brand Image ── */}
+      <div className="hidden lg:flex lg:w-[52%] flex-col relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-800 to-indigo-900 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950">
+        {/* Decorative blur orbs */}
+        <div className="absolute top-[-60px] left-[-60px] w-96 h-96 rounded-full bg-blue-300/15 dark:bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-[100px] right-[-40px] w-72 h-72 rounded-full bg-indigo-300/15 dark:bg-indigo-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 left-1/4 w-48 h-48 rounded-full bg-cyan-400/10 dark:bg-cyan-500/8 blur-2xl pointer-events-none" />
+
+        {/* TechHub brand mark */}
+        <div className="relative px-10 pt-8 flex-shrink-0">
+          <span className="text-white font-bold text-xl tracking-tight">
+            Tech<span className="text-blue-300 dark:text-blue-400">Hub</span>
+          </span>
+        </div>
+
+        {/* Image frame */}
+        <div className="flex-1 flex items-center justify-center px-10 py-6">
+          <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-black/50 dark:shadow-black/70 ring-1 ring-white/10 dark:ring-white/5 dark:border dark:border-white/8">
+            <Image
+              src="/hero/new-login-image-1.png"
+              alt="Student learning on TechHub"
+              fill
+              className="object-cover object-center dark:brightness-75 dark:saturate-75"
+              priority
+            />
+            {/* Vignette — stronger in dark mode */}
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/30 via-transparent to-transparent dark:from-black/60 dark:via-black/10 dark:to-transparent" />
+          </div>
+        </div>
+
+        {/* Testimonial */}
+        <div className="relative px-10 pb-10 flex-shrink-0">
+          <div className="bg-white/10 dark:bg-white/5 backdrop-blur-sm rounded-xl p-5 ring-1 ring-white/10 dark:ring-white/8">
+            {/* Quote mark */}
+            <svg
+              className="w-6 h-6 text-blue-300 mb-2 opacity-80"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+            </svg>
+            <p className="text-white/90 text-sm font-medium leading-relaxed mb-3">
+              TechHub has transformed the way I learn! The courses are
+              well-structured, engaging, and easy to follow. Highly recommend
+              it for anyone looking to upskill!
+            </p>
+            <div className="flex items-center justify-between">
+              <footer className="text-xs text-white/60 font-medium">
+                Samin &mdash; Graphic Designer
+              </footer>
+              {/* Decorative dots — purely visual, no slider implied */}
+              <div className="flex items-center gap-1.5">
+                <span className="w-4 h-1 rounded-full bg-white/80" />
+                <span className="w-1 h-1 rounded-full bg-white/30" />
+                <span className="w-1 h-1 rounded-full bg-white/30" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Right Panel: Form ── */}
+      <div className="w-full lg:w-[48%] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 px-8 sm:px-14 overflow-y-auto">
+        <div className="w-full max-w-[420px] py-8">
+
+          {/* Mobile brand */}
+          <div className="lg:hidden text-center mb-6">
+            <span className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">
+              Tech<span className="text-blue-500">Hub</span>
+            </span>
+          </div>
+
+          {/* Heading */}
+          <div className="mb-7">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight mb-1.5">
               {t("title")}
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t("description")}
             </p>
+          </div>
+
+          {/* Tab toggle */}
+          <div className="flex bg-gray-200 dark:bg-gray-800 rounded-xl p-1 mb-7">
+            <Link
+              href="/register"
+              className="flex-1 text-center py-2.5 text-sm font-medium rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors duration-200 cursor-pointer"
+            >
+              {t("Register")}
+            </Link>
+            <span className="flex-1 text-center py-2.5 text-sm font-semibold rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm cursor-default select-none">
+              {t("signIn")}
+            </span>
           </div>
 
           {/* Form */}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {/* Social Login Buttons */}
-              <div className="space-y-3">
-                {/* Google Login Button */}
-                <Link href={authApiRequest.getGoogleOAuthUrl()}>
-                  <Button
-                    variant="outline"
-                    className="w-full h-12 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    type="button"
-                  >
-                    <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                      <path
-                        fill="#4285F4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="#34A853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      />
-                    </svg>
-                    {t("googleLogin")}
-                  </Button>
-                </Link>
 
-                {/* GitHub Login Button */}
-                <Link href={authApiRequest.getGithubOAuthUrl()}>
-                  <Button
-                    variant="outline"
-                    className="w-full h-12 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    type="button"
-                  >
-                    <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                    </svg>
-                    Continue with GitHub
-                  </Button>
-                </Link>
-
-                {/* Facebook Login Button */}
-                {/* <Link href={authApiRequest.getFacebookOAuthUrl()}>
-                  <Button
-                    variant="outline"
-                    className="w-full h-12 border-gray-300 hover:bg-gray-50"
-                    type="button"
-                  >
-                    <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="#1877F2">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
-                    Continue with Facebook
-                  </Button>
-                </Link> */}
-              </div>
-
-              {/* Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">or</span>
-                </div>
-              </div>
-
-              {/* Email Field */}
+              {/* Email */}
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field, formState: { errors } }) => (
-                  <FormItem>
-                    <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <FormItem className="space-y-1.5">
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
                       {t("email")}
-                    </Label>
-                    <Input
+                    </label>
+                    <input
                       id="email"
                       type="email"
-                      placeholder=""
-                      className="h-12 mt-1"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      className="w-full h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 transition-all duration-200"
                       {...field}
                     />
-                    <FormMessage>
+                    <FormMessage className="text-xs text-red-500 px-1">
                       {errors.email?.message &&
                         errorMessageT(errors.email.message as any)}
                     </FormMessage>
@@ -239,22 +230,47 @@ export default function NewLoginForm() {
                 )}
               />
 
-              {/* Password Field */}
+              {/* Password */}
               <FormField
                 control={form.control}
                 name="password"
                 render={({ field, formState: { errors } }) => (
-                  <FormItem>
-                    <Label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {t("password")}
-                    </Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      className="h-12 mt-1"
-                      {...field}
-                    />
-                    <FormMessage>
+                  <FormItem className="space-y-1.5">
+                    {/* Label row: label + forgot password link */}
+                    <div className="flex items-center justify-between">
+                      <label
+                        htmlFor="password"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {t("password")}
+                      </label>
+                      <Link
+                        href="/forgot-password"
+                        className="text-xs font-medium text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors duration-150 cursor-pointer"
+                        tabIndex={-1}
+                      >
+                        {t("forgotPassword")}
+                      </Link>
+                    </div>
+                    <div className="relative">
+                      <input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
+                        placeholder="••••••••"
+                        className="w-full h-12 px-4 pr-11 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 transition-all duration-200"
+                        {...field}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150 cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                      </button>
+                    </div>
+                    <FormMessage className="text-xs text-red-500 px-1">
                       {errors.password?.message &&
                         errorMessageT(errors.password.message as any)}
                     </FormMessage>
@@ -262,67 +278,95 @@ export default function NewLoginForm() {
                 )}
               />
 
-              {/* Remember me & Forgot password */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="remember"
-                    className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                  />
-                  <label
-                    htmlFor="remember"
-                    className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
-                  >
-                    Remember for 30 days
-                  </label>
-                </div>
-                <Link
-                  href="/forgot-password"
-                  className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600"
+              {/* Remember me */}
+              <div className="flex items-center gap-2 pt-0.5">
+                <input
+                  type="checkbox"
+                  id="remember"
+                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+                />
+                <label
+                  htmlFor="remember"
+                  className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none"
                 >
-                  {t("forgotPassword")}
-                </Link>
+                  Stay signed in
+                </label>
               </div>
 
-              {/* Submit Button */}
-              <Button
+              {/* Submit */}
+              <button
                 type="submit"
-                className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                 disabled={loginMutation.isPending}
+                className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold shadow-sm transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
               >
                 {loginMutation.isPending && (
-                  <LoaderCircle className="animate-spin mr-2" size={20} />
+                  <LoaderCircle className="animate-spin" size={15} />
                 )}
                 {t("signIn")}
-              </Button>
+              </button>
 
-              {/* Sign up link */}
-              <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-                {t("noAlreadyHaveAccount")}{" "}
-                <Link href="/register" className="font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600">
-                  {t("Register")}
+              {/* Divider */}
+              <div className="relative flex items-center gap-3">
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                  Or continue with
+                </span>
+                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+              </div>
+
+              {/* OAuth buttons — full text labels for clarity */}
+              <div className="grid grid-cols-2 gap-3">
+                <Link
+                  href={authApiRequest.getGoogleOAuthUrl()}
+                  className="flex items-center justify-center gap-2.5 h-11 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                >
+                  <svg className="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24" style={{ width: 18, height: 18 }}>
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Google
+                  </span>
+                </Link>
+
+                <Link
+                  href={authApiRequest.getGithubOAuthUrl()}
+                  className="flex items-center justify-center gap-2.5 h-11 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                >
+                  <svg className="text-gray-800 dark:text-white flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" style={{ width: 18, height: 18 }}>
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    GitHub
+                  </span>
                 </Link>
               </div>
+
+              {/* Fine print */}
+              <p className="text-center text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
+                By signing in, you agree to our{" "}
+                <Link
+                  href="/terms"
+                  className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150"
+                >
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/privacy"
+                  className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150"
+                >
+                  Privacy Policy
+                </Link>
+                .
+              </p>
             </form>
           </Form>
         </div>
       </div>
 
-      {/* Right Side - Image */}
-      <div className="hidden lg:block lg:w-1/2 relative bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-700">
-        <div className="absolute inset-0 flex items-center justify-center p-12">
-          <div className="relative w-full h-full max-w-2xl">
-            <Image
-              src="/hero/signIn.png"
-              alt="Student learning"
-              fill
-              className="rounded-2xl object-cover shadow-2xl"
-              priority
-            />
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
