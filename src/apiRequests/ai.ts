@@ -15,6 +15,8 @@ import {
   DraftItemType,
   type ChatSessionType,
   type ChatMessageType,
+  AiProviderConfigResponseType,
+  UpdateAiProviderRequestType,
 } from "@/schemaValidations/ai.schema";
 
 const aiApiRequest = {
@@ -220,6 +222,17 @@ const aiApiRequest = {
   getQdrantStats: () =>
     http.get<{ payload: { data: QdrantStatsResponseType } }>(
       "/app/api/proxy/ai/admin/qdrant-stats"
+    ),
+
+  getProviderConfig: () =>
+    http.get<{ payload: { data: AiProviderConfigResponseType } }>(
+      "/app/api/proxy/ai/admin/provider-config"
+    ),
+
+  updateProviderConfig: (body: UpdateAiProviderRequestType) =>
+    http.post<{ payload: { data: AiProviderConfigResponseType } }>(
+      "/app/api/proxy/ai/admin/provider-config",
+      body
     ),
 
   // ============================================

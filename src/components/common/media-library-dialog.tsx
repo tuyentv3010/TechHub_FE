@@ -77,7 +77,7 @@ export default function MediaLibraryDialog({
   const allFiles = selectedLibraryFolder ? filesFromFolder : filesFromAllFiles;
   const loading = selectedLibraryFolder ? loadingFolderFiles : loadingFiles;
   
-  const totalPages = isPageResponse ? (allFilesData.payload.data as any).totalPages || 1 : 1;
+  const totalPages = allFilesData?.payload?.pagination?.totalPages || 1;
   
   // Filter by file type and search
   const filterFiles = (files: any[]) => {
@@ -170,13 +170,19 @@ export default function MediaLibraryDialog({
     onOpenChange(isOpen);
   };
 
+  const resolvePreviewUrl = (file: any) => {
+    if (file.fileType === 'VIDEO') {
+      return file.thumbnailUrl || '/placeholder-image.png';
+    }
+
+    return file.secureUrl || file.publicUrl || file.cloudinarySecureUrl;
+  };
+
   const renderGridView = () => (
     <div className="grid grid-cols-6 gap-3">
       {filteredFiles.map((file: any) => {
         const isVideo = file.fileType === 'VIDEO';
-        const thumbnailUrl = isVideo 
-          ? file.cloudinarySecureUrl.replace(/\.(mp4|mov|avi|webm|mkv)$/i, '.jpg')
-          : file.cloudinarySecureUrl;
+        const previewUrl = resolvePreviewUrl(file);
 
         return (
           <div
@@ -186,7 +192,7 @@ export default function MediaLibraryDialog({
           >
             <div className="aspect-square relative bg-muted">
               <img
-                src={thumbnailUrl}
+                src={previewUrl}
                 alt={file.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -224,9 +230,7 @@ export default function MediaLibraryDialog({
     <div className="space-y-1">
       {filteredFiles.map((file: any) => {
         const isVideo = file.fileType === 'VIDEO';
-        const thumbnailUrl = isVideo 
-          ? file.cloudinarySecureUrl.replace(/\.(mp4|mov|avi|webm|mkv)$/i, '.jpg')
-          : file.cloudinarySecureUrl;
+        const previewUrl = resolvePreviewUrl(file);
 
         return (
           <div
@@ -236,7 +240,7 @@ export default function MediaLibraryDialog({
           >
             <div className="w-12 h-12 relative bg-muted rounded">
               <img
-                src={thumbnailUrl}
+                src={previewUrl}
                 alt={file.name}
                 className="w-full h-full object-cover rounded"
                 onError={(e) => {

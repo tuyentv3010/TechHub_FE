@@ -203,6 +203,24 @@ export const useGetQdrantStats = () => {
   });
 };
 
+export const useGetAiProviderConfig = () => {
+  return useQuery({
+    queryKey: ["ai-provider-config"],
+    queryFn: () => aiApiRequest.getProviderConfig(),
+  });
+};
+
+export const useUpdateAiProviderConfigMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { provider: "openai" | "gemini"; chatModel?: string }) =>
+      aiApiRequest.updateProviderConfig(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ai-provider-config"] });
+    },
+  });
+};
+
 // ============================================
 // DRAFT MANAGEMENT HOOKS
 // ============================================
