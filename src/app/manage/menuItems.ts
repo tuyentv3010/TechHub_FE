@@ -8,7 +8,8 @@ import {
   Users2,
   FolderOpen,
   School,
-  Route
+  Route,
+  HandCoins,
 } from "lucide-react";
 
 export interface MenuItem {
@@ -29,6 +30,16 @@ const menuItems: MenuItem[] = [
     Icon: Home,
     href: "/manage/dashboard",
     roles: [Role.Admin], // Chỉ ADMIN
+  },
+  {
+    title: "Doanh thu",
+    Icon: HandCoins,
+    href: "/manage/revenue",
+    roles: [Role.Admin, Role.Instructor],
+    requiredPermission: {
+      method: "GET",
+      url: "/api/v1/analytics/instructor/overview",
+    },
   },
   {
     title: "Nhân viên",
