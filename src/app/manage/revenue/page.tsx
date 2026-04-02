@@ -6,14 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/use-toast";
 import { useRevenueDashboard } from "@/queries/useRevenue";
 import { getAccessTokenFromLocalStorage, decodeToken } from "@/lib/utils";
 import { BarChart3, CalendarDays, Coins, RefreshCw, ShieldCheck, TrendingUp, Wallet } from "lucide-react";
 import {
-  ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
@@ -25,6 +23,14 @@ const money = (value?: number | string | null) => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(numberValue);
+};
+
+type RevenueChartRow = {
+  date: string;
+  gross: number;
+  instructor: number;
+  admin: number;
+  orders: number;
 };
 
 export default function RevenueDashboardPage() {
@@ -64,7 +70,7 @@ export default function RevenueDashboardPage() {
   const overview = data?.overview;
   const trends = data?.trends || [];
 
-  const chartData = useMemo(
+  const chartData = useMemo<RevenueChartRow[]>(
     () =>
       trends.map((item: any) => ({
         date: item.metricDate,
