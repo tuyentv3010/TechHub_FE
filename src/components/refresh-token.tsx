@@ -14,7 +14,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 // Nhung page sau se khong check refresh token
-const UNAUTHENTICATED_PATH = ["/login", "logout", "refresh-token"];
+const UNAUTHENTICATED_PATH = ["/login", "/logout", "/refresh-token"];
 
 export default function RefreshToken() {
   const pathName = usePathname();

@@ -7,10 +7,11 @@ import {
 } from "@/schemaValidations/account.schema";
 
 // Get user profile
-export const useAccountProfile = () => {
+export const useAccountProfile = (enabled: boolean = true) => {
   return useQuery({
     queryKey: ["account-profile"],
     queryFn: () => accountApiRequest.getProfile(),
+    enabled,
   });
 };
 

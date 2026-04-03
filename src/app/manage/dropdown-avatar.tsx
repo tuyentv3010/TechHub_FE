@@ -33,8 +33,8 @@ export default function DropdownAvatar() {
   const t = useTranslations("NavItem");
   const router = useRouter();
   const logoutMutation = useLogoutMutation();
-  const { data, isLoading, isError, error } = useAccountProfile();
   const { isAuth, role, setIsAuth, setRole, setPermissions } = useAppContext();
+  const { data, isLoading, isError, error } = useAccountProfile(isAuth);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   
   const account = data?.payload?.data;

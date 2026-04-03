@@ -47,7 +47,7 @@ export function DropdownProfile() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const router = useRouter();
   const logoutMutation = useLogoutMutation();
-  const { data, isLoading, isError } = useAccountProfile();
+  const { data, isLoading, isError } = useAccountProfile(isAuth);
   
   const account = data?.payload?.data;
   console.log("🔐 [userInfo?.roles] Account data:", userInfo?.roles);
