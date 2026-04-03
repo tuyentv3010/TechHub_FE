@@ -98,7 +98,7 @@ export default function DashboardPage() {
     }
   }, [providerConfigData]);
 
-  const modelOptions = useMemo(() => {
+  const modelOptions = useMemo<string[]>(() => {
     const supportedModels = providerConfigData?.payload?.data?.supportedChatModels;
     if (selectedProvider === "openai") {
       return supportedModels?.openai || ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1"];
@@ -597,7 +597,7 @@ export default function DashboardPage() {
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent>
-                    {modelOptions.map((model) => (
+                    {modelOptions.map((model: string) => (
                       <SelectItem key={model} value={model}>{model}</SelectItem>
                     ))}
                   </SelectContent>
