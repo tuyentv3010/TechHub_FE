@@ -91,6 +91,14 @@ const getFilePreviewUrl = (file: FileType) => {
   return file.secureUrl || file.publicUrl || file.cloudinarySecureUrl;
 };
 
+const getSafeImageUrl = (url?: string | null) => {
+  return url || '/placeholder-image.png';
+};
+
+const shouldUseUnoptimizedImage = (url: string) => {
+  return /^https?:\/\//i.test(url);
+};
+
 const getProcessingBadgeVariant = (status?: string | null): 'secondary' | 'destructive' | 'outline' => {
   if (status === 'FAILED') {
     return 'destructive';
@@ -245,6 +253,10 @@ export default function FileTable() {
   const filteredFiles = files.filter((file) =>
     file.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const previewImageUrl = previewFile
+    ? getSafeImageUrl(getFilePreviewUrl(previewFile))
+    : '/placeholder-image.png';
+  const isPreviewImageRemote = shouldUseUnoptimizedImage(previewImageUrl);
 
   const FileTypeIcon = ({ type }: { type: FileType['fileType'] }) => {
     const Icon = FILE_TYPE_ICONS[type];
@@ -358,23 +370,29 @@ export default function FileTable() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredFiles.map((file) => (
+              filteredFiles.map((file) => {
+                const previewUrl = getSafeImageUrl(getFilePreviewUrl(file));
+                const isRemotePreview = shouldUseUnoptimizedImage(previewUrl);
+
+                return (
                 <TableRow key={file.id}>
                   <TableCell>
                     <div className="w-16 h-16 relative rounded overflow-hidden bg-muted">
                       {file.fileType === 'IMAGE' ? (
                         <Image
-                          src={getFilePreviewUrl(file)}
+                          src={previewUrl}
                           alt={file.name}
                           fill
                           className="object-cover"
+                          unoptimized={isRemotePreview}
                         />
                       ) : file.fileType === 'VIDEO' ? (
                         <Image
-                          src={getFilePreviewUrl(file)}
+                          src={previewUrl}
                           alt={file.name}
                           fill
                           className="object-cover"
+                          unoptimized={isRemotePreview}
                           onError={(e) => {
                             // Fallback to icon if thumbnail fails
                             const target = e.target as HTMLImageElement;
@@ -481,7 +499,8 @@ export default function FileTable() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -541,10 +560,11 @@ export default function FileTable() {
               {previewFile.fileType === 'IMAGE' && (
                 <div className="relative w-full h-[400px] bg-muted rounded-lg overflow-hidden">
                   <Image
-                    src={getFilePreviewUrl(previewFile)}
+                    src={previewImageUrl}
                     alt={previewFile.name}
                     fill
                     className="object-contain"
+                    unoptimized={isPreviewImageRemote}
                   />
                 </div>
               )}
