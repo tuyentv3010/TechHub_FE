@@ -1,4 +1,5 @@
 import http from "@/lib/http";
+import { HttpError } from "@/lib/http";
 import {
   NotificationListResType,
   NotificationResType,
@@ -35,6 +36,20 @@ const notificationApiRequest = {
       console.log("🔔 [NOTIFICATION API] getUnreadNotifications - Response:", response);
       return response;
     } catch (error) {
+      if (error instanceof HttpError && error.status === 503) {
+        return {
+          status: 503,
+          payload: {
+            data: [],
+            pagination: {
+              page,
+              size,
+              totalElements: 0,
+              totalPages: 0,
+            },
+          },
+        } as any;
+      }
       console.error("🔔 [NOTIFICATION API] getUnreadNotifications - Error:", error);
       throw error;
     }
@@ -77,6 +92,14 @@ const notificationApiRequest = {
       console.log("🔔 [NOTIFICATION API] getUnreadCount - Response:", response);
       return response;
     } catch (error) {
+      if (error instanceof HttpError && error.status === 503) {
+        return {
+          status: 503,
+          payload: {
+            data: 0,
+          },
+        } as any;
+      }
       console.error("🔔 [NOTIFICATION API] getUnreadCount - Error:", error);
       throw error;
     }

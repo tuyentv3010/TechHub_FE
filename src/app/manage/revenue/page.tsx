@@ -1,29 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { format, startOfMonth } from "date-fns";
+import { BarChart3, CalendarDays, Coins, RefreshCw, ShieldCheck, TrendingUp, Wallet } from "lucide-react";
+
 import { useAppContext } from "@/components/app-provider";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/use-toast";
 import { useRevenueDashboard } from "@/queries/useRevenue";
-import { getAccessTokenFromLocalStorage, decodeToken } from "@/lib/utils";
-import { BarChart3, CalendarDays, Coins, RefreshCw, ShieldCheck, TrendingUp, Wallet } from "lucide-react";
-import {
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { decodeToken, formatCurrency, getAccessTokenFromLocalStorage } from "@/lib/utils";
 
-const money = (value?: number | string | null) => {
-  const numberValue = Number(value || 0);
-  return new Intl.NumberFormat("vi-VN", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(numberValue);
-};
+import { RevenueLineChart } from "./revenue-line-chart";
+import { RevenueSplitChart } from "./revenue-split-chart";
+
+const formatDateInput = (value: Date) => format(value, "yyyy-MM-dd");
 
 type RevenueChartRow = {
   date: string;
@@ -34,17 +28,25 @@ type RevenueChartRow = {
 };
 
 export default function RevenueDashboardPage() {
-  const { role } = useAppContext();
+  const { isAuth, role } = useAppContext();
   const { toast } = useToast();
-  const dashboardRole: "ADMIN" | "INSTRUCTOR" = role === "ADMIN" ? "ADMIN" : "INSTRUCTOR";
-  const [fromDate, setFromDate] = useState<string>("");
-  const [toDate, setToDate] = useState<string>("");
-  const [adminInstructorId, setAdminInstructorId] = useState<string>("");
-  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const dashboardRole: "ADMIN" | "INSTRUCTOR" | null =
+    role === "ADMIN" || role === "SUPER_ADMIN"
+      ? "ADMIN"
+      : role === "INSTRUCTOR"
+        ? "INSTRUCTOR"
+        : null;
+  const initialFromDate = useMemo(() => formatDateInput(startOfMonth(new Date())), []);
+  const initialToDate = useMemo(() => formatDateInput(new Date()), []);
+  const [fromDate, setFromDate] = useState(initialFromDate);
+  const [toDate, setToDate] = useState(initialToDate);
+  const [adminInstructorId, setAdminInstructorId] = useState("");
+  const [currentUserId, setCurrentUserId] = useState("");
 
   useEffect(() => {
     const token = getAccessTokenFromLocalStorage();
     if (!token) return;
+
     try {
       const decoded = decodeToken(token);
       const userId = (decoded as any)?.userId || (decoded as any)?.user?.id;
@@ -82,28 +84,18 @@ export default function RevenueDashboardPage() {
     [trends]
   );
 
-  const handleRefresh = async () => {
-    try {
-      await refetch();
-    } catch (err: any) {
-      toast({
-        title: "Lỗi tải dữ liệu",
-        description: err?.message || "Không thể tải dashboard doanh thu",
-        variant: "destructive",
-      });
-    }
-  };
-
   const summaryCards = [
     {
       title: "Tổng doanh thu",
-      value: money(overview?.grossRevenue),
+      value: formatCurrency(Number(overview?.grossRevenue || 0)),
       icon: Coins,
       tone: "from-emerald-500/15 to-emerald-500/5",
     },
     {
       title: dashboardRole === "ADMIN" ? "Doanh thu hệ thống" : "Thu nhập giảng viên",
-      value: money(dashboardRole === "ADMIN" ? overview?.adminRevenue : overview?.instructorRevenue),
+      value: formatCurrency(
+        Number(dashboardRole === "ADMIN" ? overview?.adminRevenue || 0 : overview?.instructorRevenue || 0)
+      ),
       icon: Wallet,
       tone: "from-sky-500/15 to-sky-500/5",
     },
@@ -121,13 +113,45 @@ export default function RevenueDashboardPage() {
     },
   ];
 
+  const handleResetDateFilter = () => {
+    setFromDate(initialFromDate);
+    setToDate(initialToDate);
+    if (dashboardRole === "ADMIN") {
+      setAdminInstructorId("");
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      await refetch();
+    } catch (err: any) {
+      toast({
+        title: "Lỗi tải dữ liệu",
+        description: err?.message || "Không thể tải dashboard doanh thu",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!isAuth || !dashboardRole) {
+    return (
+      <main className="space-y-6 p-4 sm:px-6 sm:py-4 md:p-8">
+        <Card className="shadow-sm">
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Đang chờ xác thực người dùng. Dashboard doanh thu sẽ tải sau khi role được xác định.
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
   return (
-    <main className="p-4 sm:px-6 sm:py-4 md:p-8 space-y-6">
+    <main className="space-y-6 p-4 sm:px-6 sm:py-4 md:p-8">
       <section className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white shadow-2xl">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.25),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.18),transparent_28%)]" />
         <div className="relative flex flex-col gap-6 p-6 md:p-8 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl space-y-3">
-            <Badge className="w-fit bg-white/10 text-white border-white/15">Revenue Analytics</Badge>
+            <Badge className="w-fit border-white/15 bg-white/10 text-white">Revenue Analytics</Badge>
             <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Dashboard doanh thu & chia lợi nhuận</h1>
             <p className="text-sm text-white/75 md:text-base">
               {dashboardRole === "ADMIN"
@@ -143,7 +167,7 @@ export default function RevenueDashboardPage() {
             {dashboardRole === "INSTRUCTOR" && currentUserId && (
               <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
                 <div className="text-white/60">Instructor ID</div>
-                <div className="font-semibold break-all">{currentUserId}</div>
+                <div className="break-all font-semibold">{currentUserId}</div>
               </div>
             )}
           </div>
@@ -180,12 +204,15 @@ export default function RevenueDashboardPage() {
               <Input
                 placeholder="Instructor ID (optional)"
                 value={adminInstructorId}
-                onChange={(e) => setAdminInstructorId(e.target.value)}
+                onChange={(event) => setAdminInstructorId(event.target.value)}
                 className="lg:w-[320px]"
               />
             )}
-            <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="lg:w-[180px]" />
-            <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="lg:w-[180px]" />
+            <Input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="lg:w-[180px]" />
+            <Input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} className="lg:w-[180px]" />
+            <Button variant="outline" onClick={handleResetDateFilter}>
+              Reset
+            </Button>
             <Button onClick={handleRefresh} className="gap-2">
               <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
               Làm mới
@@ -203,19 +230,7 @@ export default function RevenueDashboardPage() {
             <CardDescription>Gross / instructor / admin revenue từ analytics-service.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[360px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="date" tickMargin={10} />
-                  <YAxis tickFormatter={(v) => money(v)} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="gross" stroke="#10b981" strokeWidth={3} dot={false} />
-                  <Line type="monotone" dataKey="instructor" stroke="#2563eb" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="admin" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <RevenueLineChart revenueByDate={chartData} />
           </CardContent>
         </Card>
 
@@ -231,18 +246,12 @@ export default function RevenueDashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[320px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="date" tickMargin={10} />
-                  <YAxis tickFormatter={(v) => money(v)} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="instructor" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="admin" fill="#f59e0b" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <RevenueSplitChart
+              dashboardRole={dashboardRole}
+              grossRevenue={Number(overview?.grossRevenue || 0)}
+              instructorRevenue={Number(overview?.instructorRevenue || 0)}
+              adminRevenue={Number(overview?.adminRevenue || 0)}
+            />
           </CardContent>
         </Card>
       </div>
@@ -275,9 +284,9 @@ export default function RevenueDashboardPage() {
                   chartData.map((row) => (
                     <tr key={row.date} className="border-b last:border-0">
                       <td className="px-4 py-3">{row.date}</td>
-                      <td className="px-4 py-3 text-right">{money(row.gross)}</td>
-                      <td className="px-4 py-3 text-right">{money(row.instructor)}</td>
-                      <td className="px-4 py-3 text-right">{money(row.admin)}</td>
+                      <td className="px-4 py-3 text-right">{formatCurrency(row.gross)}</td>
+                      <td className="px-4 py-3 text-right">{formatCurrency(row.instructor)}</td>
+                      <td className="px-4 py-3 text-right">{formatCurrency(row.admin)}</td>
                       <td className="px-4 py-3 text-right">{row.orders}</td>
                     </tr>
                   ))

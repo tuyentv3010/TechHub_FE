@@ -111,7 +111,7 @@ export default function OAuth2RedirectPage() {
 
           // Redirect based on role
           console.log("🔐 OAuth2 Redirect - Redirecting user, role:", userRole);
-          if (userRole === "ADMIN") {
+          if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
             router.push("/manage/accounts");
           } else {
             router.push("/");

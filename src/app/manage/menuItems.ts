@@ -35,11 +35,7 @@ const menuItems: MenuItem[] = [
     title: "Doanh thu",
     Icon: HandCoins,
     href: "/manage/revenue",
-    roles: [Role.Admin, Role.Instructor],
-    requiredPermission: {
-      method: "GET",
-      url: "/api/v1/analytics/instructor/overview",
-    },
+    roles: [Role.Admin, Role.SuperAdmin, Role.Instructor],
   },
   {
     title: "Nhân viên",

@@ -1,11 +1,12 @@
 "use client";
 import { createContext, useContext, useState, useEffect } from "react";
-import { RoleType, Permission, TokenPayload } from "@/types/jwt.types";
+import { RoleType, Permission } from "@/types/jwt.types";
 import { getAccessTokenFromLocalStorage, decodeToken } from "@/lib/utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import RefreshToken from "@/components/refresh-token";
 import { SocketProvider } from "@/providers/SocketProvider";
+import accountApiRequest from "@/apiRequests/account";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,47 +33,70 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<Permission[] | null>(null);
 
   useEffect(() => {
-    const checkAuth = () => {
+    let isMounted = true;
+
+    const applyProfileRole = async () => {
       const token = getAccessTokenFromLocalStorage();
       if (token) {
         try {
           setIsAuth(true);
-          const decoded = decodeToken(token);
-          setRole(decoded?.role || null);
-          // Permissions are fetched separately after login
+          const profileResponse = await accountApiRequest.getProfile();
+          const profile = profileResponse?.payload?.data;
+          const primaryRole = profile?.roles?.[0] || null;
+
+          if (isMounted) {
+            setRole(primaryRole as RoleType | null);
+            if (profile) {
+              localStorage.setItem("userInfo", JSON.stringify(profile));
+            }
+          }
         } catch (error) {
-          console.error("Failed to decode token:", error);
+          console.error("Failed to load profile for auth role:", error);
+
+          try {
+            const decoded = decodeToken(token);
+            if (isMounted) {
+              setRole(decoded?.role || null);
+            }
+          } catch (decodeError) {
+            console.error("Failed to decode token:", decodeError);
+            if (isMounted) {
+              setIsAuth(false);
+              setRole(null);
+              setPermissions(null);
+            }
+          }
+        }
+      } else {
+        // No token - user is logged out
+        if (isMounted) {
           setIsAuth(false);
           setRole(null);
           setPermissions(null);
         }
-      } else {
-        // No token - user is logged out
-        setIsAuth(false);
-        setRole(null);
-        setPermissions(null);
       }
     };
 
     // Check on mount
-    checkAuth();
+    applyProfileRole();
 
     // Listen to storage changes (for logout in other tabs or auto-logout)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "accessToken" || e.key === "refreshToken") {
-        checkAuth();
+        applyProfileRole();
       }
     };
 
     // Listen to custom event for same-tab logout
     const handleLogout = () => {
-      checkAuth();
+      applyProfileRole();
     };
 
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("auth-logout", handleLogout);
 
     return () => {
+      isMounted = false;
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("auth-logout", handleLogout);
     };

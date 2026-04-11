@@ -64,7 +64,7 @@ export default function OauthPage() {
           });
           
           console.log("🔐 Login OAuth - Redirecting, role:", role);
-          router.push(role === "ADMIN" ? "/manage/accounts" : "/");
+          router.push(role === "ADMIN" || role === "SUPER_ADMIN" ? "/manage/accounts" : "/");
           return;
         }
 
@@ -135,7 +135,7 @@ export default function OauthPage() {
           });
 
           // Redirect based on role
-          if (userRole === "ADMIN") {
+          if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
             router.push("/manage/accounts");
           } else {
             router.push("/");

@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import notificationApiRequest from "@/apiRequests/notification";
 
+const hasAccessToken = () =>
+  typeof window !== "undefined" && !!localStorage.getItem("accessToken");
+
 // Query key constants
 const NOTIFICATION_BASE_KEY = ["notifications"] as const;
 
@@ -37,9 +40,13 @@ export const useGetUnreadNotifications = (
   return useQuery({
     queryKey: NOTIFICATION_QUERY_KEYS.unread(page, size),
     queryFn: () => notificationApiRequest.getUnreadNotifications(page, size),
-    enabled,
+    enabled: enabled && hasAccessToken(),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000, // Refetch every 60 seconds
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401 || error?.status === 403 || error?.status === 503) return false;
+      return failureCount < 1;
+    },
   });
 };
 
@@ -51,9 +58,13 @@ export const useGetUnreadCount = (enabled: boolean = true) => {
       const response = await notificationApiRequest.getUnreadCount();
       return response.payload.data;
     },
-    enabled,
+    enabled: enabled && hasAccessToken(),
     staleTime: 30 * 1000,
     refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401 || error?.status === 403 || error?.status === 503) return false;
+      return failureCount < 1;
+    },
   });
 };
 

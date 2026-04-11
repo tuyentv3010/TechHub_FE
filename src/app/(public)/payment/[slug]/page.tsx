@@ -155,21 +155,32 @@ export default function PaymentPage() {
 
         console.log("✅ PayPal API Response:", response);
 
-        if (response.payload?.links) {
+        const paypalOrder = response?.payload?.data ?? response?.payload;
+        const links = paypalOrder?.links;
+
+        if (Array.isArray(links) && links.length > 0) {
           // Tìm link "approve" để chuyển hướng người dùng
-          const approveLink = response.payload.links.find(
+          const approveLink = links.find(
             (link: { rel: string; href: string; method: string }) => link.rel === "approve"
           );
 
-          if (approveLink) {
-            console.log("🔗 Redirecting to PayPal:", approveLink.href);
+          const payerActionLink = links.find(
+            (link: { rel: string; href: string; method: string }) => link.rel === "payer-action"
+          );
+
+          const redirectLink = approveLink || payerActionLink;
+
+          if (redirectLink) {
+            console.log("🔗 Redirecting to PayPal:", redirectLink.href);
             // Chuyển hướng đến trang thanh toán PayPal
-            window.location.href = approveLink.href;
+            window.location.href = redirectLink.href;
           } else {
             throw new Error("Không tìm thấy link thanh toán PayPal");
           }
         } else {
-          throw new Error("Không nhận được thông tin thanh toán PayPal");
+          throw new Error(
+            `Không nhận được thông tin thanh toán PayPal (response: ${JSON.stringify(response?.payload ?? {})})`
+          );
         }
       }
     } catch (error) {

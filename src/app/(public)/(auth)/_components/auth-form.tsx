@@ -210,7 +210,7 @@ export default function AuthForm({
           `Welcome ${result.payload.data.user.username}!`,
       });
 
-      if (userRole === "ADMIN") {
+      if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
         router.push("/manage/accounts");
       } else if (redirectUrl) {
         router.push(redirectUrl);

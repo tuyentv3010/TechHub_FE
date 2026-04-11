@@ -172,7 +172,7 @@ export default function DropdownAvatar() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {role === "ADMIN" && (
+        {(role === "ADMIN" || role === "SUPER_ADMIN") && (
           <DropdownMenuItem asChild>
             <Link href="/manage/accounts" className="cursor-pointer">
               <BarChart3 className="mr-2 h-4 w-4" />

@@ -8,24 +8,30 @@ export type RevenueQueryParams = {
 
 const revenueApiRequest = {
   getInstructorDashboard: (params: RevenueQueryParams = {}) =>
-    Promise.all([
-      http.get("/app/api/proxy/payments/analytics/instructor/overview", {
+    (console.log("[Revenue FE] instructor dashboard request", {
+      endpoint: "/app/api/proxy/analytics/instructor",
+      params,
+    }), Promise.all([
+      http.get("/app/api/proxy/analytics/instructor/overview", {
         params,
       }),
-      http.get("/app/api/proxy/payments/analytics/instructor/trends", {
+      http.get("/app/api/proxy/analytics/instructor/trends", {
         params,
       }),
-    ]),
+    ])),
 
   getAdminDashboard: (params: RevenueQueryParams = {}) =>
-    Promise.all([
-      http.get("/app/api/proxy/payments/analytics/admin/overview", {
+    (console.log("[Revenue FE] admin dashboard request", {
+      endpoint: "/app/api/proxy/analytics/admin",
+      params,
+    }), Promise.all([
+      http.get("/app/api/proxy/analytics/admin/overview", {
         params,
       }),
-      http.get("/app/api/proxy/payments/analytics/admin/trends", {
+      http.get("/app/api/proxy/analytics/admin/trends", {
         params,
       }),
-    ]),
+    ])),
 };
 
 export default revenueApiRequest;
