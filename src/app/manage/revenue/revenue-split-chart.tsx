@@ -1,28 +1,8 @@
 "use client";
 
-import { Bar, BarChart, XAxis, YAxis } from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { formatCurrency } from "@/lib/utils";
-
-const chartConfig = {
-  revenue: {
-    label: "Revenue",
-  },
-  gross: {
-    label: "Gross",
-    color: "hsl(var(--chart-1))",
-  },
-  instructor: {
-    label: "Instructor",
-    color: "hsl(var(--chart-2))",
-  },
-  admin: {
-    label: "Admin",
-    color: "hsl(var(--chart-3))",
-  },
-} satisfies ChartConfig;
 
 type RevenueSplitChartProps = {
   dashboardRole: "ADMIN" | "INSTRUCTOR";
@@ -32,38 +12,71 @@ type RevenueSplitChartProps = {
 };
 
 export function RevenueSplitChart({ dashboardRole, grossRevenue, instructorRevenue, adminRevenue }: RevenueSplitChartProps) {
+  const instructor = Number(instructorRevenue || 0);
+  const admin = Number(adminRevenue || 0);
+  const gross = Number(grossRevenue || 0);
   const chartData = [
-    { name: "Gross", value: grossRevenue, fill: "var(--color-gross)" },
-    { name: dashboardRole === "ADMIN" ? "Admin" : "Instructor", value: dashboardRole === "ADMIN" ? adminRevenue : instructorRevenue, fill: dashboardRole === "ADMIN" ? "var(--color-admin)" : "var(--color-instructor)" },
-    { name: dashboardRole === "ADMIN" ? "Instructor" : "Admin", value: dashboardRole === "ADMIN" ? instructorRevenue : adminRevenue, fill: dashboardRole === "ADMIN" ? "var(--color-instructor)" : "var(--color-admin)" },
+    { name: "Instructor", value: instructor, fill: "#9bb9ff" },
+    { name: "System", value: admin, fill: "#f59e0b" },
   ];
+  const systemPercent = gross > 0 ? Math.round((admin / gross) * 100) : 0;
 
   return (
-    <Card className="border-0 shadow-none">
-      <CardContent className="p-0">
-        <div className="h-[320px] w-full">
-          <ChartContainer config={chartConfig} className="h-full">
-            <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-              <XAxis type="number" hide />
-              <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={88} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="value" radius={[0, 8, 8, 0]} />
-            </BarChart>
-          </ChartContainer>
+    <div className="space-y-4">
+      <div className="relative h-[220px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={chartData}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={62}
+              outerRadius={84}
+              stroke="rgba(15,23,42,1)"
+              strokeWidth={4}
+              paddingAngle={1}
+            >
+              {chartData.map((entry) => (
+                <Cell key={entry.name} fill={entry.fill} />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={{
+                borderRadius: 12,
+                border: "1px solid rgba(148,163,184,0.25)",
+                background: "rgba(15,23,42,0.95)",
+                color: "#e2e8f0",
+              }}
+              formatter={(value: number, name: string) => [formatCurrency(Number(value)), name]}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <p className="text-3xl font-semibold text-white">{systemPercent}%</p>
+          <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+            {dashboardRole === "ADMIN" ? "System Share" : "Commission"}
+          </p>
         </div>
-        <div className="mt-4 grid gap-2 text-sm text-muted-foreground">
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
-            <span>Gross revenue</span>
-            <span className="font-medium text-foreground">{formatCurrency(grossRevenue)}</span>
-          </div>
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
-            <span>{dashboardRole === "ADMIN" ? "Admin revenue" : "Instructor revenue"}</span>
-            <span className="font-medium text-foreground">
-              {formatCurrency(dashboardRole === "ADMIN" ? adminRevenue : instructorRevenue)}
-            </span>
-          </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-slate-200">
+          <span className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#9bb9ff]" /> Instructor
+          </span>
+          <span>{formatCurrency(instructor)}</span>
         </div>
-      </CardContent>
-    </Card>
+        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-slate-200">
+          <span className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#f59e0b]" /> System
+          </span>
+          <span>{formatCurrency(admin)}</span>
+        </div>
+        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-slate-200">
+          <span>Gross Revenue</span>
+          <span>{formatCurrency(gross)}</span>
+        </div>
+      </div>
+    </div>
   );
 }

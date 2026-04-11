@@ -27,6 +27,34 @@ export interface PayPalPaymentResponse {
   }>;
 }
 
+export type PaymentHistoryParams = {
+  page?: number;
+  size?: number;
+};
+
+export type PaymentTransactionItem = {
+  id?: string;
+  paymentId?: string;
+  transactionId?: string;
+  userId?: string;
+  userName?: string;
+  userEmail?: string;
+  courseId?: string;
+  courseName?: string;
+  amount?: number;
+  grossAmount?: number;
+  instructorAmount?: number;
+  adminAmount?: number;
+  paymentMethod?: string;
+  status?: string;
+  created?: string;
+  createdAt?: string;
+  updated?: string;
+  updatedAt?: string;
+  currency?: string;
+  [key: string]: unknown;
+};
+
 const paymentApiRequest = {
   // Create VNPay payment URL
   createVNPayPayment: (params: VNPayPaymentRequest) =>
@@ -52,6 +80,17 @@ const paymentApiRequest = {
         },
       } // options with params
     ),
+
+  getPaymentHistory: (params: PaymentHistoryParams = {}) =>
+    http.get("/app/api/proxy/payments/history", {
+      params: {
+        page: params.page ?? 0,
+        size: params.size ?? 10,
+      },
+    }),
+
+  getPaymentDetail: (paymentId: string) =>
+    http.get(`/app/api/proxy/payments/${paymentId}`),
 };
 
 export default paymentApiRequest;
