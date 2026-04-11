@@ -56,12 +56,18 @@ type NormalizedTransaction = {
 };
 
 const statusTone: Record<string, string> = {
-  COMPLETED: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40",
-  SUCCESS: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40",
-  PROCESSING: "bg-amber-500/20 text-amber-300 border-amber-400/40",
-  PENDING: "bg-amber-500/20 text-amber-300 border-amber-400/40",
-  FAILED: "bg-rose-500/20 text-rose-300 border-rose-400/40",
-  CANCELLED: "bg-rose-500/20 text-rose-300 border-rose-400/40",
+  COMPLETED:
+    "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-400/40",
+  SUCCESS:
+    "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-400/40",
+  PROCESSING:
+    "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-400/40",
+  PENDING:
+    "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-400/40",
+  FAILED:
+    "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-400/40",
+  CANCELLED:
+    "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-400/40",
 };
 
 const toSafeList = (payload: any): PaymentTransactionItem[] => {
@@ -273,27 +279,27 @@ export default function RevenueDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen space-y-6 bg-[radial-gradient(circle_at_top_left,_rgba(29,78,216,0.18),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(30,41,59,0.7),_transparent_46%),linear-gradient(180deg,#020617_0%,#0b1120_100%)] p-4 sm:px-6 sm:py-4 md:p-8">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-700/50 bg-slate-950/65 text-white shadow-2xl">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.25),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(52,211,153,0.18),transparent_30%)]" />
+    <main className="min-h-screen space-y-6 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.18),_transparent_35%),linear-gradient(180deg,#f8fafc_0%,#edf2ff_100%)] p-4 text-slate-800 sm:px-6 sm:py-4 md:p-8 dark:bg-[radial-gradient(circle_at_top_left,_rgba(29,78,216,0.18),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(30,41,59,0.7),_transparent_46%),linear-gradient(180deg,#020617_0%,#0b1120_100%)] dark:text-slate-100">
+      <section className="relative overflow-hidden rounded-3xl border border-blue-200/70 bg-white/80 text-slate-900 shadow-xl backdrop-blur dark:border-slate-700/50 dark:bg-slate-950/65 dark:text-white dark:shadow-2xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.16),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.14),transparent_30%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.25),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(52,211,153,0.18),transparent_30%)]" />
         <div className="relative flex flex-col gap-6 p-6 md:p-8 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-2xl space-y-3">
-            <Badge className="w-fit border-white/15 bg-white/10 text-white">Revenue Control</Badge>
+            <Badge className="w-fit border-blue-200 bg-blue-50/80 text-blue-700 dark:border-white/15 dark:bg-white/10 dark:text-white">Revenue Control</Badge>
             <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Revenue Analytics</h1>
-            <p className="text-sm text-white/75 md:text-base">
+            <p className="text-sm text-slate-600 md:text-base dark:text-white/75">
               {dashboardRole === "ADMIN"
                 ? "Admin overview với giám sát real-time doanh thu, đơn hàng và phân bổ hệ thống."
                 : "Theo dõi doanh thu khóa học của bạn theo ngày và tỉ lệ chia lợi nhuận."}
             </p>
           </div>
           <div className="flex flex-wrap items-start gap-3 text-sm">
-            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
-              <div className="text-white/60">Vai trò</div>
+            <div className="rounded-2xl border border-blue-200/70 bg-white/70 px-4 py-3 backdrop-blur dark:border-white/10 dark:bg-white/10">
+              <div className="text-slate-500 dark:text-white/60">Vai trò</div>
               <div className="font-semibold">{dashboardRole}</div>
             </div>
             {dashboardRole === "INSTRUCTOR" && currentUserId && (
-              <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
-                <div className="text-white/60">Instructor ID</div>
+              <div className="rounded-2xl border border-blue-200/70 bg-white/70 px-4 py-3 backdrop-blur dark:border-white/10 dark:bg-white/10">
+                <div className="text-slate-500 dark:text-white/60">Instructor ID</div>
                 <div className="break-all font-semibold">{currentUserId}</div>
               </div>
             )}
@@ -301,10 +307,10 @@ export default function RevenueDashboardPage() {
         </div>
       </section>
 
-      <Card className="border-slate-700/50 bg-slate-950/70 shadow-sm">
+      <Card className="border-blue-100 bg-white/85 shadow-sm dark:border-slate-700/50 dark:bg-slate-950/70">
         <CardHeader className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2 text-slate-100">
+            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
               <CalendarDays className="h-4 w-4" /> Bộ lọc doanh thu
             </CardTitle>
             <CardDescription>Tuỳ chỉnh khoảng ngày, instructor và làm mới dữ liệu.</CardDescription>
@@ -315,22 +321,26 @@ export default function RevenueDashboardPage() {
                 placeholder="Instructor ID"
                 value={adminInstructorId}
                 onChange={(event) => setAdminInstructorId(event.target.value)}
-                className="border-slate-700 bg-slate-900/80 text-slate-100 lg:w-[260px]"
+                className="border-blue-200 bg-white text-slate-800 lg:w-[260px] dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
               />
             )}
             <Input
               type="date"
               value={fromDate}
               onChange={(event) => setFromDate(event.target.value)}
-              className="border-slate-700 bg-slate-900/80 text-slate-100 lg:w-[180px]"
+              className="border-blue-200 bg-white text-slate-800 dark:[color-scheme:dark] lg:w-[180px] dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
             />
             <Input
               type="date"
               value={toDate}
               onChange={(event) => setToDate(event.target.value)}
-              className="border-slate-700 bg-slate-900/80 text-slate-100 lg:w-[180px]"
+              className="border-blue-200 bg-white text-slate-800 dark:[color-scheme:dark] lg:w-[180px] dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
             />
-            <Button variant="outline" onClick={handleResetDateFilter} className="border-slate-600 bg-slate-900 text-slate-100">
+            <Button
+              variant="outline"
+              onClick={handleResetDateFilter}
+              className="border-blue-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+            >
               Reset
             </Button>
             <Button onClick={handleRefresh} className="gap-2 bg-blue-600 text-white hover:bg-blue-500">
@@ -345,22 +355,25 @@ export default function RevenueDashboardPage() {
         {summaryCards.map((card) => {
           const Icon = card.icon;
           return (
-            <Card key={card.title} className={`border-slate-700/50 bg-gradient-to-br ${card.tone} shadow-sm`}>
+            <Card
+              key={card.title}
+              className={`border-blue-100 bg-gradient-to-br ${card.tone} from-white/95 shadow-sm dark:border-slate-700/50 dark:from-slate-900/75`}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-slate-300">{card.title}</CardTitle>
-                <Icon className="h-4 w-4 text-slate-300" />
+                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">{card.title}</CardTitle>
+                <Icon className="h-4 w-4 text-slate-500 dark:text-slate-300" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-semibold text-slate-100">{card.value}</div>
+                <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{card.value}</div>
               </CardContent>
             </Card>
           );
         })}
       </section>
       <div className="grid gap-6 xl:grid-cols-5">
-        <Card className="border-slate-700/50 bg-slate-950/70 xl:col-span-3 shadow-sm">
+        <Card className="border-blue-100 bg-white/85 xl:col-span-3 shadow-sm dark:border-slate-700/50 dark:bg-slate-950/70">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-slate-100">
+            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
               <TrendingUp className="h-4 w-4" /> Doanh thu theo ngày
             </CardTitle>
             <CardDescription>Gross / instructor / admin revenue từ analytics-service.</CardDescription>
@@ -370,9 +383,9 @@ export default function RevenueDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-700/50 bg-slate-950/70 xl:col-span-2 shadow-sm">
+        <Card className="border-blue-100 bg-white/85 xl:col-span-2 shadow-sm dark:border-slate-700/50 dark:bg-slate-950/70">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-slate-100">
+            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
               <ShieldCheck className="h-4 w-4" /> Phân bổ doanh thu
             </CardTitle>
             <CardDescription>
@@ -393,26 +406,26 @@ export default function RevenueDashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-5">
-        <Card className="border-slate-700/50 bg-slate-950/70 xl:col-span-3 shadow-sm">
+        <Card className="border-blue-100 bg-white/85 xl:col-span-3 shadow-sm dark:border-slate-700/50 dark:bg-slate-950/70">
           <CardHeader>
-            <CardTitle className="text-slate-100">Recent Transactions</CardTitle>
+            <CardTitle className="text-slate-900 dark:text-slate-100">Recent Transactions</CardTitle>
             <CardDescription>Danh sách giao dịch gần nhất, bấm vào mỗi dòng để xem chi tiết.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col gap-3 lg:flex-row">
               <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
                   placeholder="Search transaction, user, course..."
-                  className="border-slate-700 bg-slate-900/80 pl-9 text-slate-100"
+                  className="border-blue-200 bg-white pl-9 text-slate-800 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className="h-10 rounded-md border border-slate-700 bg-slate-900/80 px-3 text-sm text-slate-100"
+                className="h-10 rounded-md border border-blue-200 bg-white px-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
               >
                 <option value="ALL">All statuses</option>
                 <option value="COMPLETED">Completed</option>
@@ -424,9 +437,9 @@ export default function RevenueDashboardPage() {
               </select>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-800">
+            <div className="overflow-x-auto rounded-xl border border-blue-100 dark:border-slate-800">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-900/90 text-left text-xs uppercase tracking-wider text-slate-400">
+                <thead className="bg-slate-100 text-left text-xs uppercase tracking-wider text-slate-500 dark:bg-slate-900/90 dark:text-slate-400">
                   <tr>
                     <th className="px-4 py-3">ID</th>
                     <th className="px-4 py-3">User</th>
@@ -437,19 +450,19 @@ export default function RevenueDashboardPage() {
                     <th className="px-4 py-3">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800 bg-slate-950/35 text-slate-200">
+                <tbody className="divide-y divide-blue-100 bg-white/70 text-slate-700 dark:divide-slate-800 dark:bg-slate-950/35 dark:text-slate-200">
                   {isHistoryLoading &&
                     Array.from({ length: 4 }).map((_, idx) => (
                       <tr key={`loading-${idx}`}>
                         <td colSpan={7} className="px-4 py-3">
-                          <Skeleton className="h-6 w-full bg-slate-800" />
+                          <Skeleton className="h-6 w-full bg-slate-200 dark:bg-slate-800" />
                         </td>
                       </tr>
                     ))}
 
                   {!isHistoryLoading && transactions.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
+                      <td colSpan={7} className="px-4 py-10 text-center text-slate-500 dark:text-slate-400">
                         Silence in the logs. Chưa có giao dịch cho bộ lọc hiện tại.
                       </td>
                     </tr>
@@ -457,15 +470,15 @@ export default function RevenueDashboardPage() {
 
                   {!isHistoryLoading &&
                     transactions.map((row) => (
-                      <tr key={row.id || row.transactionId} className="hover:bg-slate-900/70">
+                      <tr key={row.id || row.transactionId} className="hover:bg-slate-100 dark:hover:bg-slate-900/70">
                         <td className="px-4 py-3 font-medium">#{row.transactionId.slice(0, 12)}</td>
                         <td className="px-4 py-3">{row.userLabel}</td>
                         <td className="px-4 py-3">{row.courseLabel}</td>
                         <td className="px-4 py-3 text-right">{formatCurrency(row.gross)}</td>
                         <td className="px-4 py-3 text-right">
-                          <span className="text-amber-300">{formatCurrency(row.admin)}</span>
-                          <span className="mx-1 text-slate-500">/</span>
-                          <span className="text-emerald-300">{formatCurrency(row.instructor)}</span>
+                          <span className="text-amber-600 dark:text-amber-300">{formatCurrency(row.admin)}</span>
+                          <span className="mx-1 text-slate-400 dark:text-slate-500">/</span>
+                          <span className="text-emerald-600 dark:text-emerald-300">{formatCurrency(row.instructor)}</span>
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -480,7 +493,7 @@ export default function RevenueDashboardPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-8 gap-1 text-slate-100 hover:bg-slate-800"
+                            className="h-8 gap-1 text-slate-700 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
                             onClick={() => setSelectedTransactionId(row.id)}
                           >
                             View
@@ -494,12 +507,12 @@ export default function RevenueDashboardPage() {
             </div>
 
             <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-400">Page {transactionPage + 1}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Page {transactionPage + 1}</p>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-slate-700 bg-slate-900 text-slate-100"
+                  className="border-blue-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                   disabled={transactionPage === 0}
                   onClick={() => setTransactionPage((prev) => Math.max(0, prev - 1))}
                 >
@@ -508,7 +521,7 @@ export default function RevenueDashboardPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-slate-700 bg-slate-900 text-slate-100"
+                  className="border-blue-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                   onClick={() => setTransactionPage((prev) => prev + 1)}
                 >
                   Next
@@ -518,40 +531,40 @@ export default function RevenueDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-700/50 bg-slate-950/70 xl:col-span-2 shadow-sm">
+        <Card className="border-blue-100 bg-white/85 xl:col-span-2 shadow-sm dark:border-slate-700/50 dark:bg-slate-950/70">
           <CardHeader>
-            <CardTitle className="text-slate-100">Top Performers</CardTitle>
+            <CardTitle className="text-slate-900 dark:text-slate-100">Top Performers</CardTitle>
             <CardDescription>Top ngày có gross revenue cao nhất trong khoảng lọc.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {topTrends.length === 0 && (
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-400">
+              <div className="rounded-xl border border-blue-100 bg-slate-50/70 p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
                 Chưa có dữ liệu doanh thu.
               </div>
             )}
 
             {topTrends.map((row, index) => (
-              <div key={row.date} className="rounded-xl border border-slate-800 bg-slate-900/45 p-4">
+              <div key={row.date} className="rounded-xl border border-blue-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/45">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-medium text-slate-200">#{index + 1} - {row.date}</p>
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200">#{index + 1} - {row.date}</p>
                   <Badge className="border-blue-400/30 bg-blue-500/20 text-blue-200">{row.orders} orders</Badge>
                 </div>
-                <p className="text-xl font-semibold text-slate-100">{formatCurrency(row.gross)}</p>
+                <p className="text-xl font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(row.gross)}</p>
               </div>
             ))}
           </CardContent>
         </Card>
       </div>
 
-      <Card className="border-slate-700/50 bg-slate-950/70 shadow-sm">
+      <Card className="border-blue-100 bg-white/85 shadow-sm dark:border-slate-700/50 dark:bg-slate-950/70">
         <CardHeader>
-          <CardTitle className="text-slate-100">Daily Projection</CardTitle>
+          <CardTitle className="text-slate-900 dark:text-slate-100">Daily Projection</CardTitle>
           <CardDescription>Bảng projection theo ngày từ analytics-service.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto rounded-xl border border-slate-800">
+          <div className="overflow-x-auto rounded-xl border border-blue-100 dark:border-slate-800">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-800 bg-slate-900/70 text-slate-400">
+              <thead className="border-b border-blue-100 bg-slate-100 text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">Ngày</th>
                   <th className="px-4 py-3 text-right font-medium">Gross</th>
@@ -563,13 +576,13 @@ export default function RevenueDashboardPage() {
               <tbody>
                 {chartData.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
                       {isLoading ? "Đang tải dữ liệu..." : "Chưa có dữ liệu trong khoảng thời gian này."}
                     </td>
                   </tr>
                 ) : (
                   chartData.map((row) => (
-                    <tr key={row.date} className="border-b border-slate-800 text-slate-200 last:border-0">
+                    <tr key={row.date} className="border-b border-blue-100 text-slate-700 dark:border-slate-800 dark:text-slate-200 last:border-0">
                       <td className="px-4 py-3">{row.date}</td>
                       <td className="px-4 py-3 text-right">{formatCurrency(row.gross)}</td>
                       <td className="px-4 py-3 text-right">{formatCurrency(row.instructor)}</td>
@@ -601,20 +614,23 @@ export default function RevenueDashboardPage() {
       )}
 
       <Sheet open={!!selectedTransactionId} onOpenChange={(open) => !open && setSelectedTransactionId("") }>
-        <SheetContent side="right" className="w-full border-slate-700 bg-slate-950 p-0 text-slate-100 sm:max-w-2xl">
+        <SheetContent
+          side="right"
+          className="w-full border-blue-100 bg-white p-0 text-slate-800 sm:max-w-2xl dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        >
           <div className="h-full overflow-y-auto p-6">
             <SheetHeader className="mb-6 space-y-1">
-              <SheetDescription className="uppercase tracking-[0.2em] text-slate-400">Transaction Detail</SheetDescription>
-              <SheetTitle className="text-3xl text-slate-100">
+              <SheetDescription className="uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Transaction Detail</SheetDescription>
+              <SheetTitle className="text-3xl text-slate-900 dark:text-slate-100">
                 {selectedTransactionId ? `TXN-${selectedTransactionId.slice(0, 10)}` : "N/A"}
               </SheetTitle>
             </SheetHeader>
 
             {isDetailLoading && (
               <div className="space-y-3">
-                <Skeleton className="h-24 w-full bg-slate-800" />
-                <Skeleton className="h-24 w-full bg-slate-800" />
-                <Skeleton className="h-44 w-full bg-slate-800" />
+                <Skeleton className="h-24 w-full bg-slate-200 dark:bg-slate-800" />
+                <Skeleton className="h-24 w-full bg-slate-200 dark:bg-slate-800" />
+                <Skeleton className="h-44 w-full bg-slate-200 dark:bg-slate-800" />
               </div>
             )}
 
@@ -628,52 +644,52 @@ export default function RevenueDashboardPage() {
 
             {!isDetailLoading && !detailError && (
               <div className="space-y-4">
-                <Card className="border-slate-700/60 bg-slate-900/70">
+                <Card className="border-blue-100 bg-slate-50 dark:border-slate-700/60 dark:bg-slate-900/70">
                   <CardHeader>
-                    <CardTitle className="text-slate-100">Event Timeline</CardTitle>
+                    <CardTitle className="text-slate-900 dark:text-slate-100">Event Timeline</CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-3">
-                      <p className="text-xs uppercase text-slate-400">Created</p>
+                    <div className="rounded-xl border border-blue-100 bg-white p-3 dark:border-slate-700 dark:bg-slate-950/70">
+                      <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Created</p>
                       <p className="mt-1 text-sm">{formatDateTime(String(detailPayload?.createdAt || detailPayload?.created || ""))}</p>
                     </div>
-                    <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-3">
-                      <p className="text-xs uppercase text-slate-400">Payment Method</p>
+                    <div className="rounded-xl border border-blue-100 bg-white p-3 dark:border-slate-700 dark:bg-slate-950/70">
+                      <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Payment Method</p>
                       <p className="mt-1 text-sm">{String(detailPayload?.paymentMethod || detailPayload?.method || "N/A")}</p>
                     </div>
-                    <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-3">
-                      <p className="text-xs uppercase text-slate-400">Status</p>
+                    <div className="rounded-xl border border-blue-100 bg-white p-3 dark:border-slate-700 dark:bg-slate-950/70">
+                      <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Status</p>
                       <p className="mt-1 text-sm">{String(detailPayload?.status || "N/A")}</p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-slate-700/60 bg-slate-900/70">
+                <Card className="border-blue-100 bg-slate-50 dark:border-slate-700/60 dark:bg-slate-900/70">
                   <CardHeader>
-                    <CardTitle className="text-slate-100">Payment Summary</CardTitle>
+                    <CardTitle className="text-slate-900 dark:text-slate-100">Payment Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4">
-                      <p className="text-xs uppercase text-slate-400">Total Amount</p>
-                      <p className="mt-1 text-3xl font-semibold text-slate-100">
+                    <div className="rounded-xl border border-blue-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-950/70">
+                      <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Total Amount</p>
+                      <p className="mt-1 text-3xl font-semibold text-slate-900 dark:text-slate-100">
                         {formatCurrency(Number(detailPayload?.amount || detailPayload?.grossAmount || 0))}
                       </p>
                     </div>
-                    <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-4">
-                      <p className="text-xs uppercase text-slate-400">Transaction ID</p>
-                      <p className="mt-1 break-all text-sm text-slate-100">
+                    <div className="rounded-xl border border-blue-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-950/70">
+                      <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Transaction ID</p>
+                      <p className="mt-1 break-all text-sm text-slate-900 dark:text-slate-100">
                         {String(detailPayload?.transactionId || detailPayload?.id || "N/A")}
                       </p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-slate-700/60 bg-slate-900/70">
+                <Card className="border-blue-100 bg-slate-50 dark:border-slate-700/60 dark:bg-slate-900/70">
                   <CardHeader>
-                    <CardTitle className="text-slate-100">Raw Payload</CardTitle>
+                    <CardTitle className="text-slate-900 dark:text-slate-100">Raw Payload</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <pre className="max-h-[320px] overflow-auto rounded-lg border border-slate-800 bg-slate-950/80 p-3 text-xs text-slate-300">
+                    <pre className="max-h-[320px] overflow-auto rounded-lg border border-blue-100 bg-white p-3 text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-950/80 dark:text-slate-300">
                       {JSON.stringify(detailPayload ?? {}, null, 2)}
                     </pre>
                   </CardContent>
@@ -682,14 +698,14 @@ export default function RevenueDashboardPage() {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
-                    className="border-slate-700 bg-slate-900 text-slate-100"
+                    className="border-blue-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                     onClick={() => navigator.clipboard.writeText(String(detailPayload?.transactionId || detailPayload?.id || ""))}
                   >
                     <CreditCard className="mr-1 h-4 w-4" /> Copy Transaction ID
                   </Button>
                   <Button
                     variant="outline"
-                    className="border-slate-700 bg-slate-900 text-slate-100"
+                    className="border-blue-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                     onClick={() => window.open("/manage/revenue", "_blank")}
                   >
                     <ExternalLink className="mr-1 h-4 w-4" /> Open Revenue Page

@@ -44,35 +44,35 @@ export function RevenueSplitChart({ dashboardRole, grossRevenue, instructorReven
               contentStyle={{
                 borderRadius: 12,
                 border: "1px solid rgba(148,163,184,0.25)",
-                background: "rgba(15,23,42,0.95)",
-                color: "#e2e8f0",
+                background: "rgba(255,255,255,0.96)",
+                color: "#0f172a",
               }}
               formatter={(value: number, name: string) => [formatCurrency(Number(value)), name]}
             />
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-3xl font-semibold text-white">{systemPercent}%</p>
-          <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+          <p className="text-3xl font-semibold text-slate-900 dark:text-white">{systemPercent}%</p>
+          <p className="text-xs uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
             {dashboardRole === "ADMIN" ? "System Share" : "Commission"}
           </p>
         </div>
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-slate-200">
+        <div className="flex items-center justify-between rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-900/50 dark:text-slate-200">
           <span className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[#9bb9ff]" /> Instructor
           </span>
           <span>{formatCurrency(instructor)}</span>
         </div>
-        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-slate-200">
+        <div className="flex items-center justify-between rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-900/50 dark:text-slate-200">
           <span className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[#f59e0b]" /> System
           </span>
           <span>{formatCurrency(admin)}</span>
         </div>
-        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-900/50 px-3 py-2 text-sm text-slate-200">
+        <div className="flex items-center justify-between rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-900/50 dark:text-slate-200">
           <span>Gross Revenue</span>
           <span>{formatCurrency(gross)}</span>
         </div>

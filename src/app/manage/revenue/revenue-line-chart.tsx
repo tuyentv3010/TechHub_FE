@@ -18,7 +18,7 @@ export function RevenueLineChart({ revenueByDate }: RevenueLineChartProps) {
 
   if (!hasData) {
     return (
-      <div className="flex h-[320px] items-center justify-center rounded-2xl border border-white/10 bg-slate-900/30 text-sm text-slate-400">
+      <div className="flex h-[320px] items-center justify-center rounded-2xl border border-blue-100 bg-slate-50 text-sm text-slate-500 dark:border-white/10 dark:bg-slate-900/30 dark:text-slate-400">
         No transaction data available
       </div>
     );
@@ -53,8 +53,8 @@ export function RevenueLineChart({ revenueByDate }: RevenueLineChartProps) {
             contentStyle={{
               borderRadius: 12,
               border: "1px solid rgba(148,163,184,0.25)",
-              background: "rgba(15,23,42,0.95)",
-              color: "#e2e8f0",
+              background: "rgba(255,255,255,0.96)",
+              color: "#0f172a",
             }}
             formatter={(value: number, name: string) => [formatCurrency(Number(value)), name]}
           />
