@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
-import paymentApiRequest, { PaymentTransactionItem } from "@/apiRequests/payment";
+import paymentApiRequest, { PaymentPageResponse, PaymentTransactionItem } from "@/apiRequests/payment";
 import { useRevenueDashboard } from "@/queries/useRevenue";
 import { decodeToken, formatCurrency, getAccessTokenFromLocalStorage } from "@/lib/utils";
 
@@ -77,6 +77,12 @@ const toSafeList = (payload: any): PaymentTransactionItem[] => {
   if (Array.isArray(data?.items)) return data.items;
   if (Array.isArray(payload?.content)) return payload.content;
   return [];
+};
+
+const toHistoryPageData = (payload: any): PaymentPageResponse<PaymentTransactionItem> | null => {
+  const data = payload?.data ?? payload;
+  if (data && Array.isArray(data.content)) return data;
+  return null;
 };
 
 const toNormalizedTransaction = (item: PaymentTransactionItem): NormalizedTransaction => {
@@ -196,8 +202,10 @@ export default function RevenueDashboardPage() {
     [trends]
   );
 
-  const transactions = useMemo(() => {
-    const rows = toSafeList(historyResponse?.payload).map(toNormalizedTransaction);
+  const transactions = useMemo<NormalizedTransaction[]>(() => {
+    const pageData = toHistoryPageData(historyResponse?.payload);
+    const rawRows: PaymentTransactionItem[] = pageData?.content ?? toSafeList(historyResponse?.payload);
+    const rows: NormalizedTransaction[] = rawRows.map(toNormalizedTransaction);
     return rows.filter((row) => {
       const matchesSearch =
         !searchValue ||
@@ -209,6 +217,11 @@ export default function RevenueDashboardPage() {
       return matchesSearch && matchesStatus;
     });
   }, [historyResponse?.payload, searchValue, statusFilter]);
+
+  const historyPageData = useMemo(() => toHistoryPageData(historyResponse?.payload), [historyResponse?.payload]);
+  const totalPages = historyPageData?.totalPages ?? 1;
+  const totalElements = historyPageData?.totalElements ?? transactions.length;
+  const isLastPage = historyPageData?.last ?? transactions.length < 10;
 
   const topTrends = useMemo(
     () => [...chartData].sort((a, b) => b.gross - a.gross).slice(0, 3),
@@ -469,7 +482,7 @@ export default function RevenueDashboardPage() {
                   )}
 
                   {!isHistoryLoading &&
-                    transactions.map((row) => (
+                    transactions.map((row: NormalizedTransaction) => (
                       <tr key={row.id || row.transactionId} className="hover:bg-slate-100 dark:hover:bg-slate-900/70">
                         <td className="px-4 py-3 font-medium">#{row.transactionId.slice(0, 12)}</td>
                         <td className="px-4 py-3">{row.userLabel}</td>
@@ -507,7 +520,9 @@ export default function RevenueDashboardPage() {
             </div>
 
             <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-500 dark:text-slate-400">Page {transactionPage + 1}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Page {transactionPage + 1} / {Math.max(totalPages, 1)} - Total {totalElements} transactions
+              </p>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -522,6 +537,7 @@ export default function RevenueDashboardPage() {
                   variant="outline"
                   size="sm"
                   className="border-blue-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                  disabled={isLastPage || isHistoryFetching}
                   onClick={() => setTransactionPage((prev) => prev + 1)}
                 >
                   Next

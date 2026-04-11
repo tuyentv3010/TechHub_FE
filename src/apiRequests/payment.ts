@@ -32,6 +32,27 @@ export type PaymentHistoryParams = {
   size?: number;
 };
 
+export type PaymentPageResponse<T> = {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  numberOfElements: number;
+  first: boolean;
+  last: boolean;
+  empty: boolean;
+};
+
+export type GlobalResponse<T> = {
+  success: boolean;
+  status: string;
+  message: string;
+  data: T;
+  timestamp?: string;
+  code?: number;
+};
+
 export type PaymentTransactionItem = {
   id?: string;
   paymentId?: string;
@@ -82,7 +103,7 @@ const paymentApiRequest = {
     ),
 
   getPaymentHistory: (params: PaymentHistoryParams = {}) =>
-    http.get("/app/api/proxy/payments/history", {
+    http.get<GlobalResponse<PaymentPageResponse<PaymentTransactionItem>>>("/app/api/proxy/payments/history", {
       params: {
         page: params.page ?? 0,
         size: params.size ?? 10,
