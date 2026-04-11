@@ -6,6 +6,7 @@ import { HttpError } from "@/lib/http";
 export async function POST(request: Request) {
   const body = (await request.json()) as LoginBodyType;
   const cookieStore = cookies();
+  const isProduction = process.env.NODE_ENV === "production";
   try {
     const { payload } = await authApiRequest.sLogin(body);
     const { accessToken, refreshToken } = payload.data;
@@ -15,14 +16,14 @@ export async function POST(request: Request) {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
+      secure: isProduction,
       expires: decodedAccessToken.exp * 1000,
     });
     (await cookieStore).set("refreshToken", refreshToken, {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
+      secure: isProduction,
       expires: decodedRefreshToken.exp * 1000,
     });
     return Response.json(payload);

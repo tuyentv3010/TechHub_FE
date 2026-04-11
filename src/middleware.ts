@@ -63,30 +63,25 @@ export function middleware(request: NextRequest) {
     }
   }
   
-  // If refresh token is expired, redirect to logout
-  if (refreshToken && isRefreshTokenExpired && pathname !== "/login" && pathname !== "/logout") {
-    console.log("🔐 Middleware - Refresh token expired, redirecting to logout");
-    const response = NextResponse.redirect(new URL("/logout", request.url));
+  // If refresh token is expired, clear cookies and redirect to login
+  if (refreshToken && isRefreshTokenExpired && pathname !== "/login") {
+    console.log("🔐 Middleware - Refresh token expired, redirecting to login");
+    const response = NextResponse.redirect(new URL("/login", request.url));
     response.cookies.set("accessToken", "", { path: "/", maxAge: 0 });
     response.cookies.set("refreshToken", "", { path: "/", maxAge: 0 });
     return response;
   }
 
-  // Nếu có refreshToken còn hạn NHƯNG không có accessToken -> redirect về /logout
-  // Vì không có accessToken thì không thể gọi API được
+  // If refresh token is still valid but access token is missing/expired,
+  // let refresh-token page handle token rotation instead of logging out.
   if (refreshToken && !isRefreshTokenExpired && (!accessToken || isAccessTokenExpired)) {
-    console.log("🔐 Middleware - Has refreshToken but accessToken missing/expired, redirecting to logout");
-    // Nếu đang ở /login hoặc /logout thì cho qua
-    if (pathname === "/login" || pathname === "/logout") {
-      const response = NextResponse.next();
-      response.cookies.set("accessToken", "", { path: "/", maxAge: 0 });
-      response.cookies.set("refreshToken", "", { path: "/", maxAge: 0 });
-      return response;
+    console.log("🔐 Middleware - Has refreshToken but accessToken missing/expired, redirecting to /refresh-token");
+    if (["/login", "/register", "/forgot-password", "/verify-email", "/oauth2", "/refresh-token"].some((path) => pathname.startsWith(path))) {
+      return NextResponse.next();
     }
-    const response = NextResponse.redirect(new URL("/logout", request.url));
-    response.cookies.set("accessToken", "", { path: "/", maxAge: 0 });
-    response.cookies.set("refreshToken", "", { path: "/", maxAge: 0 });
-    return response;
+    const url = new URL("/refresh-token", request.url);
+    url.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(url);
   }
 
   // isAuthenticated = có CẢ accessToken VÀ refreshToken còn hạn
@@ -99,10 +94,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // Check auth for home page - nếu chưa login thì redirect về /logout
+  // Check auth for home page - if unauthenticated then go to login
   if (pathname === "/" && !isAuthenticated) {
-    console.log("🔐 Middleware - Redirecting unauthenticated user from home to /logout");
-    return NextResponse.redirect(new URL("/logout", request.url));
+    console.log("🔐 Middleware - Redirecting unauthenticated user from home to /login");
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Check auth for protected public pages (courses, learning-paths, blog)
@@ -110,8 +105,8 @@ export function middleware(request: NextRequest) {
     authRequiredPaths.some((path) => pathname.startsWith(path)) &&
     !refreshToken
   ) {
-    console.log("🔐 Middleware - Redirecting unauthenticated user to /logout with redirect:", pathname);
-    const url = new URL("/logout", request.url);
+    console.log("🔐 Middleware - Redirecting unauthenticated user to /login with redirect:", pathname);
+    const url = new URL("/login", request.url);
     url.searchParams.set("redirect", pathname);
     const response = NextResponse.redirect(url);
     // Clear any invalid cookies
@@ -132,13 +127,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
   
-  // If trying to access private path but no valid refresh token, clear cookies and redirect to login
+  // If trying to access private path but no valid refresh token, redirect to login
   if (
     privatePaths.some((path) => pathname.startsWith(path)) &&
     (!refreshToken || isRefreshTokenExpired)
   ) {
-    console.log("🔐 Middleware - No valid refresh token, redirecting to logout");
-    return NextResponse.redirect(new URL("/logout", request.url));
+    console.log("🔐 Middleware - No valid refresh token, redirecting to login");
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Role-based access control

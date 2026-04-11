@@ -7,6 +7,7 @@ export async function POST(request: Request) {
   console.log("🔄 [API /api/auth/refresh-token] Request received");
   
   const cookieStore = cookies();
+  const isProduction = process.env.NODE_ENV === "production";
   const refreshToken = (await cookieStore).get("refreshToken")?.value;
   const accessToken = (await cookieStore).get("accessToken")?.value;
   
@@ -56,14 +57,14 @@ export async function POST(request: Request) {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
+      secure: isProduction,
       expires: decodedAccessToken.exp * 1000,
     });
     (await cookieStore).set("refreshToken", payload.data.refreshToken, {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
+      secure: isProduction,
       expires: decodedRefreshToken.exp * 1000,
     });
     

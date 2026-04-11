@@ -1,5 +1,8 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import accountApiRequest from "@/apiRequests/account";
+import { useAppContext } from "@/components/app-provider";
 import {
   CreateEmployeeAccountBodyType,
   UpdateEmployeeAccountBodyType,
@@ -8,9 +11,18 @@ import {
 
 // Get user profile
 export const useAccountProfile = () => {
+  const { isAuth } = useAppContext();
+  const hasAccessToken =
+    typeof window !== "undefined" && !!localStorage.getItem("accessToken");
+
   return useQuery({
     queryKey: ["account-profile"],
     queryFn: () => accountApiRequest.getProfile(),
+    enabled: isAuth && hasAccessToken,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401) return false;
+      return failureCount < 2;
+    },
   });
 };
 
@@ -121,10 +133,16 @@ export const useUpdateProfileMutation = () => {
 
 // Get user permissions
 export const useUserPermissions = (userId: string, enabled: boolean = true) => {
+  const { isAuth } = useAppContext();
+
   return useQuery({
     queryKey: ["user-permissions", userId],
     queryFn: () => accountApiRequest.getUserPermissions(userId),
-    enabled: enabled && !!userId,
+    enabled: enabled && isAuth && !!userId,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401) return false;
+      return failureCount < 2;
+    },
   });
 };
 

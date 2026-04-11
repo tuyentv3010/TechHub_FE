@@ -8,6 +8,7 @@ export async function POST(request: Request) {
   };
   const { accessToken, refreshToken } = body;
   const cookieStore = cookies();
+  const isProduction = process.env.NODE_ENV === "production";
   try {
     const decodedAccessToken = jwt.decode(accessToken) as { exp: number };
     const decodedRefreshToken = jwt.decode(refreshToken) as { exp: number };
@@ -15,14 +16,14 @@ export async function POST(request: Request) {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
+      secure: isProduction,
       expires: decodedAccessToken.exp * 1000,
     });
     (await cookieStore).set("refreshToken", refreshToken, {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
+      secure: isProduction,
       expires: decodedRefreshToken.exp * 1000,
     });
     return Response.json(body);
