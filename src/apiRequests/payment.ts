@@ -76,6 +76,60 @@ export type PaymentTransactionItem = {
   [key: string]: unknown;
 };
 
+export type PayoutBalanceResponse = {
+  instructorId: string;
+  totalEarned: number;
+  pendingAmount: number;
+  availableAmount: number;
+};
+
+export type PayoutRequestResponse = {
+  id: string;
+  instructorId: string;
+  batchId?: string | null;
+  amount: number;
+  status: string;
+  note?: string | null;
+  reviewNote?: string | null;
+  paymentReference?: string | null;
+  approvedAt?: string | null;
+  markedPaidAt?: string | null;
+  created?: string | null;
+  updated?: string | null;
+};
+
+export type PayoutBatchResponse = {
+  id: string;
+  batchName: string;
+  periodKey?: string | null;
+  fromDate?: string | null;
+  toDate?: string | null;
+  status: string;
+  totalRequests: number;
+  totalAmount: number;
+  created?: string | null;
+};
+
+export type CreatePayoutRequestPayload = {
+  amount: number;
+  note?: string;
+};
+
+export type ReviewPayoutRequestPayload = {
+  note?: string;
+};
+
+export type MarkPaidPayoutRequestPayload = {
+  paymentReference: string;
+  note?: string;
+};
+
+export type CreateManualPayoutBatchPayload = {
+  name?: string;
+  fromDate: string;
+  toDate: string;
+};
+
 const paymentApiRequest = {
   // Create VNPay payment URL
   createVNPayPayment: (params: VNPayPaymentRequest) =>
@@ -112,6 +166,55 @@ const paymentApiRequest = {
 
   getPaymentDetail: (paymentId: string) =>
     http.get(`/app/api/proxy/payments/${paymentId}`),
+
+  getPayoutBalance: (instructorId?: string) =>
+    http.get<GlobalResponse<PayoutBalanceResponse>>("/app/api/proxy/payments/payouts/balance", {
+      params: instructorId ? { instructorId } : undefined,
+    }),
+
+  createPayoutRequest: (payload: CreatePayoutRequestPayload) =>
+    http.post<GlobalResponse<PayoutRequestResponse>>("/app/api/proxy/payments/payouts/requests", payload),
+
+  listPayoutRequests: () =>
+    http.get<GlobalResponse<PayoutRequestResponse[]>>("/app/api/proxy/payments/payouts/requests"),
+
+  getPayoutRequest: (requestId: string) =>
+    http.get<GlobalResponse<PayoutRequestResponse>>(`/app/api/proxy/payments/payouts/requests/${requestId}`),
+
+  approvePayoutRequest: (requestId: string, payload: ReviewPayoutRequestPayload = {}) =>
+    http.put<GlobalResponse<PayoutRequestResponse>>(
+      `/app/api/proxy/payments/payouts/requests/${requestId}/approve`,
+      payload
+    ),
+
+  rejectPayoutRequest: (requestId: string, payload: ReviewPayoutRequestPayload = {}) =>
+    http.put<GlobalResponse<PayoutRequestResponse>>(
+      `/app/api/proxy/payments/payouts/requests/${requestId}/reject`,
+      payload
+    ),
+
+  markPayoutRequestPaid: (requestId: string, payload: MarkPaidPayoutRequestPayload) =>
+    http.put<GlobalResponse<PayoutRequestResponse>>(
+      `/app/api/proxy/payments/payouts/requests/${requestId}/mark-paid`,
+      payload
+    ),
+
+  listPayoutBatches: () =>
+    http.get<GlobalResponse<PayoutBatchResponse[]>>("/app/api/proxy/payments/payouts/batches"),
+
+  createMonthlyPayoutBatch: (period?: string) =>
+    http.post<GlobalResponse<PayoutBatchResponse>>("/app/api/proxy/payments/payouts/batches/monthly", null, {
+      params: period ? { period } : undefined,
+    }),
+
+  createManualPayoutBatch: (payload: CreateManualPayoutBatchPayload) =>
+    http.post<GlobalResponse<PayoutBatchResponse>>("/app/api/proxy/payments/payouts/batches/manual", null, {
+      params: {
+        name: payload.name,
+        fromDate: payload.fromDate,
+        toDate: payload.toDate,
+      },
+    }),
 };
 
 export default paymentApiRequest;

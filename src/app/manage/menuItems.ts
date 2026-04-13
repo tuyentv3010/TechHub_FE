@@ -10,6 +10,7 @@ import {
   School,
   Route,
   HandCoins,
+  WalletCards,
 } from "lucide-react";
 
 export interface MenuItem {
@@ -35,6 +36,12 @@ const menuItems: MenuItem[] = [
     title: "Doanh thu",
     Icon: HandCoins,
     href: "/manage/revenue",
+    roles: [Role.Admin, Role.SuperAdmin, Role.Instructor],
+  },
+  {
+    title: "Payouts",
+    Icon: WalletCards,
+    href: "/manage/payouts",
     roles: [Role.Admin, Role.SuperAdmin, Role.Instructor],
   },
   {

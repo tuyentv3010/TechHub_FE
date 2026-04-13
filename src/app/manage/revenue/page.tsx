@@ -9,7 +9,6 @@ import {
   CalendarDays,
   CheckCircle2,
   Coins,
-  CreditCard,
   CircleDollarSign,
   Clock3,
   Copy,
@@ -23,6 +22,7 @@ import {
   Package,
   TrendingUp,
   UserRound,
+  ReceiptText,
   Wallet,
 } from "lucide-react";
 
@@ -31,7 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
 import paymentApiRequest, { PaymentPageResponse, PaymentTransactionItem } from "@/apiRequests/payment";
@@ -900,103 +900,219 @@ export default function RevenueDashboardPage() {
       <Sheet open={!!selectedTransactionId} onOpenChange={(open) => !open && setSelectedTransactionId("") }>
         <SheetContent
           side="right"
-          className="w-full border-blue-100 bg-white p-0 text-slate-800 sm:max-w-2xl dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+          className="w-full border-l border-white/5 bg-[#1b1f2c] p-0 text-[#dfe2f3] shadow-2xl shadow-black/50 sm:max-w-2xl"
         >
-          <div className="h-full overflow-y-auto p-6">
-            <SheetHeader className="mb-6 space-y-1">
-              <SheetDescription className="uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Transaction Detail</SheetDescription>
-              <SheetTitle className="text-3xl text-slate-900 dark:text-slate-100">
-                {selectedTransactionId ? `TXN-${selectedTransactionId.slice(0, 10)}` : "N/A"}
-              </SheetTitle>
-            </SheetHeader>
-
-            {isDetailLoading && (
-              <div className="space-y-3">
-                <Skeleton className="h-24 w-full bg-slate-200 dark:bg-slate-800" />
-                <Skeleton className="h-24 w-full bg-slate-200 dark:bg-slate-800" />
-                <Skeleton className="h-44 w-full bg-slate-200 dark:bg-slate-800" />
-              </div>
-            )}
-
-            {!isDetailLoading && detailError && (
-              <Card className="border-rose-500/40 bg-rose-500/10">
-                <CardContent className="p-4 text-sm text-rose-200">
-                  Không tải được chi tiết giao dịch. Endpoint /payments/{`{paymentId}`} có thể chưa sẵn sàng.
-                </CardContent>
-              </Card>
-            )}
-
-            {!isDetailLoading && !detailError && (
-              <div className="space-y-4">
-                <Card className="border-blue-100 bg-slate-50 dark:border-slate-700/60 dark:bg-slate-900/70">
-                  <CardHeader>
-                    <CardTitle className="text-slate-900 dark:text-slate-100">Event Timeline</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl border border-blue-100 bg-white p-3 dark:border-slate-700 dark:bg-slate-950/70">
-                      <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Created</p>
-                      <p className="mt-1 text-sm">{formatDateTime(String(detailPayload?.createdAt || detailPayload?.created || ""))}</p>
-                    </div>
-                    <div className="rounded-xl border border-blue-100 bg-white p-3 dark:border-slate-700 dark:bg-slate-950/70">
-                      <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Payment Method</p>
-                      <p className="mt-1 text-sm">{String(detailPayload?.paymentMethod || detailPayload?.method || "N/A")}</p>
-                    </div>
-                    <div className="rounded-xl border border-blue-100 bg-white p-3 dark:border-slate-700 dark:bg-slate-950/70">
-                      <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Status</p>
-                      <p className="mt-1 text-sm">{String(detailPayload?.status || "N/A")}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-blue-100 bg-slate-50 dark:border-slate-700/60 dark:bg-slate-900/70">
-                  <CardHeader>
-                    <CardTitle className="text-slate-900 dark:text-slate-100">Payment Summary</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-blue-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-950/70">
-                      <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Total Amount</p>
-                      <p className="mt-1 text-3xl font-semibold text-slate-900 dark:text-slate-100">
-                        {formatCurrency(Number(detailPayload?.amount || detailPayload?.grossAmount || 0))}
-                      </p>
-                    </div>
-                    <div className="rounded-xl border border-blue-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-950/70">
-                      <p className="text-xs uppercase text-slate-500 dark:text-slate-400">Transaction ID</p>
-                      <p className="mt-1 break-all text-sm text-slate-900 dark:text-slate-100">
-                        {String(detailPayload?.transactionId || detailPayload?.id || "N/A")}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-blue-100 bg-slate-50 dark:border-slate-700/60 dark:bg-slate-900/70">
-                  <CardHeader>
-                    <CardTitle className="text-slate-900 dark:text-slate-100">Raw Payload</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <pre className="max-h-[320px] overflow-auto rounded-lg border border-blue-100 bg-white p-3 text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-950/80 dark:text-slate-300">
-                      {JSON.stringify(detailPayload ?? {}, null, 2)}
-                    </pre>
-                  </CardContent>
-                </Card>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    className="border-blue-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-                    onClick={() => navigator.clipboard.writeText(String(detailPayload?.transactionId || detailPayload?.id || ""))}
+          <div className="flex h-full flex-col overflow-y-auto">
+            <div className="sticky top-0 z-30 border-b border-white/5 bg-[#1b1f2c]/95 px-6 py-5 backdrop-blur-md">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Transaction Detail</span>
+                    <span className="rounded bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-300">
+                      {detailStatus}
+                    </span>
+                  </div>
+                  <h2 className="text-2xl font-semibold tracking-tight text-[#dfe2f3]">
+                    {selectedTransactionId ? `TXN-${selectedTransactionId.slice(0, 10)}` : "N/A"}
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <button
+                    type="button"
+                    className="rounded-full p-2 transition-colors hover:bg-white/5"
+                    title="Copy transaction id"
+                    onClick={() => navigator.clipboard.writeText(detailTransactionId)}
                   >
-                    <CreditCard className="mr-1 h-4 w-4" /> Copy Transaction ID
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-blue-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-                    onClick={() => window.open("/manage/revenue", "_blank")}
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full p-2 transition-colors hover:bg-white/5"
+                    title="Copy payload"
+                    onClick={() => navigator.clipboard.writeText(JSON.stringify(detailPayload ?? {}, null, 2))}
                   >
-                    <ExternalLink className="mr-1 h-4 w-4" /> Open Revenue Page
-                  </Button>
+                    <FileJson2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
+
+            <div className="space-y-6 px-6 py-6">
+              {isDetailLoading && (
+                <div className="space-y-3">
+                  <Skeleton className="h-24 w-full bg-slate-700/60" />
+                  <Skeleton className="h-24 w-full bg-slate-700/60" />
+                  <Skeleton className="h-44 w-full bg-slate-700/60" />
+                </div>
+              )}
+
+              {!isDetailLoading && detailError && (
+                <Card className="border-rose-500/40 bg-rose-500/10">
+                  <CardContent className="p-4 text-sm text-rose-200">
+                    Không tải được chi tiết giao dịch. Endpoint /payments/{`{paymentId}`} có thể chưa sẵn sàng.
+                  </CardContent>
+                </Card>
+              )}
+
+              {!isDetailLoading && !detailError && (
+                <div className="space-y-8">
+                  <section>
+                    <h3 className="mb-5 flex items-center gap-2 text-sm font-semibold text-slate-300">
+                      <Clock3 className="h-4 w-4" /> Event Timeline
+                    </h3>
+                    <div className="relative flex justify-between gap-4">
+                      <div className="absolute left-0 top-4 h-[2px] w-full bg-[#313442]" />
+                      <div className="absolute left-0 top-4 h-[2px] w-[100%] bg-[#4edea3] shadow-[0_0_8px_rgba(78,222,163,0.45)]" />
+
+                      {[
+                        { label: "Created", time: formatDateTime(detailCreatedAt), icon: CheckCircle2 },
+                        { label: "Paid", time: formatDateTime(detailUpdatedAt || detailCreatedAt), icon: CircleDollarSign },
+                        { label: "Completed", time: detailStatus, icon: CheckCircle2 },
+                      ].map((step) => {
+                        const StepIcon = step.icon;
+                        return (
+                          <div key={step.label} className="relative z-10 flex flex-col items-center gap-3 text-center">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4edea3] text-[#0f131f] ring-4 ring-[#1b1f2c]">
+                              <StepIcon className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-[#dfe2f3]">{step.label}</p>
+                              <p className="text-[10px] text-slate-400">{step.time}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  <section className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-4 rounded-2xl bg-[#313442] p-5">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Payment Method</p>
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-8 w-12 items-center justify-center rounded-md border border-white/5 bg-[#262a37]">
+                          <span className="text-[10px] font-black italic text-slate-300">{detailMethod}</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-[#dfe2f3]">{detailMethod}</p>
+                          <p className="text-xs italic text-slate-400">{detailStatus}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-1 rounded-2xl bg-[#313442] p-5">
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Total Amount</p>
+                      <p className="text-3xl font-extrabold tracking-tight text-[#dfe2f3]">{formatCurrency(detailAmount)}</p>
+                      <p className="text-xs text-[#6ffbbe]">Net amount reflected from payment detail</p>
+                    </div>
+                  </section>
+
+                  <section className="rounded-2xl bg-[#262a37]/60 p-6">
+                    <h3 className="mb-4 text-sm font-semibold text-slate-300">Buyer Information</h3>
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#313442] text-slate-200">
+                        <UserRound className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-base font-semibold text-[#dfe2f3]">{detailUserLabel}</p>
+                        <p className="truncate text-sm text-slate-400">{detailUserId}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="rounded-full border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
+                        onClick={() => navigator.clipboard.writeText(detailUserId)}
+                      >
+                        Copy User ID
+                      </Button>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h3 className="mb-4 text-sm font-semibold text-slate-300">Purchased Items</h3>
+                    <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#0f131f]">
+                      <table className="w-full border-collapse text-left">
+                        <thead className="bg-[#262a37]">
+                          <tr>
+                            <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Item Title</th>
+                            <th className="px-6 py-4 text-right text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Gross Price</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {detailItems.map((item) => {
+                            const ItemIcon = item.icon;
+                            return (
+                              <tr key={item.title}>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded bg-[#ffb95f]/10 text-[#ffb95f]">
+                                      <ItemIcon className="h-4 w-4" />
+                                    </div>
+                                    <span className="text-sm font-medium text-[#dfe2f3]">{item.title}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-right font-mono text-sm text-[#dfe2f3]">{formatCurrency(item.price)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h3 className="mb-4 text-sm font-semibold text-slate-300">Revenue Split Breakdown</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between rounded-xl bg-[#313442] p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-2 w-2 rounded-full bg-[#adc6ff]" />
+                          <span className="text-sm text-[#dfe2f3]">
+                            Instructor Earnings ({Math.round(Number(activePolicy?.instructorRate ?? 0) * 100) || 0}%)
+                          </span>
+                        </div>
+                        <span className="text-sm font-bold text-[#dfe2f3]">{formatCurrency(detailInstructorAmount)}</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-xl bg-[#313442] p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-2 w-2 rounded-full bg-[#4edea3]" />
+                          <span className="text-sm text-[#dfe2f3]">
+                            Platform Fee ({Math.round(Number(activePolicy?.adminRate ?? 0) * 100) || 0}%)
+                          </span>
+                        </div>
+                        <span className="text-sm font-bold text-[#dfe2f3]">{formatCurrency(detailAdminAmount)}</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-xl bg-[#313442] p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-2 w-2 rounded-full bg-rose-400" />
+                          <span className="text-sm text-[#dfe2f3]">Split Source</span>
+                        </div>
+                        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{detailSplitSource}</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h3 className="mb-4 text-sm font-semibold text-slate-300">Raw Payload</h3>
+                    <pre className="max-h-[320px] overflow-auto rounded-2xl border border-white/5 bg-[#0a0e1a] p-4 text-xs leading-6 text-slate-300">
+                      {JSON.stringify(detailPayload ?? {}, null, 2)}
+                    </pre>
+                  </section>
+
+                  <div className="flex gap-4 border-t border-white/5 pt-6">
+                    <Button
+                      className="flex-1 rounded-full bg-gradient-to-tr from-[#adc6ff] to-[#4d8eff] py-6 font-bold text-[#001a42] shadow-lg shadow-[#adc6ff]/10 hover:opacity-95"
+                      onClick={() => navigator.clipboard.writeText(detailTransactionId)}
+                    >
+                      <ReceiptText className="mr-2 h-4 w-4" /> Copy Transaction ID
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 rounded-full border-white/10 bg-[#313442] py-6 font-bold text-[#dfe2f3] hover:bg-[#3a3f4e]"
+                      onClick={() => window.open("/manage/revenue", "_blank")}
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" /> Open Revenue Page
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </SheetContent>
       </Sheet>
