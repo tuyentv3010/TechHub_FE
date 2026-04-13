@@ -7,13 +7,22 @@ import {
   Activity,
   ArrowUpRight,
   CalendarDays,
+  CheckCircle2,
   Coins,
   CreditCard,
+  CircleDollarSign,
+  Clock3,
+  Copy,
   ExternalLink,
+  Flame,
+  FileJson2,
+  type LucideIcon,
   RefreshCw,
   Search,
   ShieldCheck,
+  Package,
   TrendingUp,
+  UserRound,
   Wallet,
 } from "lucide-react";
 
@@ -26,7 +35,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
 import paymentApiRequest, { PaymentPageResponse, PaymentTransactionItem } from "@/apiRequests/payment";
-import { useRevenueDashboard } from "@/queries/useRevenue";
+import { RevenuePolicyScope } from "@/apiRequests/revenue";
+import { useActiveRevenuePolicy, useCreateRevenuePolicy, useRevenueDashboard, useRevenuePolicies } from "@/queries/useRevenue";
 import { decodeToken, formatCurrency, getAccessTokenFromLocalStorage } from "@/lib/utils";
 
 import { RevenueLineChart } from "./revenue-line-chart";
@@ -138,6 +148,13 @@ export default function RevenueDashboardPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [transactionPage, setTransactionPage] = useState(0);
   const [selectedTransactionId, setSelectedTransactionId] = useState("");
+  const [policyScopeFilter, setPolicyScopeFilter] = useState<RevenuePolicyScope>("GLOBAL");
+  const [newPolicyScope, setNewPolicyScope] = useState<RevenuePolicyScope>("GLOBAL");
+  const [newPolicyInstructorId, setNewPolicyInstructorId] = useState("");
+  const [newPolicyCourseId, setNewPolicyCourseId] = useState("");
+  const [newPolicyInstructorRate, setNewPolicyInstructorRate] = useState("0.7");
+  const [newPolicyEffectiveFrom, setNewPolicyEffectiveFrom] = useState("");
+  const [newPolicyEffectiveTo, setNewPolicyEffectiveTo] = useState("");
 
   useEffect(() => {
     const token = getAccessTokenFromLocalStorage();
@@ -164,6 +181,19 @@ export default function RevenueDashboardPage() {
   );
 
   const { data, isLoading, isFetching, refetch, error } = useRevenueDashboard(dashboardRole, params);
+  const {
+    data: activePolicy,
+    isFetching: isActivePolicyFetching,
+    refetch: refetchActivePolicy,
+  } = useActiveRevenuePolicy(dashboardRole, {
+    instructorId: dashboardRole === "ADMIN" ? adminInstructorId || undefined : undefined,
+  });
+  const {
+    data: policyRows = [],
+    isFetching: isPolicyListFetching,
+    refetch: refetchPolicyList,
+  } = useRevenuePolicies(dashboardRole, policyScopeFilter);
+  const createPolicyMutation = useCreateRevenuePolicy();
 
   const {
     data: historyResponse,
@@ -189,6 +219,13 @@ export default function RevenueDashboardPage() {
 
   const overview = data?.overview;
   const trends = data?.trends || [];
+
+  type SummaryCard = {
+    title: string;
+    value: string;
+    icon: LucideIcon;
+    tone: string;
+  };
 
   const chartData = useMemo<RevenueChartRow[]>(
     () =>
@@ -229,33 +266,64 @@ export default function RevenueDashboardPage() {
   );
 
   const detailPayload = detailResponse?.payload?.data ?? detailResponse?.payload;
+  const detailAmount = Number(detailPayload?.amount ?? detailPayload?.grossAmount ?? 0);
+  const detailStatus = String(detailPayload?.status || "N/A").toUpperCase();
+  const detailMethod = String(detailPayload?.paymentMethod || detailPayload?.method || "N/A");
+  const detailCreatedAt = String(detailPayload?.createdAt || detailPayload?.created || "");
+  const detailUpdatedAt = String(detailPayload?.updatedAt || detailPayload?.updated || "");
+  const detailTransactionId = String(detailPayload?.transactionId || detailPayload?.id || "N/A");
+  const detailUserId = String(detailPayload?.userId || "N/A");
+  const detailUserLabel = String(detailPayload?.userName || detailPayload?.userEmail || detailUserId || "N/A");
+  const detailCourseLabel = String(detailPayload?.courseName || detailPayload?.courseId || "");
+  const detailInstructorAmount = Number(
+    detailPayload?.instructorAmount ?? (activePolicy ? detailAmount * Number(activePolicy.instructorRate || 0) : 0)
+  );
+  const detailAdminAmount = Number(
+    detailPayload?.adminAmount ?? (activePolicy ? detailAmount * Number(activePolicy.adminRate || 0) : 0)
+  );
+  const detailSplitSource =
+    detailPayload?.instructorAmount != null || detailPayload?.adminAmount != null
+      ? "From payment detail"
+      : activePolicy
+        ? "Estimated from active policy"
+        : "Not available";
+  const detailItems = useMemo(
+    () => [
+      {
+        title: detailCourseLabel || "Payment record",
+        price: detailAmount,
+        icon: Package,
+      },
+    ],
+    [detailAmount, detailCourseLabel]
+  );
 
-  const summaryCards = [
+  const summaryCards: SummaryCard[] = [
     {
       title: "Tổng doanh thu",
       value: formatCurrency(Number(overview?.grossRevenue || 0)),
       icon: Coins,
-      tone: "from-sky-400/15 to-slate-400/5",
+      tone: "from-[#adc6ff]/15 to-transparent",
     },
     {
-      title: dashboardRole === "ADMIN" ? "Doanh thu hệ thống" : "Thu nhập giảng viên",
+      title: dashboardRole === "ADMIN" ? "System Share" : "Thu nhập giảng viên",
       value: formatCurrency(
         Number(dashboardRole === "ADMIN" ? overview?.adminRevenue || 0 : overview?.instructorRevenue || 0)
       ),
-      icon: Wallet,
-      tone: "from-emerald-400/15 to-slate-400/5",
+      icon: dashboardRole === "ADMIN" ? Wallet : Coins,
+      tone: "from-[#ffb95f]/15 to-transparent",
     },
     {
       title: "Số đơn thành công",
       value: String(overview?.totalOrders || 0),
       icon: TrendingUp,
-      tone: "from-amber-400/15 to-slate-400/5",
+      tone: "from-[#4edea3]/15 to-transparent",
     },
     {
       title: "Số item đã bán",
       value: String(overview?.totalItems || 0),
       icon: Activity,
-      tone: "from-indigo-400/15 to-slate-400/5",
+      tone: "from-white/10 to-transparent",
     },
   ];
 
@@ -269,11 +337,69 @@ export default function RevenueDashboardPage() {
 
   const handleRefresh = async () => {
     try {
-      await Promise.all([refetch(), refetchHistory()]);
+      await Promise.all([refetch(), refetchHistory(), refetchActivePolicy(), refetchPolicyList()]);
     } catch (err: any) {
       toast({
         title: "Lỗi tải dữ liệu",
         description: err?.message || "Không thể tải dashboard doanh thu",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreatePolicy = async () => {
+    const parsedRate = Number(newPolicyInstructorRate);
+    if (Number.isNaN(parsedRate) || parsedRate < 0 || parsedRate > 1) {
+      toast({
+        title: "Tỉ lệ không hợp lệ",
+        description: "instructorRate phải nằm trong khoảng 0 đến 1",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPolicyScope === "INSTRUCTOR" && !newPolicyInstructorId.trim()) {
+      toast({
+        title: "Thiếu instructorId",
+        description: "Policy scope INSTRUCTOR yêu cầu instructorId",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPolicyScope === "COURSE" && !newPolicyCourseId.trim()) {
+      toast({
+        title: "Thiếu courseId",
+        description: "Policy scope COURSE yêu cầu courseId",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createPolicyMutation.mutateAsync({
+        scope: newPolicyScope,
+        instructorId: newPolicyScope === "INSTRUCTOR" ? newPolicyInstructorId.trim() : undefined,
+        courseId: newPolicyScope === "COURSE" ? newPolicyCourseId.trim() : undefined,
+        instructorRate: parsedRate,
+        effectiveFrom: newPolicyEffectiveFrom
+          ? new Date(newPolicyEffectiveFrom).toISOString()
+          : undefined,
+        effectiveTo: newPolicyEffectiveTo ? new Date(newPolicyEffectiveTo).toISOString() : undefined,
+      });
+
+      toast({
+        title: "Tạo policy thành công",
+        description: "Revenue split policy mới đã được áp dụng theo thời gian hiệu lực.",
+      });
+      await Promise.all([refetchActivePolicy(), refetchPolicyList(), refetch()]);
+      setNewPolicyInstructorId("");
+      setNewPolicyCourseId("");
+      setNewPolicyEffectiveTo("");
+    } catch (err: any) {
+      toast({
+        title: "Không tạo được policy",
+        description: err?.message || "Vui lòng kiểm tra dữ liệu nhập và thử lại.",
         variant: "destructive",
       });
     }
@@ -295,11 +421,13 @@ export default function RevenueDashboardPage() {
     <main className="min-h-screen space-y-6 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.18),_transparent_35%),linear-gradient(180deg,#f8fafc_0%,#edf2ff_100%)] p-4 text-slate-800 sm:px-6 sm:py-4 md:p-8 dark:bg-[radial-gradient(circle_at_top_left,_rgba(29,78,216,0.18),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(30,41,59,0.7),_transparent_46%),linear-gradient(180deg,#020617_0%,#0b1120_100%)] dark:text-slate-100">
       <section className="relative overflow-hidden rounded-3xl border border-blue-200/70 bg-white/80 text-slate-900 shadow-xl backdrop-blur dark:border-slate-700/50 dark:bg-slate-950/65 dark:text-white dark:shadow-2xl">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.16),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.14),transparent_30%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.25),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(52,211,153,0.18),transparent_30%)]" />
-        <div className="relative flex flex-col gap-6 p-6 md:p-8 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-2xl space-y-3">
-            <Badge className="w-fit border-blue-200 bg-blue-50/80 text-blue-700 dark:border-white/15 dark:bg-white/10 dark:text-white">Revenue Control</Badge>
-            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Revenue Analytics</h1>
-            <p className="text-sm text-slate-600 md:text-base dark:text-white/75">
+        <div className="relative flex flex-col gap-6 p-6 md:p-8">
+          <div className="max-w-3xl space-y-3">
+            <div className="w-fit rounded-full border border-blue-200 bg-blue-50/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.24em] text-blue-700 shadow-sm dark:border-white/15 dark:bg-white/10 dark:text-white">Revenue Control</div>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+              Revenue Analytics
+            </h1>
+            <p className="max-w-2xl text-sm text-slate-600 md:text-base dark:text-white/75">
               {dashboardRole === "ADMIN"
                 ? "Admin overview với giám sát real-time doanh thu, đơn hàng và phân bổ hệ thống."
                 : "Theo dõi doanh thu khóa học của bạn theo ngày và tỉ lệ chia lợi nhuận."}
@@ -318,7 +446,7 @@ export default function RevenueDashboardPage() {
             )}
           </div>
         </div>
-      </section>
+      	</section>
 
       <Card className="border-blue-100 bg-white/85 shadow-sm dark:border-slate-700/50 dark:bg-slate-950/70">
         <CardHeader className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -383,6 +511,118 @@ export default function RevenueDashboardPage() {
           );
         })}
       </section>
+
+      {dashboardRole === "ADMIN" && (
+        <section className="grid gap-6 xl:grid-cols-5">
+          <Card className="border-blue-100 bg-white/85 xl:col-span-2 shadow-sm dark:border-slate-700/50 dark:bg-slate-950/70">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                <Flame className="h-4 w-4" /> Active Revenue Policy
+              </CardTitle>
+              <CardDescription>Policy đang được resolve tại payment-service.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="rounded-xl border border-blue-100 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/60">
+                <div className="text-slate-500 dark:text-slate-400">Scope</div>
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{String(activePolicy?.scope || "N/A")}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-blue-100 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/60">
+                  <div className="text-slate-500 dark:text-slate-400">Instructor Rate</div>
+                  <div className="font-semibold text-emerald-600 dark:text-emerald-300">{Number(activePolicy?.instructorRate || 0).toFixed(4)}</div>
+                </div>
+                <div className="rounded-xl border border-blue-100 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/60">
+                  <div className="text-slate-500 dark:text-slate-400">Admin Rate</div>
+                  <div className="font-semibold text-amber-600 dark:text-amber-300">{Number(activePolicy?.adminRate || 0).toFixed(4)}</div>
+                </div>
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Version: {activePolicy?.version ?? "N/A"}
+                {isActivePolicyFetching ? " • updating..." : ""}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-blue-100 bg-white/85 xl:col-span-3 shadow-sm dark:border-slate-700/50 dark:bg-slate-950/70">
+            <CardHeader>
+              <CardTitle className="text-slate-900 dark:text-slate-100">Create Revenue Policy</CardTitle>
+              <CardDescription>Tạo policy mới để thay đổi tỉ lệ chia theo scope và thời gian hiệu lực.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Scope</label>
+                  <select
+                    value={newPolicyScope}
+                    onChange={(event) => setNewPolicyScope(event.target.value as RevenuePolicyScope)}
+                    className="h-10 w-full rounded-md border border-blue-200 bg-white px-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
+                  >
+                    <option value="GLOBAL">GLOBAL</option>
+                    <option value="INSTRUCTOR">INSTRUCTOR</option>
+                    <option value="COURSE">COURSE</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Instructor Rate (0-1)</label>
+                  <Input
+                    value={newPolicyInstructorRate}
+                    onChange={(event) => setNewPolicyInstructorRate(event.target.value)}
+                    placeholder="0.7000"
+                    className="border-blue-200 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+
+              {newPolicyScope === "INSTRUCTOR" && (
+                <Input
+                  value={newPolicyInstructorId}
+                  onChange={(event) => setNewPolicyInstructorId(event.target.value)}
+                  placeholder="Instructor ID (UUID)"
+                  className="border-blue-200 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
+                />
+              )}
+
+              {newPolicyScope === "COURSE" && (
+                <Input
+                  value={newPolicyCourseId}
+                  onChange={(event) => setNewPolicyCourseId(event.target.value)}
+                  placeholder="Course ID (UUID)"
+                  className="border-blue-200 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
+                />
+              )}
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Effective From</label>
+                  <Input
+                    type="datetime-local"
+                    value={newPolicyEffectiveFrom}
+                    onChange={(event) => setNewPolicyEffectiveFrom(event.target.value)}
+                    className="border-blue-200 bg-white text-slate-800 dark:[color-scheme:dark] dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Effective To (optional)</label>
+                  <Input
+                    type="datetime-local"
+                    value={newPolicyEffectiveTo}
+                    onChange={(event) => setNewPolicyEffectiveTo(event.target.value)}
+                    className="border-blue-200 bg-white text-slate-800 dark:[color-scheme:dark] dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={handleCreatePolicy}
+                disabled={createPolicyMutation.isPending}
+                className="bg-blue-600 text-white hover:bg-blue-500"
+              >
+                {createPolicyMutation.isPending ? "Creating..." : "Create Policy"}
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
+      )}
       <div className="grid gap-6 xl:grid-cols-5">
         <Card className="border-blue-100 bg-white/85 xl:col-span-3 shadow-sm dark:border-slate-700/50 dark:bg-slate-950/70">
           <CardHeader>
@@ -413,6 +653,8 @@ export default function RevenueDashboardPage() {
               grossRevenue={Number(overview?.grossRevenue || 0)}
               instructorRevenue={Number(overview?.instructorRevenue || 0)}
               adminRevenue={Number(overview?.adminRevenue || 0)}
+              policyInstructorRate={activePolicy?.instructorRate != null ? Number(activePolicy.instructorRate) : null}
+              policyAdminRate={activePolicy?.adminRate != null ? Number(activePolicy.adminRate) : null}
             />
           </CardContent>
         </Card>
@@ -574,10 +816,34 @@ export default function RevenueDashboardPage() {
 
       <Card className="border-blue-100 bg-white/85 shadow-sm dark:border-slate-700/50 dark:bg-slate-950/70">
         <CardHeader>
-          <CardTitle className="text-slate-900 dark:text-slate-100">Daily Projection</CardTitle>
-          <CardDescription>Bảng projection theo ngày từ analytics-service.</CardDescription>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <CardTitle className="text-slate-900 dark:text-slate-100">Daily Projection</CardTitle>
+              <CardDescription>Bảng projection theo ngày từ analytics-service.</CardDescription>
+            </div>
+            {dashboardRole === "ADMIN" && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Policy scope</span>
+                <select
+                  value={policyScopeFilter}
+                  onChange={(event) => setPolicyScopeFilter(event.target.value as RevenuePolicyScope)}
+                  className="h-9 rounded-md border border-blue-200 bg-white px-2 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100"
+                >
+                  <option value="GLOBAL">GLOBAL</option>
+                  <option value="INSTRUCTOR">INSTRUCTOR</option>
+                  <option value="COURSE">COURSE</option>
+                </select>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
+          {dashboardRole === "ADMIN" && (
+            <div className="mb-3 rounded-xl border border-blue-100 bg-slate-50/70 px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300">
+              Loaded {policyRows.length} policies for scope {policyScopeFilter}
+              {isPolicyListFetching ? " • refreshing..." : ""}
+            </div>
+          )}
           <div className="overflow-x-auto rounded-xl border border-blue-100 dark:border-slate-800">
             <table className="w-full text-sm">
               <thead className="border-b border-blue-100 bg-slate-100 text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400">
@@ -587,23 +853,25 @@ export default function RevenueDashboardPage() {
                   <th className="px-4 py-3 text-right font-medium">Instructor</th>
                   <th className="px-4 py-3 text-right font-medium">Admin</th>
                   <th className="px-4 py-3 text-right font-medium">Orders</th>
+                  <th className="px-4 py-3 text-left font-medium">Policy</th>
                 </tr>
               </thead>
               <tbody>
                 {chartData.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
                       {isLoading ? "Đang tải dữ liệu..." : "Chưa có dữ liệu trong khoảng thời gian này."}
                     </td>
                   </tr>
                 ) : (
-                  chartData.map((row) => (
-                    <tr key={row.date} className="border-b border-blue-100 text-slate-700 dark:border-slate-800 dark:text-slate-200 last:border-0">
-                      <td className="px-4 py-3">{row.date}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(row.gross)}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(row.instructor)}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(row.admin)}</td>
-                      <td className="px-4 py-3 text-right">{row.orders}</td>
+                  trends.map((row: any) => (
+                    <tr key={String(row.metricDate)} className="border-b border-blue-100 text-slate-700 dark:border-slate-800 dark:text-slate-200 last:border-0">
+                      <td className="px-4 py-3">{row.metricDate}</td>
+                      <td className="px-4 py-3 text-right">{formatCurrency(Number(row.grossRevenue || 0))}</td>
+                      <td className="px-4 py-3 text-right">{formatCurrency(Number(row.instructorRevenue || 0))}</td>
+                      <td className="px-4 py-3 text-right">{formatCurrency(Number(row.adminRevenue || 0))}</td>
+                      <td className="px-4 py-3 text-right">{Number(row.totalOrders || 0)}</td>
+                      <td className="px-4 py-3 text-xs">{row.policyScope || "MIXED"} {row.policyVersion ? `v${row.policyVersion}` : ""}</td>
                     </tr>
                   ))
                 )}
