@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
@@ -30,6 +31,7 @@ import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  ArrowLeft,
   GripVertical, 
   Plus, 
   Edit2, 
@@ -1138,13 +1140,13 @@ export default function CourseContentManagementPage() {
   };
 
   if (isLoading) {
-    return <div className="p-6"><TableSkeleton /></div>;
+    return <div className="manage-page"><TableSkeleton /></div>;
   }
 
   if (!course) {
     return (
-      <div className="p-6">
-        <Card>
+      <div className="manage-page">
+        <Card className="manage-surface border-border/50">
           <CardContent className="py-8">
             <div className="text-center text-muted-foreground">
               {t("CourseNotFound")}
@@ -1156,10 +1158,18 @@ export default function CourseContentManagementPage() {
   }
 
   return (
-    <main className="p-4 sm:px-6 sm:py-4 md:p-8 space-y-6">
+    <main className="manage-page space-y-6">
       {/* Course Header */}
-      <Card>
+      <Card className="manage-surface border-border/50">
         <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button asChild variant="outline" className="manage-secondary-button gap-2">
+              <Link href="/manage/courses">
+                <ArrowLeft className="h-4 w-4" />
+                {t("BackToCourses")}
+              </Link>
+            </Button>
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-2xl">{course.title}</CardTitle>
@@ -1200,7 +1210,7 @@ export default function CourseContentManagementPage() {
       </Card>
 
       {/* Drag & Drop Course Content */}
-      <Card>
+      <Card className="manage-surface border-border/50">
         <CardHeader>
           <CardTitle>{t("CourseContent")}</CardTitle>
           <CardDescription>{t("ManageChaptersLessonsDescription")}</CardDescription>
@@ -1661,7 +1671,7 @@ export default function CourseContentManagementPage() {
       />
 
       {/* AI Exercise Generation Panel */}
-      <Card>
+      <Card className="manage-surface border-border/50">
         <CardContent className="pt-6">
           <AiExercisePanel 
             courseId={courseId} 
@@ -1716,7 +1726,7 @@ function ChapterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="manage-dialog-panel max-w-2xl rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle>
             {mode === 'create' ? t("AddChapter") : t("EditChapter")}
@@ -2076,7 +2086,7 @@ function ExerciseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="manage-dialog-panel max-w-3xl max-h-[90vh] overflow-y-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle>
             {mode === 'create' ? t("AddExercise") || "Add Exercise" : t("EditExercise") || "Edit Exercise"}
@@ -2564,7 +2574,7 @@ function LessonDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="manage-dialog-panel max-w-2xl max-h-[90vh] overflow-y-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle>
             {mode === 'create' ? t("AddLesson") : t("EditLesson")}
@@ -2875,7 +2885,7 @@ function AssetDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="manage-dialog-panel max-w-2xl rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle>
             {mode === 'create' ? t("AddAsset") : t("EditAsset")}

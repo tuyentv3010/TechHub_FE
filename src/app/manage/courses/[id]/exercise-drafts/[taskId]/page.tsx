@@ -280,7 +280,7 @@ export default function ExerciseDraftDetailPage() {
 
   if (!draft) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="manage-page">
         <div className="text-center space-y-4">
           <p className="text-muted-foreground">{t("noDraftFound") || "Không tìm thấy draft này"}</p>
           {error && (
@@ -302,7 +302,7 @@ export default function ExerciseDraftDetailPage() {
 
   if (!exercises) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="manage-page">
         <div className="text-center space-y-4">
           <p className="text-muted-foreground">Draft found but no exercises generated yet</p>
           <div className="text-xs text-muted-foreground">

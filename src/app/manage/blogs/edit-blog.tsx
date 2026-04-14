@@ -175,7 +175,7 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
         if (!value) reset();
       }}
     >
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-auto" onCloseAutoFocus={reset}>
+      <DialogContent className="manage-dialog-panel sm:max-w-[900px] max-h-[90vh] overflow-auto rounded-[1.35rem] border-border/50" onCloseAutoFocus={reset}>
         <DialogHeader>
           <DialogTitle>{t("UpdateBlog")}</DialogTitle>
         </DialogHeader>

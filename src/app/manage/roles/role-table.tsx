@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  CaretSortIcon,
-  DotsHorizontalIcon,
-} from "@radix-ui/react-icons";
+import { CaretSortIcon, DotsHorizontalIcon } from "@radix-ui/react-icons";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -16,8 +13,21 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { useState, createContext, useContext } from "react";
+import { PlusCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
+
+import TableSkeleton from "@/components/Skeleton";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -26,7 +36,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useState, createContext, useContext } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,13 +54,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { PlusCircle } from "lucide-react";
-import RoleModal from "./role-modal";
-import { RoleSchemaType } from "@/schemaValidations/role.schema";
-import { useGetRoles, useDeleteRoleMutation } from "@/queries/useRole";
-import TableSkeleton from "@/components/Skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { RoleSchemaType } from "@/schemaValidations/role.schema";
+import { useDeleteRoleMutation, useGetRoles } from "@/queries/useRole";
+
+import RoleModal from "./role-modal";
 
 type RoleItem = RoleSchemaType;
 
@@ -74,26 +81,26 @@ function DeleteRoleDialog({
   roleDelete: RoleItem | null;
   setRoleDelete: (value: RoleItem | null) => void;
 }) {
+  const t = useTranslations("ManageRole");
   const { toast } = useToast();
   const deleteRoleMutation = useDeleteRoleMutation();
 
   const handleDelete = async () => {
-    if (roleDelete) {
-      try {
-        await deleteRoleMutation.mutateAsync(roleDelete.id);
-        toast({
-          title: "Xóa thành công",
-          description: `Role ${roleDelete.name} đã được xóa`,
-        });
-        setRoleDelete(null);
-      } catch (error: any) {
-        const errorMessage = error?.message || "Có lỗi xảy ra";
-        toast({
-          title: "Xóa thất bại",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      }
+    if (!roleDelete) return;
+
+    try {
+      await deleteRoleMutation.mutateAsync(roleDelete.id);
+      toast({
+        title: t("DeleteSuccess"),
+        description: t("RoleDeleted", { name: roleDelete.name }),
+      });
+      setRoleDelete(null);
+    } catch (error: any) {
+      toast({
+        title: t("DeleteFailed"),
+        description: error?.message || t("UnknownError"),
+        variant: "destructive",
+      });
     }
   };
 
@@ -106,22 +113,16 @@ function DeleteRoleDialog({
         }
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent className="manage-dialog-panel rounded-[1.35rem] border-border/50">
         <AlertDialogHeader>
-          <AlertDialogTitle>Xóa Role</AlertDialogTitle>
+          <AlertDialogTitle>{t("DeleteDialogTitle")}</AlertDialogTitle>
           <AlertDialogDescription>
-            Bạn có chắc chắn muốn xóa role{" "}
-            <span className="bg-foreground text-primary-foreground rounded px-1">
-              {roleDelete?.name}
-            </span>
-            ? Hành động này không thể hoàn tác.
+            {t("DeleteDialogDescription", { name: roleDelete?.name ?? "" })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Hủy</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete}>
-            Tiếp tục
-          </AlertDialogAction>
+          <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDelete}>{t("Continue")}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -129,13 +130,17 @@ function DeleteRoleDialog({
 }
 
 export default function RoleTable() {
+  const t = useTranslations("ManageRole");
+  const paginationT = useTranslations("Pagination");
   const [roleIdEdit, setRoleIdEdit] = useState<string | undefined>();
   const [roleDelete, setRoleDelete] = useState<RoleItem | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const { data, isLoading, error } = useGetRoles();
-  console.log("dasdasdas data " ,data);
-
   const roles = data?.payload?.data ?? [];
 
   const columns: ColumnDef<RoleItem>[] = [
@@ -146,7 +151,7 @@ export default function RoleTable() {
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Tên
+          {t("NameColumn")}
           <CaretSortIcon className="ml-2 h-4 w-4" />
         </Button>
       ),
@@ -154,41 +159,34 @@ export default function RoleTable() {
     },
     {
       accessorKey: "description",
-      header: "Mô tả",
+      header: t("DescriptionColumn"),
       cell: ({ row }) => (
         <div className="text-muted-foreground">{row.getValue("description") || "-"}</div>
       ),
     },
     {
       accessorKey: "isActive",
-      header: "Trạng thái",
+      header: t("StatusColumn"),
       cell: ({ row }) => {
         const isActive = row.getValue("isActive") as boolean;
-        return (
-          <Badge variant={isActive ? "default" : "secondary"}>
-            {isActive ? "Active" : "Inactive"}
-          </Badge>
-        );
+        return <Badge variant={isActive ? "default" : "secondary"}>{isActive ? t("Active") : t("Inactive")}</Badge>;
       },
     },
     {
       accessorKey: "permissionIds",
-      header: "Permissions",
+      header: t("PermissionCountColumn"),
       cell: ({ row }) => {
         const permissionIds = row.getValue("permissionIds") as string[];
-        return (
-          <Badge variant="outline">
-            {permissionIds?.length || 0} permissions
-          </Badge>
-        );
+        return <Badge variant="outline">{t("PermissionCount", { count: permissionIds?.length || 0 })}</Badge>;
       },
     },
     {
       id: "actions",
-      header: "Hành động",
+      header: t("ActionsColumn"),
       enableHiding: false,
       cell: function Actions({ row }) {
         const { setRoleIdEdit, setRoleDelete } = useContext(RoleTableContext);
+
         return (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
@@ -197,16 +195,16 @@ export default function RoleTable() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Hành động</DropdownMenuLabel>
+              <DropdownMenuLabel>{t("ActionsColumn")}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setRoleIdEdit(row.original.id)}>
-                Chỉnh sửa
+                {t("Edit")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setRoleDelete(row.original)}
                 className="text-destructive"
               >
-                Xóa
+                {t("Delete")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -231,11 +229,13 @@ export default function RoleTable() {
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    onPaginationChange: setPagination,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
+      pagination,
     },
   });
 
@@ -248,7 +248,7 @@ export default function RoleTable() {
         setRoleDelete,
       }}
     >
-      <div className="w-full">
+      <div className="manage-data-table w-full">
         {roleIdEdit && (
           <RoleModal
             open={true}
@@ -259,29 +259,34 @@ export default function RoleTable() {
             }}
           />
         )}
-        <DeleteRoleDialog
-          roleDelete={roleDelete}
-          setRoleDelete={setRoleDelete}
-        />
+
+        <DeleteRoleDialog roleDelete={roleDelete} setRoleDelete={setRoleDelete} />
+
         {isLoading ? (
           <TableSkeleton />
         ) : error ? (
-          <div className="text-red-500">Lỗi: {error.message}</div>
+          <div className="text-red-500">
+            {t("ErrorLabel")}: {error.message}
+          </div>
         ) : (
           <>
-            <div className="flex items-center py-4 gap-4">
+            <div className="manage-toolbar py-2">
               <Input
-                placeholder="Tìm theo tên..."
+                placeholder={t("SearchPlaceholder")}
                 value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
                 onChange={(event) =>
                   table.getColumn("name")?.setFilterValue(event.target.value)
                 }
-                className="max-w-sm"
+                className="manage-field w-full max-w-sm"
               />
-              <div className="ml-auto">
-                <Button size="sm" onClick={() => setAddModalOpen(true)}>
+              <div className="manage-toolbar-spacer w-full sm:w-auto">
+                <Button
+                  size="sm"
+                  className="manage-primary-button w-full sm:w-auto"
+                  onClick={() => setAddModalOpen(true)}
+                >
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Thêm Role
+                  {t("AddRole")}
                 </Button>
                 <RoleModal
                   open={addModalOpen}
@@ -292,7 +297,68 @@ export default function RoleTable() {
                 />
               </div>
             </div>
-            <div className="rounded-md border">
+
+            <div className="space-y-3 md:hidden">
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => {
+                  const role = row.original;
+                  const permissionCount = role.permissionIds?.length || 0;
+
+                  return (
+                    <div
+                      key={`mobile-role-${role.id}`}
+                      className="manage-subsurface space-y-3 p-4"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                            {role.name}
+                          </div>
+                          <div className="mt-1 text-sm text-muted-foreground">
+                            {role.description || "-"}
+                          </div>
+                        </div>
+                        <Badge variant={role.isActive ? "default" : "secondary"} className="w-fit">
+                          {role.isActive ? t("Active") : t("Inactive")}
+                        </Badge>
+                      </div>
+
+                      <div className="grid gap-2 rounded-xl bg-slate-50/70 p-3 text-sm dark:bg-slate-950/40">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">{t("PermissionCountColumn")}</span>
+                          <Badge variant="outline">{t("PermissionCount", { count: permissionCount })}</Badge>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="manage-secondary-button"
+                          onClick={() => setRoleIdEdit(role.id)}
+                        >
+                          {t("Edit")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="manage-secondary-button"
+                          onClick={() => setRoleDelete(role)}
+                        >
+                          {t("Delete")}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="manage-subsurface p-6 text-center text-sm text-muted-foreground">
+                  {t("NoResults")}
+                </div>
+              )}
+            </div>
+
+            <div className="manage-table-shell hidden md:block">
               <Table>
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -301,10 +367,7 @@ export default function RoleTable() {
                         <TableHead key={header.id}>
                           {header.isPlaceholder
                             ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
+                            : flexRender(header.column.columnDef.header, header.getContext())}
                         </TableHead>
                       ))}
                     </TableRow>
@@ -316,44 +379,60 @@ export default function RoleTable() {
                       <TableRow key={row.id}>
                         {row.getVisibleCells().map((cell) => (
                           <TableCell key={cell.id}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </TableCell>
                         ))}
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className="h-24 text-center"
-                      >
-                        Không có kết quả
+                      <TableCell colSpan={columns.length} className="h-24 text-center">
+                        {t("NoResults")}
                       </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-end space-x-2 py-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                Trước
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                Sau
-              </Button>
+
+            <div className="manage-pagination py-2">
+              <div className="manage-pagination-copy">
+                {paginationT("Page")} <strong>{table.getState().pagination.pageIndex + 1}</strong>{" "}
+                {paginationT("Of")} <strong>{Math.max(table.getPageCount(), 1)}</strong>
+              </div>
+              <div className="manage-pagination-actions">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="manage-secondary-button manage-pagination-button"
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                >
+                  {paginationT("Previous")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="manage-secondary-button manage-pagination-button"
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                >
+                  {paginationT("Next")}
+                </Button>
+                <Select
+                  value={String(table.getState().pagination.pageSize)}
+                  onValueChange={(value) => table.setPageSize(Number(value))}
+                >
+                  <SelectTrigger className="manage-filter-trigger w-[120px]">
+                    <SelectValue placeholder={paginationT("RowsPerPage")} />
+                  </SelectTrigger>
+                  <SelectContent className="manage-popover-panel">
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </>
         )}

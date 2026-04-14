@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 type CustomOptions = Omit<RequestInit, "method"> & {
   baseUrl?: string | undefined;
   params?: Record<string, string | number | boolean | undefined>;
+  suppressErrorLog?: boolean;
 };
 
 const ENTITY_ERROR_STATUS = 422;
@@ -355,11 +356,13 @@ const request = async <Response>(
 
     return data;
   } catch (error: any) {
-    console.error(`HTTP ${method} error for ${fullUrl}:`, {
-      message: error.message,
-      status: error.status,
-      payload: error.payload,
-    });
+    if (!options?.suppressErrorLog) {
+      console.error(`HTTP ${method} error for ${fullUrl}:`, {
+        message: error.message,
+        status: error.status,
+        payload: error.payload,
+      });
+    }
     throw error;
   }
 };

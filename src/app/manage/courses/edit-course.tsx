@@ -295,7 +295,7 @@ export default function EditCourse({
       open={Boolean(id)}
       onOpenChange={(value) => !value && setId(undefined)}
     >
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="manage-dialog-panel max-w-3xl max-h-[90vh] overflow-y-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle>{t("EditCourse")}</DialogTitle>
           <DialogDescription>{t("EditCourseDescription")}</DialogDescription>
@@ -408,7 +408,7 @@ export default function EditCourse({
                   type="button"
                   variant="ghost"
                   onClick={() => setShowSkillManager(true)}
-                  className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                  className="manage-secondary-button ml-2"
                 >
                   {t("ManageSkills") || "Manage"}
                 </Button>
@@ -434,7 +434,7 @@ export default function EditCourse({
                 type="button"
                 variant="ghost"
                 onClick={() => setShowTagManager(true)}
-                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                className="manage-secondary-button ml-2"
               >
                 {t("ManageTags") || "Manage tags"}
               </Button>
@@ -471,6 +471,7 @@ export default function EditCourse({
               <Button
                 type="button"
                 variant="outline"
+                className="manage-secondary-button"
                 onClick={() => {
                   addItem('objectives', objectiveInput);
                   setObjectiveInput("");
@@ -511,6 +512,7 @@ export default function EditCourse({
               <Button
                 type="button"
                 variant="outline"
+                className="manage-secondary-button"
                 onClick={() => {
                   addItem('requirements', requirementInput);
                   setRequirementInput("");
@@ -539,7 +541,7 @@ export default function EditCourse({
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => setShowThumbnailLibrary(true)}
                 disabled={isUploadingThumbnail}
               >
@@ -549,7 +551,7 @@ export default function EditCourse({
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => thumbnailFileInputRef.current?.click()}
                 disabled={isUploadingThumbnail}
               >
@@ -594,7 +596,7 @@ export default function EditCourse({
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => setShowVideoLibrary(true)}
                 disabled={isUploadingVideo}
               >
@@ -604,7 +606,7 @@ export default function EditCourse({
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => videoFileInputRef.current?.click()}
                 disabled={isUploadingVideo}
               >
@@ -666,11 +668,16 @@ export default function EditCourse({
             <Button
               type="button"
               variant="outline"
+              className="manage-secondary-button"
               onClick={() => setId(undefined)}
             >
               {t("Cancel")}
             </Button>
-            <Button type="submit" disabled={updateCourseMutation.isPending}>
+            <Button
+              type="submit"
+              className="manage-primary-button"
+              disabled={updateCourseMutation.isPending}
+            >
               {updateCourseMutation.isPending ? t("Updating") : t("Update")}
             </Button>
           </DialogFooter>

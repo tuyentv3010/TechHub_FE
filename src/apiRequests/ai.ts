@@ -226,7 +226,10 @@ const aiApiRequest = {
 
   getProviderConfig: () =>
     http.get<{ payload: { data: AiProviderConfigResponseType } }>(
-      "/app/api/proxy/ai/admin/provider-config"
+      "/app/api/proxy/ai/admin/provider-config",
+      {
+        suppressErrorLog: true,
+      }
     ),
 
   updateProviderConfig: (body: UpdateAiProviderRequestType) =>

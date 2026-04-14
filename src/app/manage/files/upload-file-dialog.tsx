@@ -1,6 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
+import { useTranslations } from 'next-intl';
+import { Loader2, Upload, X } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -14,11 +19,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
-import Image from 'next/image';
-import { Badge } from '@/components/ui/badge';
-import { useUploadFileMutation } from '@/queries/useFile';
 import { useAccountProfile } from '@/queries/useAccount';
+import { useUploadFileMutation } from '@/queries/useFile';
 
 interface UploadFileDialogProps {
   open: boolean;
@@ -33,18 +35,14 @@ export default function UploadFileDialog({
   onSuccess,
   selectedFolderId,
 }: UploadFileDialogProps) {
+  const t = useTranslations('ManageFile');
   const { toast } = useToast();
   const { data: profileData } = useAccountProfile();
   const userId = profileData?.payload?.data?.id || '';
 
-  // Debug logs
-  console.log('🔍 UploadDialog - profileData:', profileData);
-  console.log('🔍 UploadDialog - userId:', userId);
-  console.log('🔍 UploadDialog - selectedFolderId:', selectedFolderId);
-
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [tags, setTags] = useState<string>('');
+  const [tags, setTags] = useState('');
   const [description, setDescription] = useState('');
 
   const uploadMutation = useUploadFileMutation();
@@ -53,80 +51,59 @@ export default function UploadFileDialog({
     const selectedFiles = Array.from(e.target.files || []);
     setFiles(selectedFiles);
 
-    // Generate previews for images
-    const newPreviews: string[] = [];
+    const nextPreviews: string[] = [];
     selectedFiles.forEach((file) => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          newPreviews.push(reader.result as string);
-          if (newPreviews.length === selectedFiles.length) {
-            setPreviews(newPreviews);
-          }
-        };
-        reader.readAsDataURL(file);
-      } else {
-        newPreviews.push('');
+      if (!file.type.startsWith('image/')) {
+        nextPreviews.push('');
+        if (nextPreviews.length === selectedFiles.length) setPreviews(nextPreviews);
+        return;
       }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        nextPreviews.push(reader.result as string);
+        if (nextPreviews.length === selectedFiles.length) {
+          setPreviews(nextPreviews);
+        }
+      };
+      reader.readAsDataURL(file);
     });
   };
 
   const handleUpload = async () => {
-    console.log('🚀 Starting upload...', { files: files.length, userId, selectedFolderId });
-
     if (files.length === 0) {
       toast({
-        title: 'Lỗi',
-        description: 'Vui lòng chọn file để tải lên',
+        title: t('ErrorTitle'),
+        description: t('UploadRequired'),
         variant: 'destructive',
       });
       return;
     }
 
     if (!userId) {
-      console.error('❌ No userId found!', { profileData });
       toast({
-        title: 'Lỗi',
-        description: 'Không tìm thấy thông tin người dùng',
+        title: t('ErrorTitle'),
+        description: t('MissingUserInfo'),
         variant: 'destructive',
       });
       return;
     }
 
     try {
-      // Upload each file
       for (const file of files) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('userId', userId);
-        if (selectedFolderId) {
-          formData.append('folderId', selectedFolderId);
-        }
-        if (tags) {
-          // Send tags as comma-separated string
-          formData.append('tags', tags);
-        }
-        if (description) {
-          formData.append('description', description);
-        }
-
-        console.log('📤 Uploading file:', file.name, {
-          userId,
-          folderId: selectedFolderId,
-          tags,
-          description,
-        });
-
-        const result = await uploadMutation.mutateAsync(formData);
-        console.log('✅ Upload success:', result);
+        if (selectedFolderId) formData.append('folderId', selectedFolderId);
+        if (tags) formData.append('tags', tags);
+        if (description) formData.append('description', description);
+        await uploadMutation.mutateAsync(formData);
       }
 
       toast({
-        title: 'Thành công',
-        description: `Đã tải lên ${files.length} file thành công`,
+        title: t('SuccessTitle'),
+        description: t('UploadCompleted', { count: files.length }),
       });
-
-      // Reset form
       setFiles([]);
       setPreviews([]);
       setTags('');
@@ -134,10 +111,10 @@ export default function UploadFileDialog({
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-      console.error('❌ Error uploading files:', error);
+      console.error('Error uploading files:', error);
       toast({
-        title: 'Lỗi',
-        description: 'Không thể tải file lên',
+        title: t('ErrorTitle'),
+        description: t('UploadFailed'),
         variant: 'destructive',
       });
     }
@@ -150,23 +127,20 @@ export default function UploadFileDialog({
 
   const tagArray = tags
     .split(',')
-    .map((t) => t.trim())
-    .filter((t) => t);
+    .map((tag) => tag.trim())
+    .filter(Boolean);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="manage-dialog-panel max-w-2xl max-h-[90vh] overflow-y-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
-          <DialogTitle>Tải lên file</DialogTitle>
-          <DialogDescription>
-            Chọn file để tải lên. Hỗ trợ hình ảnh, video, tài liệu, âm thanh.
-          </DialogDescription>
+          <DialogTitle>{t('UploadDialogTitle')}</DialogTitle>
+          <DialogDescription>{t('UploadDialogDescription')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* File Input */}
           <div className="space-y-2">
-            <Label htmlFor="file-upload">Chọn file</Label>
+            <Label htmlFor="file-upload">{t('SelectFilesLabel')}</Label>
             <div className="flex items-center gap-2">
               <Input
                 id="file-upload"
@@ -179,36 +153,31 @@ export default function UploadFileDialog({
                 <Button
                   type="button"
                   variant="outline"
+                  className="manage-secondary-button"
                   size="icon"
                   onClick={() => {
                     setFiles([]);
                     setPreviews([]);
                   }}
                 >
-                  <X className="w-4 h-4" />
+                  <X className="h-4 w-4" />
                 </Button>
               )}
             </div>
           </div>
 
-          {/* File Previews */}
           {files.length > 0 && (
             <div className="space-y-2">
-              <Label>Danh sách file ({files.length})</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <Label>{t('FileListLabel', { count: files.length })}</Label>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                 {files.map((file, index) => (
-                  <div key={index} className="relative group">
-                    <div className="aspect-square rounded-lg border overflow-hidden bg-muted">
+                  <div key={`${file.name}-${index}`} className="group relative">
+                    <div className="aspect-square overflow-hidden rounded-lg border bg-muted">
                       {previews[index] ? (
-                        <Image
-                          src={previews[index]}
-                          alt={file.name}
-                          fill
-                          className="object-cover"
-                        />
+                        <Image src={previews[index]} alt={file.name} fill className="object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Upload className="w-8 h-8 text-muted-foreground" />
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Upload className="h-8 w-8 text-muted-foreground" />
                         </div>
                       )}
                     </div>
@@ -216,35 +185,32 @@ export default function UploadFileDialog({
                       type="button"
                       variant="destructive"
                       size="icon"
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100"
                       onClick={() => handleRemoveFile(index)}
                     >
-                      <X className="w-4 h-4" />
+                      <X className="h-4 w-4" />
                     </Button>
-                    <p className="text-xs text-muted-foreground mt-1 truncate">
-                      {file.name}
-                    </p>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">{file.name}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Tags Input */}
           <div className="space-y-2">
             <Label htmlFor="tags">
-              Tags <span className="text-muted-foreground text-sm">(Cách nhau bởi dấu phẩy)</span>
+              {t('TagsLabel')} <span className="text-sm text-muted-foreground">{t('TagsHint')}</span>
             </Label>
             <Input
               id="tags"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              placeholder="ví dụ: blog, 2024, featured"
+              placeholder={t('TagsPlaceholder')}
             />
             {tagArray.length > 0 && (
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex flex-wrap gap-2">
                 {tagArray.map((tag, idx) => (
-                  <Badge key={idx} variant="secondary">
+                  <Badge key={`${tag}-${idx}`} variant="secondary">
                     {tag}
                   </Badge>
                 ))}
@@ -252,47 +218,45 @@ export default function UploadFileDialog({
             )}
           </div>
 
-          {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description">Mô tả</Label>
+            <Label htmlFor="description">{t('DescriptionLabel')}</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Nhập mô tả cho file..."
+              placeholder={t('DescriptionPlaceholder')}
               rows={3}
             />
           </div>
 
-          {/* Folder Info */}
           {selectedFolderId && (
-            <div className="text-sm text-muted-foreground">
-              File sẽ được tải lên vào thư mục đã chọn
-            </div>
+            <div className="text-sm text-muted-foreground">{t('UploadTargetHint')}</div>
           )}
         </div>
 
         <DialogFooter>
           <Button
             variant="outline"
+            className="manage-secondary-button"
             onClick={() => onOpenChange(false)}
             disabled={uploadMutation.isPending}
           >
-            Hủy
+            {t('Cancel')}
           </Button>
           <Button
             onClick={handleUpload}
+            className="manage-primary-button"
             disabled={uploadMutation.isPending || files.length === 0}
           >
             {uploadMutation.isPending ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Đang tải lên...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {t('Uploading')}
               </>
             ) : (
               <>
-                <Upload className="w-4 h-4 mr-2" />
-                Tải lên {files.length > 0 && `(${files.length})`}
+                <Upload className="mr-2 h-4 w-4" />
+                {t('Upload')} {files.length > 0 && `(${files.length})`}
               </>
             )}
           </Button>

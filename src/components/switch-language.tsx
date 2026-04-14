@@ -12,8 +12,9 @@ import { SelectGroup } from "@radix-ui/react-select";
 import { useLocale, useTranslations } from "next-intl";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
-export function SwitchLanguage() {
+export function SwitchLanguage({ className }: { className?: string }) {
   const t = useTranslations("SwitchLanguage");
   const locale = useLocale();
   const router = useRouter();
@@ -28,7 +29,7 @@ export function SwitchLanguage() {
       value={locale}
       onValueChange={handleLanguageChange}
     >
-      <SelectTrigger className="w-[180px]">
+      <SelectTrigger className={cn("w-[180px]", className)}>
         <SelectValue placeholder={t("title")} />
       </SelectTrigger>
       <SelectContent>

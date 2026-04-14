@@ -55,6 +55,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Bar, BarChart, Pie, PieChart as RechartsPieChart, Cell, XAxis, YAxis, CartesianGrid } from "recharts";
+import { AdminPageFrame } from "@/components/manage/admin-page-frame";
 
 export default function DashboardPage() {
   const t = useTranslations("AiDashboard");
@@ -284,21 +285,35 @@ export default function DashboardPage() {
     selectedModel;
 
   return (
-    <main className="p-4 sm:px-6 sm:py-4 md:p-8 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Sparkles className="h-8 w-8 text-purple-500" />
-          {t("title")}
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          {t("description")}
-        </p>
-      </div>
+    <AdminPageFrame
+      eyebrow={t("PageEyebrow")}
+      title={t("title")}
+      description={t("description")}
+      actions={
+        <>
+          <Button
+            variant="outline"
+            className="manage-ghost-button border-border/50"
+            onClick={handleGetQdrantStats}
+            disabled={qdrantStatsLoading}
+          >
+            {qdrantStatsLoading ? t("loading") : t("refresh")}
+          </Button>
+          <Button
+            className="bg-gradient-to-br from-primary to-blue-500 text-primary-foreground shadow-lg shadow-primary/20"
+            onClick={handleReindexAll}
+            disabled={reindexAllMutation.isPending}
+          >
+            {reindexAllMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {t("reindexAll")}
+          </Button>
+        </>
+      }
+    >
 
       {/* Overview Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+      <div className="manage-kpi-grid">
+        <Card className="manage-kpi-card border-border/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t("pendingDrafts")}</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
@@ -311,7 +326,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="manage-kpi-card border-border/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t("coursesIndexed")}</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
@@ -326,7 +341,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="manage-kpi-card border-border/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t("lessonsIndexed")}</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
@@ -341,7 +356,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="manage-kpi-card border-border/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t("qdrantStatus")}</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -381,7 +396,7 @@ export default function DashboardPage() {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Vector Count Bar Chart */}
-        <Card>
+        <Card className="manage-surface border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
@@ -420,7 +435,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Distribution Pie Chart */}
-        <Card>
+        <Card className="manage-surface border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PieChart className="h-5 w-5" />
@@ -472,7 +487,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Detailed Statistics Table */}
-      <Card>
+      <Card className="manage-surface border-border/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
@@ -551,7 +566,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Vector Database Management */}
-        <Card>
+        <Card className="manage-surface border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="h-5 w-5" />
@@ -597,7 +612,7 @@ export default function DashboardPage() {
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent>
-                    {modelOptions.map((model) => (
+                    {modelOptions.map((model: string) => (
                       <SelectItem key={model} value={model}>{model}</SelectItem>
                     ))}
                   </SelectContent>
@@ -721,7 +736,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Pending Drafts */}
-        <Card>
+        <Card className="manage-surface border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -837,7 +852,7 @@ export default function DashboardPage() {
                   <div className="mt-3 space-y-3">
                     {Object.entries(qdrantStats.collections || {}).map(
                       ([collectionName, stats]: [string, any]) => (
-                        <Card key={collectionName}>
+                        <Card key={collectionName} className="manage-subsurface border-border/50">
                           <CardHeader className="pb-3">
                             <CardTitle className="text-base">{collectionName}</CardTitle>
                           </CardHeader>
@@ -915,7 +930,7 @@ export default function DashboardPage() {
           )}
         </DialogContent>
       </Dialog>
-    </main>
+    </AdminPageFrame>
   );
 }
 

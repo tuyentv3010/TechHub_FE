@@ -207,6 +207,8 @@ export const useGetAiProviderConfig = () => {
   return useQuery({
     queryKey: ["ai-provider-config"],
     queryFn: () => aiApiRequest.getProviderConfig(),
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 };
 

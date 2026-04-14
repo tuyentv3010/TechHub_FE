@@ -30,9 +30,13 @@ import { useToast } from "@/hooks/use-toast";
 
 interface AddLearningPathProps {
   onSuccess?: () => void;
+  triggerClassName?: string;
 }
 
-export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
+export default function AddLearningPath({
+  onSuccess,
+  triggerClassName,
+}: AddLearningPathProps) {
   const t = useTranslations("ManageLearningPath");
   const [open, setOpen] = useState(false);
   const [showSkillManager, setShowSkillManager] = useState(false);
@@ -93,12 +97,12 @@ export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className={triggerClassName}>
           <Plus className="mr-2 h-4 w-4" />
           {t("AddNew")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="manage-dialog-panel max-h-[90vh] max-w-2xl overflow-y-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle>{t("AddNew")}</DialogTitle>
           <DialogDescription>{t("AddDescription")}</DialogDescription>
@@ -109,6 +113,7 @@ export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
             <Input
               id="title"
               placeholder={t("FormTitlePlaceholder")}
+              className="manage-field"
               {...register("title")}
             />
             {errors.title && (
@@ -122,6 +127,7 @@ export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
               id="description"
               placeholder={t("FormDescriptionPlaceholder")}
               rows={4}
+              className="manage-field min-h-[8rem]"
               {...register("description")}
             />
             {errors.description && (
@@ -136,7 +142,7 @@ export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
                 type="button"
                 variant="ghost"
                 onClick={() => setShowSkillManager(true)}
-                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                className="manage-secondary-button ml-2"
               >
                 {t("ManageSkills") || "Manage Skills"}
               </Button>
@@ -166,6 +172,7 @@ export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
             <Button
               type="button"
               variant="outline"
+              className="manage-secondary-button"
               onClick={() => {
                 reset();
                 setOpen(false);
@@ -173,7 +180,11 @@ export default function AddLearningPath({ onSuccess }: AddLearningPathProps) {
             >
               {t("Cancel")}
             </Button>
-            <Button type="submit" disabled={createMutation.isPending}>
+            <Button
+              type="submit"
+              className="manage-primary-button"
+              disabled={createMutation.isPending}
+            >
               {createMutation.isPending ? t("Creating") : t("Create")}
             </Button>
           </DialogFooter>

@@ -150,14 +150,14 @@ export default function AddBlog() {
       open={open}
     >
       <DialogTrigger asChild>
-        <Button size="sm" className="h-7 gap-1">
+        <Button size="sm" className="h-9 gap-2 rounded-xl bg-gradient-to-br from-primary to-blue-500 px-4 text-primary-foreground shadow-lg shadow-primary/20">
           <PlusCircle className="h-3.5 w-3.5" />
           <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
             {t("CreateBlog")}
           </span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-auto">
+      <DialogContent className="manage-dialog-panel sm:max-w-[900px] max-h-[90vh] overflow-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle>{t("CreateBlog")}</DialogTitle>
           <DialogDescription>{t("AddDes")}</DialogDescription>

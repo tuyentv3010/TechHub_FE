@@ -108,7 +108,7 @@ function AlertDialogDeleteBlog({
         if (!value) setBlogDelete(null);
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent className="manage-dialog-panel rounded-[1.35rem] border-border/50">
         <AlertDialogHeader>
           <AlertDialogTitle>{t("Del")}</AlertDialogTitle>
           <AlertDialogDescription>
@@ -311,7 +311,7 @@ export default function BlogTable() {
     <BlogTableContext.Provider
       value={{ blogIdEdit, setBlogIdEdit, blogDelete, setBlogDelete }}
     >
-      <div className="w-full">
+      <div className="manage-data-table w-full">
         {blogIdEdit !== undefined && (
           <EditBlog
             id={blogIdEdit}
@@ -336,24 +336,24 @@ export default function BlogTable() {
           </div>
         ) : (
           <>
-            <div className="flex items-center py-4 gap-5">
+            <div className="manage-toolbar py-2">
               <Input
                 placeholder={t("FilterTitle")}
                 value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
                 onChange={(e) => table.getColumn("title")?.setFilterValue(e.target.value)}
-                className="max-w-sm w-[200px]"
+                className="manage-field max-w-sm w-[200px]"
               />
               <Input
                 placeholder={t("FilterStatus")}
                 value={(table.getColumn("status")?.getFilterValue() as string) ?? ""}
                 onChange={(e) => table.getColumn("status")?.setFilterValue(e.target.value)}
-                className="max-w-sm w-[160px]"
+                className="manage-field max-w-sm w-[160px]"
               />
-              <div className="ml-auto flex items-center gap-2">
+              <div className="manage-toolbar-spacer flex items-center gap-2">
                 {hasAddPermission && <AddBlog />}
               </div>
             </div>
-            <div className="rounded-md border">
+            <div className="manage-table-shell">
               <Table>
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -402,6 +402,7 @@ export default function BlogTable() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="manage-secondary-button"
                   onClick={() => goToPage(page - 1)}
                   disabled={page === 1}
                 >
@@ -413,6 +414,7 @@ export default function BlogTable() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="manage-secondary-button"
                   onClick={() => goToPage(page + 1)}
                   disabled={page === totalPages}
                 >
@@ -425,10 +427,10 @@ export default function BlogTable() {
                     goToPage(1);
                   }}
                 >
-                  <SelectTrigger className="w-[100px]">
+                  <SelectTrigger className="manage-filter-trigger w-[100px]">
                     <SelectValue placeholder={paginationT("RowsPerPage")} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="manage-popover-panel">
                     <SelectItem value="10">10</SelectItem>
                     <SelectItem value="20">20</SelectItem>
                     <SelectItem value="50">50</SelectItem>

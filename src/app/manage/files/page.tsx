@@ -1,27 +1,30 @@
-import { Suspense } from 'react';
-import FileTable from './file-table';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
+
+import { Skeleton } from "@/components/ui/skeleton";
+import { AdminPageFrame, AdminSurface } from "@/components/manage/admin-page-frame";
+
+import FileTable from "./file-table";
 
 export const metadata = {
-  title: 'Quản lý File | TechHub',
-  description: 'Quản lý file và media library',
+  title: "Quan ly File | TechHub",
+  description: "Quan ly file va media library",
 };
 
-export default function FilesPage() {
-  return (
-    <div className="container mx-auto py-6 px-4">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Quản lý File</h1>
-          <p className="text-muted-foreground mt-1">
-            Quản lý file, hình ảnh, video và tài liệu
-          </p>
-        </div>
-      </div>
+export default async function FilesPage() {
+  const t = await getTranslations("ManageFile");
 
-      <Suspense fallback={<Skeleton className="w-full h-[600px]" />}>
-        <FileTable />
-      </Suspense>
-    </div>
+  return (
+    <AdminPageFrame
+      eyebrow={t("PageEyebrow")}
+      title={t("Title")}
+      description={t("Description")}
+    >
+      <AdminSurface className="p-5 md:p-7">
+        <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-[1.15rem]" />}>
+          <FileTable />
+        </Suspense>
+      </AdminSurface>
+    </AdminPageFrame>
   );
 }

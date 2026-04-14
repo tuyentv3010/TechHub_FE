@@ -32,9 +32,13 @@ import { useAiLearningPath } from "@/contexts/AiLearningPathContext";
 
 interface GenerateAiLearningPathProps {
   onSuccess?: () => void;
+  triggerClassName?: string;
 }
 
-export default function GenerateAiLearningPath({ onSuccess }: GenerateAiLearningPathProps) {
+export default function GenerateAiLearningPath({
+  onSuccess,
+  triggerClassName,
+}: GenerateAiLearningPathProps) {
   const { toast } = useToast();
   const router = useRouter();
   const t = useTranslations("AiLearningPath");
@@ -157,12 +161,12 @@ export default function GenerateAiLearningPath({ onSuccess }: GenerateAiLearning
       }
     }}>
       <DialogTrigger asChild>
-        <Button className="gap-2">
+        <Button className={triggerClassName}>
           <Sparkles className="h-4 w-4" />
           {t("title")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="manage-dialog-panel max-h-[90vh] overflow-y-auto rounded-[1.35rem] border-border/50 sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-500" />
@@ -184,6 +188,7 @@ export default function GenerateAiLearningPath({ onSuccess }: GenerateAiLearning
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               rows={3}
+              className="manage-field min-h-[7rem]"
             />
           </div>
 
@@ -191,7 +196,7 @@ export default function GenerateAiLearningPath({ onSuccess }: GenerateAiLearning
           <div className="space-y-2">
             <Label htmlFor="timeframe">{t("timeframe")}</Label>
             <Select value={timeframe} onValueChange={setTimeframe}>
-              <SelectTrigger id="timeframe">
+              <SelectTrigger id="timeframe" className="manage-filter-trigger">
                 <SelectValue placeholder={t("timeframe")} />
               </SelectTrigger>
               <SelectContent>
@@ -208,7 +213,7 @@ export default function GenerateAiLearningPath({ onSuccess }: GenerateAiLearning
             <div className="space-y-2">
               <Label htmlFor="currentLevel">{t("currentLevel")}</Label>
               <Select value={currentLevel} onValueChange={setCurrentLevel}>
-                <SelectTrigger id="currentLevel">
+                <SelectTrigger id="currentLevel" className="manage-filter-trigger">
                   <SelectValue placeholder={t("currentLevel")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -223,7 +228,7 @@ export default function GenerateAiLearningPath({ onSuccess }: GenerateAiLearning
             <div className="space-y-2">
               <Label htmlFor="targetLevel">{t("targetLevel")}</Label>
               <Select value={targetLevel} onValueChange={setTargetLevel}>
-                <SelectTrigger id="targetLevel">
+                <SelectTrigger id="targetLevel" className="manage-filter-trigger">
                   <SelectValue placeholder={t("targetLevel")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -239,7 +244,7 @@ export default function GenerateAiLearningPath({ onSuccess }: GenerateAiLearning
           <div className="space-y-2">
             <Label htmlFor="language">{t("language")}</Label>
             <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger id="language">
+              <SelectTrigger id="language" className="manage-filter-trigger">
                 <SelectValue placeholder={t("language")} />
               </SelectTrigger>
               <SelectContent>
@@ -284,7 +289,7 @@ export default function GenerateAiLearningPath({ onSuccess }: GenerateAiLearning
           </div>
 
           {/* Info */}
-          <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-900">
+          <div className="manage-subsurface rounded-lg p-3 text-sm text-slate-700 dark:text-slate-200">
             <p className="font-medium mb-1">💡 {tCommon("note")}:</p>
             <ul className="list-disc list-inside space-y-1 text-xs">
               <li>{t("note1")}</li>
@@ -296,6 +301,7 @@ export default function GenerateAiLearningPath({ onSuccess }: GenerateAiLearning
         <DialogFooter>
           <Button
             variant="outline"
+            className="manage-secondary-button"
             onClick={() => setOpen(false)}
             disabled={generateMutation.isPending}
           >
@@ -303,6 +309,7 @@ export default function GenerateAiLearningPath({ onSuccess }: GenerateAiLearning
           </Button>
           <Button
             onClick={handleGenerate}
+            className="manage-primary-button"
             disabled={generateMutation.isPending || !goal.trim()}
           >
             {generateMutation.isPending ? (

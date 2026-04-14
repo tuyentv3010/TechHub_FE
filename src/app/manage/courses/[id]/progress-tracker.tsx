@@ -28,7 +28,7 @@ export default function ProgressTracker({ courseId }: ProgressTrackerProps) {
 
   if (!progress) {
     return (
-      <Card>
+      <Card className="manage-surface border-border/50">
         <CardContent className="py-8">
           <div className="text-center text-muted-foreground">
             {t("NoProgressData")}
@@ -57,7 +57,7 @@ export default function ProgressTracker({ courseId }: ProgressTrackerProps) {
   };
 
   return (
-    <Card>
+    <Card className="manage-surface border-border/50">
       <CardHeader>
         <CardTitle>{t("CourseProgress")}</CardTitle>
         <CardDescription>{t("TrackYourLearningProgress")}</CardDescription>

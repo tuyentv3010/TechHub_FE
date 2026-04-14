@@ -108,7 +108,7 @@ function AlertDialogDeleteCourse({
       open={Boolean(courseDelete)}
       onOpenChange={(value) => !value && setCourseDelete(null)}
     >
-      <AlertDialogContent>
+      <AlertDialogContent className="manage-dialog-panel rounded-[1.35rem] border-border/50">
         <AlertDialogHeader>
           <AlertDialogTitle>{t("ConfirmDelete")}</AlertDialogTitle>
           <AlertDialogDescription>
@@ -130,6 +130,7 @@ function AlertDialogDeleteCourse({
 
 export default function CourseTable() {
   const t = useTranslations("ManageCourse");
+  const paginationT = useTranslations("Pagination");
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -426,6 +427,13 @@ export default function CourseTable() {
     router.push(`${pathname}?${params.toString()}`);
   };
 
+  const handlePageSizeChange = (newPageSize: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("pageSize", String(newPageSize));
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   useEffect(() => {
     table.setPageSize(pageSize);
   }, [pageSize, table]);
@@ -443,14 +451,14 @@ export default function CourseTable() {
         setCourseDelete,
       }}
     >
-      <div className="w-full">
-        <div className="flex flex-col gap-4 py-4">
-          <div className="flex items-center justify-between gap-4">
+      <div className="manage-data-table w-full">
+        <div className="flex flex-col gap-4 py-2">
+          <div className="manage-toolbar">
             <Input
               placeholder={t("SearchPlaceholder")}
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
-              className="max-w-sm"
+              className="manage-field max-w-md md:min-w-[20rem]"
             />
             <AddCourse onSuccess={() => courseListQuery.refetch()} />
           </div>
@@ -459,7 +467,7 @@ export default function CourseTable() {
             availableTags={tagsQuery.data?.payload?.data || []}
           />
         </div>
-        <div className="rounded-md border">
+        <div className="manage-table-shell">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -507,17 +515,18 @@ export default function CourseTable() {
             </TableBody>
           </Table>
         </div>
-        <div className="flex items-center justify-between space-x-2 py-4">
-          <div className="text-sm text-muted-foreground">
+        <div className="manage-pagination py-4">
+          <div className="manage-pagination-copy">
             {t("PageInfo", {
               current: page,
               total: totalPages,
             })}
           </div>
-          <div className="flex gap-2">
+          <div className="manage-pagination-actions">
             <Button
               variant="outline"
               size="sm"
+              className="manage-secondary-button manage-pagination-button"
               onClick={() => handlePageChange(page - 1)}
               disabled={page <= 1}
             >
@@ -526,11 +535,25 @@ export default function CourseTable() {
             <Button
               variant="outline"
               size="sm"
+              className="manage-secondary-button manage-pagination-button"
               onClick={() => handlePageChange(page + 1)}
               disabled={page >= totalPages}
             >
               {t("Next")}
             </Button>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(value) => handlePageSizeChange(Number(value))}
+            >
+              <SelectTrigger className="manage-filter-trigger w-[120px]">
+                <SelectValue placeholder={paginationT("RowsPerPage")} />
+              </SelectTrigger>
+              <SelectContent className="manage-popover-panel">
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

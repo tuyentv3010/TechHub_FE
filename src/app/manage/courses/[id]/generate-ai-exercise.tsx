@@ -160,7 +160,7 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
           {t("generateExercises")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="manage-dialog-panel sm:max-w-[600px] max-h-[90vh] overflow-y-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-500" />

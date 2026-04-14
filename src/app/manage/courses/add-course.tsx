@@ -313,14 +313,14 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="h-8 gap-1">
+        <Button size="sm" className="manage-primary-button h-10 gap-2 px-4">
           <PlusCircle className="h-3.5 w-3.5" />
           <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
             {t("AddCourse")}
           </span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="manage-dialog-panel max-w-3xl max-h-[90vh] overflow-y-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle>{t("AddCourse")}</DialogTitle>
           <DialogDescription>{t("AddCourseDescription")}</DialogDescription>
@@ -439,12 +439,12 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
           <div className="space-y-2">
             <Label>{t("SkillsLabel")}</Label>
             <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setShowSkillManager(true)}
-                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
-              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShowSkillManager(true)}
+                  className="manage-secondary-button ml-2"
+                >
                 {t("ManageSkills") || "Manage"}
               </Button>
             </div>
@@ -473,7 +473,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
                 type="button"
                 variant="ghost"
                 onClick={() => setShowTagManager(true)}
-                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                className="manage-secondary-button ml-2"
               >
                 {t("ManageTags") || "Manage tags"}
               </Button>
@@ -513,6 +513,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               <Button
                 type="button"
                 variant="outline"
+                className="manage-secondary-button"
                 onClick={() => {
                   addItem('objectives', objectiveInput);
                   setObjectiveInput("");
@@ -553,6 +554,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               <Button
                 type="button"
                 variant="outline"
+                className="manage-secondary-button"
                 onClick={() => {
                   addItem('requirements', requirementInput);
                   setRequirementInput("");
@@ -581,7 +583,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => setShowThumbnailLibrary(true)}
                 disabled={isUploadingThumbnail}
               >
@@ -591,7 +593,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => thumbnailFileInputRef.current?.click()}
                 disabled={isUploadingThumbnail}
               >
@@ -636,7 +638,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => setShowVideoLibrary(true)}
                 disabled={isUploadingVideo}
               >
@@ -646,7 +648,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => videoFileInputRef.current?.click()}
                 disabled={isUploadingVideo}
               >
@@ -707,11 +709,16 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             <Button
               type="button"
               variant="outline"
+              className="manage-secondary-button"
               onClick={() => setOpen(false)}
             >
               {t("Cancel")}
             </Button>
-            <Button type="submit" disabled={createCourseMutation.isPending}>
+            <Button
+              type="submit"
+              className="manage-primary-button"
+              disabled={createCourseMutation.isPending}
+            >
               {createCourseMutation.isPending ? t("Creating") : t("Create")}
             </Button>
           </DialogFooter>

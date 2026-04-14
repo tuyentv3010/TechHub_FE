@@ -1,5 +1,9 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,17 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
@@ -28,7 +21,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
+import { handleErrorApi } from "@/lib/utils";
 import { useCreatePermissionMutation } from "@/queries/usePermission";
 import {
   CreatePermissionBody,
@@ -36,8 +40,6 @@ import {
   HTTP_METHODS,
   RESOURCES,
 } from "@/schemaValidations/permission.schema";
-import { toast } from "@/components/ui/use-toast";
-import { handleErrorApi } from "@/lib/utils";
 
 export default function AddPermission({
   open,
@@ -46,6 +48,7 @@ export default function AddPermission({
   open: boolean;
   setOpen: (value: boolean) => void;
 }) {
+  const t = useTranslations("ManagePermission");
   const createPermissionMutation = useCreatePermissionMutation();
 
   const form = useForm<CreatePermissionBodyType>({
@@ -67,14 +70,14 @@ export default function AddPermission({
 
   const onSubmit = async (values: CreatePermissionBodyType) => {
     try {
-      const result = await createPermissionMutation.mutateAsync(values);
-      toast({ description: result.message });
+      await createPermissionMutation.mutateAsync(values);
+      toast({ description: t("PermissionCreated") });
       reset();
     } catch (error) {
       handleErrorApi({ error, setError: form.setError });
       toast({
-        title: "Lỗi",
-        description: "Không thể tạo permission",
+        title: t("ErrorLabel"),
+        description: t("CreateFailed"),
         variant: "destructive",
       });
     }
@@ -82,12 +85,10 @@ export default function AddPermission({
 
   return (
     <Dialog open={open} onOpenChange={(value) => !value && reset()}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="manage-dialog-panel sm:max-w-[600px] rounded-[1.35rem] border-border/50">
         <DialogHeader>
-          <DialogTitle>Thêm Permission Mới</DialogTitle>
-          <DialogDescription>
-            Tạo permission mới cho hệ thống phân quyền
-          </DialogDescription>
+          <DialogTitle>{t("AddPermission")}</DialogTitle>
+          <DialogDescription>{t("AddPermissionDescription")}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form
@@ -101,10 +102,10 @@ export default function AddPermission({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Tên <span className="text-red-500">*</span>
+                    {t("NameLabel")} <span className="text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="USER_READ_ALL" {...field} />
+                    <Input placeholder={t("NamePlaceholder")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -115,30 +116,27 @@ export default function AddPermission({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Mô tả</FormLabel>
+                  <FormLabel>{t("DescriptionLabel")}</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Get all users" {...field} />
+                    <Textarea placeholder={t("DescriptionPlaceholder")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="method"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Method <span className="text-red-500">*</span>
+                      {t("MethodLabel")} <span className="text-red-500">*</span>
                     </FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Chọn method" />
+                          <SelectValue placeholder={t("MethodPlaceholder")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -159,15 +157,12 @@ export default function AddPermission({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Resource <span className="text-red-500">*</span>
+                      {t("ResourceLabel")} <span className="text-red-500">*</span>
                     </FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Chọn resource" />
+                          <SelectValue placeholder={t("ResourcePlaceholder")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -189,10 +184,10 @@ export default function AddPermission({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    URL <span className="text-red-500">*</span>
+                    {t("UrlLabel")} <span className="text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="/api/users" {...field} />
+                    <Input placeholder={t("UrlPlaceholder")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -203,16 +198,11 @@ export default function AddPermission({
               name="active"
               render={({ field }) => (
                 <FormItem className="flex items-center gap-2">
-                  <FormLabel>Trạng thái</FormLabel>
+                  <FormLabel>{t("StatusLabel")}</FormLabel>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
-                  <span className="text-sm">
-                    {field.value ? "Active" : "Inactive"}
-                  </span>
+                  <span className="text-sm">{field.value ? t("Active") : t("Inactive")}</span>
                   <FormMessage />
                 </FormItem>
               )}
@@ -223,9 +213,10 @@ export default function AddPermission({
           <Button
             type="submit"
             form="add-permission-form"
+            className="manage-primary-button"
             disabled={createPermissionMutation.isPending}
           >
-            Thêm Permission
+            {t("AddPermission")}
           </Button>
         </DialogFooter>
       </DialogContent>

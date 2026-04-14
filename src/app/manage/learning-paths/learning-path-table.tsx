@@ -42,6 +42,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
@@ -63,6 +70,7 @@ import { Separator } from "@/components/ui/separator";
 export default function LearningPathTable() {
   const t = useTranslations("ManageLearningPath");
   const tAiDrafts = useTranslations("AiDrafts");
+  const paginationT = useTranslations("Pagination");
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -202,9 +210,9 @@ export default function LearningPathTable() {
         const path = row.original;
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="manage-ghost-button h-8 w-8 p-0">
                 <span className="sr-only">Open menu</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -260,17 +268,17 @@ export default function LearningPathTable() {
   });
 
   return (
-    <div className="w-full">
-      <div className="flex items-center gap-4 py-4">
+    <div className="manage-data-table w-full">
+      <div className="manage-toolbar py-1">
         <Input
           placeholder={t("SearchPlaceholder")}
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.target.value)}
-          className="max-w-sm"
+          className="manage-field max-w-sm"
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline" className="manage-secondary-button ml-auto">
               {t("Columns")} <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -294,10 +302,16 @@ export default function LearningPathTable() {
               })}
           </DropdownMenuContent>
         </DropdownMenu>
-        <GenerateAiLearningPath onSuccess={() => refetch()} />
-        <AddLearningPath onSuccess={() => refetch()} />
+        <GenerateAiLearningPath
+          onSuccess={() => refetch()}
+          triggerClassName="manage-secondary-button"
+        />
+        <AddLearningPath
+          onSuccess={() => refetch()}
+          triggerClassName="manage-primary-button"
+        />
       </div>
-      <div className="rounded-md border">
+      <div className="manage-table-shell">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -356,15 +370,16 @@ export default function LearningPathTable() {
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {t("Page")} {pagination.pageIndex + 1} {t("Of")}{" "}
-          {data?.payload?.pagination?.totalPages ?? 1}
+      <div className="manage-pagination pt-4">
+        <div className="manage-pagination-copy">
+          {t("Page")} <strong>{pagination.pageIndex + 1}</strong> {t("Of")}{" "}
+          <strong>{data?.payload?.pagination?.totalPages ?? 1}</strong>
         </div>
-        <div className="space-x-2">
+        <div className="manage-pagination-actions">
           <Button
             variant="outline"
             size="sm"
+            className="manage-secondary-button manage-pagination-button"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -373,11 +388,31 @@ export default function LearningPathTable() {
           <Button
             variant="outline"
             size="sm"
+            className="manage-secondary-button manage-pagination-button"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
             {t("Next")}
           </Button>
+          <Select
+            value={String(pagination.pageSize)}
+            onValueChange={(value) =>
+              setPagination((current) => ({
+                ...current,
+                pageIndex: 0,
+                pageSize: Number(value),
+              }))
+            }
+          >
+            <SelectTrigger className="manage-filter-trigger w-[120px]">
+              <SelectValue placeholder={paginationT("RowsPerPage")} />
+            </SelectTrigger>
+            <SelectContent className="manage-popover-panel">
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -398,7 +433,7 @@ export default function LearningPathTable() {
           <Sparkles className="h-4 w-4" />
           {tAiDrafts("title")}
         </h3>
-        <Card>
+        <Card className="manage-surface border-border/50">
           <CardHeader>
             <CardTitle className="text-base">{tAiDrafts("pendingPaths")}</CardTitle>
             <CardDescription>
@@ -413,7 +448,7 @@ export default function LearningPathTable() {
             ) : (
               <div className="space-y-3">
                 {(aiDraftsData?.payload?.data || []).map((draft: { taskId: string; taskType: string; status: string; createdAt: string }) => (
-                  <Card key={draft.taskId}>
+                  <Card key={draft.taskId} className="manage-subsurface border-border/50">
                     <CardContent className="py-3 flex items-center justify-between">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -430,6 +465,7 @@ export default function LearningPathTable() {
                         <Button
                           size="sm"
                           variant="default"
+                          className="manage-primary-button"
                           onClick={() => router.push(`/manage/learning-paths/drafts/${draft.taskId}/designer`)}
                         >
                           <Route className="mr-2 h-4 w-4" />
@@ -437,6 +473,7 @@ export default function LearningPathTable() {
                         </Button>
                         <Button
                           size="sm"
+                          className="manage-primary-button"
                           disabled={approveDraftMutation.isPending}
                           onClick={() => handleApproveDraft(draft.taskId)}
                         >
@@ -448,6 +485,7 @@ export default function LearningPathTable() {
                         <Button
                           size="sm"
                           variant="outline"
+                          className="manage-secondary-button"
                           disabled={rejectDraftMutation.isPending}
                           onClick={() => handleRejectDraft(draft.taskId)}
                         >

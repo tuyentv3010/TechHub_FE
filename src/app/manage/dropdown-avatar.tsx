@@ -11,7 +11,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useLogoutMutation } from "@/queries/useAuth";
-import { handleErrorApi } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import { useTranslations } from "next-intl";
@@ -115,7 +114,10 @@ export default function DropdownAvatar() {
 
   if (isLoading) {
     return (
-      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+      <Button
+        variant="ghost"
+        className="manage-ghost-button relative h-10 w-10 rounded-full border-0 shadow-none"
+      >
         <Avatar className="h-8 w-8">
           <AvatarFallback>...</AvatarFallback>
         </Avatar>
@@ -126,7 +128,10 @@ export default function DropdownAvatar() {
   if (isError) {
     console.error("Account profile error:", error);
     return (
-      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+      <Button
+        variant="ghost"
+        className="manage-ghost-button relative h-10 w-10 rounded-full border-0 shadow-none"
+      >
         <Avatar className="h-8 w-8">
           <AvatarFallback>??</AvatarFallback>
         </Avatar>
@@ -137,8 +142,11 @@ export default function DropdownAvatar() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
+        <Button
+          variant="ghost"
+          className="manage-ghost-button relative h-10 w-10 rounded-full border-0 shadow-none"
+        >
+          <Avatar className="h-8 w-8 rounded-xl">
             <AvatarImage 
               src={userInfo?.avatar || account?.avatar || "/placeholder-avatar.jpg"} 
               alt={userInfo?.username || account?.username || "User"}
@@ -153,9 +161,13 @@ export default function DropdownAvatar() {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
+      <DropdownMenuContent
+        className="manage-dialog-panel w-64 rounded-2xl border-border/50 p-2"
+        align="end"
+        forceMount
+      >
         <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
+          <div className="space-y-1 rounded-xl border border-border/40 bg-card/70 px-3 py-3">
             <p className="text-sm font-medium leading-none">
               {userInfo?.username || account?.username || "User"}
             </p>

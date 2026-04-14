@@ -17,7 +17,6 @@ import {
   MessageSquareText,
   PlusCircle,
   RefreshCcw,
-  Search,
   Send,
   ShieldCheck,
   WalletCards,
@@ -40,6 +39,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
 import { decodeToken, formatCurrency, getAccessTokenFromLocalStorage } from "@/lib/utils";
+import { useLocale, useTranslations } from "next-intl";
 import {
   useApprovePayoutRequest,
   useCreateManualPayoutBatch,
@@ -163,6 +163,9 @@ const normalizeBatch = (item: PayoutBatchResponse): NormalizedPayoutBatch => ({
 export default function PayoutManagementPage() {
   const { role, isAuth } = useAppContext();
   const { toast } = useToast();
+  const locale = useLocale();
+  const t = useTranslations("ManagePayout");
+  const notAvailable = t("NotAvailable");
   const dashboardRole: "ADMIN" | "INSTRUCTOR" | null =
     role === "ADMIN" || role === "SUPER_ADMIN" ? "ADMIN" : role === "INSTRUCTOR" ? "INSTRUCTOR" : null;
 
@@ -179,6 +182,38 @@ export default function PayoutManagementPage() {
   const [manualBatchName, setManualBatchName] = useState("");
   const [manualBatchFromDate, setManualBatchFromDate] = useState("");
   const [manualBatchToDate, setManualBatchToDate] = useState("");
+
+  const formatDateTimeValue = (value?: string | null) => {
+    if (!value) return notAvailable;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(date);
+  };
+
+  const formatDateShortValue = (value?: string | null) => {
+    if (!value) return notAvailable;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: "short",
+    }).format(date);
+  };
+
+  const shortIdValue = (value?: string | null) => {
+    if (!value) return notAvailable;
+    return value.length > 10 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
+  };
+
+  useEffect(() => {
+    document.body.classList.add("manage-payout-page");
+
+    return () => {
+      document.body.classList.remove("manage-payout-page");
+    };
+  }, []);
 
   useEffect(() => {
     const token = getAccessTokenFromLocalStorage();
@@ -262,9 +297,9 @@ export default function PayoutManagementPage() {
     const requestRows: LedgerRow[] = normalizedRequests.flatMap((request) => {
       const rows: LedgerRow[] = [
         {
-          ref: shortId(request.id),
+          ref: shortIdValue(request.id),
           type: "REQUEST",
-          description: request.note || `Payout request for instructor ${shortId(request.instructorId)}`,
+          description: request.note || t("RequestForInstructor", { id: shortIdValue(request.instructorId) }),
           amount: request.amount,
           status: request.status,
           timestamp: request.created || request.updated || "",
@@ -273,9 +308,9 @@ export default function PayoutManagementPage() {
 
       if (request.approvedAt) {
         rows.push({
-          ref: shortId(`${request.id}-approved`),
+          ref: shortIdValue(`${request.id}-approved`),
           type: "APPROVAL",
-          description: request.reviewNote || "Payout approved",
+          description: request.reviewNote || t("ApprovedDescription"),
           amount: request.amount,
           status: "APPROVED",
           timestamp: request.approvedAt,
@@ -284,9 +319,11 @@ export default function PayoutManagementPage() {
 
       if (request.markedPaidAt) {
         rows.push({
-          ref: shortId(`${request.id}-paid`),
+          ref: shortIdValue(`${request.id}-paid`),
           type: "PAID",
-          description: request.paymentReference ? `Paid via ${request.paymentReference}` : "Marked as paid",
+          description: request.paymentReference
+            ? t("PaidVia", { reference: request.paymentReference })
+            : t("MarkedAsPaid"),
           amount: request.amount,
           status: "PAID",
           timestamp: request.markedPaidAt,
@@ -297,7 +334,7 @@ export default function PayoutManagementPage() {
     });
 
     const batchRows: LedgerRow[] = normalizedBatches.map((batch) => ({
-      ref: shortId(batch.id),
+      ref: shortIdValue(batch.id),
       type: "BATCH",
       description: `${batch.batchName} • ${batch.totalRequests} request(s)`,
       amount: batch.totalAmount,
@@ -308,7 +345,7 @@ export default function PayoutManagementPage() {
     return [...batchRows, ...requestRows]
       .sort((left, right) => new Date(right.timestamp || 0).getTime() - new Date(left.timestamp || 0).getTime())
       .slice(0, 12);
-  }, [normalizedBatches, normalizedRequests]);
+  }, [normalizedBatches, normalizedRequests, t]);
 
   const openRequestDetail = (requestId: string) => {
     setSelectedRequestId(requestId);
@@ -322,8 +359,8 @@ export default function PayoutManagementPage() {
       await Promise.all([refetchBalance(), refetchRequests(), refetchBatches(), refetchDetail()]);
     } catch (error: any) {
       toast({
-        title: "Không thể tải payout data",
-        description: error?.message || "Vui lòng thử lại sau.",
+        title: t("RefreshErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
         variant: "destructive",
       });
     }
@@ -333,8 +370,8 @@ export default function PayoutManagementPage() {
     const amount = Number(requestAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
       toast({
-        title: "Amount không hợp lệ",
-        description: "Nhập số tiền lớn hơn 0.",
+        title: t("InvalidAmountTitle"),
+        description: t("InvalidAmountDescription"),
         variant: "destructive",
       });
       return;
@@ -342,8 +379,8 @@ export default function PayoutManagementPage() {
 
     if (summary.availableAmount > 0 && amount > summary.availableAmount) {
       toast({
-        title: "Vượt quá số dư khả dụng",
-        description: "Số tiền yêu cầu không được lớn hơn available balance.",
+        title: t("ExceedAvailableTitle"),
+        description: t("ExceedAvailableDescription"),
         variant: "destructive",
       });
       return;
@@ -352,16 +389,16 @@ export default function PayoutManagementPage() {
     try {
       await createRequestMutation.mutateAsync({ amount, note: requestNote.trim() || undefined });
       toast({
-        title: "Đã gửi yêu cầu chi trả",
-        description: "Payout request mới đã được tạo.",
+        title: t("CreateRequestSuccessTitle"),
+        description: t("CreateRequestSuccessDescription"),
       });
       setRequestAmount("");
       setRequestNote("");
       await refreshAll();
     } catch (error: any) {
       toast({
-        title: "Không tạo được payout request",
-        description: error?.message || "Vui lòng kiểm tra dữ liệu đầu vào.",
+        title: t("CreateRequestErrorTitle"),
+        description: error?.message || t("CreateRequestErrorDescription"),
         variant: "destructive",
       });
     }
@@ -374,13 +411,13 @@ export default function PayoutManagementPage() {
         requestId: selectedRequestId,
         payload: { note: reviewNote.trim() || undefined },
       });
-      toast({ title: "Đã duyệt payout request" });
+      toast({ title: t("ApproveSuccessTitle") });
       await refreshAll();
       setDetailSheetOpen(false);
     } catch (error: any) {
       toast({
-        title: "Không thể approve",
-        description: error?.message || "Vui lòng thử lại.",
+        title: t("ApproveErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
         variant: "destructive",
       });
     }
@@ -393,13 +430,13 @@ export default function PayoutManagementPage() {
         requestId: selectedRequestId,
         payload: { note: reviewNote.trim() || undefined },
       });
-      toast({ title: "Đã reject payout request" });
+      toast({ title: t("RejectSuccessTitle") });
       await refreshAll();
       setDetailSheetOpen(false);
     } catch (error: any) {
       toast({
-        title: "Không thể reject",
-        description: error?.message || "Vui lòng thử lại.",
+        title: t("RejectErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
         variant: "destructive",
       });
     }
@@ -408,8 +445,8 @@ export default function PayoutManagementPage() {
   const handleMarkPaid = async () => {
     if (!selectedRequestId || !paymentReference.trim()) {
       toast({
-        title: "Thiếu payment reference",
-        description: "Nhập reference để mark paid.",
+        title: t("MissingPaymentReferenceTitle"),
+        description: t("MissingPaymentReferenceDescription"),
         variant: "destructive",
       });
       return;
@@ -423,13 +460,13 @@ export default function PayoutManagementPage() {
           note: reviewNote.trim() || undefined,
         },
       });
-      toast({ title: "Đã mark paid" });
+      toast({ title: t("MarkPaidSuccessTitle") });
       await refreshAll();
       setDetailSheetOpen(false);
     } catch (error: any) {
       toast({
-        title: "Không thể mark paid",
-        description: error?.message || "Vui lòng thử lại.",
+        title: t("MarkPaidErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
         variant: "destructive",
       });
     }
@@ -439,13 +476,13 @@ export default function PayoutManagementPage() {
     try {
       const period = format(new Date(), "yyyy-MM");
       await createMonthlyBatchMutation.mutateAsync(period);
-      toast({ title: "Đã tạo monthly batch" });
+      toast({ title: t("MonthlyBatchSuccessTitle") });
       await refetchBatches();
       setBatchSheetOpen(false);
     } catch (error: any) {
       toast({
-        title: "Không tạo được monthly batch",
-        description: error?.message || "Vui lòng thử lại.",
+        title: t("MonthlyBatchErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
         variant: "destructive",
       });
     }
@@ -454,8 +491,8 @@ export default function PayoutManagementPage() {
   const handleManualBatch = async () => {
     if (!manualBatchFromDate || !manualBatchToDate) {
       toast({
-        title: "Thiếu khoảng ngày",
-        description: "Chọn fromDate và toDate cho manual batch.",
+        title: t("MissingDateRangeTitle"),
+        description: t("MissingDateRangeDescription"),
         variant: "destructive",
       });
       return;
@@ -467,7 +504,7 @@ export default function PayoutManagementPage() {
         fromDate: manualBatchFromDate,
         toDate: manualBatchToDate,
       });
-      toast({ title: "Đã tạo manual batch" });
+      toast({ title: t("ManualBatchSuccessTitle") });
       await refetchBatches();
       setBatchSheetOpen(false);
       setManualBatchName("");
@@ -475,8 +512,8 @@ export default function PayoutManagementPage() {
       setManualBatchToDate("");
     } catch (error: any) {
       toast({
-        title: "Không tạo được manual batch",
-        description: error?.message || "Vui lòng thử lại.",
+        title: t("ManualBatchErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
         variant: "destructive",
       });
     }
@@ -485,15 +522,15 @@ export default function PayoutManagementPage() {
   const handleCopyRequestId = async (value?: string | null) => {
     if (!value) return;
     await navigator.clipboard.writeText(value);
-    toast({ title: "Đã copy request ID" });
+    toast({ title: t("CopyRequestIdSuccess") });
   };
 
   if (!isAuth || !dashboardRole) {
     return (
-      <main className="min-h-screen bg-[#0f131f] p-4 text-[#dfe2f3] sm:px-6 sm:py-4 md:p-8">
+      <main className="manage-finance-root manage-payout-root min-h-screen bg-[#0f131f] p-4 text-[#dfe2f3] sm:px-6 sm:py-4 md:p-8">
         <Card className="border border-white/10 bg-[#1b1f2c]">
           <CardContent className="p-6 text-sm text-white/70">
-            Đang chờ xác thực người dùng. Payout dashboard sẽ tải sau khi role được xác định.
+            {t("Unauthenticated")}
           </CardContent>
         </Card>
       </main>
@@ -501,34 +538,37 @@ export default function PayoutManagementPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(173,198,255,0.14),_transparent_35%),radial-gradient(circle_at_top_right,_rgba(78,222,163,0.10),_transparent_35%),linear-gradient(180deg,#0f131f_0%,#0b1020_100%)] p-4 text-[#dfe2f3] sm:px-6 sm:py-4 md:p-8">
-      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0a0e1a]/90 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(173,198,255,0.12),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(78,222,163,0.08),transparent_32%)]" />
-        <div className="relative flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+    <main className="manage-page manage-finance-root manage-payout-root space-y-6 text-[#dfe2f3]">
+      <section className="manage-finance-surface relative overflow-hidden">
+        <div className="relative flex flex-col gap-6 p-5 sm:p-6 md:flex-row md:items-center md:justify-between md:p-8">
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#adc6ff]/20 bg-[#adc6ff]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-[#adc6ff]">
+            <div className="manage-page-eyebrow inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1 shadow-sm">
               <Landmark className="h-3.5 w-3.5" />
-              Payout Control
+              {t("PageEyebrow")}
             </div>
             <div className="space-y-1">
-              <h1 className="text-3xl font-extrabold tracking-tight text-[#f0f4ff] md:text-4xl">Payouts</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#f0f4ff] md:text-4xl">{t("Title")}</h1>
               <p className="max-w-2xl text-sm text-white/65 md:text-base">
-                Sandbox settlement, request review, and manual paid tracking in the Observatory finance style.
+                {t("Description")}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80">
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex items-center justify-center gap-2 rounded-full border border-border/60 bg-background/80 px-4 py-2 text-sm text-muted-foreground sm:justify-start">
               <CalendarDays className="h-4 w-4 text-[#adc6ff]" />
-              {format(new Date(), "MMM d, yyyy")}
+              {new Intl.DateTimeFormat(locale, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              }).format(new Date())}
             </div>
             <Button
               onClick={() => setBatchSheetOpen(true)}
-              className="rounded-full bg-gradient-to-r from-[#adc6ff] to-[#4d8eff] px-6 font-semibold text-[#0a0e1a] hover:opacity-95"
+              className="manage-finance-primary px-6 font-semibold sm:w-auto"
             >
               <PlusCircle className="mr-2 h-4 w-4" />
-              Create Batch
+              {t("CreateBatch")}
             </Button>
           </div>
         </div>
@@ -536,10 +576,10 @@ export default function PayoutManagementPage() {
 
       <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
-          { title: "Total Earned", value: formatCurrency(summary.totalEarned), icon: CircleDollarSign, accent: "text-[#adc6ff]" },
-          { title: "Pending Payout", value: formatCurrency(summary.pendingAmount), icon: WalletCards, accent: "text-[#ffddb8]" },
-          { title: "Available Balance", value: formatCurrency(summary.availableAmount), icon: CheckCircle2, accent: "text-[#4edea3]" },
-          { title: "Open Requests", value: String(summary.pendingRequests), icon: Layers3, accent: "text-white/70" },
+          { title: t("SummaryTotalEarned"), value: formatCurrency(summary.totalEarned), icon: CircleDollarSign, accent: "text-[#adc6ff]" },
+          { title: t("SummaryPendingPayout"), value: formatCurrency(summary.pendingAmount), icon: WalletCards, accent: "text-[#ffddb8]" },
+          { title: t("SummaryAvailableBalance"), value: formatCurrency(summary.availableAmount), icon: CheckCircle2, accent: "text-[#4edea3]" },
+          { title: t("SummaryOpenRequests"), value: String(summary.pendingRequests), icon: Layers3, accent: "text-white/70" },
         ].map((card) => {
           const Icon = card.icon;
           return (
@@ -553,7 +593,7 @@ export default function PayoutManagementPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-[#f0f4ff]">{card.value}</div>
-                <div className="mt-2 text-[11px] text-white/45">Updated from payout-service projection</div>
+                <div className="mt-2 text-[11px] text-white/45">{t("UpdatedProjection")}</div>
               </CardContent>
             </Card>
           );
@@ -561,8 +601,8 @@ export default function PayoutManagementPage() {
       </section>
 
       <section className="mt-6 rounded-[28px] border border-white/8 bg-[#1b1f2c] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.22)] md:p-6">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
             <div className="relative">
               <div className="flex h-16 w-16 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 text-emerald-200">
                 <WalletCards className="h-7 w-7" />
@@ -571,10 +611,12 @@ export default function PayoutManagementPage() {
                 <CheckCircle2 className="h-3.5 w-3.5" />
               </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-bold text-[#f0f4ff]">
-                  {dashboardRole === "ADMIN" ? `Instructor ${shortId(balanceQueryInstructorId)}` : "My Payout Balance"}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="min-w-0 text-2xl font-bold text-[#f0f4ff]">
+                  {dashboardRole === "ADMIN"
+                    ? t("BalanceTitleAdmin", { id: shortIdValue(balanceQueryInstructorId) })
+                    : t("BalanceTitleInstructor")}
                 </h2>
                 <Button
                   variant="ghost"
@@ -593,71 +635,68 @@ export default function PayoutManagementPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 xl:w-[48rem]">
+          <div className="grid w-full gap-3 sm:grid-cols-3 xl:w-auto 2xl:w-[48rem]">
             <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">Lifetime Earned</div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("LifetimeEarned")}</div>
               <div className="mt-2 text-2xl font-bold text-[#f0f4ff]">{formatCurrency(summary.totalEarned)}</div>
             </div>
             <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">Current Pending</div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("CurrentPending")}</div>
               <div className="mt-2 text-2xl font-bold text-[#ffddb8]">{formatCurrency(summary.pendingAmount)}</div>
             </div>
             <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
               <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-300">
-                Available <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                {t("Available")} <span className="h-2 w-2 rounded-full bg-emerald-400" />
               </div>
               <div className="mt-2 text-2xl font-extrabold text-[#f0f4ff]">{formatCurrency(summary.availableAmount)}</div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row xl:items-center">
+          <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto xl:items-center">
             {dashboardRole === "ADMIN" && (
-              <div className="flex items-center gap-2 rounded-full border border-white/8 bg-white/5 px-4 py-2">
-                <Search className="h-4 w-4 text-white/45" />
-                <Input
-                  value={selectedInstructorId}
-                  onChange={(event) => setSelectedInstructorId(event.target.value)}
-                  placeholder="Instructor ID"
-                  className="h-8 w-[260px] border-0 bg-transparent p-0 text-sm text-[#f0f4ff] placeholder:text-white/30 focus-visible:ring-0"
-                />
-              </div>
+              <Input
+                value={selectedInstructorId}
+                onChange={(event) => setSelectedInstructorId(event.target.value)}
+                placeholder={t("InstructorIdPlaceholder")}
+                className="manage-finance-input w-full min-w-[220px] sm:w-[260px]"
+              />
             )}
 
             {dashboardRole === "INSTRUCTOR" && (
               <Button
                 onClick={handleCreateRequest}
                 disabled={createRequestMutation.isPending}
-                className="rounded-full bg-white text-[#0a0e1a] hover:bg-white/90"
+                  className="manage-finance-secondary"
               >
                 <Send className="mr-2 h-4 w-4" />
-                {createRequestMutation.isPending ? "Sending..." : "Request Payout"}
+                {createRequestMutation.isPending ? t("Sending") : t("RequestPayout")}
               </Button>
             )}
           </div>
         </div>
 
         {dashboardRole === "INSTRUCTOR" && (
-          <div className="mt-5 grid gap-3 md:grid-cols-[1.1fr_1fr_auto]">
+          <div className="mt-5 grid gap-3 xl:grid-cols-[1.1fr_1fr_auto]">
             <Input
               value={requestAmount}
               onChange={(event) => setRequestAmount(event.target.value)}
-              placeholder="Amount"
+              placeholder={t("AmountPlaceholder")}
               inputMode="decimal"
-              className="h-12 border-white/10 bg-white/5 text-[#f0f4ff] placeholder:text-white/30"
+              className="manage-finance-input h-12"
             />
             <Input
               value={requestNote}
               onChange={(event) => setRequestNote(event.target.value)}
-              placeholder="Note for finance / admin"
-              className="h-12 border-white/10 bg-white/5 text-[#f0f4ff] placeholder:text-white/30"
+              placeholder={t("NotePlaceholder")}
+              className="manage-finance-input h-12"
             />
             <Button
               onClick={handleCreateRequest}
               disabled={createRequestMutation.isPending}
-              className="h-12 rounded-full bg-gradient-to-r from-[#adc6ff] to-[#4d8eff] px-6 font-semibold text-[#0a0e1a] hover:opacity-95"
+              className="manage-finance-primary h-12 px-6 font-semibold"
             >
               <ArrowUpRight className="mr-2 h-4 w-4" />
-              Submit
+              {t("Submit")}
             </Button>
           </div>
         )}
@@ -665,10 +704,10 @@ export default function PayoutManagementPage() {
 
       <section className="mt-6 grid gap-6 xl:grid-cols-12">
         <Card className="xl:col-span-4 border border-white/8 bg-[#1b1f2c] shadow-[0_12px_40px_rgba(0,0,0,0.22)]">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 border-b border-white/8 pb-4">
+          <CardHeader className="flex flex-col gap-3 border-b border-white/8 pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <CardTitle className="text-[#f0f4ff]">Batch Management</CardTitle>
-              <CardDescription className="text-white/50">Monthly and manual settlement batches.</CardDescription>
+              <CardTitle className="text-[#f0f4ff]">{t("BatchManagementTitle")}</CardTitle>
+              <CardDescription className="text-white/50">{t("BatchManagementDescription")}</CardDescription>
             </div>
             <Button
               variant="ghost"
@@ -698,16 +737,16 @@ export default function PayoutManagementPage() {
                     });
                   }}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="text-sm font-semibold text-[#f0f4ff]">{batch.batchName}</div>
-                      <div className="mt-1 text-[11px] text-white/45">ID: {shortId(batch.id)}</div>
+                      <div className="mt-1 text-[11px] text-white/45">ID: {shortIdValue(batch.id)}</div>
                     </div>
-                    <Badge className={`border px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${statusTone[batch.status] || statusTone.DRAFT}`}>
+                    <Badge className={`w-fit border px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${statusTone[batch.status] || statusTone.DRAFT}`}>
                       {batch.status}
                     </Badge>
                   </div>
-                  <div className="mt-4 flex items-center gap-3 text-xs text-white/60">
+                  <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-white/60">
                     <div className="flex -space-x-2">
                       <div className="h-6 w-6 rounded-full border border-[#0a0e1a] bg-[#adc6ff]/20" />
                       <div className="h-6 w-6 rounded-full border border-[#0a0e1a] bg-[#4edea3]/20" />
@@ -730,7 +769,7 @@ export default function PayoutManagementPage() {
 
             <Button
               variant="outline"
-              className="w-full rounded-2xl border-white/10 bg-transparent text-white/70 hover:bg-white/5 hover:text-white"
+              className="manage-finance-secondary w-full rounded-2xl whitespace-normal px-4 py-3 text-sm"
               onClick={() => setBatchSheetOpen(true)}
             >
               + View All Batches
@@ -739,7 +778,7 @@ export default function PayoutManagementPage() {
             <div className="rounded-2xl border border-[#ffb4ab]/20 bg-[#ffb4ab]/8 p-4">
               <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.24em] text-[#ffb4ab]">
                 <AlertTriangle className="h-4 w-4" />
-                Attention Required
+                {t("AttentionRequired")}
               </div>
               <p className="text-sm leading-6 text-white/75">
                 {summary.pendingRequests} payout request(s) are pending review. Please process manually to avoid instructor friction.
@@ -751,36 +790,106 @@ export default function PayoutManagementPage() {
         <Card className="xl:col-span-8 border border-white/8 bg-[#1b1f2c] shadow-[0_12px_40px_rgba(0,0,0,0.22)]">
           <CardHeader className="flex flex-col gap-4 border-b border-white/8 md:flex-row md:items-center md:justify-between">
             <div>
-              <CardTitle className="text-[#f0f4ff]">Payout Queue</CardTitle>
-              <CardDescription className="text-white/50">Review requests, approve, reject, and mark paid.</CardDescription>
+              <CardTitle className="text-[#f0f4ff]">{t("QueueTitle")}</CardTitle>
+              <CardDescription className="text-white/50">{t("QueueDescription")}</CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <Button
                 variant={queueFilter === "ALL" ? "default" : "outline"}
                 className={
                   queueFilter === "ALL"
-                    ? "rounded-full bg-[#adc6ff] text-[#0a0e1a]"
-                    : "rounded-full border-white/10 bg-transparent text-white/65 hover:bg-white/5 hover:text-white"
+                    ? "manage-finance-primary"
+                    : "manage-finance-secondary"
                 }
                 onClick={() => setQueueFilter("ALL")}
               >
-                All Requests
+                {t("AllRequests")}
               </Button>
               <Button
                 variant={queueFilter === "PENDING" ? "default" : "outline"}
                 className={
                   queueFilter === "PENDING"
-                    ? "rounded-full bg-[#4edea3] text-[#0a0e1a]"
-                    : "rounded-full border-white/10 bg-transparent text-white/65 hover:bg-white/5 hover:text-white"
+                    ? "manage-finance-primary"
+                    : "manage-finance-secondary"
                 }
                 onClick={() => setQueueFilter("PENDING")}
               >
-                Pending Only
+                {t("PendingOnly")}
               </Button>
             </div>
           </CardHeader>
           <CardContent className="pt-5">
-            <div className="overflow-x-auto rounded-2xl border border-white/8">
+            <div className="space-y-3 md:hidden">
+              {isRequestsFetching &&
+                Array.from({ length: 3 }).map((_, index) => (
+                  <div key={`request-card-${index}`} className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+                    <Skeleton className="h-24 rounded-2xl bg-white/5" />
+                  </div>
+                ))}
+
+              {!isRequestsFetching && visibleRequests.length === 0 && (
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 text-center text-sm text-white/45">
+                  {t("NoRequests")}
+                </div>
+              )}
+
+              {!isRequestsFetching &&
+                visibleRequests.map((request) => (
+                  <div key={`mobile-${request.id}`} className="space-y-3 rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-[#f0f4ff]">
+                          {t("BalanceTitleAdmin", { id: shortIdValue(request.instructorId) })}
+                        </div>
+                        <div className="mt-1 text-xs text-white/45">{request.note || t("NoNoteProvided")}</div>
+                      </div>
+                      <Badge className={`w-fit border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[request.status] || statusTone.REQUESTED}`}>
+                        {request.status.replaceAll("_", " ")}
+                      </Badge>
+                    </div>
+
+                    <div className="grid gap-2 rounded-2xl bg-white/[0.03] p-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-white/50">Requested</span>
+                        <span className="font-semibold text-[#f0f4ff]">{formatCurrency(request.amount)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-white/50">Batch</span>
+                        <span className="text-right text-white/75">
+                          {request.batchId ? shortIdValue(request.batchId) : t("Unassigned")}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-white/50">Date</span>
+                        <span className="text-right text-white/75">{formatDateShortValue(request.created || request.updated)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="manage-finance-secondary flex-1 justify-center"
+                        onClick={() => openRequestDetail(request.id)}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        {t("DetailTitle")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="manage-finance-secondary flex-1 justify-center"
+                        onClick={() => handleCopyRequestId(request.id)}
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        ID
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-2xl border border-white/8 md:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/[0.04] text-[10px] uppercase tracking-[0.22em] text-white/40">
                   <tr>
@@ -805,7 +914,7 @@ export default function PayoutManagementPage() {
                   {!isRequestsFetching && visibleRequests.length === 0 && (
                     <tr>
                       <td colSpan={6} className="px-4 py-10 text-center text-white/45">
-                        No payout requests for the current filter.
+                        {t("NoRequests")}
                       </td>
                     </tr>
                   )}
@@ -816,17 +925,17 @@ export default function PayoutManagementPage() {
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/8 bg-white/5 text-xs font-bold text-[#adc6ff]">
-                              {shortId(request.instructorId).slice(0, 2).toUpperCase()}
+                              {shortIdValue(request.instructorId).slice(0, 2).toUpperCase()}
                             </div>
                             <div>
-                              <div className="font-semibold text-[#f0f4ff]">Instructor {shortId(request.instructorId)}</div>
-                              <div className="text-[11px] text-white/45">{request.note || "No note provided"}</div>
+                              <div className="font-semibold text-[#f0f4ff]">{t("BalanceTitleAdmin", { id: shortIdValue(request.instructorId) })}</div>
+                              <div className="text-[11px] text-white/45">{request.note || t("NoNoteProvided")}</div>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-4 font-semibold text-[#f0f4ff]">{formatCurrency(request.amount)}</td>
-                        <td className="px-4 py-4 text-white/50">{request.batchId ? shortId(request.batchId) : "Unassigned"}</td>
-                        <td className="px-4 py-4 text-white/50">{formatDateShort(request.created || request.updated)}</td>
+                        <td className="px-4 py-4 text-white/50">{request.batchId ? shortIdValue(request.batchId) : t("Unassigned")}</td>
+                        <td className="px-4 py-4 text-white/50">{formatDateShortValue(request.created || request.updated)}</td>
                         <td className="px-4 py-4">
                           <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[request.status] || statusTone.REQUESTED}`}>
                             {request.status.replaceAll("_", " ")}
@@ -867,28 +976,68 @@ export default function PayoutManagementPage() {
             <div>
               <CardTitle className="flex items-center gap-2 text-[#f0f4ff]">
                 <FileText className="h-4 w-4 text-[#adc6ff]" />
-                Transaction Ledger
+                {t("LedgerTitle")}
               </CardTitle>
-              <CardDescription className="text-white/50">Payout events from requests and batches.</CardDescription>
+              <CardDescription className="text-white/50">{t("LedgerDescription")}</CardDescription>
             </div>
             <Button
               variant="ghost"
-              className="rounded-full text-white/60 hover:bg-white/5 hover:text-white"
+              className="manage-finance-secondary w-full sm:w-auto"
               onClick={refreshAll}
             >
               <RefreshCcw className={`mr-2 h-4 w-4 ${isBalanceFetching || isRequestsFetching || isBatchesFetching ? "animate-spin" : ""}`} />
-              Refresh
+              {t("Refresh")}
             </Button>
           </CardHeader>
           <CardContent className="pt-5">
-            <div className="overflow-x-auto rounded-2xl border border-white/8">
+            <div className="space-y-3 md:hidden">
+              {ledgerRows.map((row) => (
+                <div
+                  key={`mobile-ledger-${row.type}-${row.ref}-${row.timestamp}`}
+                  className="space-y-3 rounded-2xl border border-white/8 bg-white/[0.04] p-4"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="break-all font-mono text-xs text-white/55">{row.ref}</div>
+                      <div className="mt-1 text-sm text-white/75">{row.description}</div>
+                    </div>
+                    <Badge className={`w-fit border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${typeTone[row.type] || typeTone.BATCH}`}>
+                      {row.type}
+                    </Badge>
+                  </div>
+
+                  <div className="grid gap-2 rounded-2xl bg-white/[0.03] p-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-white/50">{t("AmountColumn")}</span>
+                      <span className="font-semibold text-[#f0f4ff]">{formatCurrency(row.amount)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-white/50">Status</span>
+                      <span className="text-right text-[11px] uppercase tracking-[0.2em] text-white/55">{row.status}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-white/50">Timestamp</span>
+                      <span className="text-right font-mono text-xs text-white/60">{formatDateTimeValue(row.timestamp)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {ledgerRows.length === 0 && (
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 text-center text-sm text-white/45">
+                  {t("NoLedgerRows")}
+                </div>
+              )}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-2xl border border-white/8 md:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/[0.04] text-[10px] uppercase tracking-[0.22em] text-white/40">
                   <tr>
                     <th className="px-4 py-4 font-semibold">Ref</th>
-                    <th className="px-4 py-4 font-semibold">Type</th>
+                    <th className="px-4 py-4 font-semibold">{t("TypeColumn")}</th>
                     <th className="px-4 py-4 font-semibold">Description</th>
-                    <th className="px-4 py-4 font-semibold">Amount</th>
+                    <th className="px-4 py-4 font-semibold">{t("AmountColumn")}</th>
                     <th className="px-4 py-4 font-semibold">Status</th>
                     <th className="px-4 py-4 text-right font-semibold">Timestamp</th>
                   </tr>
@@ -905,14 +1054,14 @@ export default function PayoutManagementPage() {
                       <td className="px-4 py-4 text-white/75">{row.description}</td>
                       <td className="px-4 py-4 font-semibold text-[#f0f4ff]">{formatCurrency(row.amount)}</td>
                       <td className="px-4 py-4 text-[11px] uppercase tracking-[0.2em] text-white/45">{row.status}</td>
-                      <td className="px-4 py-4 text-right font-mono text-xs text-white/50">{formatDateTime(row.timestamp)}</td>
+                      <td className="px-4 py-4 text-right font-mono text-xs text-white/50">{formatDateTimeValue(row.timestamp)}</td>
                     </tr>
                   ))}
 
                   {ledgerRows.length === 0 && (
                     <tr>
                       <td colSpan={6} className="px-4 py-10 text-center text-white/45">
-                        No ledger rows yet.
+                        {t("NoLedgerRows")}
                       </td>
                     </tr>
                   )}
@@ -926,66 +1075,66 @@ export default function PayoutManagementPage() {
       <Sheet open={batchSheetOpen} onOpenChange={setBatchSheetOpen}>
         <SheetContent side="right" className="w-full border-l border-white/10 bg-[#0f131f] text-[#dfe2f3] sm:max-w-2xl">
           <SheetHeader className="space-y-3 border-b border-white/10 pb-4 text-left">
-            <SheetTitle className="text-[#f0f4ff]">Batch Builder</SheetTitle>
+            <SheetTitle className="text-[#f0f4ff]">{t("BatchBuilderTitle")}</SheetTitle>
             <SheetDescription className="text-white/55">
-              Create monthly or manual payout batches in sandbox mode.
+              {t("BatchBuilderDescription")}
             </SheetDescription>
           </SheetHeader>
 
           <div className="mt-6 space-y-5">
             <Card className="border border-white/8 bg-[#1b1f2c]">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-[#f0f4ff]">Monthly Batch</CardTitle>
-                <CardDescription className="text-white/50">Auto-create a batch for the current month.</CardDescription>
+                <CardTitle className="text-sm text-[#f0f4ff]">{t("MonthlyBatchTitle")}</CardTitle>
+                <CardDescription className="text-white/50">{t("MonthlyBatchDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="rounded-2xl border border-white/8 bg-white/4 p-4 text-sm text-white/70">
-                  Period: <span className="font-semibold text-[#f0f4ff]">{format(new Date(), "yyyy-MM")}</span>
+                  {t("PeriodLabel")}: <span className="font-semibold text-[#f0f4ff]">{format(new Date(), "yyyy-MM")}</span>
                 </div>
                 <Button
-                  className="w-full rounded-full bg-gradient-to-r from-[#adc6ff] to-[#4d8eff] text-[#0a0e1a] hover:opacity-95"
+                  className="manage-finance-primary w-full"
                   onClick={handleMonthlyBatch}
                   disabled={createMonthlyBatchMutation.isPending}
                 >
                   <Layers3 className="mr-2 h-4 w-4" />
-                  {createMonthlyBatchMutation.isPending ? "Creating..." : "Create Monthly Batch"}
+                  {createMonthlyBatchMutation.isPending ? t("CreateMonthlyBatchLoading") : t("CreateMonthlyBatch")}
                 </Button>
               </CardContent>
             </Card>
 
             <Card className="border border-white/8 bg-[#1b1f2c]">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-[#f0f4ff]">Manual Batch</CardTitle>
-                <CardDescription className="text-white/50">Choose a custom date range for ad-hoc settlement.</CardDescription>
+                <CardTitle className="text-sm text-[#f0f4ff]">{t("ManualBatchTitle")}</CardTitle>
+                <CardDescription className="text-white/50">{t("ManualBatchDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Input
                   value={manualBatchName}
                   onChange={(event) => setManualBatchName(event.target.value)}
-                  placeholder="Batch name"
-                  className="border-white/10 bg-white/5 text-[#f0f4ff] placeholder:text-white/30"
+                  placeholder={t("BatchNamePlaceholder")}
+                  className="manage-finance-input"
                 />
                 <div className="grid gap-3 md:grid-cols-2">
                   <Input
                     type="date"
                     value={manualBatchFromDate}
                     onChange={(event) => setManualBatchFromDate(event.target.value)}
-                    className="border-white/10 bg-white/5 text-[#f0f4ff] dark:[color-scheme:dark]"
+                    className="manage-finance-input dark:[color-scheme:dark]"
                   />
                   <Input
                     type="date"
                     value={manualBatchToDate}
                     onChange={(event) => setManualBatchToDate(event.target.value)}
-                    className="border-white/10 bg-white/5 text-[#f0f4ff] dark:[color-scheme:dark]"
+                    className="manage-finance-input dark:[color-scheme:dark]"
                   />
                 </div>
                 <Button
-                  className="w-full rounded-full border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                  className="manage-finance-secondary w-full"
                   onClick={handleManualBatch}
                   disabled={createManualBatchMutation.isPending}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  {createManualBatchMutation.isPending ? "Creating..." : "Create Manual Batch"}
+                  {createManualBatchMutation.isPending ? t("CreateManualBatchLoading") : t("CreateManualBatch")}
                 </Button>
               </CardContent>
             </Card>
@@ -1006,7 +1155,7 @@ export default function PayoutManagementPage() {
       >
         <SheetContent side="right" className="w-full border-l border-white/10 bg-[#0f131f] text-[#dfe2f3] sm:max-w-xl">
           <SheetHeader className="space-y-3 border-b border-white/10 pb-4 text-left">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[detail?.status || "REQUESTED"] || statusTone.REQUESTED}`}>
                 {(detail?.status || "REQUESTED").replaceAll("_", " ")}
               </Badge>
@@ -1014,56 +1163,56 @@ export default function PayoutManagementPage() {
                 className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-white/55 hover:bg-white/5 hover:text-white"
                 onClick={() => handleCopyRequestId(detail?.id)}
               >
-                {shortId(detail?.id)}
+                {shortIdValue(detail?.id)}
                 <Copy className="h-3.5 w-3.5" />
               </button>
             </div>
-            <SheetTitle className="text-[#f0f4ff]">Payout Request Detail</SheetTitle>
+            <SheetTitle className="text-[#f0f4ff]">{t("DetailTitle")}</SheetTitle>
             <SheetDescription className="text-white/55">
-              Review request, approval note, and payout reference.
+              {t("DetailDescription")}
             </SheetDescription>
           </SheetHeader>
 
           <div className="mt-6 space-y-6">
             <Card className="border border-white/8 bg-[#1b1f2c]">
               <CardContent className="space-y-4 p-5">
-                <div className="grid grid-cols-3 gap-3 text-center text-xs">
+                <div className="grid gap-3 text-center text-xs sm:grid-cols-3">
                   <div className="rounded-2xl border border-white/8 bg-white/4 p-3">
-                    <div className="text-white/45">Created</div>
-                    <div className="mt-1 font-semibold text-[#f0f4ff]">{formatDateTime(detail?.created)}</div>
+                    <div className="text-white/45">{t("CreatedLabel")}</div>
+                    <div className="mt-1 font-semibold text-[#f0f4ff]">{formatDateTimeValue(detail?.created)}</div>
                   </div>
                   <div className="rounded-2xl border border-white/8 bg-white/4 p-3">
-                    <div className="text-white/45">Approved</div>
-                    <div className="mt-1 font-semibold text-[#f0f4ff]">{formatDateTime(detail?.approvedAt)}</div>
+                    <div className="text-white/45">{t("ApprovedLabel")}</div>
+                    <div className="mt-1 font-semibold text-[#f0f4ff]">{formatDateTimeValue(detail?.approvedAt)}</div>
                   </div>
                   <div className="rounded-2xl border border-white/8 bg-white/4 p-3">
-                    <div className="text-white/45">Paid</div>
-                    <div className="mt-1 font-semibold text-[#f0f4ff]">{formatDateTime(detail?.markedPaidAt)}</div>
+                    <div className="text-white/45">{t("PaidLabel")}</div>
+                    <div className="mt-1 font-semibold text-[#f0f4ff]">{formatDateTimeValue(detail?.markedPaidAt)}</div>
                   </div>
                 </div>
 
                 <div className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-4">
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">Method</div>
-                      <div className="mt-1 flex items-center gap-2 text-[#f0f4ff]"><Landmark className="h-4 w-4 text-[#4edea3]" />Sandbox Wire</div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("MethodLabel")}</div>
+                      <div className="mt-1 flex items-center gap-2 text-[#f0f4ff]"><Landmark className="h-4 w-4 text-[#4edea3]" />{t("SandboxWire")}</div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">Type</div>
-                      <div className="mt-1 text-[#f0f4ff]">Manual Settlement</div>
+                    <div className="text-left sm:text-right">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("TypeLabel")}</div>
+                      <div className="mt-1 text-[#f0f4ff]">{t("ManualSettlement")}</div>
                     </div>
                   </div>
                   <div className="mt-4 space-y-2 border-t border-white/8 pt-4 text-sm">
-                    <div className="flex items-center justify-between text-white/60">
-                      <span>Requested Amount</span>
+                    <div className="flex flex-col gap-1 text-white/60 sm:flex-row sm:items-center sm:justify-between">
+                      <span>{t("RequestedAmountLabel")}</span>
                       <span className="font-semibold text-[#f0f4ff]">{formatCurrency(detail?.amount || 0)}</span>
                     </div>
                     <div className="flex items-center justify-between text-white/60">
-                      <span>Review Note</span>
-                      <span className="max-w-[70%] text-right text-white/75">{detail?.reviewNote || "No review note"}</span>
+                      <span>{t("ReviewNoteLabel")}</span>
+                      <span className="max-w-full text-left text-white/75 sm:max-w-[70%] sm:text-right">{detail?.reviewNote || t("NoReviewNote")}</span>
                     </div>
                     <div className="flex items-center justify-between text-white/60">
-                      <span>Payment Reference</span>
+                      <span>{t("PaymentReferenceLabel")}</span>
                       <span className="max-w-[70%] text-right font-mono text-white/75">{detail?.paymentReference || "—"}</span>
                     </div>
                   </div>
@@ -1073,24 +1222,24 @@ export default function PayoutManagementPage() {
 
             <Card className="border border-white/8 bg-[#1b1f2c]">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-[#f0f4ff]">Request Notes</CardTitle>
-                <CardDescription className="text-white/50">Review and settlement note from the payout workflow.</CardDescription>
+                <CardTitle className="text-sm text-[#f0f4ff]">{t("RequestNotesTitle")}</CardTitle>
+                <CardDescription className="text-white/50">{t("RequestNotesDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="rounded-2xl border border-white/8 bg-white/4 p-4 text-sm text-white/75">
-                  {detail?.note || "No request note provided."}
+                  {detail?.note || t("NoRequestNote")}
                 </div>
                 <Input
                   value={reviewNote}
                   onChange={(event) => setReviewNote(event.target.value)}
-                  placeholder="Add review note"
-                  className="border-white/10 bg-white/5 text-[#f0f4ff] placeholder:text-white/30"
+                  placeholder={t("AddReviewNotePlaceholder")}
+                  className="manage-finance-input"
                 />
                 <Input
                   value={paymentReference}
                   onChange={(event) => setPaymentReference(event.target.value)}
-                  placeholder="Payment reference for mark paid"
-                  className="border-white/10 bg-white/5 text-[#f0f4ff] placeholder:text-white/30"
+                  placeholder={t("PaymentReferencePlaceholder")}
+                  className="manage-finance-input"
                 />
               </CardContent>
             </Card>
@@ -1099,29 +1248,29 @@ export default function PayoutManagementPage() {
           <SheetFooter className="mt-6 grid grid-cols-1 gap-3 border-t border-white/10 pt-4 sm:grid-cols-3 sm:justify-stretch">
             <Button
               variant="outline"
-              className="rounded-full border-[#ffb4ab]/30 bg-transparent text-[#ffb4ab] hover:bg-[#ffb4ab]/8"
+              className="manage-finance-secondary"
               onClick={handleReject}
               disabled={rejectRequestMutation.isPending}
             >
               <XCircle className="mr-2 h-4 w-4" />
-              Reject
+              {t("Reject")}
             </Button>
             <Button
               variant="outline"
-              className="rounded-full border-[#adc6ff]/30 bg-transparent text-[#adc6ff] hover:bg-[#adc6ff]/8"
+              className="manage-finance-secondary"
               onClick={handleApprove}
               disabled={approveRequestMutation.isPending}
             >
               <CheckCircle2 className="mr-2 h-4 w-4" />
-              Approve
+              {t("Approve")}
             </Button>
             <Button
-              className="rounded-full bg-gradient-to-r from-[#adc6ff] to-[#4d8eff] text-[#0a0e1a] hover:opacity-95"
+              className="manage-finance-primary"
               onClick={handleMarkPaid}
               disabled={markPaidMutation.isPending}
             >
               <ShieldCheck className="mr-2 h-4 w-4" />
-              Mark Paid
+              {t("MarkPaid")}
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -1131,43 +1280,43 @@ export default function PayoutManagementPage() {
         <Card className="xl:col-span-12 border border-white/8 bg-[#1b1f2c] shadow-[0_12px_40px_rgba(0,0,0,0.22)]">
           <CardHeader className="flex flex-col gap-3 border-b border-white/8 md:flex-row md:items-center md:justify-between">
             <div>
-              <CardTitle className="text-[#f0f4ff]">Overview Stats</CardTitle>
-              <CardDescription className="text-white/50">Quick operational status for the current payout workflow.</CardDescription>
+              <CardTitle className="text-[#f0f4ff]">{t("OverviewStatsTitle")}</CardTitle>
+              <CardDescription className="text-white/50">{t("OverviewStatsDescription")}</CardDescription>
             </div>
             <div className="flex items-center gap-2 text-xs text-white/50">
               <MessageSquareText className="h-4 w-4 text-[#adc6ff]" />
-              {summary.approvedRequests} approved request(s)
+              {t("ApprovedRequestsCount", { count: summary.approvedRequests })}
             </div>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">Requested Sum</div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("RequestedSum")}</div>
               <div className="mt-2 text-2xl font-bold text-[#f0f4ff]">{formatCurrency(summary.totalRequested)}</div>
             </div>
             <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">Loaded Requests</div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("LoadedRequests")}</div>
               <div className="mt-2 text-2xl font-bold text-[#f0f4ff]">{visibleRequests.length}</div>
             </div>
             <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">Batch Count</div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("BatchCount")}</div>
               <div className="mt-2 text-2xl font-bold text-[#f0f4ff]">{normalizedBatches.length}</div>
             </div>
           </CardContent>
         </Card>
       </section>
 
-      <div className="mt-6 flex items-center justify-between rounded-2xl border border-white/8 bg-[#1b1f2c] px-4 py-3 text-xs text-white/50">
+      <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-white/8 bg-[#1b1f2c] px-4 py-3 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <ChevronRight className="h-4 w-4 text-[#adc6ff]" />
-          Settlement runs in sandbox mode. Mark paid is an audit action only.
+          {t("FooterBanner")}
         </div>
         <Button
           variant="ghost"
-          className="rounded-full text-white/60 hover:bg-white/5 hover:text-white"
+          className="manage-finance-secondary w-full sm:w-auto"
           onClick={refreshAll}
         >
           <RefreshCcw className={`mr-2 h-4 w-4 ${isBalanceFetching || isRequestsFetching || isBatchesFetching || isDetailFetching ? "animate-spin" : ""}`} />
-          Refresh all
+          {t("RefreshAll")}
         </Button>
       </div>
     </main>
