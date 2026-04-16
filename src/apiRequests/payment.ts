@@ -87,6 +87,8 @@ export type PayoutRequestResponse = {
   id: string;
   instructorId: string;
   batchId?: string | null;
+  invoiceId?: string | null;
+  invoiceNumber?: string | null;
   amount: number;
   status: string;
   note?: string | null;
@@ -94,6 +96,21 @@ export type PayoutRequestResponse = {
   paymentReference?: string | null;
   approvedAt?: string | null;
   markedPaidAt?: string | null;
+  created?: string | null;
+  updated?: string | null;
+};
+
+export type PayoutInvoiceResponse = {
+  id: string;
+  invoiceNumber: string;
+  payoutRequestId: string;
+  instructorId: string;
+  amount: number;
+  transferReference?: string | null;
+  status: string;
+  emailSent?: boolean | null;
+  uiVisible?: boolean | null;
+  pdfUrl?: string | null;
   created?: string | null;
   updated?: string | null;
 };
@@ -201,6 +218,14 @@ const paymentApiRequest = {
 
   listPayoutBatches: () =>
     http.get<GlobalResponse<PayoutBatchResponse[]>>("/app/api/proxy/payments/payouts/batches"),
+
+  listPayoutInvoices: (instructorId?: string) =>
+    http.get<GlobalResponse<PayoutInvoiceResponse[]>>("/app/api/proxy/payments/payouts/invoices", {
+      params: instructorId ? { instructorId } : undefined,
+    }),
+
+  getPayoutInvoice: (invoiceId: string) =>
+    http.get<GlobalResponse<PayoutInvoiceResponse>>(`/app/api/proxy/payments/payouts/invoices/${invoiceId}`),
 
   createMonthlyPayoutBatch: (period?: string) =>
     http.post<GlobalResponse<PayoutBatchResponse>>("/app/api/proxy/payments/payouts/batches/monthly", null, {
