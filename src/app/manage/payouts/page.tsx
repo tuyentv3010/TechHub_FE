@@ -10,6 +10,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   Copy,
+  Download,
   Eye,
   FileText,
   Landmark,
@@ -52,6 +53,7 @@ import {
   usePayoutInvoices,
   usePayoutRequestDetail,
   usePayoutRequests,
+  useSettleApprovedPayoutRequest,
   useRejectPayoutRequest,
 } from "@/queries/usePayment";
 import type {
@@ -59,6 +61,7 @@ import type {
   PayoutInvoiceResponse,
   PayoutRequestResponse,
 } from "@/apiRequests/payment";
+import paymentApiRequest from "@/apiRequests/payment";
 
 const statusTone: Record<string, string> = {
   REQUESTED: "border-blue-400/30 bg-blue-500/15 text-blue-200",
@@ -220,6 +223,7 @@ export default function PayoutManagementPage() {
   const [manualBatchName, setManualBatchName] = useState("");
   const [manualBatchFromDate, setManualBatchFromDate] = useState("");
   const [manualBatchToDate, setManualBatchToDate] = useState("");
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState("");
 
   const formatDateTimeValue = (value?: string | null) => {
     if (!value) return notAvailable;
@@ -288,6 +292,7 @@ export default function PayoutManagementPage() {
 
   const createRequestMutation = useCreatePayoutRequest();
   const approveRequestMutation = useApprovePayoutRequest();
+  const settleApprovedRequestMutation = useSettleApprovedPayoutRequest();
   const rejectRequestMutation = useRejectPayoutRequest();
   const markPaidMutation = useMarkPayoutRequestPaid();
   const createMonthlyBatchMutation = useCreateMonthlyPayoutBatch();
@@ -329,6 +334,7 @@ export default function PayoutManagementPage() {
   }, [currentUserId, dashboardRole, normalizedRequests, queueFilter]);
 
   const isReviewableRequest = (status: string) => status === "REQUESTED";
+  const canIssueInvoiceAndTransfer = (status: string) => ["REQUESTED", "APPROVED"].includes(status);
 
   const summary = useMemo(() => {
     const totalEarned = toNumber(balance?.totalEarned);
@@ -465,13 +471,18 @@ export default function PayoutManagementPage() {
     }
   };
 
-  const handleApprove = async (requestId = selectedRequestId) => {
+  const handleIssueInvoiceAndTransfer = async (
+    requestId = selectedRequestId,
+    requestStatus = detail?.status || "REQUESTED"
+  ) => {
     if (!requestId) return;
     try {
-      await approveRequestMutation.mutateAsync({
-        requestId,
-        payload: { note: reviewNote.trim() || undefined },
-      });
+      const payload = { note: reviewNote.trim() || undefined };
+      if (requestStatus === "APPROVED") {
+        await settleApprovedRequestMutation.mutateAsync({ requestId, payload });
+      } else {
+        await approveRequestMutation.mutateAsync({ requestId, payload });
+      }
       toast({ title: t("ApproveSuccessTitle") });
       await refreshAll();
       setDetailSheetOpen(false);
@@ -584,6 +595,32 @@ export default function PayoutManagementPage() {
     if (!value) return;
     await navigator.clipboard.writeText(value);
     toast({ title: t("CopyRequestIdSuccess") });
+  };
+
+  const handleDownloadInvoicePdf = async (invoice: NormalizedPayoutInvoice) => {
+    if (!invoice.id) return;
+    try {
+      setDownloadingInvoiceId(invoice.id);
+      const blob = await paymentApiRequest.downloadPayoutInvoicePdf(invoice.id);
+      const fileName = `${invoice.invoiceNumber || invoice.id}.pdf`;
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      toast({ title: t("DownloadInvoiceSuccessTitle") });
+    } catch (error: any) {
+      toast({
+        title: t("DownloadInvoiceErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingInvoiceId("");
+    }
   };
 
   if (!isAuth || !dashboardRole) {
@@ -970,8 +1007,8 @@ export default function PayoutManagementPage() {
                         <Button
                           size="sm"
                           className="manage-finance-primary justify-center"
-                          onClick={() => handleApprove(request.id)}
-                          disabled={approveRequestMutation.isPending}
+                          onClick={() => handleIssueInvoiceAndTransfer(request.id, request.status)}
+                          disabled={approveRequestMutation.isPending || settleApprovedRequestMutation.isPending}
                         >
                           <FileText className="mr-2 h-4 w-4" />
                           {issueAndTransferLabel}
@@ -1038,7 +1075,7 @@ export default function PayoutManagementPage() {
                         </td>
                         <td className="px-4 py-4 text-right">
                           <div className="flex justify-end gap-2 opacity-90 transition group-hover:opacity-100">
-                            {dashboardRole === "ADMIN" && isReviewableRequest(request.status) && (
+                            {dashboardRole === "ADMIN" && canIssueInvoiceAndTransfer(request.status) && (
                               <>
                                 <Button
                                   size="sm"
@@ -1053,8 +1090,8 @@ export default function PayoutManagementPage() {
                                 <Button
                                   size="sm"
                                   className="h-8 rounded-full bg-[#3f67f7] px-3 text-xs text-white hover:bg-[#3558d8]"
-                                  onClick={() => handleApprove(request.id)}
-                                  disabled={approveRequestMutation.isPending}
+                                  onClick={() => handleIssueInvoiceAndTransfer(request.id, request.status)}
+                                  disabled={approveRequestMutation.isPending || settleApprovedRequestMutation.isPending}
                                 >
                                   <FileText className="mr-1.5 h-3.5 w-3.5" />
                                   {issueAndTransferLabel}
@@ -1131,6 +1168,16 @@ export default function PayoutManagementPage() {
                       {t("PaymentReferenceLabel")}: {invoice.transferReference || notAvailable}
                     </div>
                     <div className="mt-1 text-xs text-white/50">{formatDateTimeValue(invoice.created || invoice.updated)}</div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="manage-finance-secondary mt-3 w-full"
+                      onClick={() => handleDownloadInvoicePdf(invoice)}
+                      disabled={downloadingInvoiceId === invoice.id}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      {downloadingInvoiceId === invoice.id ? t("DownloadingInvoice") : t("DownloadInvoicePdf")}
+                    </Button>
                   </div>
                 ))}
             </div>
@@ -1144,14 +1191,15 @@ export default function PayoutManagementPage() {
                     <th className="px-4 py-4 font-semibold">Amount</th>
                     <th className="px-4 py-4 font-semibold">Transfer Ref</th>
                     <th className="px-4 py-4 font-semibold">Status</th>
-                    <th className="px-4 py-4 text-right font-semibold">Created</th>
+                    <th className="px-4 py-4 font-semibold">Created</th>
+                    <th className="px-4 py-4 text-right font-semibold">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/8 text-white/75">
                   {isInvoicesFetching &&
                     Array.from({ length: 3 }).map((_, index) => (
                       <tr key={`invoice-row-${index}`}>
-                        <td colSpan={6} className="px-4 py-4">
+                        <td colSpan={7} className="px-4 py-4">
                           <Skeleton className="h-7 rounded-full bg-white/5" />
                         </td>
                       </tr>
@@ -1159,7 +1207,7 @@ export default function PayoutManagementPage() {
 
                   {!isInvoicesFetching && normalizedInvoices.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-white/45">
+                      <td colSpan={7} className="px-4 py-10 text-center text-white/45">
                         {t("NoInvoices")}
                       </td>
                     </tr>
@@ -1177,7 +1225,19 @@ export default function PayoutManagementPage() {
                             {invoice.status}
                           </Badge>
                         </td>
-                        <td className="px-4 py-4 text-right text-white/55">{formatDateTimeValue(invoice.created || invoice.updated)}</td>
+                        <td className="px-4 py-4 text-white/55">{formatDateTimeValue(invoice.created || invoice.updated)}</td>
+                        <td className="px-4 py-4 text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="manage-finance-secondary"
+                            onClick={() => handleDownloadInvoicePdf(invoice)}
+                            disabled={downloadingInvoiceId === invoice.id}
+                          >
+                            <Download className="mr-2 h-3.5 w-3.5" />
+                            {downloadingInvoiceId === invoice.id ? t("DownloadingInvoice") : t("DownloadInvoicePdf")}
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                 </tbody>
@@ -1484,13 +1544,13 @@ export default function PayoutManagementPage() {
               <XCircle className="mr-2 h-4 w-4" />
               {t("Reject")}
             </Button>
-            <Button
-              variant="outline"
-              className="manage-finance-secondary"
-              onClick={() => handleApprove()}
-              disabled={approveRequestMutation.isPending}
-              hidden={dashboardRole !== "ADMIN" || !detail || !isReviewableRequest(detail.status)}
-            >
+              <Button
+                variant="outline"
+                className="manage-finance-secondary"
+                onClick={() => handleIssueInvoiceAndTransfer()}
+                disabled={approveRequestMutation.isPending || settleApprovedRequestMutation.isPending}
+                hidden={dashboardRole !== "ADMIN" || !detail || !canIssueInvoiceAndTransfer(detail.status)}
+              >
               <FileText className="mr-2 h-4 w-4" />
               {issueAndTransferLabel}
             </Button>

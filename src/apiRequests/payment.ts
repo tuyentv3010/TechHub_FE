@@ -1,4 +1,5 @@
 import http from "@/lib/http";
+import envConfig from "@/config";
 
 export interface VNPayPaymentRequest {
   amount: number;
@@ -204,6 +205,12 @@ const paymentApiRequest = {
       payload
     ),
 
+  settleApprovedPayoutRequest: (requestId: string, payload: ReviewPayoutRequestPayload = {}) =>
+    http.put<GlobalResponse<PayoutRequestResponse>>(
+      `/app/api/proxy/payments/payouts/requests/${requestId}/settle`,
+      payload
+    ),
+
   rejectPayoutRequest: (requestId: string, payload: ReviewPayoutRequestPayload = {}) =>
     http.put<GlobalResponse<PayoutRequestResponse>>(
       `/app/api/proxy/payments/payouts/requests/${requestId}/reject`,
@@ -226,6 +233,27 @@ const paymentApiRequest = {
 
   getPayoutInvoice: (invoiceId: string) =>
     http.get<GlobalResponse<PayoutInvoiceResponse>>(`/app/api/proxy/payments/payouts/invoices/${invoiceId}`),
+
+  downloadPayoutInvoicePdf: async (invoiceId: string) => {
+    const accessToken = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const res = await fetch(
+      `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/app/api/proxy/payments/payouts/invoices/${invoiceId}/pdf`,
+      {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          Accept: "application/pdf",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error("Could not download invoice PDF");
+    }
+
+    return res.blob();
+  },
 
   createMonthlyPayoutBatch: (period?: string) =>
     http.post<GlobalResponse<PayoutBatchResponse>>("/app/api/proxy/payments/payouts/batches/monthly", null, {

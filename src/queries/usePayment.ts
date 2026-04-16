@@ -115,6 +115,19 @@ export const useApprovePayoutRequest = () => {
   });
 };
 
+export const useSettleApprovedPayoutRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, payload }: { requestId: string; payload?: ReviewPayoutRequestPayload }) =>
+      paymentApiRequest.settleApprovedPayoutRequest(requestId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-invoices"] });
+    },
+  });
+};
+
 export const useRejectPayoutRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
