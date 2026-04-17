@@ -6,7 +6,7 @@ import z from "zod";
 
 export const DifficultyLevel = z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"]);
 export const ExerciseFormat = z.enum(["MCQ", "ESSAY", "CODING"]);
-export const ChatMode = z.enum(["GENERAL", "ADVISOR"]);
+export const ChatMode = z.enum(["AUTO", "GENERAL", "ADVISOR"]);
 export const RecommendationMode = z.enum(["REALTIME", "SCHEDULED"]);
 export const AiTaskStatus = z.enum([
   "DRAFT",
@@ -23,8 +23,10 @@ export const AiTaskType = z.enum([
   "LEARNING_PATH_GENERATION",
   "RECOMMENDATION_REALTIME",
   "RECOMMENDATION_SCHEDULED",
+  "CHAT_AUTO",
   "CHAT_GENERAL",
   "CHAT_ADVISOR",
+  "CHAT_RESPONSE_REVIEW",
 ]);
 
 // ============================================
@@ -213,6 +215,17 @@ export const RecommendationResponse = z.object({
 
 export type RecommendationResponseType = z.TypeOf<typeof RecommendationResponse>;
 
+export const RecommendationHistoryItem = z.object({
+  taskId: z.string(),
+  mode: RecommendationMode,
+  status: z.string(),
+  createdAt: z.string(),
+  recommendations: z.array(RecommendationItem),
+  metadata: z.record(z.any()).optional(),
+});
+
+export type RecommendationHistoryItemType = z.TypeOf<typeof RecommendationHistoryItem>;
+
 // ============================================
 // CHAT SCHEMAS
 // ============================================
@@ -221,7 +234,7 @@ export type RecommendationResponseType = z.TypeOf<typeof RecommendationResponse>
 export const ChatMessageRequest = z.object({
   sessionId: z.string().uuid().optional(),
   userId: z.string().uuid("Invalid user ID"),
-  mode: ChatMode.default("GENERAL"),
+  mode: ChatMode.default("AUTO"),
   message: z.string().min(1, "Message cannot be empty"),
   context: z.any().optional(),
 });
@@ -239,8 +252,24 @@ export const ChatMessageResponse = z.object({
   context: z.any().optional(),
   metadata: z
     .object({
+      requestId: z.string().optional().nullable(),
       tokensUsed: z.number().optional(),
+      tokenUsage: z.record(z.any()).optional(),
       model: z.string().optional(),
+      requestedMode: ChatMode.optional(),
+      resolvedMode: ChatMode.optional(),
+      intent: z.string().optional(),
+      confidence: z.number().optional(),
+      citations: z.array(z.record(z.any())).optional(),
+      queryResult: z.record(z.any()).nullable().optional(),
+      chartSpec: z.record(z.any()).nullable().optional(),
+      artifact: z.record(z.any()).nullable().optional(),
+      trace: z.array(z.record(z.any())).optional(),
+      pipeline: z.string().optional(),
+      nodeTimings: z.record(z.number()).optional(),
+      hitlClarifyActive: z.boolean().optional(),
+      hitlQuestion: z.string().optional().nullable(),
+      hitlOptions: z.array(z.string()).optional(),
     })
     .optional(),
 });
@@ -302,6 +331,7 @@ export type QdrantStatsResponseType = z.TypeOf<typeof QdrantStatsResponse>;
 export const AiProviderConfigResponse = z.object({
   provider: z.enum(["openai", "gemini"]),
   activeChatModel: z.string().optional(),
+  activeEmbeddingModel: z.string().optional(),
   models: z.object({
     openai: z.string(),
     gemini: z.string(),
@@ -310,6 +340,21 @@ export const AiProviderConfigResponse = z.object({
   supportedChatModels: z.object({
     openai: z.array(z.string()),
     gemini: z.array(z.string()),
+  }).optional(),
+  metadata: z.object({
+    requestedProvider: z.enum(["openai", "gemini"]).optional(),
+    effectiveProvider: z.enum(["openai", "gemini"]).optional(),
+    effectiveEmbeddingProvider: z.enum(["openai", "gemini"]).optional(),
+    activeEmbeddingModel: z.string().optional(),
+    availableProviders: z.array(z.enum(["openai", "gemini"])).optional(),
+    providerAvailability: z.record(z.object({
+      available: z.boolean(),
+      configuredModel: z.string().optional().nullable(),
+      reason: z.string().nullable().optional(),
+    })).optional(),
+    usingMockFallback: z.boolean().optional(),
+    embeddingUsingMockFallback: z.boolean().optional(),
+    statusMessage: z.string().optional(),
   }).optional(),
 });
 
@@ -321,6 +366,98 @@ export const UpdateAiProviderRequest = z.object({
 });
 
 export type UpdateAiProviderRequestType = z.TypeOf<typeof UpdateAiProviderRequest>;
+
+export const AiRuntimeStatsResponse = z.object({
+  overview: z.object({
+    chatTotal: z.number(),
+    chatSuccess: z.number(),
+    chatFailed: z.number(),
+    chatLegacyTotal: z.number(),
+    chatHitlTotal: z.number(),
+    mockChatResponses: z.number(),
+    mockEmbeddingCalls: z.number(),
+    totalTokens: z.number().optional(),
+  }),
+  latency: z.object({
+    chatAverageMs: z.number(),
+    chatP95Ms: z.number(),
+    vectorAverageMs: z.number(),
+  }),
+  tokens: z.object({
+    promptTotal: z.number(),
+    completionTotal: z.number(),
+    embeddingTotal: z.number(),
+    averagePerChat: z.number(),
+  }).optional(),
+  providers: z.object({
+    chatFallbacks: z.number(),
+    embeddingFallbacks: z.number(),
+    recent: z.array(z.record(z.any())).optional(),
+  }),
+  files: z.object({
+    filesSeen: z.number(),
+    filesHydrated: z.number(),
+    chunksIndexed: z.number(),
+    unsupportedFiles: z.number(),
+  }),
+  vectorOps: z.object({
+    recent: z.array(z.record(z.any())).optional(),
+  }).optional(),
+  chatRuns: z.object({
+    recent: z.array(z.record(z.any())).optional(),
+  }).optional(),
+  counters: z.record(z.number()).optional(),
+});
+
+export type AiRuntimeStatsResponseType = z.TypeOf<typeof AiRuntimeStatsResponse>;
+
+// ============================================
+// APPROVAL / HITL SCHEMAS
+// ============================================
+
+export const ApprovalActionRequest = z.object({
+  reviewerId: z.string().uuid().optional(),
+  note: z.string().optional(),
+});
+
+export type ApprovalActionRequestType = z.TypeOf<typeof ApprovalActionRequest>;
+
+export const ApprovalListItem = z.object({
+  approvalId: z.string(),
+  taskType: z.string(),
+  status: AiTaskStatus,
+  sessionId: z.string().uuid().nullable().optional(),
+  userId: z.string().uuid().nullable().optional(),
+  approvalType: z.string().nullable().optional(),
+  summary: z.string().nullable().optional(),
+  reason: z.string().nullable().optional(),
+  requestedMode: z.string().nullable().optional(),
+  resolvedMode: z.string().nullable().optional(),
+  prompt: z.string().nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type ApprovalListItemType = z.TypeOf<typeof ApprovalListItem>;
+
+export const ApprovalDetailResponse = ApprovalListItem.extend({
+  requestPayload: z.any().optional(),
+  resultPayload: z.any().optional(),
+  reviewerNote: z.string().nullable().optional(),
+});
+
+export type ApprovalDetailResponseType = z.TypeOf<typeof ApprovalDetailResponse>;
+
+export const ApprovalActionResponse = z.object({
+  approvalId: z.string(),
+  status: AiTaskStatus,
+  sessionId: z.string().uuid().nullable().optional(),
+  messageId: z.string().uuid().nullable().optional(),
+  publishedMessage: z.string().nullable().optional(),
+  reviewerNote: z.string().nullable().optional(),
+});
+
+export type ApprovalActionResponseType = z.TypeOf<typeof ApprovalActionResponse>;
 
 // ============================================
 // DRAFT SCHEMAS (for future use when BE exposes endpoints)

@@ -78,8 +78,6 @@ import {
   useDeleteExerciseMutation,
 } from "@/queries/useCourse";
 import { 
-  useGetExerciseDrafts,
-  useGenerateExercisesMutation,
 } from "@/queries/useAi";
 import {
   CreateChapterBody,
@@ -297,32 +295,9 @@ export default function CourseContentManagementPage() {
   const createExercisesMutation = useCreateExercisesMutation();
   const updateExerciseMutation = useUpdateExerciseMutation();
   const deleteExerciseMutation = useDeleteExerciseMutation();
-  const generateExercisesMutation = useGenerateExercisesMutation();
   
   const course = courseData?.payload?.data?.summary;
   const chapters = courseData?.payload?.data?.chapters || [];
-
-  // Get all exercise drafts for this course
-  const [allExerciseDrafts, setAllExerciseDrafts] = useState<unknown[]>([]);
-  const [draftLessonIds, setDraftLessonIds] = useState<string[]>([]);
-
-  // Collect all lesson IDs from chapters
-  useEffect(() => {
-    const lessonIds = chapters.flatMap((ch: { lessons?: { id: string }[] }) => 
-      (ch.lessons || []).map(l => l.id)
-    );
-    setDraftLessonIds(lessonIds);
-  }, [chapters]);
-
-  // Fetch drafts for all lessons (simplified - in production, use a single API call)
-  const firstLessonId = draftLessonIds[0] || "";
-  const { data: draftsData, refetch: refetchDrafts } = useGetExerciseDrafts(firstLessonId);
-
-  useEffect(() => {
-    if (draftsData?.payload?.data) {
-      setAllExerciseDrafts(draftsData.payload.data);
-    }
-  }, [draftsData]);
 
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
@@ -1105,36 +1080,6 @@ export default function CourseContentManagementPage() {
       console.error('❌ Error deleting exercise:', error);
       console.error('❌ Error details:', JSON.stringify(error, null, 2));
       console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-      handleErrorApi({ error });
-    }
-  };
-
-  const handleGenerateExercises = async (lessonId: string, lessonTitle: string) => {
-    try {
-      toast({
-        title: "Generating exercises...",
-        description: `Creating AI-generated exercises for "${lessonTitle}"`,
-      });
-      
-      await generateExercisesMutation.mutateAsync({
-        courseId,
-        lessonId,
-        type: "MCQ",
-        difficulties: ["BEGINNER"],
-        formats: ["MCQ"],
-        count: 5,
-        variants: 1,
-        difficulty: "BEGINNER",
-        language: "vi",
-        includeExplanations: true,
-        includeTestCases: true,
-      });
-      
-      toast({
-        title: t("Success"),
-        description: "Exercises generated successfully!",
-      });
-    } catch (error) {
       handleErrorApi({ error });
     }
   };

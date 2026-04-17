@@ -3,7 +3,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  useApproveExerciseDraftMutation,
   useRejectDraftMutation,
   useGetExerciseDraftsBatch,
 } from "@/queries/useAi";
@@ -31,7 +30,6 @@ export default function AiExercisePanel({
   const tCommon = useTranslations("common");
   const tAiDrafts = useTranslations("AiDrafts");
 
-  const approveDraftMutation = useApproveExerciseDraftMutation();
   const rejectDraftMutation = useRejectDraftMutation();
 
   // Collect all lesson IDs from chapters
@@ -52,23 +50,6 @@ export default function AiExercisePanel({
   // Fetch all exercise drafts for all lessons in the course
   const { data: draftsData, isLoading: draftsLoading } = useGetExerciseDraftsBatch(lessonIds);
   const exerciseDrafts = draftsData?.payload?.data || [];
-
-  const handleApproveDraft = async (taskId: string) => {
-    try {
-      await approveDraftMutation.mutateAsync(taskId);
-      toast({
-        title: tCommon("success"),
-        description: tAiDrafts("approveSuccess"),
-      });
-      // Refresh would need to be handled by parent component
-    } catch {
-      toast({
-        title: tCommon("error"),
-        description: tAiDrafts("approveError"),
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleRejectDraft = async (taskId: string) => {
     try {

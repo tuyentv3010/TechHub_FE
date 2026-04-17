@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { useTranslations } from "next-intl";
 import { useAiLearningPath } from "@/contexts/AiLearningPathContext";
+import { useAccountProfile } from "@/queries/useAccount";
 
 interface GenerateAiLearningPathProps {
   onSuccess?: () => void;
@@ -46,6 +47,7 @@ export default function GenerateAiLearningPath({
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<string>("");
   const { setGeneratedPath } = useAiLearningPath();
+  const { data: accountData } = useAccountProfile();
 
   // Form state
   const [goal, setGoal] = useState<string>("");
@@ -58,14 +60,26 @@ export default function GenerateAiLearningPath({
 
   const generateMutation = useGenerateLearningPathMutation();
 
-  // Get userId from localStorage (or auth context in real app)
-  useState(() => {
+  useEffect(() => {
     if (typeof window !== "undefined") {
-      // In a real app, get from auth context
-      const mockUserId = "123e4567-e89b-12d3-a456-426614174000";
-      setUserId(mockUserId);
+      const storedUserInfo = localStorage.getItem("userInfo");
+      if (storedUserInfo) {
+        try {
+          const parsed = JSON.parse(storedUserInfo);
+          setUserId(parsed?.id || "");
+        } catch {
+          setUserId("");
+        }
+      }
     }
-  });
+  }, []);
+
+  useEffect(() => {
+    const profileUserId = accountData?.payload?.data?.id;
+    if (profileUserId) {
+      setUserId(profileUserId);
+    }
+  }, [accountData]);
 
   const handleGenerate = async () => {
     if (!goal.trim()) {
@@ -121,9 +135,9 @@ export default function GenerateAiLearningPath({
           onSuccess();
         }
 
-        // Navigate to a temporary designer page or create new learning path
-        // For now, we'll store it and show a prompt to open designer
-        router.push(`/manage/learning-paths/new/designer?fromAi=true`);
+        if (taskId) {
+          router.push(`/manage/learning-paths/drafts/${taskId}/designer`);
+        }
       } else {
         toast({
           title: tCommon("success"),

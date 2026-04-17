@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,27 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
   // Get lessons for selected chapter
   const selectedChapterData = chapters.find((c) => (c as { id: string }).id === selectedChapter) as { lessons?: unknown[] } | undefined;
   const lessons = selectedChapterData?.lessons || [];
+  const selectedLessonData = useMemo(
+    () => (lessons as Array<{ id: string; title: string; contentType?: string; estimatedDuration?: number }>).find((lesson) => lesson.id === selectedLesson),
+    [lessons, selectedLesson]
+  );
+
+  useEffect(() => {
+    if (!selectedLessonData) {
+      return;
+    }
+    const contentType = String(selectedLessonData.contentType || "TEXT").toUpperCase();
+    if (contentType === "CODING") {
+      setSelectedFormats(["CODING", "MCQ"]);
+      setIncludeTestCases(true);
+    } else if (contentType === "QUIZ") {
+      setSelectedFormats(["MCQ"]);
+      setIncludeTestCases(false);
+    } else {
+      setSelectedFormats(["MCQ", "ESSAY"]);
+      setIncludeTestCases(false);
+    }
+  }, [selectedLessonData]);
 
   const handleDifficultyToggle = (difficulty: string) => {
     setSelectedDifficulties((prev) =>
@@ -220,6 +242,21 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
               </SelectContent>
             </Select>
           </div>
+
+          {selectedLessonData && (
+            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900/60">
+              <p className="font-medium text-slate-800 dark:text-slate-100">{selectedLessonData.title}</p>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600 dark:text-slate-300">
+                <Badge variant="outline">{selectedLessonData.contentType || "TEXT"}</Badge>
+                {selectedLessonData.estimatedDuration ? (
+                  <Badge variant="secondary">{selectedLessonData.estimatedDuration}s</Badge>
+                ) : null}
+              </div>
+              <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+                AI se uu tien format phu hop voi lesson da chon. Ban van co the dieu chinh thu cong neu can.
+              </p>
+            </div>
+          )}
 
           {/* Difficulty Selection */}
           <div className="space-y-2">

@@ -4,30 +4,36 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import {
   useReindexCoursesMutation,
   useReindexLessonsMutation,
   useReindexAllMutation,
   useGetQdrantStats,
+  useGetAiRuntimeStats,
   useGetAiProviderConfig,
-  useUpdateAiProviderConfigMutation,
   useGetLearningPathDrafts,
   useApproveLearningPathDraftMutation,
   useRejectDraftMutation,
+  useGetLangfuseAnalytics,
 } from "@/queries/useAi";
+import { useAccountProfile } from "@/queries/useAccount";
 import {
   Database,
   Loader2,
   CheckCircle,
   XCircle,
-  AlertCircle,
   FileText,
   TrendingUp,
   Clock,
   Sparkles,
   BarChart3,
-  PieChart,
+  MessageCircle,
+  DollarSign,
+  Zap,
+  Settings,
+  Activity,
 } from "lucide-react";
 import {
   Dialog,
@@ -35,10 +41,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -49,73 +52,32 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslations } from "next-intl";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { Bar, BarChart, Pie, PieChart as RechartsPieChart, Cell, XAxis, YAxis, CartesianGrid } from "recharts";
 import { AdminPageFrame } from "@/components/manage/admin-page-frame";
+import Link from "next/link";
 
 export default function DashboardPage() {
   const t = useTranslations("AiDashboard");
   const { toast } = useToast();
-  const [qdrantStats, setQdrantStats] = useState<any>(null);
+  const [showResultDialog, setShowResultDialog] = useState(false);
   const [reindexResults, setReindexResults] = useState<any>(null);
-  const [showStatsDialog, setShowStatsDialog] = useState<boolean>(false);
-  const [showResultDialog, setShowResultDialog] = useState<boolean>(false);
-  const [selectedProvider, setSelectedProvider] = useState<"openai" | "gemini">("gemini");
-  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
 
-  const reindexCoursesMutation = useReindexCoursesMutation();
-  const reindexLessonsMutation = useReindexLessonsMutation();
   const reindexAllMutation = useReindexAllMutation();
-  const { data: qdrantStatsData, refetch: refetchQdrantStats, isLoading: qdrantStatsLoading } = useGetQdrantStats();
-  const { data: providerConfigData, isLoading: providerConfigLoading } = useGetAiProviderConfig();
-  const updateProviderMutation = useUpdateAiProviderConfigMutation();
-
-  // Update qdrant stats from query data
-  useEffect(() => {
-    if (qdrantStatsData?.payload?.data) {
-      setQdrantStats(qdrantStatsData.payload.data);
-    }
-  }, [qdrantStatsData]);
-
-  useEffect(() => {
-    const provider = providerConfigData?.payload?.data?.provider;
-    if (provider === "openai" || provider === "gemini") {
-      setSelectedProvider(provider);
-    }
-
-    const providerModels = providerConfigData?.payload?.data?.models;
-    if (provider && providerModels && providerModels[provider]) {
-      setSelectedModel(providerModels[provider]);
-      return;
-    }
-
-    const activeChatModel = providerConfigData?.payload?.data?.activeChatModel;
-    if (activeChatModel) {
-      setSelectedModel(activeChatModel);
-    }
-  }, [providerConfigData]);
-
-  const modelOptions = useMemo(() => {
-    const supportedModels = providerConfigData?.payload?.data?.supportedChatModels;
-    if (selectedProvider === "openai") {
-      return supportedModels?.openai || ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1"];
-    }
-    return supportedModels?.gemini || ["gemini-2.5-flash", "gemini-2.5-pro"];
-  }, [providerConfigData, selectedProvider]);
-
-  useEffect(() => {
-    if (!modelOptions.includes(selectedModel)) {
-      setSelectedModel(modelOptions[0] || "");
-    }
-  }, [modelOptions, selectedModel]);
-
-  // Get pending drafts
+  const { data: qdrantStatsData, isLoading: qdrantLoading } = useGetQdrantStats();
+  const { data: runtimeStatsData } = useGetAiRuntimeStats();
+  const { data: providerConfigData } = useGetAiProviderConfig();
+  const { data: analyticsData } = useGetLangfuseAnalytics(7);
   const { data: pathDraftsData } = useGetLearningPathDrafts();
+  const { data: accountData } = useAccountProfile();
+
+  const qdrantStats = qdrantStatsData?.payload?.data;
+  const runtime = runtimeStatsData?.payload?.data;
+  const overview = runtime?.overview || {};
+  const config = providerConfigData?.payload?.data || {};
+  const metadata = config.metadata || {};
+  const analytics = analyticsData?.payload?.data || {};
   const pendingDrafts = pathDraftsData?.payload?.data || [];
+  const reviewerId = accountData?.payload?.data?.id;
+
   const approvePathDraftMutation = useApproveLearningPathDraftMutation();
   const rejectDraftMutation = useRejectDraftMutation();
 
@@ -124,11 +86,7 @@ export default function DashboardPage() {
       await approvePathDraftMutation.mutateAsync(taskId);
       toast({ title: t("draftApproved") });
     } catch (error: any) {
-      toast({
-        title: t("error"),
-        description: error?.message || t("draftApproveError"),
-        variant: "destructive",
-      });
+      toast({ title: t("error"), description: error?.message, variant: "destructive" });
     }
   };
 
@@ -137,47 +95,7 @@ export default function DashboardPage() {
       await rejectDraftMutation.mutateAsync({ taskId });
       toast({ title: t("draftRejected") });
     } catch (error: any) {
-      toast({
-        title: t("error"),
-        description: error?.message || t("draftRejectError"),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleReindexCourses = async () => {
-    try {
-      const response = await reindexCoursesMutation.mutateAsync();
-      setReindexResults(response.payload?.data);
-      setShowResultDialog(true);
-      toast({
-        title: t("success"),
-        description: t("reindexCoursesSuccess"),
-      });
-    } catch (error: any) {
-      toast({
-        title: t("error"),
-        description: error?.message || t("reindexCoursesError"),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleReindexLessons = async () => {
-    try {
-      const response = await reindexLessonsMutation.mutateAsync();
-      setReindexResults(response.payload?.data);
-      setShowResultDialog(true);
-      toast({
-        title: t("success"),
-        description: t("reindexLessonsSuccess"),
-      });
-    } catch (error: any) {
-      toast({
-        title: t("error"),
-        description: error?.message || t("reindexLessonsError"),
-        variant: "destructive",
-      });
+      toast({ title: t("error"), description: error?.message, variant: "destructive" });
     }
   };
 
@@ -186,581 +104,117 @@ export default function DashboardPage() {
       const response = await reindexAllMutation.mutateAsync();
       setReindexResults(response.payload?.data);
       setShowResultDialog(true);
-      toast({
-        title: t("success"),
-        description: t("reindexAllSuccess"),
-      });
+      toast({ title: t("reindexSuccess") });
     } catch (error: any) {
-      toast({
-        title: t("error"),
-        description: error?.message || t("reindexError"),
-        variant: "destructive",
-      });
+      toast({ title: t("error"), description: error?.message, variant: "destructive" });
     }
   };
 
-  const handleGetQdrantStats = async () => {
-    try {
-      const response = await refetchQdrantStats();
-      if (response.data) {
-        setQdrantStats(response.data.payload?.data);
-        setShowStatsDialog(true);
-      }
-    } catch (error: any) {
-      toast({
-        title: t("error"),
-        description: error?.message || t("qdrantStatsError"),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveProvider = async () => {
-    try {
-      await updateProviderMutation.mutateAsync({
-        provider: selectedProvider,
-        chatModel: selectedModel,
-      });
-      toast({
-        title: "Success",
-        description: `AI switched to ${selectedProvider} (${selectedModel})`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to update AI provider",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Prepare chart data
-  const vectorChartData = useMemo(() => {
-    if (!qdrantStats?.collections) return [];
-    return [
-      {
-        name: "Courses",
-        value: qdrantStats.collections.courses?.vectorCount || 0,
-        fill: "hsl(var(--chart-1))",
-      },
-      {
-        name: "Lessons",
-        value: qdrantStats.collections.lessons?.vectorCount || 0,
-        fill: "hsl(var(--chart-2))",
-      },
-    ];
-  }, [qdrantStats]);
-
-  const pieChartData = useMemo(() => {
-    if (!qdrantStats?.collections) return [];
-    const courses = qdrantStats.collections.courses?.vectorCount || 0;
-    const lessons = qdrantStats.collections.lessons?.vectorCount || 0;
-    const total = courses + lessons;
-    if (total === 0) return [];
-    return [
-      {
-        name: "Courses",
-        value: courses,
-        percentage: ((courses / total) * 100).toFixed(1),
-      },
-      {
-        name: "Lessons",
-        value: lessons,
-        percentage: ((lessons / total) * 100).toFixed(1),
-      },
-    ];
-  }, [qdrantStats]);
-
-  const chartConfig = {
-    value: {
-      label: "Vectors",
-    },
-  };
-
-  const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))"];
-  const activeProvider = providerConfigData?.payload?.data?.provider || selectedProvider;
-  const activeModel =
-    providerConfigData?.payload?.data?.activeChatModel ||
-    providerConfigData?.payload?.data?.models?.[activeProvider] ||
-    selectedModel;
+  // Computed values for admin-friendly display
+  const totalCourses = qdrantStats?.collections?.courses?.vectorCount || 0;
+  const totalLessons = qdrantStats?.collections?.lessons?.vectorCount || 0;
+  const systemHealthy = qdrantStats?.healthy !== false && !metadata.usingMockFallback;
+  const activeModel = config.activeChatModel || "Not configured";
+  const activeProvider = (config.provider || "").toUpperCase();
 
   return (
     <AdminPageFrame
-      eyebrow={t("PageEyebrow")}
-      title={t("title")}
-      description={t("description")}
-      actions={
-        <>
-          <Button
-            variant="outline"
-            className="manage-ghost-button border-border/50"
-            onClick={handleGetQdrantStats}
-            disabled={qdrantStatsLoading}
-          >
-            {qdrantStatsLoading ? t("loading") : t("refresh")}
-          </Button>
-          <Button
-            className="bg-gradient-to-br from-primary to-blue-500 text-primary-foreground shadow-lg shadow-primary/20"
-            onClick={handleReindexAll}
-            disabled={reindexAllMutation.isPending}
-          >
-            {reindexAllMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {t("reindexAll")}
-          </Button>
-        </>
-      }
+      eyebrow={t("eyebrow")}
+      title="AI Dashboard"
+      description="Overview of AI system health, usage, and content management"
     >
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview" className="gap-2"><Sparkles className="h-4 w-4" /> Overview</TabsTrigger>
+          <TabsTrigger value="advanced" className="gap-2"><Settings className="h-4 w-4" /> Advanced</TabsTrigger>
+        </TabsList>
 
-      {/* Overview Stats Cards */}
-      <div className="manage-kpi-grid">
-        <Card className="manage-kpi-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("pendingDrafts")}</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{pendingDrafts.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t("aiContent")}
-            </p>
-          </CardContent>
-        </Card>
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* TAB 1: OVERVIEW — Admin-friendly, human-readable       */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <TabsContent value="overview" className="space-y-6">
 
-        <Card className="manage-kpi-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("coursesIndexed")}</CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {qdrantStats?.collections?.courses?.vectorCount || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t("vectorsInQdrant")}
-            </p>
-          </CardContent>
-        </Card>
+          {/* Status KPIs — simple numbers */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="border-border/50">
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                  {systemHealthy ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                  System Status
+                </div>
+                <p className="text-2xl font-bold">{systemHealthy ? "Online" : "Issue"}</p>
+                <p className="text-xs text-muted-foreground mt-1">{activeProvider} / {activeModel}</p>
+              </CardContent>
+            </Card>
 
-        <Card className="manage-kpi-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("lessonsIndexed")}</CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {qdrantStats?.collections?.lessons?.vectorCount || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t("vectorsInQdrant")}
-            </p>
-          </CardContent>
-        </Card>
+            <Card className="border-border/50">
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                  <MessageCircle className="h-4 w-4" />
+                  Total Conversations
+                </div>
+                <p className="text-2xl font-bold">{overview.chatTotal || analytics.totalTraces || 0}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {overview.chatSuccess || 0} successful
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card className="manage-kpi-card border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("qdrantStatus")}</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 mb-2">
-              {qdrantStats?.healthy ? (
-                <>
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span className="text-lg font-bold">{t("healthy")}</span>
-                </>
+            <Card className="border-border/50">
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                  <DollarSign className="h-4 w-4" />
+                  AI Cost (7 days)
+                </div>
+                <p className="text-2xl font-bold">${(analytics.totalCost || 0).toFixed(4)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {(analytics.totalTokens || overview.totalTokens || 0).toLocaleString()} tokens used
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/50">
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                  <Database className="h-4 w-4" />
+                  Knowledge Base
+                </div>
+                <p className="text-2xl font-bold">{totalCourses + totalLessons}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {totalCourses} courses, {totalLessons} lessons indexed
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Pending Drafts — admin action needed */}
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Content Awaiting Review
+                {pendingDrafts.length > 0 && (
+                  <Badge variant="destructive" className="ml-2">{pendingDrafts.length}</Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                AI-generated learning paths and exercises that need your approval before publishing
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {pendingDrafts.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p>All clear — no pending content to review</p>
+                </div>
               ) : (
-                <>
-                  <XCircle className="h-5 w-5 text-red-500" />
-                  <span className="text-lg font-bold">{t("unknown")}</span>
-                </>
-              )}
-            </div>
-            <div className="mb-2">
-              <Badge variant="secondary" className="text-[10px]">
-                {`${String(activeProvider).toUpperCase()} · ${activeModel}`}
-              </Badge>
-            </div>
-            <Button
-              variant="link"
-              size="sm"
-              className="p-0 h-auto text-xs"
-              onClick={handleGetQdrantStats}
-              disabled={qdrantStatsLoading}
-            >
-              {qdrantStatsLoading ? t("loading") : t("refresh")}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Vector Count Bar Chart */}
-        <Card className="manage-surface border-border/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Thống kê Vectors theo Collection
-            </CardTitle>
-            <CardDescription>
-              Số lượng vectors được lưu trữ trong Qdrant
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {vectorChartData.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-[300px]">
-                <BarChart data={vectorChartData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="name" 
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                  />
-                  <YAxis 
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                  />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="hsl(var(--chart-1))" />
-                </BarChart>
-              </ChartContainer>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                <p>Không có dữ liệu để hiển thị</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Distribution Pie Chart */}
-        <Card className="manage-surface border-border/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5" />
-              Phân bố Vectors
-            </CardTitle>
-            <CardDescription>
-              Tỷ lệ phân bố giữa Courses và Lessons
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {pieChartData.length > 0 ? (
-              <div className="space-y-4">
-                <ChartContainer config={chartConfig} className="h-[250px]">
-                  <RechartsPieChart>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Pie
-                      data={pieChartData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percentage }) => `${name}: ${percentage}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {pieChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                  </RechartsPieChart>
-                </ChartContainer>
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  {pieChartData.map((item, index) => (
-                    <div key={item.name} className="text-center p-3 rounded-lg bg-muted/50">
-                      <div className="text-2xl font-bold">{item.value}</div>
-                      <div className="text-sm text-muted-foreground">{item.name}</div>
-                      <div className="text-xs text-muted-foreground mt-1">{item.percentage}%</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                <p>Không có dữ liệu để hiển thị</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Detailed Statistics Table */}
-      <Card className="manage-surface border-border/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            Thống kê chi tiết Qdrant Collections
-          </CardTitle>
-          <CardDescription>
-            Thông tin chi tiết về các collections và trạng thái của chúng
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {qdrantStats?.collections ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Collection</TableHead>
-                    <TableHead className="text-right">Vector Count</TableHead>
-                    <TableHead className="text-right">Points Count</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Health</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(qdrantStats.collections).map(([collectionName, stats]: [string, any]) => (
-                    <TableRow key={collectionName}>
-                      <TableCell className="font-medium capitalize">{collectionName}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        {stats.vectorCount?.toLocaleString() || 0}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {stats.pointsCount?.toLocaleString() || 0}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            stats.status === "green" || stats.status === "ok"
-                              ? "default"
-                              : stats.status === "error"
-                              ? "destructive"
-                              : "secondary"
-                          }
-                        >
-                          {stats.status || "unknown"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {stats.status === "green" || stats.status === "ok" ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-red-500" />
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {qdrantStats.version && (
-                    <TableRow>
-                      <TableCell colSpan={2} className="font-medium">
-                        Qdrant Version
-                      </TableCell>
-                      <TableCell colSpan={3} className="font-mono">
-                        {qdrantStats.version}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Không có dữ liệu thống kê</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Vector Database Management */}
-        <Card className="manage-surface border-border/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              {t("vectorDbManagement")}
-            </CardTitle>
-            <CardDescription>
-              {t("reindexDescription")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-lg border p-4 space-y-3">
-              <p className="text-sm font-medium">AI Provider</p>
-              <p className="text-xs text-muted-foreground">
-                Runtime switch for chat, stream and embedding services.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Select
-                  value={selectedProvider}
-                  onValueChange={(value) => {
-                    const nextProvider = value as "openai" | "gemini";
-                    setSelectedProvider(nextProvider);
-                    const configuredModel = providerConfigData?.payload?.data?.models?.[nextProvider];
-                    if (configuredModel) {
-                      setSelectedModel(configuredModel);
-                    }
-                  }}
-                  disabled={providerConfigLoading || updateProviderMutation.isPending}
-                >
-                  <SelectTrigger className="sm:w-[220px]">
-                    <SelectValue placeholder="Select provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gemini">Gemini (2.5 Flash)</SelectItem>
-                    <SelectItem value="openai">OpenAI</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={selectedModel}
-                  onValueChange={setSelectedModel}
-                  disabled={providerConfigLoading || updateProviderMutation.isPending || modelOptions.length === 0}
-                >
-                  <SelectTrigger className="sm:w-[260px]">
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {modelOptions.map((model: string) => (
-                      <SelectItem key={model} value={model}>{model}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  onClick={handleSaveProvider}
-                  disabled={providerConfigLoading || updateProviderMutation.isPending || !selectedModel}
-                  variant="secondary"
-                >
-                  {updateProviderMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save provider"
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-              <Button
-                onClick={handleReindexCourses}
-                disabled={reindexCoursesMutation.isPending}
-                variant="outline"
-                className="justify-start"
-              >
-                {reindexCoursesMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("reindexingCourses")}
-                  </>
-                ) : (
-                  <>
-                    <Database className="mr-2 h-4 w-4" />
-                    {t("reindexCourses")}
-                  </>
-                )}
-              </Button>
-
-              <Button
-                onClick={handleReindexLessons}
-                disabled={reindexLessonsMutation.isPending}
-                variant="outline"
-                className="justify-start"
-              >
-                {reindexLessonsMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("reindexingLessons")}
-                  </>
-                ) : (
-                  <>
-                    <Database className="mr-2 h-4 w-4" />
-                    {t("reindexLessons")}
-                  </>
-                )}
-              </Button>
-
-              <Button
-                onClick={handleReindexAll}
-                disabled={reindexAllMutation.isPending}
-                variant="default"
-                className="justify-start"
-              >
-                {reindexAllMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("reindexingAll")}
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    {t("reindexAll")}
-                  </>
-                )}
-              </Button>
-
-              <Button
-                onClick={handleGetQdrantStats}
-                disabled={qdrantStatsLoading}
-                variant="secondary"
-                className="justify-start"
-              >
-                {qdrantStatsLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("loading")}
-                  </>
-                ) : (
-                  <>
-                    <TrendingUp className="mr-2 h-4 w-4" />
-                    {t("qdrantStats")}
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {reindexResults && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div className="flex-1 text-sm">
-                    <p className="font-medium text-blue-900">{t("latestReindexResults")}</p>
-                    <p className="text-blue-700 mt-1">{reindexResults.message}</p>
-                    {reindexResults.stats && (
-                      <div className="mt-2 text-xs space-y-1">
-                        <p>✓ {t("indexed")}: {reindexResults.stats.indexed}</p>
-                        <p>✗ {t("failed")}: {reindexResults.stats.failed}</p>
-                        {reindexResults.stats.duration && (
-                          <p>⏱ {t("duration")}: {reindexResults.stats.duration}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Pending Drafts */}
-        <Card className="manage-surface border-border/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              {t("pendingDrafts")}
-            </CardTitle>
-            <CardDescription>
-              {t("reviewAndApprove")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {pendingDrafts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>{t("noPendingDrafts")}</p>
-            </div>
-          ) : (
-            <ScrollArea className="h-[300px]">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>{t("type")}</TableHead>
-                      <TableHead>{t("status")}</TableHead>
-                      <TableHead>{t("createdAt")}</TableHead>
-                      <TableHead>{t("actions")}</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -768,164 +222,232 @@ export default function DashboardPage() {
                       <TableRow key={draft.taskId}>
                         <TableCell>
                           <Badge variant="outline">
-                            {draft.taskType === "LEARNING_PATH_GENERATION" ? "Lộ trình" : draft.taskType}
+                            {draft.taskType === "LEARNING_PATH_GENERATION" ? "Learning Path" : draft.taskType}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              draft.status === "DRAFT"
-                                ? "secondary"
-                                : draft.status === "APPROVED"
-                                ? "default"
-                                : "destructive"
-                            }
-                          >
-                            {draft.status}
-                          </Badge>
+                        <TableCell className="max-w-[300px]">
+                          <p className="text-sm line-clamp-2">
+                            {draft.resultPayload?.title || draft.prompt?.slice(0, 80) || "AI-generated draft"}
+                          </p>
                         </TableCell>
-                        <TableCell className="text-sm">
-                          {new Date(draft.createdAt).toLocaleDateString()}
+                        <TableCell className="text-sm text-muted-foreground">
+                          {draft.created ? new Date(draft.created).toLocaleDateString("vi-VN") : "—"}
                         </TableCell>
-                        <TableCell className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            disabled={approvePathDraftMutation.isPending}
-                            onClick={() => handleApproveDraft(draft.taskId)}
-                          >
-                            {approvePathDraftMutation.isPending ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : null}
-                            {t("approve")}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={rejectDraftMutation.isPending}
-                            onClick={() => handleRejectDraft(draft.taskId)}
-                          >
-                            {rejectDraftMutation.isPending ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : null}
-                            {t("reject")}
-                          </Button>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleApproveDraft(draft.taskId)}
+                              disabled={approvePathDraftMutation.isPending}>
+                              Approve
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleRejectDraft(draft.taskId)}
+                              disabled={rejectDraftMutation.isPending}>
+                              Reject
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              )}
+            </CardContent>
+          </Card>
 
-      {/* Qdrant Stats Dialog */}
-      <Dialog open={showStatsDialog} onOpenChange={setShowStatsDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t("qdrantStats")}</DialogTitle>
-            <DialogDescription>
-              {t("qdrantStatsDescription")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {qdrantStats ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <strong>{t("statusLabel")}:</strong>
-                  {qdrantStats.healthy ? (
-                    <Badge className="bg-green-500">{t("healthy")}</Badge>
-                  ) : (
-                    <Badge variant="destructive">Unhealthy</Badge>
-                  )}
-                </div>
-                {qdrantStats.version && (
+          {/* Quick links */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link href="/manage/ai-analytics">
+              <Card className="border-border/50 hover:border-primary/50 transition-colors cursor-pointer">
+                <CardContent className="pt-5 pb-4 flex items-center gap-3">
+                  <BarChart3 className="h-8 w-8 text-blue-500" />
                   <div>
-                    <strong>{t("version")}:</strong> {qdrantStats.version}
+                    <p className="font-semibold">AI Analytics</p>
+                    <p className="text-xs text-muted-foreground">Cost breakdown, usage trends</p>
                   </div>
-                )}
-                <Separator />
-                <div>
-                  <strong className="text-lg">{t("collection")}s:</strong>
-                  <div className="mt-3 space-y-3">
-                    {Object.entries(qdrantStats.collections || {}).map(
-                      ([collectionName, stats]: [string, any]) => (
-                        <Card key={collectionName} className="manage-subsurface border-border/50">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">{collectionName}</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span>{t("vectorCount")}:</span>
-                              <span className="font-medium">{stats.vectorCount}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>{t("pointsCount")}:</span>
-                              <span className="font-medium">{stats.pointsCount}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>{t("statusLabel")}:</span>
-                              <Badge variant="outline">{stats.status}</Badge>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    )}
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/manage/ai-traces">
+              <Card className="border-border/50 hover:border-primary/50 transition-colors cursor-pointer">
+                <CardContent className="pt-5 pb-4 flex items-center gap-3">
+                  <Activity className="h-8 w-8 text-purple-500" />
+                  <div>
+                    <p className="font-semibold">AI Traces</p>
+                    <p className="text-xs text-muted-foreground">View individual conversations</p>
                   </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-muted-foreground text-center py-8">
-                {t("noDataQdrant")}
-              </p>
-            )}
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/manage/ai-providers">
+              <Card className="border-border/50 hover:border-primary/50 transition-colors cursor-pointer">
+                <CardContent className="pt-5 pb-4 flex items-center gap-3">
+                  <Zap className="h-8 w-8 text-amber-500" />
+                  <div>
+                    <p className="font-semibold">AI Providers</p>
+                    <p className="text-xs text-muted-foreground">Switch models, manage API keys</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
-        </DialogContent>
-      </Dialog>
+        </TabsContent>
 
-      {/* Reindex Results Dialog */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* TAB 2: ADVANCED — Dev/ops technical details             */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        <TabsContent value="advanced" className="space-y-6">
+
+          {/* Reindex controls */}
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5" /> Vector Database Management
+              </CardTitle>
+              <CardDescription>
+                Reindex course/lesson data from PostgreSQL to Qdrant vector search. Qdrant v{qdrantStats?.version || "?"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Button onClick={handleReindexAll} disabled={reindexAllMutation.isPending}>
+                  {reindexAllMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Reindex All
+                </Button>
+              </div>
+
+              {/* Collections table */}
+              {qdrantStats?.collections && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Collection</TableHead>
+                      <TableHead className="text-right">Vectors</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(qdrantStats.collections).map(([name, stats]: [string, any]) => (
+                      <TableRow key={name}>
+                        <TableCell className="font-medium capitalize">{name}</TableCell>
+                        <TableCell className="text-right font-mono">{stats.vectorCount?.toLocaleString() || 0}</TableCell>
+                        <TableCell>
+                          <Badge variant={stats.status === "green" ? "default" : "secondary"}>
+                            {stats.status || "unknown"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Runtime stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="border-border/50">
+              <CardContent className="pt-4 pb-3">
+                <div className="text-xs text-muted-foreground">Chat Total</div>
+                <p className="text-xl font-bold">{overview.chatTotal || 0}</p>
+                <p className="text-[10px] text-muted-foreground">Success: {overview.chatSuccess || 0} | Failed: {overview.chatFailed || 0}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/50">
+              <CardContent className="pt-4 pb-3">
+                <div className="text-xs text-muted-foreground">Avg Latency</div>
+                <p className="text-xl font-bold">{runtime?.latency?.chatAverageMs || 0}ms</p>
+                <p className="text-[10px] text-muted-foreground">P95: {runtime?.latency?.chatP95Ms || 0}ms</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/50">
+              <CardContent className="pt-4 pb-3">
+                <div className="text-xs text-muted-foreground">Legacy Fallback</div>
+                <p className="text-xl font-bold">{overview.chatLegacyTotal || 0}</p>
+                <p className="text-[10px] text-muted-foreground">Mock: {overview.mockChatResponses || 0}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/50">
+              <CardContent className="pt-4 pb-3">
+                <div className="text-xs text-muted-foreground">Tokens Total</div>
+                <p className="text-xl font-bold">{(overview.totalTokens || 0).toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground">Avg/chat: {runtime?.tokens?.averagePerChat || 0}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Recent chat runs table */}
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle>Recent Chat Runs</CardTitle>
+              <CardDescription>Pipeline, intent, latency, tokens</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(runtime?.chatRuns?.recent || []).length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Pipeline</TableHead>
+                      <TableHead>Intent</TableHead>
+                      <TableHead className="text-right">Latency</TableHead>
+                      <TableHead className="text-right">Tokens</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(runtime.chatRuns.recent || []).map((run: any, i: number) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-mono text-xs">{run.pipeline}</TableCell>
+                        <TableCell>{run.intent}</TableCell>
+                        <TableCell className="text-right">{Number(run.duration_ms || 0).toFixed(0)}ms</TableCell>
+                        <TableCell className="text-right">{run.tokens_used || 0}</TableCell>
+                        <TableCell>
+                          <Badge variant={run.success ? "secondary" : "destructive"}>
+                            {run.success ? "OK" : "FAIL"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No chat runs yet</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Provider details */}
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle>Provider Configuration</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Requested provider</span><span className="font-mono">{metadata.requestedProvider}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Effective provider</span><span className="font-mono">{metadata.effectiveProvider}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Chat model</span><span className="font-mono">{config.activeChatModel}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Embedding model</span><span className="font-mono">{config.activeEmbeddingModel}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Mock fallback</span><span>{metadata.usingMockFallback ? "Yes" : "No"}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Status</span><span>{metadata.statusMessage}</span></div>
+              <div className="pt-2">
+                <Link href="/manage/ai-providers" className="text-sm text-blue-500 hover:underline">
+                  Manage providers →
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Reindex result dialog */}
       <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("reindexResults")}</DialogTitle>
-            <DialogDescription>
-              {t("reindexDetails")}
-            </DialogDescription>
+            <DialogTitle>Reindex Complete</DialogTitle>
           </DialogHeader>
           {reindexResults && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                {reindexResults.success ? (
-                  <CheckCircle className="h-6 w-6 text-green-500" />
-                ) : (
-                  <XCircle className="h-6 w-6 text-red-500" />
-                )}
-                <span className="font-medium">{reindexResults.message}</span>
-              </div>
-              {reindexResults.stats && (
-                <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>{t("indexed")}:</span>
-                    <span className="font-medium text-green-600">
-                      {reindexResults.stats.indexed}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>{t("failed")}:</span>
-                    <span className="font-medium text-red-600">
-                      {reindexResults.stats.failed}
-                    </span>
-                  </div>
-                  {reindexResults.stats.duration && (
-                    <div className="flex justify-between">
-                      <span>{t("duration")}:</span>
-                      <span className="font-medium">{reindexResults.stats.duration}</span>
-                    </div>
-                  )}
-                </div>
-              )}
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span>Success</span><Badge variant={reindexResults.success ? "default" : "destructive"}>{reindexResults.success ? "Yes" : "No"}</Badge></div>
+              <div className="flex justify-between"><span>Indexed</span><span className="font-mono">{reindexResults.stats?.indexed || 0}</span></div>
+              <div className="flex justify-between"><span>Failed</span><span className="font-mono">{reindexResults.stats?.failed || 0}</span></div>
+              <div className="flex justify-between"><span>Duration</span><span className="font-mono">{reindexResults.stats?.duration}</span></div>
             </div>
           )}
         </DialogContent>
@@ -933,4 +455,3 @@ export default function DashboardPage() {
     </AdminPageFrame>
   );
 }
-
