@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState } from "react";
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  useReindexCoursesMutation,
-  useReindexLessonsMutation,
   useReindexAllMutation,
   useGetQdrantStats,
   useGetAiRuntimeStats,
@@ -18,15 +18,12 @@ import {
   useRejectDraftMutation,
   useGetLangfuseAnalytics,
 } from "@/queries/useAi";
-import { useAccountProfile } from "@/queries/useAccount";
 import {
   Database,
   Loader2,
   CheckCircle,
   XCircle,
   FileText,
-  TrendingUp,
-  Clock,
   Sparkles,
   BarChart3,
   MessageCircle,
@@ -35,39 +32,36 @@ import {
   Settings,
   Activity,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useTranslations } from "next-intl";
-import { AdminPageFrame } from "@/components/manage/admin-page-frame";
-import Link from "next/link";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AdminPageFrame, AdminSurface } from "@/components/manage/admin-page-frame";
+
+type DraftItem = {
+  taskId: string;
+  taskType?: string;
+  prompt?: string;
+  created?: string;
+  resultPayload?: {
+    title?: string;
+  };
+};
 
 export default function DashboardPage() {
   const t = useTranslations("AiDashboard");
+  const locale = useLocale();
   const { toast } = useToast();
   const [showResultDialog, setShowResultDialog] = useState(false);
   const [reindexResults, setReindexResults] = useState<any>(null);
 
   const reindexAllMutation = useReindexAllMutation();
-  const { data: qdrantStatsData, isLoading: qdrantLoading } = useGetQdrantStats();
+  const { data: qdrantStatsData } = useGetQdrantStats();
   const { data: runtimeStatsData } = useGetAiRuntimeStats();
   const { data: providerConfigData } = useGetAiProviderConfig();
   const { data: analyticsData } = useGetLangfuseAnalytics(7);
   const { data: pathDraftsData } = useGetLearningPathDrafts();
-  const { data: accountData } = useAccountProfile();
+
+  const approvePathDraftMutation = useApproveLearningPathDraftMutation();
+  const rejectDraftMutation = useRejectDraftMutation();
 
   const qdrantStats = qdrantStatsData?.payload?.data;
   const runtime = runtimeStatsData?.payload?.data;
@@ -75,11 +69,22 @@ export default function DashboardPage() {
   const config = providerConfigData?.payload?.data || {};
   const metadata = config.metadata || {};
   const analytics = analyticsData?.payload?.data || {};
-  const pendingDrafts = pathDraftsData?.payload?.data || [];
-  const reviewerId = accountData?.payload?.data?.id;
+  const pendingDrafts: DraftItem[] = pathDraftsData?.payload?.data || [];
+  const recentRuns = runtime?.chatRuns?.recent || [];
 
-  const approvePathDraftMutation = useApproveLearningPathDraftMutation();
-  const rejectDraftMutation = useRejectDraftMutation();
+  const totalCourses = qdrantStats?.collections?.courses?.vectorCount || 0;
+  const totalLessons = qdrantStats?.collections?.lessons?.vectorCount || 0;
+  const systemHealthy = qdrantStats?.healthy !== false && !metadata.usingMockFallback;
+  const activeModel = config.activeChatModel || t("emptyValue");
+  const activeProvider = config.provider ? String(config.provider).toUpperCase() : t("emptyValue");
+  const totalTokens = analytics.totalTokens || overview.totalTokens || 0;
+
+  const formatDate = (value?: string) => {
+    if (!value) {
+      return t("emptyValue");
+    }
+    return new Intl.DateTimeFormat(locale).format(new Date(value));
+  };
 
   const handleApproveDraft = async (taskId: string) => {
     try {
@@ -104,350 +109,416 @@ export default function DashboardPage() {
       const response = await reindexAllMutation.mutateAsync();
       setReindexResults(response.payload?.data);
       setShowResultDialog(true);
-      toast({ title: t("reindexSuccess") });
+      toast({ title: t("toasts.reindexSuccess") });
     } catch (error: any) {
       toast({ title: t("error"), description: error?.message, variant: "destructive" });
     }
   };
 
-  // Computed values for admin-friendly display
-  const totalCourses = qdrantStats?.collections?.courses?.vectorCount || 0;
-  const totalLessons = qdrantStats?.collections?.lessons?.vectorCount || 0;
-  const systemHealthy = qdrantStats?.healthy !== false && !metadata.usingMockFallback;
-  const activeModel = config.activeChatModel || "Not configured";
-  const activeProvider = (config.provider || "").toUpperCase();
-
   return (
-    <AdminPageFrame
-      eyebrow={t("eyebrow")}
-      title="AI Dashboard"
-      description="Overview of AI system health, usage, and content management"
-    >
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="overview" className="gap-2"><Sparkles className="h-4 w-4" /> Overview</TabsTrigger>
-          <TabsTrigger value="advanced" className="gap-2"><Settings className="h-4 w-4" /> Advanced</TabsTrigger>
-        </TabsList>
+    <AdminPageFrame eyebrow={t("PageEyebrow")} title={t("title")} description={t("description")}>
+      <AdminSurface className="space-y-6 p-5 md:p-7">
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="overview" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              {t("tabs.overview")}
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="gap-2">
+              <Settings className="h-4 w-4" />
+              {t("tabs.advanced")}
+            </TabsTrigger>
+          </TabsList>
 
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* TAB 1: OVERVIEW — Admin-friendly, human-readable       */}
-        {/* ═══════════════════════════════════════════════════════ */}
-        <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <Card className="border-border/50">
+                <CardContent className="pb-4 pt-5">
+                  <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
+                    {systemHealthy ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-500" />
+                    )}
+                    {t("overview.systemStatus.label")}
+                  </div>
+                  <p className="text-2xl font-bold">
+                    {systemHealthy ? t("overview.systemStatus.online") : t("overview.systemStatus.issue")}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {activeProvider} / {activeModel}
+                  </p>
+                </CardContent>
+              </Card>
 
-          {/* Status KPIs — simple numbers */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="border-border/50">
+                <CardContent className="pb-4 pt-5">
+                  <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
+                    <MessageCircle className="h-4 w-4" />
+                    {t("overview.totalConversations.label")}
+                  </div>
+                  <p className="text-2xl font-bold">{overview.chatTotal || analytics.totalTraces || 0}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("overview.totalConversations.successful", { count: overview.chatSuccess || 0 })}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/50">
+                <CardContent className="pb-4 pt-5">
+                  <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
+                    <DollarSign className="h-4 w-4" />
+                    {t("overview.aiCost.label")}
+                  </div>
+                  <p className="text-2xl font-bold">${(analytics.totalCost || 0).toFixed(4)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("overview.aiCost.tokensUsed", { count: totalTokens.toLocaleString(locale) })}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/50">
+                <CardContent className="pb-4 pt-5">
+                  <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
+                    <Database className="h-4 w-4" />
+                    {t("overview.knowledgeBase.label")}
+                  </div>
+                  <p className="text-2xl font-bold">{totalCourses + totalLessons}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("overview.knowledgeBase.indexed", {
+                      courses: totalCourses,
+                      lessons: totalLessons,
+                    })}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card className="border-border/50">
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                  {systemHealthy ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-                  System Status
-                </div>
-                <p className="text-2xl font-bold">{systemHealthy ? "Online" : "Issue"}</p>
-                <p className="text-xs text-muted-foreground mt-1">{activeProvider} / {activeModel}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50">
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                  <MessageCircle className="h-4 w-4" />
-                  Total Conversations
-                </div>
-                <p className="text-2xl font-bold">{overview.chatTotal || analytics.totalTraces || 0}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {overview.chatSuccess || 0} successful
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50">
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                  <DollarSign className="h-4 w-4" />
-                  AI Cost (7 days)
-                </div>
-                <p className="text-2xl font-bold">${(analytics.totalCost || 0).toFixed(4)}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {(analytics.totalTokens || overview.totalTokens || 0).toLocaleString()} tokens used
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50">
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                  <Database className="h-4 w-4" />
-                  Knowledge Base
-                </div>
-                <p className="text-2xl font-bold">{totalCourses + totalLessons}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {totalCourses} courses, {totalLessons} lessons indexed
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Pending Drafts — admin action needed */}
-          <Card className="border-border/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Content Awaiting Review
-                {pendingDrafts.length > 0 && (
-                  <Badge variant="destructive" className="ml-2">{pendingDrafts.length}</Badge>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  {t("overview.pendingReview.title")}
+                  {pendingDrafts.length > 0 && (
+                    <Badge variant="destructive" className="ml-2">
+                      {pendingDrafts.length}
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>{t("overview.pendingReview.description")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {pendingDrafts.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <CheckCircle className="mx-auto mb-4 h-12 w-12 opacity-30" />
+                    <p>{t("overview.pendingReview.empty")}</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("overview.pendingReview.columns.type")}</TableHead>
+                        <TableHead>{t("overview.pendingReview.columns.description")}</TableHead>
+                        <TableHead>{t("overview.pendingReview.columns.created")}</TableHead>
+                        <TableHead className="text-right">{t("overview.pendingReview.columns.actions")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingDrafts.map((draft) => (
+                        <TableRow key={draft.taskId}>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {draft.taskType === "LEARNING_PATH_GENERATION"
+                                ? t("overview.pendingReview.learningPath")
+                                : draft.taskType || t("emptyValue")}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[300px]">
+                            <p className="line-clamp-2 text-sm">
+                              {draft.resultPayload?.title ||
+                                draft.prompt?.slice(0, 80) ||
+                                t("overview.pendingReview.generatedDraft")}
+                            </p>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{formatDate(draft.created)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleApproveDraft(draft.taskId)}
+                                disabled={approvePathDraftMutation.isPending}
+                              >
+                                {t("overview.pendingReview.approve")}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleRejectDraft(draft.taskId)}
+                                disabled={rejectDraftMutation.isPending}
+                              >
+                                {t("overview.pendingReview.reject")}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 )}
-              </CardTitle>
-              <CardDescription>
-                AI-generated learning paths and exercises that need your approval before publishing
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {pendingDrafts.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                  <p>All clear — no pending content to review</p>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <Link href="/manage/ai-analytics">
+                <Card className="cursor-pointer border-border/50 transition-colors hover:border-primary/50">
+                  <CardContent className="flex items-center gap-3 pb-4 pt-5">
+                    <BarChart3 className="h-8 w-8 text-blue-500" />
+                    <div>
+                      <p className="font-semibold">{t("overview.quickLinks.analytics.title")}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("overview.quickLinks.analytics.description")}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/manage/ai-traces">
+                <Card className="cursor-pointer border-border/50 transition-colors hover:border-primary/50">
+                  <CardContent className="flex items-center gap-3 pb-4 pt-5">
+                    <Activity className="h-8 w-8 text-purple-500" />
+                    <div>
+                      <p className="font-semibold">{t("overview.quickLinks.traces.title")}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("overview.quickLinks.traces.description")}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/manage/ai-providers">
+                <Card className="cursor-pointer border-border/50 transition-colors hover:border-primary/50">
+                  <CardContent className="flex items-center gap-3 pb-4 pt-5">
+                    <Zap className="h-8 w-8 text-amber-500" />
+                    <div>
+                      <p className="font-semibold">{t("overview.quickLinks.providers.title")}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("overview.quickLinks.providers.description")}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="advanced" className="space-y-6">
+            <Card className="border-border/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5" />
+                  {t("advanced.vectorDb.title")}
+                </CardTitle>
+                <CardDescription>
+                  {t("advanced.vectorDb.description", { version: qdrantStats?.version || "?" })}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Button onClick={handleReindexAll} disabled={reindexAllMutation.isPending}>
+                    {reindexAllMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t("advanced.vectorDb.reindexAll")}
+                  </Button>
                 </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingDrafts.map((draft: any) => (
-                      <TableRow key={draft.taskId}>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {draft.taskType === "LEARNING_PATH_GENERATION" ? "Learning Path" : draft.taskType}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-[300px]">
-                          <p className="text-sm line-clamp-2">
-                            {draft.resultPayload?.title || draft.prompt?.slice(0, 80) || "AI-generated draft"}
-                          </p>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {draft.created ? new Date(draft.created).toLocaleDateString("vi-VN") : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="outline" onClick={() => handleApproveDraft(draft.taskId)}
-                              disabled={approvePathDraftMutation.isPending}>
-                              Approve
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleRejectDraft(draft.taskId)}
-                              disabled={rejectDraftMutation.isPending}>
-                              Reject
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
 
-          {/* Quick links */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link href="/manage/ai-analytics">
-              <Card className="border-border/50 hover:border-primary/50 transition-colors cursor-pointer">
-                <CardContent className="pt-5 pb-4 flex items-center gap-3">
-                  <BarChart3 className="h-8 w-8 text-blue-500" />
-                  <div>
-                    <p className="font-semibold">AI Analytics</p>
-                    <p className="text-xs text-muted-foreground">Cost breakdown, usage trends</p>
-                  </div>
+                {qdrantStats?.collections && (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("advanced.vectorDb.columns.collection")}</TableHead>
+                        <TableHead className="text-right">{t("advanced.vectorDb.columns.vectors")}</TableHead>
+                        <TableHead>{t("advanced.vectorDb.columns.status")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(qdrantStats.collections).map(([name, stats]: [string, any]) => (
+                        <TableRow key={name}>
+                          <TableCell className="font-medium capitalize">{name}</TableCell>
+                          <TableCell className="text-right font-mono">
+                            {stats.vectorCount?.toLocaleString(locale) || 0}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={stats.status === "green" ? "default" : "secondary"}>
+                              {stats.status || t("emptyValue")}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <Card className="border-border/50">
+                <CardContent className="pb-3 pt-4">
+                  <div className="text-xs text-muted-foreground">{t("advanced.runtime.chatTotal")}</div>
+                  <p className="text-xl font-bold">{overview.chatTotal || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {t("advanced.runtime.chatTotalDetail", {
+                      success: overview.chatSuccess || 0,
+                      failed: overview.chatFailed || 0,
+                    })}
+                  </p>
                 </CardContent>
               </Card>
-            </Link>
-            <Link href="/manage/ai-traces">
-              <Card className="border-border/50 hover:border-primary/50 transition-colors cursor-pointer">
-                <CardContent className="pt-5 pb-4 flex items-center gap-3">
-                  <Activity className="h-8 w-8 text-purple-500" />
-                  <div>
-                    <p className="font-semibold">AI Traces</p>
-                    <p className="text-xs text-muted-foreground">View individual conversations</p>
-                  </div>
+
+              <Card className="border-border/50">
+                <CardContent className="pb-3 pt-4">
+                  <div className="text-xs text-muted-foreground">{t("advanced.runtime.avgLatency")}</div>
+                  <p className="text-xl font-bold">{runtime?.latency?.chatAverageMs || 0}ms</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {t("advanced.runtime.avgLatencyDetail", {
+                      p95: runtime?.latency?.chatP95Ms || 0,
+                    })}
+                  </p>
                 </CardContent>
               </Card>
-            </Link>
-            <Link href="/manage/ai-providers">
-              <Card className="border-border/50 hover:border-primary/50 transition-colors cursor-pointer">
-                <CardContent className="pt-5 pb-4 flex items-center gap-3">
-                  <Zap className="h-8 w-8 text-amber-500" />
-                  <div>
-                    <p className="font-semibold">AI Providers</p>
-                    <p className="text-xs text-muted-foreground">Switch models, manage API keys</p>
-                  </div>
+
+              <Card className="border-border/50">
+                <CardContent className="pb-3 pt-4">
+                  <div className="text-xs text-muted-foreground">{t("advanced.runtime.legacyFallback")}</div>
+                  <p className="text-xl font-bold">{overview.chatLegacyTotal || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {t("advanced.runtime.legacyFallbackDetail", {
+                      mock: overview.mockChatResponses || 0,
+                    })}
+                  </p>
                 </CardContent>
               </Card>
-            </Link>
-          </div>
-        </TabsContent>
 
-        {/* ═══════════════════════════════════════════════════════ */}
-        {/* TAB 2: ADVANCED — Dev/ops technical details             */}
-        {/* ═══════════════════════════════════════════════════════ */}
-        <TabsContent value="advanced" className="space-y-6">
+              <Card className="border-border/50">
+                <CardContent className="pb-3 pt-4">
+                  <div className="text-xs text-muted-foreground">{t("advanced.runtime.tokensTotal")}</div>
+                  <p className="text-xl font-bold">{(overview.totalTokens || 0).toLocaleString(locale)}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {t("advanced.runtime.tokensTotalDetail", {
+                      avg: runtime?.tokens?.averagePerChat || 0,
+                    })}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
-          {/* Reindex controls */}
-          <Card className="border-border/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" /> Vector Database Management
-              </CardTitle>
-              <CardDescription>
-                Reindex course/lesson data from PostgreSQL to Qdrant vector search. Qdrant v{qdrantStats?.version || "?"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Button onClick={handleReindexAll} disabled={reindexAllMutation.isPending}>
-                  {reindexAllMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Reindex All
-                </Button>
-              </div>
-
-              {/* Collections table */}
-              {qdrantStats?.collections && (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Collection</TableHead>
-                      <TableHead className="text-right">Vectors</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Object.entries(qdrantStats.collections).map(([name, stats]: [string, any]) => (
-                      <TableRow key={name}>
-                        <TableCell className="font-medium capitalize">{name}</TableCell>
-                        <TableCell className="text-right font-mono">{stats.vectorCount?.toLocaleString() || 0}</TableCell>
-                        <TableCell>
-                          <Badge variant={stats.status === "green" ? "default" : "secondary"}>
-                            {stats.status || "unknown"}
-                          </Badge>
-                        </TableCell>
+            <Card className="border-border/50">
+              <CardHeader>
+                <CardTitle>{t("advanced.recentRuns.title")}</CardTitle>
+                <CardDescription>{t("advanced.recentRuns.description")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {recentRuns.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("advanced.recentRuns.columns.pipeline")}</TableHead>
+                        <TableHead>{t("advanced.recentRuns.columns.intent")}</TableHead>
+                        <TableHead className="text-right">{t("advanced.recentRuns.columns.latency")}</TableHead>
+                        <TableHead className="text-right">{t("advanced.recentRuns.columns.tokens")}</TableHead>
+                        <TableHead>{t("advanced.recentRuns.columns.status")}</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Runtime stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border-border/50">
-              <CardContent className="pt-4 pb-3">
-                <div className="text-xs text-muted-foreground">Chat Total</div>
-                <p className="text-xl font-bold">{overview.chatTotal || 0}</p>
-                <p className="text-[10px] text-muted-foreground">Success: {overview.chatSuccess || 0} | Failed: {overview.chatFailed || 0}</p>
+                    </TableHeader>
+                    <TableBody>
+                      {recentRuns.map((run: any, index: number) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-mono text-xs">{run.pipeline}</TableCell>
+                          <TableCell>{run.intent}</TableCell>
+                          <TableCell className="text-right">{Number(run.duration_ms || 0).toFixed(0)}ms</TableCell>
+                          <TableCell className="text-right">{run.tokens_used || 0}</TableCell>
+                          <TableCell>
+                            <Badge variant={run.success ? "secondary" : "destructive"}>
+                              {run.success ? t("advanced.recentRuns.ok") : t("advanced.recentRuns.fail")}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    {t("advanced.recentRuns.empty")}
+                  </p>
+                )}
               </CardContent>
             </Card>
+
             <Card className="border-border/50">
-              <CardContent className="pt-4 pb-3">
-                <div className="text-xs text-muted-foreground">Avg Latency</div>
-                <p className="text-xl font-bold">{runtime?.latency?.chatAverageMs || 0}ms</p>
-                <p className="text-[10px] text-muted-foreground">P95: {runtime?.latency?.chatP95Ms || 0}ms</p>
+              <CardHeader>
+                <CardTitle>{t("advanced.providerConfig.title")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t("advanced.providerConfig.requestedProvider")}</span>
+                  <span className="font-mono">{metadata.requestedProvider || t("emptyValue")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t("advanced.providerConfig.effectiveProvider")}</span>
+                  <span className="font-mono">{metadata.effectiveProvider || t("emptyValue")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t("advanced.providerConfig.chatModel")}</span>
+                  <span className="font-mono">{config.activeChatModel || t("emptyValue")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t("advanced.providerConfig.embeddingModel")}</span>
+                  <span className="font-mono">{config.activeEmbeddingModel || t("emptyValue")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t("advanced.providerConfig.mockFallback")}</span>
+                  <span>{metadata.usingMockFallback ? t("yes") : t("no")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t("advanced.providerConfig.status")}</span>
+                  <span>{metadata.statusMessage || t("emptyValue")}</span>
+                </div>
+                <div className="pt-2">
+                  <Link href="/manage/ai-providers" className="text-sm text-blue-500 hover:underline">
+                    {t("advanced.providerConfig.manageProviders")}
+                  </Link>
+                </div>
               </CardContent>
             </Card>
-            <Card className="border-border/50">
-              <CardContent className="pt-4 pb-3">
-                <div className="text-xs text-muted-foreground">Legacy Fallback</div>
-                <p className="text-xl font-bold">{overview.chatLegacyTotal || 0}</p>
-                <p className="text-[10px] text-muted-foreground">Mock: {overview.mockChatResponses || 0}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/50">
-              <CardContent className="pt-4 pb-3">
-                <div className="text-xs text-muted-foreground">Tokens Total</div>
-                <p className="text-xl font-bold">{(overview.totalTokens || 0).toLocaleString()}</p>
-                <p className="text-[10px] text-muted-foreground">Avg/chat: {runtime?.tokens?.averagePerChat || 0}</p>
-              </CardContent>
-            </Card>
-          </div>
+          </TabsContent>
+        </Tabs>
+      </AdminSurface>
 
-          {/* Recent chat runs table */}
-          <Card className="border-border/50">
-            <CardHeader>
-              <CardTitle>Recent Chat Runs</CardTitle>
-              <CardDescription>Pipeline, intent, latency, tokens</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {(runtime?.chatRuns?.recent || []).length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Pipeline</TableHead>
-                      <TableHead>Intent</TableHead>
-                      <TableHead className="text-right">Latency</TableHead>
-                      <TableHead className="text-right">Tokens</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(runtime.chatRuns.recent || []).map((run: any, i: number) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-mono text-xs">{run.pipeline}</TableCell>
-                        <TableCell>{run.intent}</TableCell>
-                        <TableCell className="text-right">{Number(run.duration_ms || 0).toFixed(0)}ms</TableCell>
-                        <TableCell className="text-right">{run.tokens_used || 0}</TableCell>
-                        <TableCell>
-                          <Badge variant={run.success ? "secondary" : "destructive"}>
-                            {run.success ? "OK" : "FAIL"}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">No chat runs yet</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Provider details */}
-          <Card className="border-border/50">
-            <CardHeader>
-              <CardTitle>Provider Configuration</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Requested provider</span><span className="font-mono">{metadata.requestedProvider}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Effective provider</span><span className="font-mono">{metadata.effectiveProvider}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Chat model</span><span className="font-mono">{config.activeChatModel}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Embedding model</span><span className="font-mono">{config.activeEmbeddingModel}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Mock fallback</span><span>{metadata.usingMockFallback ? "Yes" : "No"}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Status</span><span>{metadata.statusMessage}</span></div>
-              <div className="pt-2">
-                <Link href="/manage/ai-providers" className="text-sm text-blue-500 hover:underline">
-                  Manage providers →
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Reindex result dialog */}
       <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reindex Complete</DialogTitle>
+            <DialogTitle>{t("dialog.title")}</DialogTitle>
           </DialogHeader>
           {reindexResults && (
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span>Success</span><Badge variant={reindexResults.success ? "default" : "destructive"}>{reindexResults.success ? "Yes" : "No"}</Badge></div>
-              <div className="flex justify-between"><span>Indexed</span><span className="font-mono">{reindexResults.stats?.indexed || 0}</span></div>
-              <div className="flex justify-between"><span>Failed</span><span className="font-mono">{reindexResults.stats?.failed || 0}</span></div>
-              <div className="flex justify-between"><span>Duration</span><span className="font-mono">{reindexResults.stats?.duration}</span></div>
+              <div className="flex justify-between">
+                <span>{t("dialog.success")}</span>
+                <Badge variant={reindexResults.success ? "default" : "destructive"}>
+                  {reindexResults.success ? t("yes") : t("no")}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span>{t("dialog.indexed")}</span>
+                <span className="font-mono">{reindexResults.stats?.indexed || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>{t("dialog.failed")}</span>
+                <span className="font-mono">{reindexResults.stats?.failed || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>{t("dialog.duration")}</span>
+                <span className="font-mono">{reindexResults.stats?.duration || t("emptyValue")}</span>
+              </div>
             </div>
           )}
         </DialogContent>

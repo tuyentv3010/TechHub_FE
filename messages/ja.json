@@ -33,6 +33,9 @@
     "logout": "ログアウト"
   },
   "AdminNav": {
+    "aiAnalytics": "AI分析",
+    "aiTraces": "AIトレース",
+    "aiProviders": "AIプロバイダー",
     "dashboard": "ダッシュボード",
     "revenue": "売上",
     "payouts": "支払い",
@@ -1534,6 +1537,117 @@
     "errorDelete": "セッションを削除できませんでした"
   },
   "AiDashboard": {
+    "emptyValue": "-",
+    "yes": "はい",
+    "no": "いいえ",
+    "toasts": {
+      "reindexSuccess": "再インデックスが完了しました"
+    },
+    "tabs": {
+      "overview": "概要",
+      "advanced": "詳細"
+    },
+    "overview": {
+      "systemStatus": {
+        "label": "システム状態",
+        "online": "稼働中",
+        "issue": "問題あり"
+      },
+      "totalConversations": {
+        "label": "総会話数",
+        "successful": "{count} 件成功"
+      },
+      "aiCost": {
+        "label": "AIコスト (7日間)",
+        "tokensUsed": "{count} tokens 使用"
+      },
+      "knowledgeBase": {
+        "label": "ナレッジベース",
+        "indexed": "{courses} コース、{lessons} レッスンをインデックス済み"
+      },
+      "pendingReview": {
+        "title": "レビュー待ちコンテンツ",
+        "description": "公開前に承認が必要な AI 生成の学習パスと演習です",
+        "empty": "現在レビュー待ちのコンテンツはありません",
+        "learningPath": "学習パス",
+        "generatedDraft": "AI 生成ドラフト",
+        "approve": "承認",
+        "reject": "却下",
+        "columns": {
+          "type": "種類",
+          "description": "説明",
+          "created": "作成日",
+          "actions": "操作"
+        }
+      },
+      "quickLinks": {
+        "analytics": {
+          "title": "AI分析",
+          "description": "コスト、利用傾向、パフォーマンスを確認"
+        },
+        "traces": {
+          "title": "AIトレース",
+          "description": "個別の会話を詳しく確認"
+        },
+        "providers": {
+          "title": "AIプロバイダー",
+          "description": "モデル切替と API キー管理"
+        }
+      }
+    },
+    "advanced": {
+      "vectorDb": {
+        "title": "ベクターデータベース管理",
+        "description": "PostgreSQL から Qdrant へコースとレッスンを再インデックスします。Qdrant v{version}",
+        "reindexAll": "すべて再インデックス",
+        "columns": {
+          "collection": "コレクション",
+          "vectors": "ベクトル数",
+          "status": "状態"
+        }
+      },
+      "runtime": {
+        "chatTotal": "総チャット数",
+        "chatTotalDetail": "成功: {success} | 失敗: {failed}",
+        "avgLatency": "平均レイテンシ",
+        "avgLatencyDetail": "P95: {p95}ms",
+        "legacyFallback": "レガシーフォールバック",
+        "legacyFallbackDetail": "Mock: {mock}",
+        "tokensTotal": "総トークン数",
+        "tokensTotalDetail": "平均/チャット: {avg}"
+      },
+      "recentRuns": {
+        "title": "最近のチャット実行",
+        "description": "パイプライン、インテント、レイテンシ、トークン",
+        "ok": "OK",
+        "fail": "FAIL",
+        "empty": "まだチャット実行はありません",
+        "columns": {
+          "pipeline": "パイプライン",
+          "intent": "インテント",
+          "latency": "レイテンシ",
+          "tokens": "トークン",
+          "status": "状態"
+        }
+      },
+      "providerConfig": {
+        "title": "プロバイダー設定",
+        "requestedProvider": "要求されたプロバイダー",
+        "effectiveProvider": "有効なプロバイダー",
+        "chatModel": "チャットモデル",
+        "embeddingModel": "埋め込みモデル",
+        "mockFallback": "Mock fallback",
+        "status": "状態",
+        "manageProviders": "プロバイダー管理 ->"
+      }
+    },
+    "dialog": {
+      "title": "再インデックス完了",
+      "success": "成功",
+      "indexed": "インデックス済み",
+      "failed": "失敗",
+      "duration": "所要時間"
+    },
     "PageEyebrow": "Admin / ダッシュボード",
     "title": "AIダッシュボード",
     "description": "AIシステムの管理と監視",
@@ -1600,6 +1714,177 @@
     "indexed": "インデックス済み",
     "failed": "失敗",
     "duration": "所要時間"
+  },
+  "AiProviders": {
+    "PageEyebrow": "Admin / AIプロバイダー",
+    "Title": "AIプロバイダー管理",
+    "Description": "LLMプロバイダーと実行中のモデル切り替えを管理します",
+    "title": "AIプロバイダー管理",
+    "description": "LLMプロバイダーと実行中のモデル切り替えを管理します",
+    "loading": "読み込み中...",
+    "emptyValue": "—",
+    "tabs": {
+      "overview": "概要",
+      "advanced": "詳細"
+    },
+    "summary": {
+      "activeProvider": "現在のプロバイダー",
+      "mockMode": "モックモード",
+      "live": "本番接続中",
+      "chatModel": "チャットモデル",
+      "embeddingModel": "埋め込み: {model}",
+      "providerHealth": "プロバイダー状態"
+    },
+    "health": {
+      "online": "稼働中",
+      "offline": "オフライン",
+      "noKey": "APIキー未設定"
+    },
+    "switcher": {
+      "title": "プロバイダー / モデル切り替え",
+      "description": "利用可能なAPIキーからモデルを取得します。変更はすぐに反映されます。",
+      "provider": "プロバイダー",
+      "chatModel": "チャットモデル",
+      "embeddingModelLabel": "埋め込みモデル",
+      "selectProvider": "プロバイダーを選択...",
+      "selectChatModel": "チャットモデルを選択...",
+      "keepCurrent": "現在の設定を維持",
+      "applyChanges": "変更を適用",
+      "switching": "切り替え中...",
+      "modelCount": "({count}モデル)"
+    },
+    "toast": {
+      "updatedTitle": "プロバイダーを更新しました",
+      "updatedDescription": "{provider} / {model}",
+      "failedTitle": "プロバイダーを切り替えできません",
+      "failedDescription": "設定を確認してから再試行してください。"
+    },
+    "allModels": {
+      "title": "利用可能なモデル一覧",
+      "modelCount": "{count}モデル",
+      "active": "使用中",
+      "columns": {
+        "modelId": "モデル",
+        "provider": "プロバイダー",
+        "type": "種別",
+        "context": "コンテキスト",
+        "status": "状態"
+      }
+    },
+    "healthRaw": {
+      "title": "プロバイダー接続状態 (raw)"
+    },
+    "metadataRaw": {
+      "title": "プロバイダーメタデータ (raw)"
+    }
+  },
+  "AiAnalytics": {
+    "PageEyebrow": "Admin / AI分析",
+    "Title": "AI分析",
+    "Description": "AIプラットフォームの利用量、コスト、性能を確認します",
+    "title": "AI分析",
+    "description": "AIプラットフォームの利用量、コスト、性能を確認します",
+    "tabs": {
+      "overview": "概要",
+      "advanced": "詳細"
+    },
+    "range": {
+      "last24h": "過去24時間",
+      "last7Days": "過去7日間",
+      "last14Days": "過去14日間",
+      "last30Days": "過去30日間"
+    },
+    "kpis": {
+      "conversations": "会話数",
+      "totalCost": "総コスト",
+      "avgResponse": "平均応答時間",
+      "successRate": "成功率"
+    },
+    "charts": {
+      "usagePerDay": "日別利用量",
+      "whatUsersAskAbout": "ユーザーの質問傾向",
+      "costPerDay": "日別コスト",
+      "modelUsage": "モデル利用状況"
+    },
+    "series": {
+      "conversations": "会話数",
+      "cost": "コスト ($)",
+      "tokens": "Tokens",
+      "calls": "呼び出し回数"
+    },
+    "advanced": {
+      "totalTokens": "総トークン数",
+      "errorRate": "エラー率",
+      "promptTokens": "プロンプトトークン",
+      "completionTokens": "出力トークン",
+      "embeddingTokens": "埋め込みトークン"
+    },
+    "topUsers": {
+      "title": "上位ユーザー",
+      "noData": "データがありません",
+      "columns": {
+        "userId": "ユーザーID",
+        "traces": "トレース数",
+        "tokens": "トークン",
+        "cost": "コスト"
+      }
+    }
+  },
+  "AiTraces": {
+    "PageEyebrow": "Admin / AIトレース",
+    "Title": "AIトレース",
+    "Description": "{count}件のAI会話を追跡中",
+    "title": "AIトレース",
+    "trackedCount": "{count}件の会話を追跡中",
+    "openLangfuse": "Langfuse を開く",
+    "loading": "読み込み中...",
+    "noConversations": "会話はまだありません",
+    "recentConversations": "最近の会話",
+    "advancedTraces": "詳細トレース",
+    "emptyValue": "—",
+    "pageSummary": "Page {page}/{total} • {count} results",
+    "tabs": {
+      "overview": "概要",
+      "advanced": "詳細"
+    },
+    "columns": {
+      "time": "時刻",
+      "userPrompt": "ユーザーの質問",
+      "type": "種別",
+      "responseTime": "応答時間",
+      "cost": "コスト",
+      "actions": "操作",
+      "name": "トレース名",
+      "user": "ユーザー",
+      "intent": "インテント",
+      "model": "モデル",
+      "latency": "レイテンシ",
+      "observations": "観測"
+    },
+    "intent": {
+      "courseAdvice": "コース提案",
+      "learningQA": "学習Q&A",
+      "dataQuery": "データ照会",
+      "chartRequest": "チャート要求",
+      "fileAnalysis": "ファイル分析",
+      "chat": "チャット",
+      "followUp": "確認質問",
+      "aiCall": "AI呼び出し",
+      "fullChat": "全体チャット"
+    },
+    "detail": {
+      "title": "会話詳細",
+      "responseTime": "応答時間",
+      "cost": "コスト",
+      "steps": "ステップ数",
+      "user": "ユーザー",
+      "userAsked": "ユーザー入力",
+      "aiAnswered": "AI応答",
+      "processingSteps": "処理ステップ ({count})",
+      "tokens": "Tokens: {count}",
+      "stepCost": "コスト: ${cost}",
+      "viewFullTrace": "Langfuseで完全なトレースを見る"
+    }
   },
   "AiDrafts": {
     "title": "AI下書き",

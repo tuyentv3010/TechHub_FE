@@ -227,6 +227,151 @@ export const RecommendationHistoryItem = z.object({
 export type RecommendationHistoryItemType = z.TypeOf<typeof RecommendationHistoryItem>;
 
 // ============================================
+// ANALYTICS CONTRACT
+// ============================================
+// Mirrors app/schemas/analytics_contract.py on the BE. Kept loose with
+// passthrough() so future server additions don't break FE parsing.
+
+export const ColumnKind = z.enum([
+  "category",
+  "numeric",
+  "percentage",
+  "currency",
+  "duration_seconds",
+  "datetime",
+  "identifier",
+  "text",
+  "boolean",
+]);
+
+export const ColumnMeta = z
+  .object({
+    name: z.string(),
+    kind: ColumnKind.or(z.string()).default("text"),
+    unit: z.string().nullable().optional(),
+    format: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+export type ColumnMetaType = z.TypeOf<typeof ColumnMeta>;
+
+export const ChartOptions = z
+  .object({
+    availableChartTypes: z.array(z.string()).default([]),
+    colorPalette: z.array(z.string()).default([]),
+    emptyState: z
+      .enum(["ok", "empty", "all_zero", "single_category"])
+      .default("ok"),
+    valueAxisLabel: z.string().nullable().optional(),
+    categoryAxisLabel: z.string().nullable().optional(),
+    stacked: z.boolean().default(false),
+    legend: z.boolean().default(true),
+  })
+  .passthrough();
+
+export type ChartOptionsType = z.TypeOf<typeof ChartOptions>;
+
+export const SuggestedActionKind = z.enum([
+  "prompt",
+  "change_chart_type",
+  "export_csv",
+  "copy_sql",
+  "refine_filter",
+]);
+
+export const SuggestedAction = z
+  .object({
+    id: z.string(),
+    label: z.string(),
+    description: z.string().nullable().optional(),
+    kind: SuggestedActionKind.or(z.string()),
+    prompt: z.string().nullable().optional(),
+    payload: z.record(z.any()).nullable().optional(),
+    icon: z.string().nullable().optional(),
+    tone: z.enum(["primary", "secondary"]).default("secondary"),
+  })
+  .passthrough();
+
+export type SuggestedActionType = z.TypeOf<typeof SuggestedAction>;
+
+export const ChartDataset = z
+  .object({
+    label: z.string().nullable().optional(),
+    values: z.array(z.number()).default([]),
+  })
+  .passthrough();
+
+export const ChartData = z
+  .object({
+    labels: z.array(z.string()).default([]),
+    datasets: z.array(ChartDataset).default([]),
+  })
+  .passthrough();
+
+export const ChartSpec = z
+  .object({
+    type: z.string().default("bar"),
+    title: z.string().default("TechHub analytics"),
+    subtitle: z.string().nullable().optional(),
+    scope: z.string().nullable().optional(),
+    scopeLabel: z.string().nullable().optional(),
+    data: ChartData.default({ labels: [], datasets: [] }),
+    options: ChartOptions.optional(),
+    note: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+export type ChartSpecType = z.TypeOf<typeof ChartSpec>;
+
+export const RuntimePolicySnapshot = z
+  .object({
+    userRole: z.string().nullable().optional(),
+    sqlMaxRows: z.number().nullable().optional(),
+    piiAccess: z.boolean().nullable().optional(),
+  })
+  .passthrough();
+
+export const LogicSummary = z
+  .object({
+    metric: z.string(),
+    title: z.string(),
+    chartType: z.string(),
+    timeRange: z.string(),
+    scope: z.string(),
+    scopeLabel: z.string(),
+    executionMode: z.string(),
+    rowCount: z.number(),
+  })
+  .passthrough();
+
+export const QueryResult = z
+  .object({
+    metric: z.string().default("analytics"),
+    timeRange: z.string().default("all_time"),
+    title: z.string().default("TechHub analytics"),
+    summary: z.string().default(""),
+    rows: z.array(z.record(z.any())).default([]),
+    rowCount: z.number().default(0),
+    columns: z.array(z.string()).default([]),
+    columnMeta: z.array(ColumnMeta).optional(),
+    tables: z.array(z.string()).default([]),
+    sql: z.string().default(""),
+    chartType: z.string().default("bar"),
+    executionMode: z.string().default("llm_planner"),
+    explanation: z.string().default(""),
+    logicSummary: LogicSummary.nullable().optional(),
+    scope: z.string().default("platform"),
+    scopeLabel: z.string().default(""),
+    policy: RuntimePolicySnapshot.optional(),
+    suggestedActions: z.array(SuggestedAction).default([]),
+    chartOptions: ChartOptions.optional(),
+  })
+  .passthrough();
+
+export type QueryResultType = z.TypeOf<typeof QueryResult>;
+
+// ============================================
 // CHAT SCHEMAS
 // ============================================
 
@@ -260,9 +405,11 @@ export const ChatMessageResponse = z.object({
       resolvedMode: ChatMode.optional(),
       intent: z.string().optional(),
       confidence: z.number().optional(),
+      thinkingText: z.string().optional(),
       citations: z.array(z.record(z.any())).optional(),
       queryResult: z.record(z.any()).nullable().optional(),
       chartSpec: z.record(z.any()).nullable().optional(),
+      suggestedActions: z.array(z.record(z.any())).optional(),
       artifact: z.record(z.any()).nullable().optional(),
       trace: z.array(z.record(z.any())).optional(),
       pipeline: z.string().optional(),
@@ -294,6 +441,7 @@ export const ChatMessage = z.object({
   sender: z.enum(["USER", "BOT"]),
   content: z.string(),
   timestamp: z.string(),
+  metadata: z.record(z.any()).optional().nullable(),
 });
 
 export type ChatMessageType = z.TypeOf<typeof ChatMessage>;

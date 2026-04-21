@@ -9,7 +9,7 @@ services:
         NEXT_PUBLIC_API_ENDPOINT: ${NEXT_PUBLIC_API_ENDPOINT}
         NEXT_PUBLIC_URL: ${NEXT_PUBLIC_URL}
         NEXT_PUBLIC_WS_BASE: ${NEXT_PUBLIC_WS_BASE}
-    image: techhub-fe:0.1.0
+    image: toandeptroai/techhub-fe:0.1.0
     container_name: techhub-fe-container
     restart: always
     ports:

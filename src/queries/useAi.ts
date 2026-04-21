@@ -263,10 +263,10 @@ export const useGetAvailableModels = () => {
 // LANGFUSE ANALYTICS HOOKS
 // ============================================
 
-export const useGetLangfuseTraces = (limit: number = 50) => {
+export const useGetLangfuseTraces = (page: number = 1, limit: number = 50) => {
   return useQuery({
-    queryKey: ["langfuse-traces", limit],
-    queryFn: () => aiApiRequest.getLangfuseTraces(limit),
+    queryKey: ["langfuse-traces", page, limit],
+    queryFn: () => aiApiRequest.getLangfuseTraces(page, limit),
     refetchInterval: 30000,
   });
 };

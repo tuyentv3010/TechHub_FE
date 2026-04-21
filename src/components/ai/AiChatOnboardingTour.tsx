@@ -68,20 +68,13 @@ export default function AiChatOnboardingTour({
     },
     {
       id: 4,
-      title: t("step4.title"),
-      content: t("step4.content"),
-      targetId: "ai-preset-prompts",
-      position: "top",
-    },
-    {
-      id: 5,
       title: t("step5.title"),
       content: t("step5.content"),
       targetId: "ai-session-list",
       position: "right",
     },
     {
-      id: 6,
+      id: 5,
       title: t("step6.title"),
       content: t("step6.content"),
       targetId: "ai-new-chat-button",

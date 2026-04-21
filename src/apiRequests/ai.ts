@@ -102,12 +102,19 @@ const aiApiRequest = {
     console.log("🚀 [FE Streaming] Body:", JSON.stringify(body, null, 2));
 
     try {
+      // Get JWT token from localStorage (same as http.ts does)
+      const accessToken = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      };
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
-        },
+        headers,
         body: JSON.stringify(body),
         credentials: "include",
       });
@@ -272,9 +279,9 @@ const aiApiRequest = {
   // LANGFUSE ANALYTICS
   // ============================================
 
-  getLangfuseTraces: (limit: number = 50) =>
+  getLangfuseTraces: (page: number = 1, limit: number = 50) =>
     http.get<{ payload: { data: { traces: any[]; total: number } } }>(
-      `/app/api/proxy/ai/admin/langfuse-traces?limit=${limit}`
+      `/app/api/proxy/ai/admin/langfuse-traces?page=${page}&limit=${limit}`
     ),
 
   getLangfuseTraceDetail: (traceId: string) =>
@@ -384,4 +391,3 @@ const aiApiRequest = {
 };
 
 export default aiApiRequest;
-
