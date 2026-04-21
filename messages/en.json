@@ -53,6 +53,9 @@
   },
   "AdminNav": {
     "dashboard": "Dashboard",
+    "aiAnalytics": "AI Analytics",
+    "aiTraces": "AI Traces",
+    "aiProviders": "AI Providers",
     "revenue": "Revenue",
     "payouts": "Payouts",
     "accounts": "Accounts",
@@ -1586,70 +1589,292 @@
   "AiDashboard": {
     "PageEyebrow": "Admin / Dashboard",
     "title": "AI Dashboard",
-    "description": "Manage and monitor AI system",
-    "pendingDrafts": "Pending Drafts",
-    "aiContent": "AI Exercises & Learning Paths",
-    "coursesIndexed": "Courses indexed",
-    "lessonsIndexed": "Lessons indexed",
-    "vectorsInQdrant": "vectors in Qdrant",
-    "qdrantStatus": "Qdrant Status",
-    "healthy": "Healthy",
-    "unknown": "Unknown",
-    "refresh": "Refresh",
-    "loading": "Loading...",
-    "vectorDbManagement": "Vector Database Management",
-    "reindexDescription": "Reindex data to Qdrant to improve AI search",
-    "reindexCourses": "Reindex Courses",
-    "reindexLessons": "Reindex Lessons",
-    "reindexAll": "Reindex All",
-    "reindexingCourses": "Reindexing courses...",
-    "reindexingLessons": "Reindexing lessons...",
-    "reindexingAll": "Reindexing all...",
-    "draftApproved": "Draft approved",
-    "draftApproveError": "Could not approve draft",
-    "draftRejected": "Draft rejected",
-    "draftRejectError": "Could not reject draft",
-    "reindexCoursesSuccess": "Reindexed courses",
-    "reindexCoursesError": "Could not reindex courses",
-    "reindexLessonsSuccess": "Reindexed lessons",
-    "reindexLessonsError": "Could not reindex lessons",
-    "reindexAllSuccess": "Reindexed all",
-    "reindexError": "Could not reindex",
-    "qdrantStatsError": "Could not get Qdrant stats",
-    "pendingDraftsList": "Pending Drafts List",
-    "reviewAndApprove": "Review and approve AI generated content",
-    "noPendingDrafts": "No pending drafts",
-    "type": "Type",
-    "content": "Content",
-    "createdAt": "Created At",
-    "actions": "Actions",
-    "view": "View",
-    "approve": "Approve",
-    "reject": "Reject",
-    "approving": "Approving...",
-    "rejecting": "Rejecting...",
-    "reindexResults": "Reindex Results",
-    "status": "Status",
-    "totalProcessed": "Total Processed",
-    "successCount": "Success",
-    "failCount": "Fail",
-    "close": "Close",
-    "qdrantStats": "Qdrant Stats",
-    "collection": "Collection",
-    "vectorCount": "Vector Count",
-    "statusLabel": "Status",
-    "config": "Config",
-    "noDataQdrant": "No data. Click \"View Qdrant Stats\" to load statistics.",
-    "reindexDetails": "Reindex process details",
-    "qdrantStatsDescription": "Detailed statistics about vector database",
-    "pointsCount": "Points Count",
-    "version": "Version",
-    "success": "Success",
+    "description": "Overview of AI system health, usage, and content management",
+    "emptyValue": "-",
+    "yes": "Yes",
+    "no": "No",
     "error": "Error",
-    "latestReindexResults": "Latest reindex results:",
-    "indexed": "Indexed",
-    "failed": "Failed",
-    "duration": "Duration"
+    "draftApproved": "Draft approved",
+    "draftRejected": "Draft rejected",
+    "toasts": {
+      "reindexSuccess": "Reindex completed"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "advanced": "Advanced"
+    },
+    "overview": {
+      "systemStatus": {
+        "label": "System Status",
+        "online": "Online",
+        "issue": "Issue"
+      },
+      "totalConversations": {
+        "label": "Total Conversations",
+        "successful": "{count} successful"
+      },
+      "aiCost": {
+        "label": "AI Cost (7 days)",
+        "tokensUsed": "{count} tokens used"
+      },
+      "knowledgeBase": {
+        "label": "Knowledge Base",
+        "indexed": "{courses} courses, {lessons} lessons indexed"
+      },
+      "pendingReview": {
+        "title": "Content Awaiting Review",
+        "description": "AI-generated learning paths and exercises that need your approval before publishing",
+        "empty": "All clear - no pending content to review",
+        "learningPath": "Learning Path",
+        "generatedDraft": "AI-generated draft",
+        "approve": "Approve",
+        "reject": "Reject",
+        "columns": {
+          "type": "Type",
+          "description": "Description",
+          "created": "Created",
+          "actions": "Actions"
+        }
+      },
+      "quickLinks": {
+        "analytics": {
+          "title": "AI Analytics",
+          "description": "Cost breakdown and usage trends"
+        },
+        "traces": {
+          "title": "AI Traces",
+          "description": "Inspect individual conversations"
+        },
+        "providers": {
+          "title": "AI Providers",
+          "description": "Switch models and manage API keys"
+        }
+      }
+    },
+    "advanced": {
+      "vectorDb": {
+        "title": "Vector Database Management",
+        "description": "Reindex course and lesson data from PostgreSQL to Qdrant. Qdrant v{version}",
+        "reindexAll": "Reindex All",
+        "columns": {
+          "collection": "Collection",
+          "vectors": "Vectors",
+          "status": "Status"
+        }
+      },
+      "runtime": {
+        "chatTotal": "Chat Total",
+        "chatTotalDetail": "Success: {success} | Failed: {failed}",
+        "avgLatency": "Avg Latency",
+        "avgLatencyDetail": "P95: {p95}ms",
+        "legacyFallback": "Legacy Fallback",
+        "legacyFallbackDetail": "Mock: {mock}",
+        "tokensTotal": "Tokens Total",
+        "tokensTotalDetail": "Avg/chat: {avg}"
+      },
+      "recentRuns": {
+        "title": "Recent Chat Runs",
+        "description": "Pipeline, intent, latency, tokens",
+        "ok": "OK",
+        "fail": "FAIL",
+        "empty": "No chat runs yet",
+        "columns": {
+          "pipeline": "Pipeline",
+          "intent": "Intent",
+          "latency": "Latency",
+          "tokens": "Tokens",
+          "status": "Status"
+        }
+      },
+      "providerConfig": {
+        "title": "Provider Configuration",
+        "requestedProvider": "Requested provider",
+        "effectiveProvider": "Effective provider",
+        "chatModel": "Chat model",
+        "embeddingModel": "Embedding model",
+        "mockFallback": "Mock fallback",
+        "status": "Status",
+        "manageProviders": "Manage providers ->"
+      }
+    },
+    "dialog": {
+      "title": "Reindex Complete",
+      "success": "Success",
+      "indexed": "Indexed",
+      "failed": "Failed",
+      "duration": "Duration"
+    }
+  },
+  "AiProviders": {
+    "PageEyebrow": "Admin / AI Providers",
+    "Title": "AI Provider Management",
+    "Description": "Manage LLM providers and switch models while the system is running",
+    "title": "AI Providers",
+    "description": "Manage LLM providers and switch models at runtime",
+    "loading": "Loading...",
+    "emptyValue": "—",
+    "tabs": {
+      "overview": "Overview",
+      "advanced": "Advanced"
+    },
+    "summary": {
+      "activeProvider": "Active Provider",
+      "mockMode": "Mock mode",
+      "live": "Live",
+      "chatModel": "Chat Model",
+      "embeddingModel": "Embedding: {model}",
+      "providerHealth": "Provider Health"
+    },
+    "health": {
+      "online": "Online",
+      "offline": "Offline",
+      "noKey": "No key"
+    },
+    "switcher": {
+      "title": "Switch Provider / Model",
+      "description": "Models are fetched from active API keys. Changes take effect immediately.",
+      "provider": "Provider",
+      "chatModel": "Chat Model",
+      "embeddingModelLabel": "Embedding Model",
+      "selectProvider": "Select provider...",
+      "selectChatModel": "Select chat model...",
+      "keepCurrent": "Keep current",
+      "applyChanges": "Apply Changes",
+      "switching": "Switching...",
+      "modelCount": "({count} models)"
+    },
+    "toast": {
+      "updatedTitle": "Provider updated",
+      "updatedDescription": "{provider} / {model}",
+      "failedTitle": "Failed to switch provider",
+      "failedDescription": "Please verify the configuration and try again."
+    },
+    "allModels": {
+      "title": "All Available Models",
+      "modelCount": "{count} models",
+      "active": "Active",
+      "columns": {
+        "modelId": "Model",
+        "provider": "Provider",
+        "type": "Type",
+        "context": "Context",
+        "status": "Status"
+      }
+    },
+    "healthRaw": {
+      "title": "Provider Health Check (raw)"
+    },
+    "metadataRaw": {
+      "title": "Provider Metadata (raw)"
+    }
+  },
+  "AiAnalytics": {
+    "PageEyebrow": "Admin / AI Analytics",
+    "Title": "AI Analytics",
+    "Description": "Monitor AI platform usage, cost, and performance",
+    "title": "AI Analytics",
+    "description": "Usage, cost, and performance overview for the AI platform",
+    "tabs": {
+      "overview": "Overview",
+      "advanced": "Advanced"
+    },
+    "range": {
+      "last24h": "Last 24h",
+      "last7Days": "Last 7 days",
+      "last14Days": "Last 14 days",
+      "last30Days": "Last 30 days"
+    },
+    "kpis": {
+      "conversations": "Conversations",
+      "totalCost": "Total Cost",
+      "avgResponse": "Avg Response",
+      "successRate": "Success Rate"
+    },
+    "charts": {
+      "usagePerDay": "Usage per Day",
+      "whatUsersAskAbout": "What Users Ask About",
+      "costPerDay": "Cost per Day",
+      "modelUsage": "Model Usage"
+    },
+    "series": {
+      "conversations": "Conversations",
+      "cost": "Cost ($)",
+      "tokens": "Tokens",
+      "calls": "Calls"
+    },
+    "advanced": {
+      "totalTokens": "Total Tokens",
+      "errorRate": "Error Rate",
+      "promptTokens": "Prompt Tokens",
+      "completionTokens": "Completion Tokens",
+      "embeddingTokens": "Embedding Tokens"
+    },
+    "topUsers": {
+      "title": "Top Users",
+      "noData": "No data",
+      "columns": {
+        "userId": "User ID",
+        "traces": "Traces",
+        "tokens": "Tokens",
+        "cost": "Cost"
+      }
+    }
+  },
+  "AiTraces": {
+    "PageEyebrow": "Admin / AI Traces",
+    "Title": "AI Traces",
+    "Description": "Tracking {count} AI conversations",
+    "title": "AI Traces",
+    "trackedCount": "{count} conversations tracked",
+    "openLangfuse": "Open Langfuse",
+    "loading": "Loading...",
+    "noConversations": "No conversations yet",
+    "recentConversations": "Recent Conversations",
+    "advancedTraces": "Advanced Traces",
+    "emptyValue": "—",
+    "pageSummary": "Page {page}/{total} • {count} results",
+    "tabs": {
+      "overview": "Overview",
+      "advanced": "Advanced"
+    },
+    "columns": {
+      "time": "Time",
+      "userPrompt": "What user asked",
+      "type": "Type",
+      "responseTime": "Response time",
+      "cost": "Cost",
+      "actions": "Actions",
+      "name": "Name",
+      "user": "User",
+      "intent": "Intent",
+      "model": "Model",
+      "latency": "Latency",
+      "observations": "Obs"
+    },
+    "intent": {
+      "courseAdvice": "Course advice",
+      "learningQA": "Learning Q&A",
+      "dataQuery": "Data query",
+      "chartRequest": "Chart request",
+      "fileAnalysis": "File analysis",
+      "chat": "Chat",
+      "followUp": "Follow-up",
+      "aiCall": "AI call",
+      "fullChat": "Full chat"
+    },
+    "detail": {
+      "title": "Conversation Detail",
+      "responseTime": "Response time",
+      "cost": "Cost",
+      "steps": "Steps",
+      "user": "User",
+      "userAsked": "User asked",
+      "aiAnswered": "AI answered",
+      "processingSteps": "Processing steps ({count})",
+      "tokens": "Tokens: {count}",
+      "stepCost": "Cost: ${cost}",
+      "viewFullTrace": "View full trace on Langfuse"
+    }
   },
   "AiDrafts": {
     "title": "AI Drafts",

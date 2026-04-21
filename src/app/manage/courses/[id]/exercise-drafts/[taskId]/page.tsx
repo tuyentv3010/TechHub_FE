@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,23 +13,39 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useTranslations } from "next-intl";
-import { useGetDraftById, useApproveExerciseDraftMutation, useRejectDraftMutation } from "@/queries/useAi";
+import {
+  useApproveExerciseDraftMutation,
+  useGetDraftById,
+  useRejectDraftMutation,
+} from "@/queries/useAi";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 import TableSkeleton from "@/components/Skeleton";
 import courseApiRequest from "@/apiRequests/course";
-import { useState, useCallback, useMemo, memo } from "react";
 
-// Memoized MCQ Option component to prevent re-renders
-const MCQOption = memo(function MCQOption({ 
-  option, 
-  optIdx, 
-  isSelected, 
-  onToggle 
-}: { 
-  option: string; 
-  optIdx: number; 
-  isSelected: boolean; 
+type DraftExerciseType = "MCQ" | "ESSAY" | "CODING";
+
+interface DraftExercise {
+  id: string;
+  type: DraftExerciseType;
+  question: string;
+  options?: string[];
+  explanation?: string;
+  rubric?: string[];
+  testCases?: Array<{ input: string; expectedOutput: string }>;
+  suggestedCorrectIndices?: number[];
+  difficulty?: string;
+}
+
+const MCQOption = memo(function MCQOption({
+  option,
+  optIdx,
+  isSelected,
+  onToggle,
+}: {
+  option: string;
+  optIdx: number;
+  isSelected: boolean;
   onToggle: () => void;
 }) {
   return (
@@ -50,22 +67,19 @@ const MCQOption = memo(function MCQOption({
           {String.fromCharCode(65 + optIdx)}.
         </span>
         <span className="flex-1">{option}</span>
-        {isSelected && (
-          <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
-        )}
+        {isSelected && <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />}
       </div>
     </div>
   );
 });
 
-// Memoized MCQ Options list component
 const MCQOptionsList = memo(function MCQOptionsList({
   exerciseIdx,
   options,
   selectedOptions,
   onToggle,
   selectLabel,
-  selectedLabel
+  selectedLabel,
 }: {
   exerciseIdx: number;
   options: string[];
@@ -100,12 +114,118 @@ const MCQOptionsList = memo(function MCQOptionsList({
   );
 });
 
+function normalizeExercises(rawPayload: any): DraftExercise[] {
+  const parseLegacyChoices = (payload: any) => {
+    if (payload?.choices?.[0]?.message?.content) {
+      try {
+        return JSON.parse(payload.choices[0].message.content);
+      } catch {
+        return null;
+      }
+    }
+    return payload;
+  };
+
+  const payload = parseLegacyChoices(rawPayload);
+  const source = payload?.exercises || payload?.drafts || payload;
+  if (!source || typeof source !== "object") {
+    return [];
+  }
+
+  const normalized: DraftExercise[] = [];
+
+  const pushExercise = (type: DraftExerciseType, item: any, index: number) => {
+    if (!item || typeof item !== "object") {
+      return;
+    }
+    if (type === "MCQ") {
+      const rawOptions = Array.isArray(item.options) ? item.options : item.options?.choices;
+      const options = Array.isArray(rawOptions)
+        ? rawOptions.map((option: any) => (typeof option === "string" ? option : String(option?.text || "")))
+        : [];
+      const suggestedCorrectIndices = Array.isArray(rawOptions)
+        ? rawOptions
+            .map((option: any, optionIndex: number) =>
+              option?.correct === true || option?.isCorrect === true ? optionIndex : -1
+            )
+            .filter((optionIndex: number) => optionIndex >= 0)
+        : [];
+
+      normalized.push({
+        id: `mcq-${index}`,
+        type,
+        question: String(item.question || item.prompt || ""),
+        options,
+        explanation: item.explanation ? String(item.explanation) : undefined,
+        suggestedCorrectIndices,
+        difficulty: item.difficulty ? String(item.difficulty) : undefined,
+      });
+      return;
+    }
+
+    if (type === "ESSAY") {
+      normalized.push({
+        id: `essay-${index}`,
+        type,
+        question: String(item.question || item.prompt || ""),
+        explanation: item.explanation ? String(item.explanation) : undefined,
+        rubric: Array.isArray(item.rubric || item.guidelines)
+          ? (item.rubric || item.guidelines).map((entry: any) => String(entry))
+          : [],
+        difficulty: item.difficulty ? String(item.difficulty) : undefined,
+      });
+      return;
+    }
+
+    normalized.push({
+      id: `coding-${index}`,
+      type,
+      question: String(item.question || item.title || item.description || ""),
+      explanation: item.explanation ? String(item.explanation) : undefined,
+      testCases: Array.isArray(item.testCases)
+        ? item.testCases.map((testCase: any) => ({
+            input: String(testCase?.input || ""),
+            expectedOutput: String(testCase?.expectedOutput || ""),
+          }))
+        : [],
+      difficulty: item.difficulty ? String(item.difficulty) : undefined,
+    });
+  };
+
+  (Array.isArray(source.mcq) ? source.mcq : []).forEach((item: any, index: number) => pushExercise("MCQ", item, index));
+  (Array.isArray(source.essay) ? source.essay : []).forEach((item: any, index: number) =>
+    pushExercise("ESSAY", item, index)
+  );
+  (Array.isArray(source.coding) ? source.coding : []).forEach((item: any, index: number) =>
+    pushExercise("CODING", item, index)
+  );
+
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  if (Array.isArray(source)) {
+    source.forEach((item: any, index: number) => {
+      const type = String(item?.type || "MCQ").toUpperCase();
+      if (type === "CODING") {
+        pushExercise("CODING", item, index);
+      } else if (type === "ESSAY" || type === "OPEN_ENDED") {
+        pushExercise("ESSAY", item, index);
+      } else {
+        pushExercise("MCQ", item, index);
+      }
+    });
+  }
+
+  return normalized;
+}
+
 export default function ExerciseDraftDetailPage() {
   const params = useParams();
   const router = useRouter();
   const courseId = params.id as string;
   const taskId = params.taskId as string;
-  
+
   const { toast } = useToast();
   const t = useTranslations("AiExercise");
   const tCommon = useTranslations("common");
@@ -115,140 +235,115 @@ export default function ExerciseDraftDetailPage() {
   const approveDraftMutation = useApproveExerciseDraftMutation();
   const rejectDraftMutation = useRejectDraftMutation();
 
-  // Parse draft and exercises - memoized to prevent re-parsing on each render
   const draft = draftData?.payload?.data;
-  
-  const exercises = useMemo(() => {
-    try {
-      if (draft?.resultPayload?.choices?.[0]?.message?.content) {
-        const contentStr = draft.resultPayload.choices[0].message.content;
-        const parsedContent = JSON.parse(contentStr);
-        return parsedContent.exercises || null;
-      }
-    } catch (e) {
-      console.error("Failed to parse exercise content:", e);
-    }
-    return null;
-  }, [draft?.resultPayload]);
-
-  // State to track selected correct answers for each exercise
+  const exercises = useMemo(() => normalizeExercises(draft?.resultPayload), [draft?.resultPayload]);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number[]>>({});
+  const [includedExercises, setIncludedExercises] = useState<Record<number, boolean>>({});
 
-  const toggleAnswer = useCallback((exerciseIdx: number, optionIdx: number) => {
-    setSelectedAnswers(prev => {
-      const current = prev[exerciseIdx] || [];
-      if (current.includes(optionIdx)) {
-        return {
-          ...prev,
-          [exerciseIdx]: current.filter(idx => idx !== optionIdx)
-        };
-      } else {
-        return {
-          ...prev,
-          [exerciseIdx]: [...current, optionIdx]
-        };
+  useEffect(() => {
+    const nextSelectedAnswers: Record<number, number[]> = {};
+    const nextIncludedExercises: Record<number, boolean> = {};
+    exercises.forEach((exercise, index) => {
+      nextIncludedExercises[index] = true;
+      if (exercise.type === "MCQ" && exercise.suggestedCorrectIndices?.length) {
+        nextSelectedAnswers[index] = exercise.suggestedCorrectIndices;
       }
     });
+    setSelectedAnswers(nextSelectedAnswers);
+    setIncludedExercises(nextIncludedExercises);
+  }, [exercises]);
+
+  const toggleAnswer = useCallback((exerciseIdx: number, optionIdx: number) => {
+    setSelectedAnswers((prev) => {
+      const current = prev[exerciseIdx] || [];
+      return current.includes(optionIdx)
+        ? { ...prev, [exerciseIdx]: current.filter((idx) => idx !== optionIdx) }
+        : { ...prev, [exerciseIdx]: [...current, optionIdx] };
+    });
+  }, []);
+
+  const toggleExerciseInclusion = useCallback((exerciseIdx: number) => {
+    setIncludedExercises((prev) => ({ ...prev, [exerciseIdx]: !(prev[exerciseIdx] ?? true) }));
   }, []);
 
   const handleApprove = async () => {
     try {
-      console.log("🚀 handleApprove started");
-      console.log("📋 Exercises:", exercises);
-      console.log("📋 Selected answers:", selectedAnswers);
-      
-      // Validate that all MCQ exercises have correct answers selected
-      if (exercises && exercises.length > 0) {
-        for (let i = 0; i < exercises.length; i++) {
-          const exercise = exercises[i];
-          console.log(`📝 Exercise ${i}: type=${exercise.type}`);
-          if (exercise.type === "MCQ") {
-            const selected = selectedAnswers[i] || [];
-            console.log(`📝 MCQ ${i}: selected answers = ${JSON.stringify(selected)}`);
-            if (selected.length === 0) {
-              console.log(`❌ MCQ ${i} has no selected answers - showing error toast`);
-              toast({
-                title: tCommon("error"),
-                description: `${t("pleaseSelectCorrectAnswer") || "Vui lòng chọn đáp án đúng cho"} ${t("mcq")} ${i + 1}`,
-                variant: "destructive",
-              });
-              return;
-            }
-          }
+      const selectedExercises = exercises.filter((_, index) => includedExercises[index] !== false);
+
+      if (selectedExercises.length === 0) {
+        toast({
+          title: tCommon("error"),
+          description: t("noExercises") || "Vui lòng chọn ít nhất một bài tập để duyệt.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      for (const [index, exercise] of exercises.entries()) {
+        if (includedExercises[index] === false) {
+          continue;
+        }
+        if (exercise.type === "MCQ" && (selectedAnswers[index] || []).length === 0) {
+          toast({
+            title: tCommon("error"),
+            description:
+              `${t("pleaseSelectCorrectAnswer") || "Vui lòng chọn đáp án đúng cho"} ${t("mcq")} ${index + 1}`,
+            variant: "destructive",
+          });
+          return;
         }
       }
 
-      // 1. Approve draft in AI service
       await approveDraftMutation.mutateAsync(taskId);
-      
-      // 2. Get lessonId from draft
       const lessonId = draft?.targetReference;
-      
-      console.log("🔍 Draft lessonId:", lessonId);
-      console.log("🔍 CourseId:", courseId);
-      console.log("🔍 Total exercises:", exercises?.length);
-      
       if (!lessonId) {
         throw new Error("Lesson ID not found in draft");
       }
 
-      // 3. Prepare ALL exercises to be created
-      const exercisesData = [];
-      if (exercises && exercises.length > 0) {
-        for (let idx = 0; idx < exercises.length; idx++) {
-          const exercise = exercises[idx];
-          
-          if (exercise.type === "MCQ") {
-            const correctAnswerIndices = selectedAnswers[idx] || [];
-            exercisesData.push({
-              type: "MULTIPLE_CHOICE",
-              question: exercise.question,
-              options: {
-                choices: exercise.options?.map((optText: string, optIdx: number) => ({
-                  id: String.fromCharCode(97 + optIdx), // a, b, c, d
-                  text: optText,
-                  isCorrect: correctAnswerIndices.includes(optIdx)
-                })) || []
-              }
-            });
-          } else if (exercise.type === "CODING") {
-            exercisesData.push({
-              type: "CODING",
-              question: exercise.question,
-              testCases: exercise.testCases || []
-            });
-          } else if (exercise.type === "ESSAY") {
-            exercisesData.push({
-              type: "OPEN_ENDED",
-              question: exercise.question,
-              options: {}
-            });
-          }
+      const exercisesData = selectedExercises.map((exercise) => {
+        const exerciseIndex = exercises.findIndex((item) => item.id === exercise.id);
+        if (exercise.type === "MCQ") {
+          return {
+            type: "MULTIPLE_CHOICE",
+            question: exercise.question,
+            options: {
+              choices:
+                exercise.options?.map((option, optionIndex) => ({
+                  id: String.fromCharCode(97 + optionIndex),
+                  text: option,
+                  isCorrect: (selectedAnswers[exerciseIndex] || []).includes(optionIndex),
+                })) || [],
+            },
+          };
         }
-      }
 
-      console.log("🔍 Total exercises to create:", exercisesData.length);
-      console.log("🔍 Exercises data:", JSON.stringify(exercisesData, null, 2));
+        if (exercise.type === "CODING") {
+          return {
+            type: "CODING",
+            question: exercise.question,
+            testCases: exercise.testCases || [],
+          };
+        }
+
+        return {
+          type: "OPEN_ENDED",
+          question: exercise.question,
+          options: {},
+        };
+      });
 
       if (exercisesData.length > 0) {
-        // 4. Call proxy API to create all exercises at once
-        const result = await courseApiRequest.createExercises(courseId, lessonId, exercisesData);
-        console.log("✅ Exercises created:", result);
-        
-        toast({
-          title: tCommon("success"),
-          description: `${tAiDrafts("approveSuccessWithExercise") || "Đã duyệt draft và tạo"} ${exercisesData.length} ${t("exercises") || "bài tập"}`,
-        });
-      } else {
-        toast({
-          title: tCommon("success"),
-          description: tAiDrafts("approveSuccess"),
-        });
+        await courseApiRequest.createExercises(courseId, lessonId, exercisesData);
       }
-      
+
+      toast({
+        title: tCommon("success"),
+        description:
+          `${tAiDrafts("approveSuccessWithExercise") || "Đã duyệt draft và tạo"} ${exercisesData.length} ${t("exercises") || "bài tập"}`,
+      });
       router.push(`/manage/courses/${courseId}/content`);
-    } catch (error) {
-      console.error("Approval error:", error);
+    } catch (approvalError) {
+      console.error("Approval error:", approvalError);
       toast({
         title: tCommon("error"),
         description: tAiDrafts("approveError"),
@@ -288,10 +383,6 @@ export default function ExerciseDraftDetailPage() {
               <p>Error: {JSON.stringify(error)}</p>
             </div>
           )}
-          <div className="text-xs text-muted-foreground">
-            <p>Task ID: {taskId}</p>
-            <p>Course ID: {courseId}</p>
-          </div>
           <Button onClick={() => router.push(`/manage/courses/${courseId}/content`)} className="mt-4">
             {tCommon("back")}
           </Button>
@@ -300,7 +391,7 @@ export default function ExerciseDraftDetailPage() {
     );
   }
 
-  if (!exercises) {
+  if (!exercises.length) {
     return (
       <div className="manage-page">
         <div className="text-center space-y-4">
@@ -317,9 +408,10 @@ export default function ExerciseDraftDetailPage() {
     );
   }
 
+  const selectedCount = exercises.filter((_, index) => includedExercises[index] !== false).length;
+
   return (
     <div className="container mx-auto py-8 space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -331,125 +423,103 @@ export default function ExerciseDraftDetailPage() {
           <h1 className="text-3xl font-bold">{tAiDrafts("draftDetail")}</h1>
           <div className="flex items-center gap-2 mt-2">
             <Badge variant="outline">{draft.taskType}</Badge>
-            <Badge variant={draft.status === "DRAFT" ? "secondary" : "default"}>
-              {draft.status}
-            </Badge>
-            <span className="text-sm text-muted-foreground">
-              {new Date(draft.createdAt).toLocaleString()}
-            </span>
+            <Badge variant={draft.status === "DRAFT" ? "secondary" : "default"}>{draft.status}</Badge>
+            <span className="text-sm text-muted-foreground">{new Date(draft.createdAt).toLocaleString()}</span>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            disabled={rejectDraftMutation.isPending}
-            onClick={handleReject}
-          >
-            {rejectDraftMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
+          <Button variant="outline" disabled={rejectDraftMutation.isPending} onClick={handleReject}>
+            {rejectDraftMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {tAiDrafts("reject")}
           </Button>
-          <Button
-            disabled={approveDraftMutation.isPending}
-            onClick={handleApprove}
-          >
-            {approveDraftMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
+          <Button disabled={approveDraftMutation.isPending} onClick={handleApprove}>
+            {approveDraftMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {tAiDrafts("approve")}
           </Button>
         </div>
       </div>
 
-      {/* Exercise Content */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{t("generatedExercises")}</h2>
           <Badge variant="secondary" className="text-xs">
-            {exercises?.length || 0} {t("exercises") || "bài tập"}
+            {selectedCount}/{exercises.length} {t("exercises") || "bài tập"}
           </Badge>
         </div>
-        {exercises && exercises.length > 0 ? (
-          <Accordion type="single" collapsible className="w-full">
-            {exercises.map((exercise: {
-              type: string;
-              question: string;
-              options?: string[];
-              explanation?: string;
-              testCases?: Array<{ input: string; expectedOutput: string }>;
-            }, idx: number) => (
-              <AccordionItem key={idx} value={`exercise-${idx}`}>
-                <AccordionTrigger>
-                  <div className="flex items-center gap-3 w-full">
-                    <Badge variant="outline">
-                      {exercise.type}
-                    </Badge>
-                    <span className="text-sm font-medium">
-                      {t(exercise.type.toLowerCase())} {idx + 1}
-                    </span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <Card>
-                    <CardContent className="space-y-3 pt-4">
-                      <p className="font-medium">{exercise.question}</p>
-                      
-                      {/* MCQ Options - Using memoized component */}
-                      {exercise.type === "MCQ" && exercise.options && (
-                        <MCQOptionsList
-                          exerciseIdx={idx}
-                          options={exercise.options}
-                          selectedOptions={selectedAnswers[idx] || []}
-                          onToggle={toggleAnswer}
-                          selectLabel={t("selectCorrectAnswers") || "Chọn đáp án đúng"}
-                          selectedLabel={t("selected") || "đã chọn"}
-                        />
-                      )}
 
-                      {/* Test Cases for Coding */}
-                      {exercise.type === "CODING" && exercise.testCases && (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">{t("testCases")}:</p>
-                          {exercise.testCases.map((testCase, tcIdx) => (
-                            <div key={tcIdx} className="p-3 bg-muted rounded text-sm space-y-1">
-                              <div>
-                                <strong className="text-foreground">Input:</strong>{" "}
-                                <code className="bg-background px-1 py-0.5 rounded">{testCase.input}</code>
-                              </div>
-                              <div>
-                                <strong className="text-foreground">Expected:</strong>{" "}
-                                <code className="bg-background px-1 py-0.5 rounded">{testCase.expectedOutput}</code>
-                              </div>
+        <Accordion type="single" collapsible className="w-full">
+          {exercises.map((exercise, idx) => (
+            <AccordionItem key={exercise.id} value={exercise.id}>
+              <AccordionTrigger>
+                <div className="flex items-center gap-3 w-full">
+                  <Checkbox
+                    checked={includedExercises[idx] !== false}
+                    onClick={(event) => event.stopPropagation()}
+                    onCheckedChange={() => toggleExerciseInclusion(idx)}
+                  />
+                  <Badge variant="outline">{exercise.type}</Badge>
+                  <span className="text-sm font-medium">
+                    {t(exercise.type.toLowerCase())} {idx + 1}
+                  </span>
+                  {exercise.difficulty && <Badge variant="secondary">{exercise.difficulty}</Badge>}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <Card>
+                  <CardContent className="space-y-4 pt-4">
+                    <p className="font-medium">{exercise.question}</p>
+
+                    {exercise.type === "MCQ" && exercise.options && (
+                      <MCQOptionsList
+                        exerciseIdx={idx}
+                        options={exercise.options}
+                        selectedOptions={selectedAnswers[idx] || []}
+                        onToggle={toggleAnswer}
+                        selectLabel={t("selectCorrectAnswers") || "Chọn đáp án đúng"}
+                        selectedLabel={t("selected") || "đã chọn"}
+                      />
+                    )}
+
+                    {exercise.type === "CODING" && exercise.testCases && exercise.testCases.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">{t("testCases")}:</p>
+                        {exercise.testCases.map((testCase, tcIdx) => (
+                          <div key={tcIdx} className="p-3 bg-muted rounded text-sm space-y-1">
+                            <div>
+                              <strong className="text-foreground">Input:</strong>{" "}
+                              <code className="bg-background px-1 py-0.5 rounded">{testCase.input}</code>
                             </div>
+                            <div>
+                              <strong className="text-foreground">Expected:</strong>{" "}
+                              <code className="bg-background px-1 py-0.5 rounded">{testCase.expectedOutput}</code>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {exercise.type === "ESSAY" && exercise.rubric && exercise.rubric.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Rubric:</p>
+                        <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                          {exercise.rubric.map((entry, rubricIdx) => (
+                            <li key={`${exercise.id}-rubric-${rubricIdx}`}>{entry}</li>
                           ))}
-                        </div>
-                      )}
-                      
-                      {/* Explanation */}
-                      {exercise.explanation && (
-                        <Accordion type="single" collapsible className="w-full">
-                          <AccordionItem value="explanation" className="border-none">
-                            <AccordionTrigger className="text-sm font-medium hover:no-underline">
-                              {t("explanation") || "Giải thích"}
-                            </AccordionTrigger>
-                            <AccordionContent>
-                              <div className="p-3 bg-muted rounded">
-                                <p className="text-sm">{exercise.explanation}</p>
-                              </div>
-                            </AccordionContent>
-                          </AccordionItem>
-                        </Accordion>
-                      )}
-                    </CardContent>
-                  </Card>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        ) : (
-          <p className="text-muted-foreground">{t("noExercises")}</p>
-        )}
+                        </ul>
+                      </div>
+                    )}
+
+                    {exercise.explanation && (
+                      <div className="p-3 bg-muted rounded">
+                        <p className="text-sm">{exercise.explanation}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </div>
     </div>
   );

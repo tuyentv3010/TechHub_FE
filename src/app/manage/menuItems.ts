@@ -2,6 +2,9 @@
 
 import { Role } from "@/constants/type";
 import {
+  Activity,
+  BarChart3,
+  Cpu,
   FolderOpen,
   HandCoins,
   Home,
@@ -32,6 +35,27 @@ const menuItems: MenuItem[] = [
     titleKey: "dashboard",
     Icon: Home,
     href: "/manage/dashboard",
+    roles: [Role.Admin],
+  },
+  {
+    title: "AI Analytics",
+    titleKey: "aiAnalytics",
+    Icon: BarChart3,
+    href: "/manage/ai-analytics",
+    roles: [Role.Admin],
+  },
+  {
+    title: "AI Traces",
+    titleKey: "aiTraces",
+    Icon: Activity,
+    href: "/manage/ai-traces",
+    roles: [Role.Admin],
+  },
+  {
+    title: "AI Providers",
+    titleKey: "aiProviders",
+    Icon: Cpu,
+    href: "/manage/ai-providers",
     roles: [Role.Admin],
   },
   {

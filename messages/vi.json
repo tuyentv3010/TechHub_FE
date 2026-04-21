@@ -50,6 +50,9 @@
   },
   "AdminNav": {
     "dashboard": "Dashboard",
+    "aiAnalytics": "Phân tích AI",
+    "aiTraces": "Theo dõi AI",
+    "aiProviders": "Nhà cung cấp AI",
     "revenue": "Doanh thu",
     "payouts": "Payouts",
     "accounts": "Nhân viên",
@@ -1560,6 +1563,117 @@
   "AiDashboard": {
     "PageEyebrow": "Admin / Dashboard",
     "title": "AI Dashboard",
+    "emptyValue": "-",
+    "yes": "Có",
+    "no": "Không",
+    "toasts": {
+      "reindexSuccess": "Đã reindex thành công"
+    },
+    "tabs": {
+      "overview": "Tổng quan",
+      "advanced": "Nâng cao"
+    },
+    "overview": {
+      "systemStatus": {
+        "label": "Trạng thái hệ thống",
+        "online": "Hoạt động",
+        "issue": "Có vấn đề"
+      },
+      "totalConversations": {
+        "label": "Tổng số hội thoại",
+        "successful": "{count} thành công"
+      },
+      "aiCost": {
+        "label": "Chi phí AI (7 ngày)",
+        "tokensUsed": "{count} tokens đã dùng"
+      },
+      "knowledgeBase": {
+        "label": "Kho tri thức",
+        "indexed": "{courses} khóa học, {lessons} bài học đã index"
+      },
+      "pendingReview": {
+        "title": "Nội dung chờ duyệt",
+        "description": "Learning path và bài tập do AI tạo đang chờ bạn duyệt trước khi xuất bản",
+        "empty": "Đang trống - chưa có nội dung nào cần duyệt",
+        "learningPath": "Lộ trình học",
+        "generatedDraft": "Bản nháp do AI tạo",
+        "approve": "Duyệt",
+        "reject": "Từ chối",
+        "columns": {
+          "type": "Loại",
+          "description": "Mô tả",
+          "created": "Ngày tạo",
+          "actions": "Thao tác"
+        }
+      },
+      "quickLinks": {
+        "analytics": {
+          "title": "Phân tích AI",
+          "description": "Chi phí, xu hướng sử dụng và hiệu năng"
+        },
+        "traces": {
+          "title": "Theo dõi AI",
+          "description": "Xem từng cuộc hội thoại chi tiết"
+        },
+        "providers": {
+          "title": "Nhà cung cấp AI",
+          "description": "Chuyển model và quản lý API key"
+        }
+      }
+    },
+    "advanced": {
+      "vectorDb": {
+        "title": "Quản lý vector database",
+        "description": "Reindex dữ liệu khóa học và bài học từ PostgreSQL sang Qdrant. Qdrant v{version}",
+        "reindexAll": "Reindex tất cả",
+        "columns": {
+          "collection": "Collection",
+          "vectors": "Số vector",
+          "status": "Trạng thái"
+        }
+      },
+      "runtime": {
+        "chatTotal": "Tổng chat",
+        "chatTotalDetail": "Thành công: {success} | Thất bại: {failed}",
+        "avgLatency": "Độ trễ trung bình",
+        "avgLatencyDetail": "P95: {p95}ms",
+        "legacyFallback": "Legacy fallback",
+        "legacyFallbackDetail": "Mock: {mock}",
+        "tokensTotal": "Tổng tokens",
+        "tokensTotalDetail": "TB/chat: {avg}"
+      },
+      "recentRuns": {
+        "title": "Các lượt chat gần đây",
+        "description": "Pipeline, intent, độ trễ và tokens",
+        "ok": "OK",
+        "fail": "FAIL",
+        "empty": "Chưa có lượt chat nào",
+        "columns": {
+          "pipeline": "Pipeline",
+          "intent": "Intent",
+          "latency": "Độ trễ",
+          "tokens": "Tokens",
+          "status": "Trạng thái"
+        }
+      },
+      "providerConfig": {
+        "title": "Cấu hình provider",
+        "requestedProvider": "Provider được yêu cầu",
+        "effectiveProvider": "Provider đang hiệu lực",
+        "chatModel": "Model chat",
+        "embeddingModel": "Model embedding",
+        "mockFallback": "Mock fallback",
+        "status": "Trạng thái",
+        "manageProviders": "Quản lý provider ->"
+      }
+    },
+    "dialog": {
+      "title": "Hoàn tất reindex",
+      "success": "Thành công",
+      "indexed": "Đã index",
+      "failed": "Thất bại",
+      "duration": "Thời gian"
+    },
     "description": "Quản lý và giám sát hệ thống AI",
     "pendingDrafts": "Drafts chờ duyệt",
     "aiContent": "Bài tập & lộ trình AI",
@@ -1624,6 +1738,177 @@
     "indexed": "Đã index",
     "failed": "Thất bại",
     "duration": "Thời gian"
+  },
+  "AiProviders": {
+    "PageEyebrow": "Admin / Nhà cung cấp AI",
+    "Title": "Quản lý nhà cung cấp AI",
+    "Description": "Quản lý nhà cung cấp LLM và chuyển mô hình ngay khi hệ thống đang chạy",
+    "title": "Quản lý nhà cung cấp AI",
+    "description": "Quản lý nhà cung cấp LLM và chuyển mô hình ngay khi hệ thống đang chạy",
+    "loading": "Đang tải...",
+    "emptyValue": "—",
+    "tabs": {
+      "overview": "Tổng quan",
+      "advanced": "Nâng cao"
+    },
+    "summary": {
+      "activeProvider": "Nhà cung cấp đang hoạt động",
+      "mockMode": "Chế độ mock",
+      "live": "Đang chạy thật",
+      "chatModel": "Mô hình chat",
+      "embeddingModel": "Embedding: {model}",
+      "providerHealth": "Tình trạng nhà cung cấp"
+    },
+    "health": {
+      "online": "Hoạt động",
+      "offline": "Mất kết nối",
+      "noKey": "Chưa có API key"
+    },
+    "switcher": {
+      "title": "Chuyển nhà cung cấp / mô hình",
+      "description": "Mô hình được tải từ API key hiện có. Thay đổi có hiệu lực ngay.",
+      "provider": "Nhà cung cấp",
+      "chatModel": "Mô hình chat",
+      "embeddingModelLabel": "Mô hình embedding",
+      "selectProvider": "Chọn nhà cung cấp...",
+      "selectChatModel": "Chọn mô hình chat...",
+      "keepCurrent": "Giữ cấu hình hiện tại",
+      "applyChanges": "Áp dụng thay đổi",
+      "switching": "Đang chuyển...",
+      "modelCount": "({count} mô hình)"
+    },
+    "toast": {
+      "updatedTitle": "Đã cập nhật nhà cung cấp",
+      "updatedDescription": "{provider} / {model}",
+      "failedTitle": "Không thể chuyển nhà cung cấp",
+      "failedDescription": "Vui lòng kiểm tra cấu hình và thử lại."
+    },
+    "allModels": {
+      "title": "Toàn bộ mô hình khả dụng",
+      "modelCount": "{count} mô hình",
+      "active": "Đang dùng",
+      "columns": {
+        "modelId": "Mô hình",
+        "provider": "Nhà cung cấp",
+        "type": "Loại",
+        "context": "Ngữ cảnh",
+        "status": "Trạng thái"
+      }
+    },
+    "healthRaw": {
+      "title": "Kiểm tra sức khỏe provider (raw)"
+    },
+    "metadataRaw": {
+      "title": "Metadata provider (raw)"
+    }
+  },
+  "AiAnalytics": {
+    "PageEyebrow": "Admin / Phân tích AI",
+    "Title": "Phân tích AI",
+    "Description": "Tổng quan mức dùng, chi phí và hiệu năng của hệ AI",
+    "title": "Phân tích AI",
+    "description": "Tổng quan mức dùng, chi phí và hiệu năng của hệ AI",
+    "tabs": {
+      "overview": "Tổng quan",
+      "advanced": "Nâng cao"
+    },
+    "range": {
+      "last24h": "24 giờ qua",
+      "last7Days": "7 ngày qua",
+      "last14Days": "14 ngày qua",
+      "last30Days": "30 ngày qua"
+    },
+    "kpis": {
+      "conversations": "Cuộc hội thoại",
+      "totalCost": "Tổng chi phí",
+      "avgResponse": "Phản hồi trung bình",
+      "successRate": "Tỷ lệ thành công"
+    },
+    "charts": {
+      "usagePerDay": "Lượt dùng theo ngày",
+      "whatUsersAskAbout": "Người dùng đang hỏi gì",
+      "costPerDay": "Chi phí theo ngày",
+      "modelUsage": "Tần suất dùng model"
+    },
+    "series": {
+      "conversations": "Cuộc hội thoại",
+      "cost": "Chi phí ($)",
+      "tokens": "Tokens",
+      "calls": "Lượt gọi"
+    },
+    "advanced": {
+      "totalTokens": "Tổng tokens",
+      "errorRate": "Tỷ lệ lỗi",
+      "promptTokens": "Prompt tokens",
+      "completionTokens": "Completion tokens",
+      "embeddingTokens": "Embedding tokens"
+    },
+    "topUsers": {
+      "title": "Top người dùng",
+      "noData": "Chưa có dữ liệu",
+      "columns": {
+        "userId": "User ID",
+        "traces": "Số trace",
+        "tokens": "Tokens",
+        "cost": "Chi phí"
+      }
+    }
+  },
+  "AiTraces": {
+    "PageEyebrow": "Admin / Theo dõi AI",
+    "Title": "Theo dõi hội thoại AI",
+    "Description": "Đang theo dõi {count} cuộc hội thoại AI",
+    "title": "Theo dõi hội thoại AI",
+    "trackedCount": "{count} cuộc hội thoại đã được theo dõi",
+    "openLangfuse": "Mở Langfuse",
+    "loading": "Đang tải...",
+    "noConversations": "Chưa có cuộc hội thoại nào",
+    "recentConversations": "Cuộc hội thoại gần đây",
+    "advancedTraces": "Trace kỹ thuật",
+    "emptyValue": "—",
+    "pageSummary": "Trang {page}/{total} • {count} kết quả",
+    "tabs": {
+      "overview": "Tổng quan",
+      "advanced": "Nâng cao"
+    },
+    "columns": {
+      "time": "Thời gian",
+      "userPrompt": "Người dùng hỏi gì",
+      "type": "Loại",
+      "responseTime": "Thời gian phản hồi",
+      "cost": "Chi phí",
+      "actions": "Thao tác",
+      "name": "Tên trace",
+      "user": "Người dùng",
+      "intent": "Ý định",
+      "model": "Mô hình",
+      "latency": "Độ trễ",
+      "observations": "Bước"
+    },
+    "intent": {
+      "courseAdvice": "Tư vấn khóa học",
+      "learningQA": "Hỏi đáp học tập",
+      "dataQuery": "Truy vấn dữ liệu",
+      "chartRequest": "Yêu cầu biểu đồ",
+      "fileAnalysis": "Phân tích file",
+      "chat": "Trò chuyện",
+      "followUp": "Làm rõ",
+      "aiCall": "Lượt gọi AI",
+      "fullChat": "Chat orchestration"
+    },
+    "detail": {
+      "title": "Chi tiết cuộc hội thoại",
+      "responseTime": "Thời gian phản hồi",
+      "cost": "Chi phí",
+      "steps": "Số bước",
+      "user": "Người dùng",
+      "userAsked": "Người dùng hỏi",
+      "aiAnswered": "AI trả lời",
+      "processingSteps": "Các bước xử lý ({count})",
+      "tokens": "Tokens: {count}",
+      "stepCost": "Chi phí: ${cost}",
+      "viewFullTrace": "Xem trace đầy đủ trên Langfuse"
+    }
   },
   "AiDrafts": {
     "title": "Drafts từ AI",
