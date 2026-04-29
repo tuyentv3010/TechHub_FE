@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { useSendChatMessageMutation, useGetUserSessions, useGetSessionMessages, useDeleteSessionMutation } from "@/queries/useAi";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAppContext } from "@/components/app-provider";
 import { useAccountProfile } from "@/queries/useAccount";
 import { useUploadFileMutation } from "@/queries/useFile";
@@ -86,7 +87,7 @@ import {
   Cell,
 } from "recharts";
 
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 
 interface MessageTraceItem {
@@ -148,12 +149,15 @@ interface AttachedFileContext {
   id: string;
   name: string;
   mimeType?: string;
-  fileType?: string;
+  fileType?: string | null;
+  size?: number;
   secureUrl?: string | null;
   publicUrl?: string | null;
   cloudinarySecureUrl?: string | null;
   thumbnailUrl?: string | null;
   previewUrl?: string | null;
+  content?: string | null;
+  excerpt?: string | null;
   description?: string | null;
   processingStatus?: string | null;
 }
@@ -171,19 +175,125 @@ interface SavedAnalysis {
 const SAVED_ANALYSES_STORAGE_KEY = "ai_chat_saved_analyses_v1";
 const SAVED_ANALYSES_LIMIT = 30;
 const DRAFT_SESSION_ID = "__draft__";
+const MAX_INLINE_ATTACHMENT_BYTES = 1_000_000;
+const MAX_INLINE_ATTACHMENT_CHARS = 20_000;
+const ATTACHMENT_PREVIEW_CHARS = 120_000;
+const TEXT_ATTACHMENT_EXTENSIONS = new Set([
+  "txt",
+  "md",
+  "markdown",
+  "csv",
+  "json",
+  "xml",
+  "yaml",
+  "yml",
+  "html",
+  "htm",
+  "js",
+  "jsx",
+  "ts",
+  "tsx",
+  "py",
+  "java",
+  "kt",
+  "go",
+  "rs",
+  "c",
+  "cc",
+  "cpp",
+  "h",
+  "hpp",
+  "cs",
+  "php",
+  "rb",
+  "swift",
+  "sql",
+  "css",
+  "scss",
+  "sh",
+  "bat",
+  "ps1",
+  "properties",
+  "gradle",
+  "pom",
+]);
+const TEXT_ATTACHMENT_MIME_TYPES = new Set([
+  "application/json",
+  "application/xml",
+  "application/javascript",
+  "application/x-javascript",
+  "application/sql",
+  "text/csv",
+  "text/markdown",
+]);
+
+const getAttachmentExtension = (name: string) => {
+  const normalized = name.toLowerCase();
+  const index = normalized.lastIndexOf(".");
+  return index >= 0 ? normalized.slice(index + 1) : "";
+};
+
+const isTextAttachmentFile = (file: File) => {
+  const mimeType = file.type.toLowerCase();
+  return (
+    mimeType.startsWith("text/") ||
+    TEXT_ATTACHMENT_MIME_TYPES.has(mimeType) ||
+    TEXT_ATTACHMENT_EXTENSIONS.has(getAttachmentExtension(file.name))
+  );
+};
+
+const readInlineAttachmentText = async (file: File): Promise<string | null> => {
+  if (!isTextAttachmentFile(file)) {
+    return null;
+  }
+
+  try {
+    const text = await file.slice(0, MAX_INLINE_ATTACHMENT_BYTES).text();
+    const normalized = text.replace(/\r\n?/g, "\n").replace(/\u0000/g, "").trim();
+    return normalized ? normalized.slice(0, MAX_INLINE_ATTACHMENT_CHARS) : null;
+  } catch {
+    return null;
+  }
+};
+
+const getAttachmentPreviewUrl = (file: AttachedFileContext) =>
+  file.previewUrl ||
+  file.thumbnailUrl ||
+  file.secureUrl ||
+  file.publicUrl ||
+  file.cloudinarySecureUrl ||
+  null;
+
+const getAttachmentSourceUrl = (file: AttachedFileContext) =>
+  file.secureUrl ||
+  file.publicUrl ||
+  file.cloudinarySecureUrl ||
+  file.previewUrl ||
+  file.thumbnailUrl ||
+  null;
+
+const isImageAttachment = (file: AttachedFileContext) =>
+  file.mimeType?.startsWith("image/") || file.fileType === "IMAGE";
+
+const isVideoAttachment = (file: AttachedFileContext) =>
+  file.mimeType?.startsWith("video/") || file.fileType === "VIDEO";
+
+const isAudioAttachment = (file: AttachedFileContext) =>
+  file.mimeType?.startsWith("audio/") || file.fileType === "AUDIO";
 
 export default function AiChatPage() {
   const { toast } = useToast();
   const t = useTranslations("AiChat");
   const tCommon = useTranslations("common");
-  const locale = useLocale();
   const { isAuth } = useAppContext();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [userId, setUserId] = useState<string>("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>("");
   const [attachedFiles, setAttachedFiles] = useState<AttachedFileContext[]>([]);
+  const [previewAttachment, setPreviewAttachment] = useState<AttachedFileContext | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<{ id: string; label: string; startedAt: string }[]>([]);
   const [showSettings, setShowSettings] = useState<boolean>(true);
@@ -221,7 +331,7 @@ export default function AiChatPage() {
   const [selectedInsightMessageId, setSelectedInsightMessageId] = useState<string | null>(null);
   const [analysisTab, setAnalysisTab] = useState<"data" | "sql" | "chart" | "sources">("chart");
   const [analysisPanelOpen, setAnalysisPanelOpen] = useState<boolean>(true);
-  const [analysisPanelWidth, setAnalysisPanelWidth] = useState<number>(520);
+  const [analysisPanelWidth, setAnalysisPanelWidth] = useState<number>(640);
   const lastUserWorkspaceSelectionRef = useRef<string | null>(null);
   const [chartTypeOverrides, setChartTypeOverrides] = useState<Record<string, string>>({});
   const [actionFeedback, setActionFeedback] = useState<Record<string, string>>({});
@@ -279,17 +389,13 @@ export default function AiChatPage() {
       }
       if (attachments && attachments.length > 0) {
         if (attachments.length === 1) {
-          return `${locale === "vi" ? "Phân tích file" : locale === "ja" ? "ファイル分析" : "File analysis"}: ${attachments[0].name}`;
+          return `${t("fileAnalysisSession")}: ${attachments[0].name}`;
         }
-        return locale === "vi"
-          ? `${attachments.length} file đính kèm`
-          : locale === "ja"
-            ? `${attachments.length} 件の添付ファイル`
-            : `${attachments.length} attachments`;
+        return t("attachmentsCount", { count: attachments.length });
       }
-      return locale === "vi" ? "Nháp mới" : locale === "ja" ? "新しい下書き" : "New draft";
+      return t("newDraft");
     },
-    [locale]
+    [t]
   );
 
   const hydrateAttachmentsFromMetadata = useCallback((metadata: unknown): AttachedFileContext[] => {
@@ -306,11 +412,14 @@ export default function AiChatPage() {
         name: String(item.name || item.fileName || `Attachment ${index + 1}`),
         mimeType: item.mimeType ? String(item.mimeType) : undefined,
         fileType: item.fileType ? String(item.fileType) : undefined,
+        size: typeof item.size === "number" ? item.size : undefined,
         secureUrl: item.secureUrl ? String(item.secureUrl) : null,
         publicUrl: item.publicUrl ? String(item.publicUrl) : null,
         cloudinarySecureUrl: item.cloudinarySecureUrl ? String(item.cloudinarySecureUrl) : null,
         thumbnailUrl: item.thumbnailUrl ? String(item.thumbnailUrl) : null,
         previewUrl: item.previewUrl ? String(item.previewUrl) : null,
+        content: item.content ? String(item.content) : null,
+        excerpt: item.excerpt ? String(item.excerpt) : null,
         description: item.description ? String(item.description) : null,
         processingStatus: item.processingStatus ? String(item.processingStatus) : null,
       }))
@@ -333,10 +442,10 @@ export default function AiChatPage() {
             .filter((a): a is SuggestedAction => !!a)
         : [];
       const override = chartTypeOverrides[message.id];
-      const local = buildLocalFollowUpActions(message, override);
-      return mergeSuggestedActions(remoteNormalized, local);
+      const local = buildLocalFollowUpActions(message, override, t);
+      return mergeSuggestedActions(remoteNormalized, local, t);
     },
-    [chartTypeOverrides]
+    [chartTypeOverrides, t]
   );
 
   const insightMessages = useMemo(
@@ -454,7 +563,7 @@ export default function AiChatPage() {
   // sidebar + workspace from overlapping it on mid-size laptops.
   const CHAT_MIN_WIDTH = 360;
   const MIN_SIDEBAR = 240;
-  const MIN_WORKSPACE = 360;
+  const MIN_WORKSPACE = 420;
   const isDesktopViewport = viewportWidth >= 1024;
   const sidebarBaseWidth = sidebarCollapsed ? 64 : sidebarWidth;
   const effectiveSidebarWidth = useMemo(() => {
@@ -467,7 +576,7 @@ export default function AiChatPage() {
   const effectiveAnalysisWidth = useMemo(() => {
     if (!isDesktopViewport) return analysisPanelWidth;
     const headroom = viewportWidth - effectiveSidebarWidth - CHAT_MIN_WIDTH;
-    const maxAllowed = Math.max(MIN_WORKSPACE, Math.min(860, headroom));
+    const maxAllowed = Math.max(MIN_WORKSPACE, Math.min(960, headroom));
     if (headroom < MIN_WORKSPACE) {
       return MIN_WORKSPACE;
     }
@@ -530,7 +639,7 @@ export default function AiChatPage() {
         hydrated.push({
           id: String(candidate.id),
           sourceMessageId: String(candidate.sourceMessageId || ""),
-          title: String(candidate.title || "Saved analysis"),
+          title: String(candidate.title || t("savedAnalysisFallback")),
           prompt: String(candidate.prompt || ""),
           savedAt: String(candidate.savedAt || new Date().toISOString()),
           scopeLabel: candidate.scopeLabel ? String(candidate.scopeLabel) : undefined,
@@ -549,7 +658,7 @@ export default function AiChatPage() {
     } catch (error) {
       console.error("Failed to load saved analyses:", error);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -641,8 +750,8 @@ export default function AiChatPage() {
   const handleFeedback = (messageId: string, type: "up" | "down") => {
     setFeedbackState((prev) => ({ ...prev, [messageId]: type }));
     toast({
-      title: type === "up" ? "Thanks for the feedback!" : "We'll try to improve",
-      description: type === "up" ? "Glad this was helpful." : "Your feedback helps us get better.",
+      title: type === "up" ? t("feedbackThanksTitle") : t("feedbackImproveTitle"),
+      description: type === "up" ? t("feedbackThanksDesc") : t("feedbackImproveDesc"),
     });
   };
 
@@ -848,13 +957,17 @@ export default function AiChatPage() {
         }
         setStreamingAssistantId(null);
         streamingAssistantIdRef.current = null;
+        if (completedSessionId) {
+          queryClient.invalidateQueries({ queryKey: ["session-messages", completedSessionId] });
+          queryClient.invalidateQueries({ queryKey: ["chat-sessions", userId] });
+        }
       }
       pendingSessionLabelRef.current = null;
     },
     onError: (error) => {
       toast({
         title: tCommon("error"),
-        description: error.message || "Streaming failed",
+        description: error.message || t("streamingFailed"),
         variant: "destructive",
       });
       // Remove streaming message on error
@@ -967,6 +1080,11 @@ export default function AiChatPage() {
 
   // Sync messages from DB when session changes
   useEffect(() => {
+    // Don't clobber local state (user message + streaming placeholder) while a
+    // stream is in progress — DB won't have the assistant reply yet.
+    if (isStreaming || streamingAssistantIdRef.current) {
+      return;
+    }
     if (messagesData?.payload?.data) {
       const dbMessages = messagesData.payload.data;
       const hydratedMessages = dbMessages.map((m: {
@@ -984,7 +1102,10 @@ export default function AiChatPage() {
           metadata: m.metadata,
           attachments: m.sender === "USER" ? hydrateAttachmentsFromMetadata(m.metadata) : undefined,
         }));
-      setMessages(hydratedMessages);
+      // Defensive: don't wipe local messages with a staler/empty DB snapshot.
+      // This happens when BE fails to persist (e.g. metadata column missing)
+      // and returns an empty list after the stream added local messages.
+      setMessages((prev) => (hydratedMessages.length >= prev.length ? hydratedMessages : prev));
       if (sessionId) {
         sessionMessagesCache.current.set(sessionId, hydratedMessages);
         const firstUserMessage = hydratedMessages.find((m: Message) => m.role === "user" && (m.content.trim() || (m.attachments?.length ?? 0) > 0));
@@ -1000,11 +1121,12 @@ export default function AiChatPage() {
       // Scroll to bottom after messages are loaded with a small delay
       setTimeout(() => scrollToBottom("instant"), 100);
     } else if (sessionId && !messagesData && !isSessionMessagesLoading && !isSessionMessagesFetching) {
-      // Clear messages when switching to session with no messages yet
-      setMessages([]);
+      // Only clear if local is also empty — otherwise a stale empty
+      // response would wipe the freshly streamed conversation.
+      setMessages((prev) => (prev.length === 0 ? [] : prev));
       setLoadingSessionId((current) => (current === sessionId ? null : current));
     }
-  }, [formatSessionLabel, hydrateAttachmentsFromMetadata, isSessionMessagesFetching, isSessionMessagesLoading, messagesData, sessionId]);
+  }, [formatSessionLabel, hydrateAttachmentsFromMetadata, isSessionMessagesFetching, isSessionMessagesLoading, isStreaming, messagesData, sessionId]);
 
   // Scroll to bottom when new messages are added (streaming or sent)
   useEffect(() => {
@@ -1069,7 +1191,7 @@ export default function AiChatPage() {
     const truncatedSql = sqlRaw.length > 1200 ? `${sqlRaw.slice(0, 1200)}...` : sqlRaw;
     return {
       messageId: activeAnalysisMessage.id,
-      title: String(queryResult.title || chartSpec.title || "Analysis"),
+      title: String(queryResult.title || chartSpec.title || t("analysisWorkspace.fallbackTitle")),
       prompt: sourcePrompt,
       metric: String(queryResult.metric || ""),
       scope: String(queryResult.scope || ""),
@@ -1091,7 +1213,7 @@ export default function AiChatPage() {
         ? queryResult.logicSummary
         : undefined,
     };
-  }, [activeAnalysisMessage, dismissedRefineMessageId, chartTypeOverrides, messages]);
+  }, [activeAnalysisMessage, dismissedRefineMessageId, chartTypeOverrides, messages, t]);
 
   const handleDismissActiveAnalysis = useCallback(() => {
     if (!activeAnalysisMessage) return;
@@ -1112,10 +1234,13 @@ export default function AiChatPage() {
         name: file.name,
         mimeType: file.mimeType,
         fileType: file.fileType,
+        size: file.size,
         secureUrl: file.secureUrl,
         publicUrl: file.publicUrl,
         cloudinarySecureUrl: file.cloudinarySecureUrl,
         thumbnailUrl: file.thumbnailUrl,
+        content: file.content,
+        excerpt: file.excerpt,
         description: file.description,
       }));
     }
@@ -1133,7 +1258,7 @@ export default function AiChatPage() {
     if (!userId) {
       toast({
         title: tCommon("error"),
-        description: "Please login before attaching files to AI chat.",
+        description: t("loginBeforeAttach"),
         variant: "destructive",
       });
       event.target.value = "";
@@ -1143,18 +1268,32 @@ export default function AiChatPage() {
     const uploaded: AttachedFileContext[] = [];
     try {
       for (const file of selectedFiles) {
+        const inlineText = await readInlineAttachmentText(file);
         const formData = new FormData();
         formData.append("file", file);
         formData.append("userId", userId);
-        formData.append("description", "Attached in AI chat");
+        formData.append("description", t("attachedInAiChat"));
+        formData.append("uploadSource", "AI_CHAT");
         const response = await uploadFileMutation.mutateAsync(formData);
         const payload = response?.payload?.data;
         if (payload?.id) {
+          const fileType = payload.fileType ?? (
+            file.type.startsWith("image/")
+              ? "IMAGE"
+              : file.type.startsWith("video/")
+                ? "VIDEO"
+                : file.type.startsWith("audio/")
+                  ? "AUDIO"
+                  : inlineText
+                    ? "DOCUMENT"
+                    : null
+          );
           uploaded.push({
             id: payload.id,
             name: payload.name || payload.originalName || file.name,
-            mimeType: payload.mimeType,
-            fileType: payload.fileType ?? null,
+            mimeType: payload.mimeType || file.type || undefined,
+            fileType,
+            size: payload.fileSize ?? file.size,
             secureUrl: payload.secureUrl ?? payload.cloudinarySecureUrl ?? null,
             publicUrl: payload.publicUrl ?? payload.cloudinaryUrl ?? null,
             cloudinarySecureUrl: payload.cloudinarySecureUrl ?? null,
@@ -1166,6 +1305,8 @@ export default function AiChatPage() {
               payload.cloudinarySecureUrl ??
               payload.cloudinaryUrl ??
               null,
+            content: inlineText,
+            excerpt: inlineText ? inlineText.slice(0, 2500) : null,
             description: payload.description ?? null,
             processingStatus: payload.processingStatus ?? null,
           });
@@ -1177,15 +1318,15 @@ export default function AiChatPage() {
           return [...prev, ...uploaded.filter((item) => !seen.has(item.id))];
         });
         toast({
-          title: "Files attached",
-          description: `${uploaded.length} file(s) are ready for AI analysis.`,
+          title: t("filesAttachedTitle"),
+          description: t("filesAttachedDesc", { count: uploaded.length }),
         });
       }
     } catch (error) {
       console.error("Failed to upload AI chat attachments:", error);
       toast({
         title: tCommon("error"),
-        description: "Failed to attach one or more files for AI analysis.",
+        description: t("attachFailed"),
         variant: "destructive",
       });
     } finally {
@@ -1209,7 +1350,7 @@ export default function AiChatPage() {
       if (!userId) {
         toast({
           title: tCommon("error"),
-          description: "Please login before chatting with AI.",
+          description: t("loginBeforeChat"),
           variant: "destructive",
         });
         return;
@@ -1221,7 +1362,7 @@ export default function AiChatPage() {
 
       const displayContent =
         options?.displayContent
-        ?? (trimmed || `Analyse ${attachedFiles.length} attached file(s).`);
+        ?? (trimmed || t("attachedFileAnalysisPrompt", { count: attachedFiles.length }));
 
       const userMessage: Message = {
         id: Date.now().toString(),
@@ -1360,8 +1501,8 @@ export default function AiChatPage() {
           : [];
       if (rows.length === 0 || columns.length === 0) {
         toast({
-          title: "Không có dữ liệu để xuất",
-          description: "Truy vấn này chưa có bảng dữ liệu để xuất CSV.",
+          title: t("noCsvDataTitle"),
+          description: t("noCsvDataDesc"),
           variant: "destructive",
         });
         return false;
@@ -1374,7 +1515,7 @@ export default function AiChatPage() {
       const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      const safeName = (String(queryResult?.title || fallbackTitle || "analysis"))
+      const safeName = (String(queryResult?.title || fallbackTitle || t("analysisWorkspace.fallbackTitle")))
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "") || "analysis";
@@ -1386,7 +1527,7 @@ export default function AiChatPage() {
       URL.revokeObjectURL(url);
       return true;
     },
-    [toast]
+    [toast, t]
   );
 
   const closeAnalysisWorkspace = useCallback(() => {
@@ -1401,13 +1542,13 @@ export default function AiChatPage() {
     }
     if (!workspaceCanFit) {
       toast({
-        title: "Màn hình hơi hẹp",
-        description: "Thu nhỏ sidebar hoặc mở rộng cửa sổ trình duyệt để hiển thị analysis workspace.",
+        title: t("narrowScreenTitle"),
+        description: t("narrowScreenDesc"),
       });
       return;
     }
     setAnalysisPanelOpen(true);
-  }, [analysisPanelOpen, closeAnalysisWorkspace, toast, workspaceCanFit]);
+  }, [analysisPanelOpen, closeAnalysisWorkspace, toast, workspaceCanFit, t]);
 
   const copyQueryResultAsTable = useCallback(
     async (
@@ -1424,8 +1565,8 @@ export default function AiChatPage() {
           : [];
       if (rows.length === 0 || columns.length === 0) {
         toast({
-          title: "Không có bảng để sao chép",
-          description: "Truy vấn này chưa có dữ liệu bảng.",
+          title: t("noTableCopyTitle"),
+          description: t("noTableCopyDesc"),
           variant: "destructive",
         });
         return false;
@@ -1460,23 +1601,23 @@ export default function AiChatPage() {
       try {
         await navigator.clipboard.writeText(payload);
         toast({
-          title: "Đã sao chép bảng",
+          title: t("tableCopiedTitle"),
           description:
             format === "markdown"
-              ? "Bảng đã được copy dạng Markdown."
-              : "Dán vào Excel/Google Sheets để sử dụng.",
+              ? t("tableCopiedMarkdownDesc")
+              : t("tableCopiedSheetDesc"),
         });
         return true;
       } catch {
         toast({
           title: tCommon("error"),
-          description: "Không sao chép được bảng, vui lòng thử lại.",
+          description: t("tableCopyFailed"),
           variant: "destructive",
         });
         return false;
       }
     },
-    [toast, tCommon]
+    [toast, tCommon, t]
   );
 
   const getLiveSavedEntryForMessage = useCallback(
@@ -1504,16 +1645,16 @@ export default function AiChatPage() {
       if (existing) {
         setSavedAnalyses((prev) => prev.filter((entry) => entry.id !== existing.id));
         toast({
-          title: "Đã bỏ lưu",
-          description: "Analysis đã được gỡ khỏi danh sách saved.",
+          title: t("removedFromSavedTitle"),
+          description: t("removedFromSavedDesc"),
         });
         return;
       }
       const metadata = message.metadata;
       if (!metadata || (!metadata.queryResult && !metadata.chartSpec)) {
         toast({
-          title: "Không có analysis để lưu",
-          description: "Câu trả lời này không có bảng/biểu đồ để lưu.",
+          title: t("nothingToSaveTitle"),
+          description: t("nothingToSaveDesc"),
           variant: "destructive",
         });
         return;
@@ -1521,8 +1662,8 @@ export default function AiChatPage() {
       const queryResult = metadata.queryResult;
       const chartSpec = metadata.chartSpec;
       const title = String(
-        chartSpec?.title || queryResult?.title || message.content?.slice(0, 48) || "Saved analysis"
-      ).trim() || "Saved analysis";
+        chartSpec?.title || queryResult?.title || message.content?.slice(0, 48) || t("savedAnalysisFallback")
+      ).trim() || t("savedAnalysisFallback");
       const prompt = getPromptForMessage(message.id);
       const snapshot: Message = {
         id: message.id,
@@ -1547,12 +1688,11 @@ export default function AiChatPage() {
       };
       setSavedAnalyses((prev) => [newEntry, ...prev].slice(0, SAVED_ANALYSES_LIMIT));
       toast({
-        title: "Đã lưu analysis",
-        description:
-          "Bạn có thể mở lại từ mục 'Analyses đã lưu' bên sidebar bất cứ lúc nào.",
+        title: t("analysisSavedTitle"),
+        description: t("analysisSavedDesc"),
       });
     },
-    [getLiveSavedEntryForMessage, getPromptForMessage, toast]
+    [getLiveSavedEntryForMessage, getPromptForMessage, toast, t]
   );
 
   const handleDeleteSavedAnalysis = useCallback(
@@ -1595,15 +1735,15 @@ export default function AiChatPage() {
             });
           }, 1800);
           toast({
-            title: "Đã đổi kiểu biểu đồ",
-            description: `Đang hiển thị dưới dạng ${nextType}.`,
+            title: t("chartTypeChangedTitle"),
+            description: t("chartTypeChangedDesc", { type: nextType }),
           });
           return;
         }
         case "export_csv": {
-          const ok = exportQueryResultAsCsv(metadata.queryResult, action.label || "analysis");
+          const ok = exportQueryResultAsCsv(metadata.queryResult, action.label || t("analysisWorkspace.fallbackTitle"));
           if (ok) {
-            toast({ title: "Đã xuất CSV", description: "File đang được tải xuống." });
+            toast({ title: t("csvExportedTitle"), description: t("csvExportedDesc") });
           }
           return;
         }
@@ -1611,8 +1751,8 @@ export default function AiChatPage() {
           const sql = String(metadata.queryResult?.sql || "").trim();
           if (!sql) {
             toast({
-              title: "Không có SQL để sao chép",
-              description: "Truy vấn này không kèm câu SQL.",
+              title: t("noSqlCopyTitle"),
+              description: t("noSqlCopyDesc"),
               variant: "destructive",
             });
             return;
@@ -1627,11 +1767,11 @@ export default function AiChatPage() {
                 return next;
               });
             }, 1800);
-            toast({ title: "Đã sao chép SQL", description: "SQL đã được copy vào clipboard." });
+            toast({ title: t("sqlCopiedTitle"), description: t("sqlCopiedDesc") });
           } catch {
             toast({
               title: tCommon("error"),
-              description: "Không sao chép được SQL, vui lòng thử lại.",
+              description: t("sqlCopyFailed"),
               variant: "destructive",
             });
           }
@@ -1658,7 +1798,7 @@ export default function AiChatPage() {
           return;
       }
     },
-    [dispatchChatMessage, exportQueryResultAsCsv, tCommon, toast]
+    [dispatchChatMessage, exportQueryResultAsCsv, tCommon, toast, t]
   );
 
   const sendComposerMessage = useCallback(async () => {
@@ -1666,7 +1806,7 @@ export default function AiChatPage() {
     if (!userId) {
       toast({
         title: tCommon("error"),
-        description: "Please login before chatting with AI.",
+        description: t("loginBeforeChat"),
         variant: "destructive",
       });
       return;
@@ -1674,14 +1814,14 @@ export default function AiChatPage() {
     const messageToSend = inputMessage;
     setInputMessage("");
     await dispatchChatMessage(messageToSend);
-  }, [attachedFiles.length, dispatchChatMessage, inputMessage, tCommon, toast, userId]);
+  }, [attachedFiles.length, dispatchChatMessage, inputMessage, tCommon, toast, userId, t]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() && attachedFiles.length === 0) return;
     if (!userId) {
       toast({
         title: tCommon("error"),
-        description: "Please login before chatting with AI.",
+        description: t("loginBeforeChat"),
         variant: "destructive",
       });
       return;
@@ -1690,7 +1830,7 @@ export default function AiChatPage() {
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: inputMessage || `Analyse ${attachedFiles.length} attached file(s).`,
+      content: inputMessage || t("attachedFileAnalysisPrompt", { count: attachedFiles.length }),
       timestamp: new Date(),
       attachments: attachedFiles,
     };
@@ -1813,7 +1953,7 @@ export default function AiChatPage() {
     if (!userId) {
       toast({
         title: tCommon("error"),
-        description: "Please login before creating a session.",
+        description: t("loginBeforeSession"),
         variant: "destructive",
       });
       return;
@@ -2120,7 +2260,7 @@ export default function AiChatPage() {
                 <Link
                   key={`link-${index}-${match.index}`}
                   href={match[2]}
-                  className="text-blue-500 hover:text-blue-400 underline"
+                  className="text-ink-1 underline decoration-rule decoration-1 underline-offset-2 hover:decoration-ochre hover:text-ochre transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -2157,15 +2297,12 @@ export default function AiChatPage() {
     options?: { isStreaming?: boolean }
   ) => {
     const metadata = message.metadata;
-    if (!metadata) {
-      return null;
-    }
-    const trace = Array.isArray(metadata.trace) ? metadata.trace : [];
+    const trace = Array.isArray(metadata?.trace) ? metadata.trace : [];
     const nodeTimings = metadata && typeof metadata === "object" && "nodeTimings" in metadata && metadata.nodeTimings
       ? Object.entries(metadata.nodeTimings as Record<string, number>)
       : [];
-    const hasAgentSteps = !!metadata.thinkingText || trace.length > 0 || nodeTimings.length > 0;
-    if (!hasAgentSteps) {
+    const hasAgentSteps = !!metadata?.thinkingText || trace.length > 0 || nodeTimings.length > 0;
+    if (!hasAgentSteps && !options?.isStreaming) {
       return null;
     }
     return (
@@ -2173,7 +2310,7 @@ export default function AiChatPage() {
         <AgentStepsPanel
           trace={trace}
           nodeTimings={nodeTimings}
-          thinkingText={metadata.thinkingText}
+          thinkingText={metadata?.thinkingText}
           isStreaming={!!options?.isStreaming}
         />
       </div>
@@ -2213,25 +2350,27 @@ export default function AiChatPage() {
 
     return (
       <div className="mt-4 space-y-3">
-        <div className="flex flex-wrap gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-ink-3">
           {metadata.resolvedMode && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-neutral-800">
-              {metadata.resolvedMode}
+            <span title={t("messageLabels.routeTitle")}>
+              <span className="text-ink-3">{t("messageLabels.route")}</span>{" "}
+              <span className="text-ink-2">{humanizeMode(metadata.resolvedMode, t)}</span>
             </span>
           )}
           {metadata.intent && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-neutral-800">
-              {metadata.intent}
+            <span title={t("messageLabels.intentTitle")}>
+              <span className="text-ink-3">{t("messageLabels.intent")}</span>{" "}
+              <span className="text-ink-2">{humanizeIntent(metadata.intent, t)}</span>
             </span>
           )}
           {(metadata as any)?.tokensUsed ? (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-neutral-800">
-              {String((metadata as any).tokensUsed)} tokens
+            <span className="tabular-nums font-mono text-[10px]" title={t("messageLabels.tokensTitle")}>
+              {String((metadata as any).tokensUsed)} tok
             </span>
           ) : null}
           {typeof metadata.confidence === "number" && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-neutral-800">
-              {(metadata.confidence * 100).toFixed(0)}%
+            <span className="tabular-nums font-mono text-[10px]" title={t("messageLabels.confidenceTitle")}>
+              {(metadata.confidence * 100).toFixed(0)}% confident
             </span>
           )}
         </div>
@@ -2244,37 +2383,35 @@ export default function AiChatPage() {
               setAnalysisPanelOpen(true);
             }}
             className={cn(
-              "flex w-full items-center justify-between rounded-2xl border px-3 py-3 text-left transition-all duration-200",
+              "flex w-full items-center justify-between rounded-sm border-l-2 pl-4 pr-3 py-2.5 text-left transition-colors duration-150",
               options?.isSelected
-                ? "border-blue-300 bg-blue-50/80 shadow-sm shadow-blue-500/10 dark:border-blue-700 dark:bg-blue-950/30"
-                : "border-slate-200 bg-white/90 hover:border-slate-300 hover:bg-slate-50 dark:border-neutral-800 dark:bg-neutral-900/70 dark:hover:border-neutral-700 dark:hover:bg-neutral-900"
+                ? "border-ochre bg-surface"
+                : "border-rule bg-paper hover:border-ink-2 hover:bg-surface"
             )}
           >
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-100">
-                <BarChart3 className="h-3.5 w-3.5" />
-                Analysis Workspace
+              <div className="flex items-center gap-2 text-ed-xs font-medium text-ink-1">
+                {t("analysisWorkspace.title")}
                 {options?.isSelected ? (
-                  <Badge variant="secondary" className="text-[10px]">
-                    Active
-                  </Badge>
+                  <span className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0 text-[10px] font-normal text-ochre tabular-nums">
+                    {t("messageLabels.workspaceActive")}
+                  </span>
                 ) : null}
               </div>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Open table, chart, SQL, and sources in the side workspace.
+              <p className="mt-0.5 text-[11px] text-ink-3">
+                {t("messageLabels.analysisWorkspaceDesc")}
               </p>
             </div>
-            <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-400" />
+            <ChevronRight className="h-4 w-4 flex-shrink-0 text-ink-3" />
           </button>
         ) : null}
 
         {citations.length > 0 && (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/60">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
-              <MessageSquare className="h-3.5 w-3.5" />
-              Sources
+          <div className="border-l border-rule pl-3 py-1">
+            <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+              {t("analysisWorkspace.sources")}
             </div>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
               {citations.map((citation, index) => {
                 const courseId = citation.courseId || citation.course_id;
                 const label = String(citation.title || citation.kind || `source-${index + 1}`);
@@ -2285,17 +2422,17 @@ export default function AiChatPage() {
                       href={`/courses/${courseId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900 transition-colors"
+                      className="inline-flex items-baseline gap-1 text-[11px] text-ink-2 underline decoration-rule decoration-1 underline-offset-[5px] hover:text-ochre hover:decoration-ochre transition-colors"
                     >
                       {label}
-                      <ExternalLink className="h-2.5 w-2.5" />
+                      <ExternalLink className="h-2.5 w-2.5 self-center" />
                     </a>
                   );
                 }
                 return (
-                  <Badge key={`${label}-${index}`} variant="outline">
+                  <span key={`${label}-${index}`} className="inline-flex items-center text-[11px] text-ink-2 font-mono">
                     {label}
-                  </Badge>
+                  </span>
                 );
               })}
             </div>
@@ -2408,15 +2545,18 @@ export default function AiChatPage() {
         title: tCommon("error"),
         description:
           failures.length === toDelete.length
-            ? t("errorDelete") || "Không xóa được các phiên, vui lòng thử lại."
-            : `${toDelete.length - failures.length}/${toDelete.length} phiên đã được xóa. Còn lại không xóa được.`,
+            ? t("errorDelete")
+            : t("clearAllPartialDeleted", {
+                deleted: toDelete.length - failures.length,
+                total: toDelete.length,
+              }),
         variant: "destructive",
       });
       return;
     }
     toast({
-      title: t("sessionDeleted") || "Session deleted",
-      description: `${toDelete.length} phiên đã được xóa.`,
+      title: t("sessionDeleted"),
+      description: t("clearAllDeleted", { count: toDelete.length }),
     });
   };
 
@@ -2427,9 +2567,9 @@ export default function AiChatPage() {
     const firstDraftMessage = messages.find((message) => message.role === "user");
     const draftLabel =
       inputMessage.trim()
-        || (attachedFiles.length > 0 ? `Nháp mới (${attachedFiles.length} file)` : "")
+        || (attachedFiles.length > 0 ? t("newDraftWithFiles", { count: attachedFiles.length }) : "")
         || (messages.find((message) => message.role === "user")?.content ?? "")
-        || "Nháp mới";
+        || t("newDraft");
     const draftLabelResolved = formatSessionLabel(
       inputMessage.trim() || firstDraftMessage?.content || "",
       attachedFiles.length > 0 ? attachedFiles : firstDraftMessage?.attachments
@@ -2442,13 +2582,13 @@ export default function AiChatPage() {
       },
       ...sessions,
     ];
-  }, [attachedFiles, draftStartedAt, formatSessionLabel, inputMessage, isDraftSession, messages, sessions]);
+  }, [attachedFiles, draftStartedAt, formatSessionLabel, inputMessage, isDraftSession, messages, sessions, t]);
 
   const groupedSessions = groupSessionsByDate(sessionsWithDraft);
   const isSessionTransitioning = Boolean(sessionId && loadingSessionId === sessionId && (isSessionMessagesLoading || isSessionMessagesFetching));
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-white dark:bg-neutral-950 relative">
+    <div className="ai-chat-theme font-ui flex h-[calc(100vh-64px)] bg-paper text-ink-1 relative">
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -2463,27 +2603,21 @@ export default function AiChatPage() {
         className={`
           fixed lg:relative inset-y-0 left-0 z-50
           w-[300px] max-w-[85vw] lg:max-w-none lg:w-[var(--sidebar-w)]
-          bg-slate-50/70 dark:bg-neutral-900/60 backdrop-blur-sm
-          border-r border-slate-200/80 dark:border-neutral-800
+          bg-paper
+          border-r border-rule
           flex flex-col
-          transform transition-transform duration-300 ease-in-out
+          transform transition-transform duration-200 ease-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          lg:transform-none lg:transition-[width] lg:duration-200
+          lg:transform-none lg:transition-[width] lg:duration-150
         `}>
         {/* Sidebar Header: brand + collapse toggle */}
-        <div className="flex items-center justify-between px-3 h-12 border-b border-slate-200/70 dark:border-neutral-800/70">
+        <div className="flex items-center justify-between px-3 h-12 border-b border-rule">
           {!sidebarCollapsed && (
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                <Image
-                  src="/ai/TechHub_Logo.png"
-                  alt="Techhub AI"
-                  width={28}
-                  height={28}
-                  className="object-cover rounded-lg"
-                />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-7 w-7 rounded-sm bg-ink-1 flex items-center justify-center flex-shrink-0 font-editorial text-[14px] leading-none text-paper">
+                T
               </div>
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+              <span className="text-ed-sm font-medium text-ink-1 truncate tracking-tight">
                 {t("headerTitle") || "Techhub AI"}
               </span>
             </div>
@@ -2491,9 +2625,9 @@ export default function AiChatPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hidden lg:inline-flex text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
+            className="h-8 w-8 hidden lg:inline-flex text-ink-3 hover:text-ink-1 hover:bg-transparent"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={sidebarCollapsed ? t("sidebar.expand") : t("sidebar.collapse")}
           >
             {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </Button>
@@ -2509,10 +2643,10 @@ export default function AiChatPage() {
             disabled={!userId}
             title={t("newSession") || "New chat"}
             id="ai-new-chat-button"
-            className={`w-full h-9 gap-2 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 shadow-sm dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-slate-100 dark:border-neutral-700 ${sidebarCollapsed ? 'justify-center px-0' : 'justify-start'}`}
+            className={`w-full h-9 gap-2 rounded-sm bg-surface hover:bg-surface/90 text-ink-1 border border-rule shadow-none hover:border-ink-3 transition-colors ${sidebarCollapsed ? 'justify-center px-0' : 'justify-start'}`}
           >
-            <Plus className="h-4 w-4 flex-shrink-0" />
-            {!sidebarCollapsed && <span className="text-sm">{t("newSession") || "New chat"}</span>}
+            <Plus className="h-3.5 w-3.5 flex-shrink-0" />
+            {!sidebarCollapsed && <span className="text-ed-sm">{t("newSession") || "New chat"}</span>}
           </Button>
         </div>
 
@@ -2524,7 +2658,7 @@ export default function AiChatPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="flex-1 justify-start h-8 px-2 text-slate-600 dark:text-slate-300 text-xs"
+                  className="flex-1 justify-start h-8 px-2 text-ink-2 hover:text-ink-1 hover:bg-transparent text-ed-xs"
                   onClick={() => setShowSettings(!showSettings)}
                 >
                   <Settings className="h-3.5 w-3.5 mr-2" />
@@ -2533,47 +2667,44 @@ export default function AiChatPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-slate-500 hover:text-blue-600"
+                  className="h-8 w-8 text-ink-3 hover:text-ink-1 hover:bg-transparent"
                   onClick={handleStartTour}
-                  title={t("guide") || "Hướng dẫn"}
+                  title={t("guide")}
                 >
                   <HelpCircle className="h-4 w-4" />
                 </Button>
               </div>
 
               {showSettings && (
-                <div className="mt-2 rounded-xl border border-slate-200 bg-white/70 dark:border-neutral-800 dark:bg-neutral-900/60 p-3 space-y-2.5" id="ai-mode-selector">
-                  <div className="rounded-lg border border-dashed border-blue-200 bg-blue-50/80 p-2.5 dark:border-blue-900/60 dark:bg-blue-950/30">
+                <div className="mt-2 rounded-sm border border-rule bg-surface p-3 space-y-3" id="ai-mode-selector">
+                  <div className="border-l-2 border-ochre bg-paper p-2.5">
                     <div className="flex items-center gap-2">
-                      <Sparkles className="h-3.5 w-3.5 text-blue-600" />
-                      <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">
-                        Auto routing
-                      </span>
+                      <span className="font-editorial italic text-ed-sm leading-none text-ink-1">{t("sidebar.autoRoutingTitle")}</span>
                     </div>
-                    <p className="mt-1 text-[11px] leading-snug text-blue-700/80 dark:text-blue-300/80">
-                      AI sẽ tự chọn cách xử lý phù hợp cho câu hỏi của bạn.
+                    <p className="mt-1 text-[11px] leading-snug text-ink-2">
+                      {t("sidebar.autoRoutingDesc")}
                     </p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="custom-instructions" className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                      Instructions
+                    <Label htmlFor="custom-instructions" className="text-[11px] font-medium text-ink-2 uppercase tracking-[0.12em]">
+                      {t("sidebar.instructionsLabel")}
                     </Label>
                     <Textarea
                       id="custom-instructions"
                       value={customInstructions}
                       onChange={(event) => setCustomInstructions(event.target.value)}
-                      placeholder="Ví dụ: Trả lời bằng tiếng Việt, ưu tiên ngắn gọn, nêu rõ giả định khi phân tích dữ liệu."
+                      placeholder={t("sidebar.instructionsPlaceholder")}
                       rows={4}
-                      className="min-h-[92px] rounded-xl border-slate-200 bg-white/90 text-xs leading-6 dark:border-neutral-800 dark:bg-neutral-950/70"
+                      className="min-h-[92px] rounded-sm border-rule bg-paper text-ed-xs leading-6 focus-visible:border-ink-2 focus-visible:ring-0"
                     />
-                    <p className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">
-                      Hướng dẫn này sẽ được áp dụng cho các câu trả lời tiếp theo của AI trong cuộc trò chuyện này.
+                    <p className="text-[11px] leading-snug text-ink-3">
+                      {t("sidebar.instructionsHelp")}
                     </p>
                   </div>
                   <div className="hidden space-y-2">
                     <div className="space-y-1.5">
                       <Label htmlFor="assistant-perspective" className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                        Vai trò trả lời
+                        {t("sidebar.answerRole")}
                       </Label>
                       <Select
                         value={assistantPerspective}
@@ -2583,15 +2714,15 @@ export default function AiChatPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="learner">Người học</SelectItem>
-                          <SelectItem value="instructor">Giảng viên</SelectItem>
-                          <SelectItem value="analyst">Phân tích dữ liệu</SelectItem>
+                          <SelectItem value="learner">{t("sidebar.learner")}</SelectItem>
+                          <SelectItem value="instructor">{t("sidebar.instructor")}</SelectItem>
+                          <SelectItem value="analyst">{t("sidebar.analyst")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="response-depth" className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                        Mức độ chi tiết
+                        {t("sidebar.responseDepth")}
                       </Label>
                       <Select
                         value={responseDepth}
@@ -2601,9 +2732,9 @@ export default function AiChatPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="concise">Ngắn gọn</SelectItem>
-                          <SelectItem value="balanced">Cân bằng</SelectItem>
-                          <SelectItem value="detailed">Chuyên sâu</SelectItem>
+                          <SelectItem value="concise">{t("sidebar.concise")}</SelectItem>
+                          <SelectItem value="balanced">{t("sidebar.balanced")}</SelectItem>
+                          <SelectItem value="detailed">{t("sidebar.detailed")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -2633,25 +2764,25 @@ export default function AiChatPage() {
               )}
             </div>
 
-            {/* Conversations Header (collapsible like Claude's Recents) */}
-            <div className="px-2 pt-4 pb-1 flex items-center gap-1">
+            {/* Conversations Header (collapsible) */}
+            <div className="px-2 pt-5 pb-1 flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setRecentsOpen((o) => !o)}
-                className="flex-1 flex items-center gap-1 px-2 py-1 rounded-md text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors"
-                title={recentsOpen ? "Ẩn cuộc trò chuyện" : "Hiện cuộc trò chuyện"}
+                className="flex-1 flex items-center gap-1.5 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-ink-3 hover:text-ink-1 font-medium transition-colors"
+                title={recentsOpen ? t("sidebar.hideConversations") : t("sidebar.showConversations")}
               >
                 {recentsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                <span>{t("yourConversations") || "Your conversations"}</span>
+                <span>{t("yourConversations") || "Conversations"}</span>
               </button>
               {recentsOpen && sessions.length > 0 && (
                 <Button
                   variant="link"
                   size="sm"
-                  className="text-[11px] text-blue-600 hover:text-blue-700 p-0 h-auto pr-2"
+                  className="text-[11px] text-ink-3 hover:text-ochre p-0 h-auto pr-2 underline decoration-rule underline-offset-4 hover:decoration-ochre"
                   onClick={handleClearAll}
                 >
-                  {t("clearAll") || "Clear All"}
+                  {t("clearAll") || "Clear all"}
                 </Button>
               )}
             </div>
@@ -2662,7 +2793,7 @@ export default function AiChatPage() {
               <div className="space-y-0.5 pb-2">
                 {groupedSessions.today.length > 0 && (
                   <>
-                    <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 py-1.5 font-medium">{t("today") || "Today"}</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3 px-3 py-1.5 font-medium">{t("today") || "Today"}</p>
                     {groupedSessions.today.map((session) => (
                       <SessionItem
                         key={session.id}
@@ -2680,7 +2811,7 @@ export default function AiChatPage() {
 
                 {groupedSessions.lastWeek.length > 0 && (
                   <>
-                    <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 py-1.5 mt-2 font-medium">{t("lastDays") || "Last 7 Days"}</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3 px-3 py-1.5 mt-3 font-medium">{t("lastDays") || "Last 7 Days"}</p>
                     {groupedSessions.lastWeek.map((session) => (
                       <SessionItem
                         key={session.id}
@@ -2698,7 +2829,7 @@ export default function AiChatPage() {
 
                 {groupedSessions.older.length > 0 && (
                   <>
-                    <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 py-1.5 mt-2 font-medium">{t("older") || "Older"}</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3 px-3 py-1.5 mt-3 font-medium">{t("older") || "Older"}</p>
                     {groupedSessions.older.map((session) => (
                       <SessionItem
                         key={session.id}
@@ -2743,18 +2874,18 @@ export default function AiChatPage() {
                   <button
                     type="button"
                     onClick={() => setSavedSectionOpen((o) => !o)}
-                    className="flex-1 flex items-center gap-1 px-2 py-1 rounded-md text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors"
-                    title={savedSectionOpen ? "Ẩn analyses đã lưu" : "Hiện analyses đã lưu"}
+                    className="flex-1 flex items-center gap-1.5 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-ink-3 hover:text-ink-1 font-medium transition-colors"
+                    title={savedSectionOpen ? t("sidebar.hideSavedAnalyses") : t("sidebar.showSavedAnalyses")}
                   >
                     {savedSectionOpen ? (
                       <ChevronDown className="h-3 w-3" />
                     ) : (
                       <ChevronRight className="h-3 w-3" />
                     )}
-                    <span className="flex-1 text-left">Analyses đã lưu</span>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                    <span className="flex-1 text-left">{t("sidebar.savedAnalyses")}</span>
+                    <span className="text-[10px] px-1.5 py-0 tabular-nums text-ink-3 border border-rule rounded-sm normal-case tracking-normal">
                       {savedAnalyses.length}
-                    </Badge>
+                    </span>
                   </button>
                 </div>
                 {savedSectionOpen && (
@@ -2782,14 +2913,14 @@ export default function AiChatPage() {
         {sidebarCollapsed && <div className="flex-1" />}
 
         {/* User Profile (display only, no navigation) */}
-        <div className="border-t border-slate-200/70 dark:border-neutral-800/70 p-2">
-          <div className={`flex items-center gap-2 p-2 rounded-lg ${sidebarCollapsed ? 'justify-center' : ''}`}>
-            <Avatar className="h-8 w-8 flex-shrink-0">
+        <div className="border-t border-rule p-2">
+          <div className={`flex items-center gap-2 p-2 rounded-sm ${sidebarCollapsed ? 'justify-center' : ''}`}>
+            <Avatar className="h-7 w-7 flex-shrink-0 rounded-sm">
               <AvatarImage
                 src={userProfile?.avatar || "/avatars/default.png"}
                 alt={userProfile?.fullName || userProfile?.username || "User"}
               />
-              <AvatarFallback className="bg-blue-100 text-blue-600 text-xs font-medium">
+              <AvatarFallback className="rounded-sm bg-ink-1 text-paper text-[11px] font-medium tabular-nums">
                 {(userProfile?.fullName || userProfile?.username || "U")
                   .substring(0, 2)
                   .toUpperCase()}
@@ -2797,10 +2928,10 @@ export default function AiChatPage() {
             </Avatar>
             {!sidebarCollapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">
+                <p className="text-ed-xs font-medium text-ink-1 truncate">
                   {userProfile?.fullName || userProfile?.username || t("guest") || "Guest"}
                 </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                <p className="text-[11px] text-ink-3 truncate">
                   {userProfile?.email || ""}
                 </p>
               </div>
@@ -2813,17 +2944,17 @@ export default function AiChatPage() {
           <div
             onMouseDown={startResize}
             className="hidden lg:block absolute top-0 right-0 h-full w-1.5 cursor-col-resize group z-10"
-            title="Kéo để đổi kích thước"
+            title={t("sidebar.dragResize")}
           >
-            <div className="h-full w-px mx-auto bg-transparent group-hover:bg-blue-500/50 group-active:bg-blue-500 transition-colors" />
+            <div className="h-full w-px mx-auto bg-transparent group-hover:bg-ochre transition-colors" />
           </div>
         )}
       </aside>
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col bg-white dark:bg-neutral-950 min-w-0">
+      <main className="flex-1 flex flex-col bg-paper min-w-0">
         {/* Top Header */}
-        <header className="flex items-center justify-between px-3 sm:px-4 h-12 border-b border-slate-200/70 dark:border-neutral-800/70 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-sm">
+        <header className="flex items-center justify-between px-3 sm:px-4 h-12 border-b border-rule bg-paper">
           <div className="flex items-center gap-2 min-w-0">
             {/* Mobile sidebar open */}
             <Button
@@ -2841,12 +2972,12 @@ export default function AiChatPage() {
                 size="icon"
                 className="h-8 w-8 hidden lg:inline-flex text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
                 onClick={() => setSidebarCollapsed(false)}
-                title="Expand sidebar"
+                title={t("sidebar.expand")}
               >
                 <PanelLeft className="h-4 w-4" />
               </Button>
             )}
-            <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+            <h1 className="text-ed-sm font-medium text-ink-1 truncate tracking-tight">
               {t("headerTitle") || "Techhub AI"}
             </h1>
           </div>
@@ -2855,7 +2986,7 @@ export default function AiChatPage() {
               variant="ghost"
               size="sm"
               className={cn(
-                "h-9 rounded-full px-2 text-xs text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-neutral-800 dark:hover:text-slate-100 sm:px-3",
+                "h-8 rounded-sm px-2 text-ed-xs text-ink-2 hover:bg-surface hover:text-ink-1 sm:px-3 border border-transparent hover:border-rule transition-colors",
                 !workspaceCanFit ? "opacity-50 cursor-not-allowed" : ""
               )}
               onClick={toggleAnalysisWorkspace}
@@ -2870,19 +3001,19 @@ export default function AiChatPage() {
               */
               title={
                 !workspaceCanFit
-                  ? "Workspace ẩn vì màn hình quá hẹp — phóng to cửa sổ hoặc thu nhỏ sidebar"
+                  ? t("analysisWorkspace.workspaceTooNarrow")
                   : workspaceRendered
-                    ? "Hide analysis workspace"
-                    : "Open analysis workspace"
+                    ? t("analysisWorkspace.hide")
+                    : t("analysisWorkspace.open")
               }
             >
               <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{workspaceRendered ? "Hide workspace" : "Open workspace"}</span>
+              <span className="hidden sm:inline">{workspaceRendered ? t("analysisWorkspace.hide") : t("analysisWorkspace.open")}</span>
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 lg:hidden text-slate-600"
+              className="h-8 w-8 lg:hidden text-ink-2 hover:text-ink-1"
               onClick={handleNewSession}
               disabled={!userId}
               title={t("newSession") || "New chat"}
@@ -2894,15 +3025,15 @@ export default function AiChatPage() {
 
         {/* Auth Check Banner */}
         {!userId && (
-          <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-4 sm:px-6 py-2.5">
+          <div className="border-b border-rule bg-surface px-4 sm:px-6 py-2.5">
             <div className="flex items-center gap-3">
-              <MessageCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <MessageCircle className="h-4 w-4 text-ochre flex-shrink-0" />
               <div className="min-w-0">
-                <p className="font-medium text-amber-800 dark:text-amber-300 text-xs">
-                  {t("authRequired") || "Login Required"}
+                <p className="font-medium text-ink-1 text-ed-xs">
+                  {t("authRequired") || "Login required"}
                 </p>
-                <p className="text-[11px] text-amber-700 dark:text-amber-400 hidden sm:block">
-                  {t("authRequiredDesc") || "Please login to use AI chat feature and save your chat history"}
+                <p className="text-[11px] text-ink-2 hidden sm:block">
+                  {t("authRequiredDesc") || "Please log in to use the AI workspace and save your history."}
                 </p>
               </div>
             </div>
@@ -2911,8 +3042,7 @@ export default function AiChatPage() {
 
         <div className="flex flex-1 min-h-0">
         <section className={cn(
-          "flex min-h-0 min-w-0 flex-1 flex-col border-b border-slate-200/70 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.08),_transparent_32%),linear-gradient(180deg,rgba(248,250,252,0.96),rgba(255,255,255,0.98))] dark:border-neutral-800/70 dark:bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_30%),linear-gradient(180deg,rgba(10,15,27,0.96),rgba(2,6,23,0.98))] lg:min-w-[360px]",
-          analysisPanelOpen ? "lg:border-b-0" : "lg:border-b-0"
+          "flex min-h-0 min-w-0 flex-1 flex-col border-b border-rule bg-paper lg:min-w-[360px] lg:border-b-0",
         )}>
         {/* Chat Messages Area */}
         <ScrollArea className="flex-1 px-4 py-6 sm:px-6" ref={scrollAreaRef}>
@@ -2921,7 +3051,7 @@ export default function AiChatPage() {
               <div className="sticky top-0 z-10 flex items-center justify-center">
                 <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90 dark:text-slate-300">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Loading conversation...
+                  {t("messageLabels.loadingConversation")}
                 </div>
               </div>
             ) : null}
@@ -2947,27 +3077,45 @@ export default function AiChatPage() {
                 </div>
               </div>
             ) : messages.length === 0 ? (
-              <div className="flex min-h-[55vh] flex-col items-center justify-center px-4 text-center" id="ai-chat-welcome">
-                <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-700 shadow-sm dark:border-blue-800/60 dark:bg-blue-950/30 dark:text-blue-200">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  AI Analyst Workspace
+              <div className="flex min-h-[60vh] flex-col items-start justify-center px-4 sm:px-8" id="ai-chat-welcome">
+                <div className="mx-auto w-full max-w-2xl">
+                  <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-ink-3">
+                    {t("welcomePanel.eyebrow", { brand: t("headerTitle") })}
+                  </div>
+                  <h2 className="font-editorial mt-6 text-[clamp(2.25rem,4.5vw,3.25rem)] font-normal leading-[1.05] text-ink-1">
+                    {t("welcomeTitle") || "Ask your data a question."}
+                  </h2>
+                  <p className="mt-5 max-w-xl text-ed-base text-ink-2">
+                    {t("welcomePanel.description")}
+                  </p>
+
+                  <div className="mt-10 border-t border-rule pt-6">
+                    <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-ink-3">
+                      {t("welcomePanel.tryStartingPoint")}
+                    </div>
+                    <ul className="mt-4 space-y-3">
+                      {[
+                        t("welcomePanel.suggestion1"),
+                        t("welcomePanel.suggestion2"),
+                        t("welcomePanel.suggestion3"),
+                        t("welcomePanel.suggestion4"),
+                      ].map((suggestion) => (
+                        <li key={suggestion}>
+                          <button
+                            type="button"
+                            onClick={() => handlePresetPrompt(suggestion)}
+                            className="group inline-flex items-baseline gap-3 text-left text-ed-base text-ink-1 underline decoration-rule decoration-1 underline-offset-[6px] transition-colors hover:decoration-ochre hover:text-ochre"
+                          >
+                            <span aria-hidden className="text-ink-3 font-mono text-ed-xs tabular-nums">
+                              →
+                            </span>
+                            <span>{suggestion}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                <div className="mt-6 flex h-16 w-16 items-center justify-center overflow-hidden rounded-[22px] bg-gradient-to-br from-blue-500 via-cyan-500 to-purple-600 shadow-xl shadow-blue-500/20">
-                  <Image
-                    src="/ai/TechHub_Logo.png"
-                    alt="Techhub AI"
-                    width={64}
-                    height={64}
-                    className="object-cover rounded-2xl"
-                    priority
-                  />
-                </div>
-                <h2 className="mt-6 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">
-                  {t("welcomeTitle") || "How can I help you today?"}
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-500 dark:text-slate-400 sm:text-base">
-                  Ask for answers, charts, tables, SQL-safe analytics, or file analysis. The analysis workspace keeps the structure visible while the conversation stays clean.
-                </p>
               </div>
             ) : (
               messages.map((message) => {
@@ -2979,25 +3127,32 @@ export default function AiChatPage() {
                   {/* User Message */}
                   {message.role === "user" && (
                     <div className="flex justify-end">
-                      <div className="max-w-[90%] sm:max-w-[78%]">
-                        <div className="rounded-[26px] rounded-tr-lg bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-3 text-sm leading-7 text-white shadow-lg shadow-blue-500/20">
+                      <div className="max-w-[88%] sm:max-w-[72%]">
+                        <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-ink-3 text-right mb-1.5">
+                          {t("messageLabels.you")}
+                        </div>
+                        <div className="rounded-md border-l-2 border-ochre bg-surface px-4 py-3 text-ed-base leading-relaxed text-ink-1 shadow-card">
                           {message.attachments && message.attachments.length > 0 ? (
                             <div className="mb-3 flex flex-wrap justify-end gap-2">
                               {message.attachments.map((file) => (
-                                <div
+                                <button
+                                  type="button"
                                   key={`${message.id}-${file.id}`}
-                                  className="inline-flex max-w-[240px] items-center gap-2 rounded-2xl bg-white/14 px-3 py-2 text-left"
+                                  onClick={() => setPreviewAttachment(file)}
+                                  className="inline-flex max-w-[240px] items-center gap-2 rounded-sm border border-rule bg-paper px-2.5 py-1.5 text-left transition-colors hover:border-ink-2 hover:bg-surface"
+                                  title={t("composer.previewAttachment")}
                                 >
-                                  <FileText className="h-3.5 w-3.5 flex-shrink-0 text-white/80" />
+                                  <FileText className="h-3.5 w-3.5 flex-shrink-0 text-ink-3" />
                                   <div className="min-w-0">
-                                    <div className="truncate text-xs font-medium text-white">
+                                    <div className="truncate text-ed-xs font-medium text-ink-1">
                                       {file.name}
                                     </div>
-                                    <div className="truncate text-[10px] text-white/70">
-                                      {file.mimeType || file.fileType || "File đính kèm"}
+                                    <div className="truncate text-[10px] text-ink-3">
+                                      {file.mimeType || file.fileType || t("attachedFile")}
                                     </div>
                                   </div>
-                                </div>
+                                  <Maximize2 className="h-3 w-3 flex-shrink-0 text-ink-3" />
+                                </button>
                               ))}
                             </div>
                           ) : null}
@@ -3012,55 +3167,50 @@ export default function AiChatPage() {
                   {/* Assistant Message */}
                   {message.role === "assistant" && (
                     <div className="group flex items-start gap-4">
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-blue-700 to-cyan-500 shadow-lg shadow-blue-500/15 dark:from-blue-400 dark:via-cyan-500 dark:to-slate-100">
-                        <Image
-                          src="/ai/TechHub_Logo.png"
-                          alt="Techhub AI"
-                          width={36}
-                          height={36}
-                          className="rounded-2xl object-cover"
-                          priority
-                        />
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-sm bg-ink-1 font-editorial text-[15px] leading-none text-paper">
+                        T
                       </div>
                       <div
                         className={cn(
-                          "min-w-0 flex-1 rounded-[30px] border bg-white/92 p-5 shadow-sm transition-all duration-200 dark:bg-slate-950/75",
-                          "border-slate-200/80 dark:border-neutral-800",
+                          "min-w-0 flex-1 border-l transition-colors duration-150",
                           isSelectedInsight
-                            ? "border-blue-300 shadow-xl shadow-blue-500/10 ring-1 ring-blue-200 dark:border-blue-700 dark:ring-blue-900/50"
-                            : null
+                            ? "border-ochre pl-5"
+                            : "border-transparent pl-5"
                         )}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
+                          <div className="flex items-baseline gap-3 text-ed-xs">
+                            <span className="font-medium text-ink-1">
                               {t("headerTitle") || "Techhub AI"}
-                            </div>
-                            <div className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                              {canSelectWorkspace ? "Analysis-ready response" : "Assistant response"}
-                            </div>
+                            </span>
+                            <span className="text-ink-3">
+                              {canSelectWorkspace ? t("messageLabels.analysis") : t("messageLabels.response")}
+                            </span>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             {message.metadata?.queryResult ? (
                               <ScopeBadge queryResult={message.metadata.queryResult} tone="prominent" />
                             ) : null}
                             {canSelectWorkspace ? (
-                              <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[10px]">
-                                {isSelectedInsight ? "Workspace active" : "Open in workspace"}
-                              </Badge>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedInsightMessageId(message.id)}
+                                className="text-ed-xs text-ink-2 underline decoration-rule decoration-1 underline-offset-4 transition-colors hover:text-ochre hover:decoration-ochre"
+                              >
+                                {isSelectedInsight ? t("messageLabels.workspaceActive") : t("messageLabels.openInWorkspace")}
+                              </button>
                             ) : null}
-                            <CheckCircle className="h-4 w-4 text-emerald-500" />
                           </div>
                         </div>
-                        <div className="mt-4 text-sm leading-7 text-slate-800 dark:text-slate-100">
+                        <div className="mt-3 text-ed-base leading-[1.75] text-ink-1 max-w-[68ch]">
                           {renderMessageAgentSteps(message, {
                             isStreaming: message.id === streamingAssistantId,
                           })}
                           {message.content === "..." ? (
                             <div className="flex gap-1 py-1">
-                              <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
-                              <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
-                              <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+                              <div className="w-1 h-1 bg-ink-3 rounded-full animate-bounce" />
+                              <div className="w-1 h-1 bg-ink-3 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                              <div className="w-1 h-1 bg-ink-3 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
                             </div>
                           ) : message.id === streamingAssistantId ? (
                             message.content === "▌" || message.content === "" ? (
@@ -3068,7 +3218,7 @@ export default function AiChatPage() {
                             ) : (
                               <div>
                                 <MarkdownRenderer content={message.content.replace(/▌+$/, "")} />
-                                <span className="animate-pulse text-blue-500 ml-0.5">▌</span>
+                                <span className="animate-pulse text-ochre ml-0.5">▌</span>
                               </div>
                             )
                           ) : (
@@ -3088,9 +3238,9 @@ export default function AiChatPage() {
                             {message.metadata.hitlOptions.map((option, idx) => (
                               <Button
                                 key={idx}
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                className="rounded-full border-blue-300 text-xs text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950"
+                                className="rounded-sm border border-rule bg-paper px-3 h-8 text-ed-xs text-ink-1 hover:border-ochre hover:text-ochre hover:bg-surface transition-colors"
                                 onClick={() => handleHitlQuickReply(message.id, option)}
                                 disabled={isStreaming}
                               >
@@ -3101,8 +3251,8 @@ export default function AiChatPage() {
                         )}
                         {message.metadata?.hitlClarifyActive &&
                           hitlRepliedMessageIds.has(message.id) && (
-                          <div className="mt-3 text-xs text-slate-400 italic">
-                            Đã chọn phương án làm rõ.
+                          <div className="mt-3 text-ed-xs text-ink-3 italic font-editorial">
+                            {t("messageLabels.clarificationSelected")}
                           </div>
                         )}
                         {message.id !== "typing" && message.id !== streamingAssistantId && (
@@ -3110,7 +3260,7 @@ export default function AiChatPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className={`h-8 w-8 rounded-full p-0 ${feedbackState[message.id] === "up" ? "text-green-500" : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"}`}
+                              className={`h-7 w-7 rounded-sm p-0 ${feedbackState[message.id] === "up" ? "text-data-pos" : "text-ink-3 hover:text-ink-1 hover:bg-transparent"}`}
                               onClick={() => handleFeedback(message.id, "up")}
                               disabled={!!feedbackState[message.id]}
                             >
@@ -3119,7 +3269,7 @@ export default function AiChatPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className={`h-8 w-8 rounded-full p-0 ${feedbackState[message.id] === "down" ? "text-red-500" : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"}`}
+                              className={`h-7 w-7 rounded-sm p-0 ${feedbackState[message.id] === "down" ? "text-[hsl(var(--data-neg))]" : "text-ink-3 hover:text-ink-1 hover:bg-transparent"}`}
                               onClick={() => handleFeedback(message.id, "down")}
                               disabled={!!feedbackState[message.id]}
                             >
@@ -3128,11 +3278,11 @@ export default function AiChatPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 rounded-full p-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                              className="h-7 w-7 rounded-sm p-0 text-ink-3 hover:text-ink-1 hover:bg-transparent"
                               onClick={() => handleCopyMessage(message.id, message.content)}
                             >
                               {copiedMessageId === message.id ? (
-                                <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                                <CheckCircle className="h-3.5 w-3.5 text-data-pos" />
                               ) : (
                                 <Copy className="h-3.5 w-3.5" />
                               )}
@@ -3140,7 +3290,7 @@ export default function AiChatPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 rounded-full px-3 text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                              className="h-7 rounded-sm px-2 text-[11px] text-ink-3 hover:text-ink-1 hover:bg-transparent"
                               onClick={() => handleRegenerate(message.id)}
                               disabled={isStreaming}
                             >
@@ -3161,7 +3311,7 @@ export default function AiChatPage() {
         </ScrollArea>
 
         {/* Input Area */}
-        <div className="border-t border-slate-200/70 bg-white/70 px-4 pb-4 pt-3 backdrop-blur-xl dark:border-neutral-800/70 dark:bg-slate-950/50 sm:px-6">
+        <div className="border-t border-rule bg-paper px-4 pb-4 pt-3 sm:px-6">
           <div className="mx-auto w-full max-w-4xl">
             {attachedFiles.length > 0 && (
               <div className="hidden">
@@ -3178,9 +3328,9 @@ export default function AiChatPage() {
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {attachedFiles.map((file) => {
-                    const previewUrl = file.previewUrl || file.thumbnailUrl || file.secureUrl || file.publicUrl || file.cloudinarySecureUrl;
-                    const isImage = file.mimeType?.startsWith("image/") || file.fileType === "IMAGE";
-                    const isVideo = file.mimeType?.startsWith("video/") || file.fileType === "VIDEO";
+                    const previewUrl = getAttachmentPreviewUrl(file);
+                    const isImage = isImageAttachment(file);
+                    const isVideo = isVideoAttachment(file);
                     return (
                       <div
                         key={`${file.id}-preview`}
@@ -3192,11 +3342,11 @@ export default function AiChatPage() {
                               {file.name}
                             </div>
                             <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                              {file.mimeType || file.fileType || "Unknown file"}
+                              {file.mimeType || file.fileType || t("unknownFile")}
                             </div>
                             {file.processingStatus && (
                               <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                                Status: {file.processingStatus}
+                                {t("composer.status")}: {file.processingStatus}
                               </div>
                             )}
                           </div>
@@ -3205,10 +3355,10 @@ export default function AiChatPage() {
                               href={previewUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                              className="inline-flex items-center gap-1 text-[11px] text-ink-2 underline decoration-rule decoration-1 underline-offset-4 hover:text-ochre hover:decoration-ochre"
                             >
-                              <ExternalLink className="h-3.5 w-3.5" />
-                              Open
+                              <ExternalLink className="h-3 w-3" />
+                              {t("attachmentPreview.open")}
                             </a>
                           )}
                         </div>
@@ -3223,8 +3373,8 @@ export default function AiChatPage() {
                           </div>
                         )}
                         {!isImage && !isVideo && (
-                          <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-neutral-800 dark:text-slate-400">
-                            File đã được gắn vào cuộc trò chuyện. AI sẽ đọc nội dung hoặc metadata của file này khi bạn gửi tin nhắn.
+                          <div className="mt-3 rounded-sm border border-rule bg-paper px-3 py-2 text-[11px] text-ink-2 italic font-editorial leading-relaxed">
+                            {t("composer.attachedHelp")}
                           </div>
                         )}
                       </div>
@@ -3237,15 +3387,20 @@ export default function AiChatPage() {
               <div className="mb-3 overflow-x-auto pb-1">
                 <div className="flex min-w-max gap-2 pr-1">
                   {attachedFiles.map((file) => {
-                    const previewUrl = file.previewUrl || file.thumbnailUrl || file.secureUrl || file.publicUrl || file.cloudinarySecureUrl;
-                    const isImage = file.mimeType?.startsWith("image/") || file.fileType === "IMAGE";
-                    const isVideo = file.mimeType?.startsWith("video/") || file.fileType === "VIDEO";
+                    const previewUrl = getAttachmentPreviewUrl(file);
+                    const isImage = isImageAttachment(file);
+                    const isVideo = isVideoAttachment(file);
                     return (
                       <div
                         key={`claude-style-${file.id}`}
                         className="group relative flex w-[220px] items-center gap-3 rounded-2xl border border-slate-200 bg-white/92 p-2.5 shadow-sm transition-colors hover:border-slate-300 dark:border-neutral-800 dark:bg-neutral-900/85 dark:hover:border-neutral-700"
                       >
-                        <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-neutral-800 dark:bg-neutral-800">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewAttachment(file)}
+                          className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-left dark:border-neutral-800 dark:bg-neutral-800"
+                          title={t("composer.previewAttachment")}
+                        >
                           {previewUrl && isImage ? (
                             <img src={previewUrl} alt={file.name} className="h-full w-full object-cover" />
                           ) : previewUrl && isVideo ? (
@@ -3255,25 +3410,38 @@ export default function AiChatPage() {
                               <FileText className="h-4 w-4" />
                             </div>
                           )}
-                        </div>
+                        </button>
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewAttachment(file)}
+                            className="block w-full truncate text-left text-sm font-medium text-slate-800 hover:text-ochre dark:text-slate-100"
+                            title={t("composer.previewAttachment")}
+                          >
                             {file.name}
-                          </div>
+                          </button>
                           <div className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
-                            {file.mimeType || file.fileType || "File đính kèm"}
+                            {file.mimeType || file.fileType || t("attachedFile")}
                           </div>
                           <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500">
-                            <span>{file.processingStatus || "Ready"}</span>
+                            <span>{file.processingStatus || t("ready")}</span>
+                            <button
+                              type="button"
+                              onClick={() => setPreviewAttachment(file)}
+                              className="inline-flex items-center gap-1 text-[11px] text-ink-2 underline decoration-rule decoration-1 underline-offset-4 hover:text-ochre hover:decoration-ochre"
+                            >
+                              <Maximize2 className="h-3 w-3" />
+                              {t("composer.previewAttachment")}
+                            </button>
                             {previewUrl ? (
                               <a
                                 href={previewUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                                className="inline-flex items-center gap-1 text-[11px] text-ink-2 underline decoration-rule decoration-1 underline-offset-4 hover:text-ochre hover:decoration-ochre"
                               >
                                 <ExternalLink className="h-3 w-3" />
-                                Open
+                                {t("attachmentPreview.open")}
                               </a>
                             ) : null}
                           </div>
@@ -3281,8 +3449,8 @@ export default function AiChatPage() {
                         <button
                           type="button"
                           onClick={() => removeAttachedFile(file.id)}
-                          className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-slate-400 shadow-sm transition-colors hover:text-red-500 dark:bg-neutral-900/90"
-                          title="Gỡ file"
+                          className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-sm border border-rule bg-paper text-ink-3 transition-colors hover:text-[hsl(var(--data-neg))] hover:border-[hsl(var(--data-neg))]"
+                          title={t("composer.removeFile")}
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -3300,44 +3468,37 @@ export default function AiChatPage() {
               onChange={handleAttachFiles}
             />
             {activeAnalysisSnapshot ? (
-              <div className="mb-2 flex flex-wrap items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50/80 px-3 py-2 text-xs dark:border-blue-800/60 dark:bg-blue-950/30">
-                <span className="inline-flex items-center gap-1.5 font-semibold text-blue-700 dark:text-blue-200">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Đang tinh chỉnh
+              <div className="mb-2 flex flex-wrap items-center gap-2 border-l-2 border-ochre bg-surface px-3 py-2 text-ed-xs">
+                <span className="inline-flex items-center gap-1.5 font-medium text-ink-1">
+                  <span className="font-editorial italic text-ed-sm leading-none">{t("composer.refining")}</span>
                 </span>
                 <span
-                  className="max-w-[240px] truncate text-slate-700 dark:text-slate-200"
+                  className="max-w-[260px] truncate text-ink-2"
                   title={activeAnalysisSnapshot.title}
                 >
                   {activeAnalysisSnapshot.title}
                 </span>
                 {activeAnalysisSnapshot.scopeLabel ? (
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-blue-200 bg-white px-2 py-0 text-[10px] text-blue-700 dark:border-blue-800/60 dark:bg-blue-950/60 dark:text-blue-200"
-                  >
+                  <span className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0 text-[10px] text-ink-2 tabular-nums">
                     {activeAnalysisSnapshot.scopeLabel}
-                  </Badge>
+                  </span>
                 ) : null}
                 {activeAnalysisSnapshot.chartType ? (
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-slate-200 bg-white px-2 py-0 text-[10px] text-slate-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-slate-300"
-                  >
+                  <span className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0 text-[10px] text-ink-2 tabular-nums">
                     {activeAnalysisSnapshot.chartType}
-                  </Badge>
+                  </span>
                 ) : null}
-                <span className="ml-auto flex items-center gap-1">
-                  <span className="hidden text-[11px] text-slate-500 dark:text-slate-400 sm:inline">
-                    Câu hỏi tiếp theo sẽ tinh chỉnh analysis này
+                <span className="ml-auto flex items-center gap-2">
+                  <span className="hidden text-[11px] text-ink-3 sm:inline">
+                    {t("composer.refineHelp")}
                   </span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 rounded-full text-slate-500 hover:bg-blue-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-blue-900/40 dark:hover:text-slate-200"
+                    className="h-6 w-6 rounded-sm text-ink-3 hover:bg-paper hover:text-ink-1"
                     onClick={handleDismissActiveAnalysis}
-                    title="Hỏi chủ đề mới (bỏ tinh chỉnh)"
+                    title={t("composer.startNewTopic")}
                   >
                     <X className="h-3.5 w-3.5" />
                   </Button>
@@ -3345,7 +3506,7 @@ export default function AiChatPage() {
               </div>
             ) : null}
             <div
-              className="relative overflow-hidden rounded-[32px] border border-slate-800 bg-slate-950 px-3 py-2 shadow-[0_18px_40px_rgba(2,6,23,0.28)] transition-all duration-200 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10"
+              className="relative overflow-hidden rounded-sm border border-rule bg-surface px-3 py-2 transition-colors duration-150 focus-within:border-ink-2"
               id="ai-chat-input"
             >
               <div className="flex items-center gap-2">
@@ -3353,10 +3514,10 @@ export default function AiChatPage() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-11 w-11 flex-shrink-0 rounded-full text-slate-400 hover:bg-white/5 hover:text-white"
+                  className="h-10 w-10 flex-shrink-0 rounded-sm text-ink-3 hover:bg-paper hover:text-ink-1"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={!userId || uploadFileMutation.isPending || isStreaming}
-                  title="Attach files"
+                  title={t("composer.attachFiles")}
                 >
                   {uploadFileMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -3366,12 +3527,14 @@ export default function AiChatPage() {
                 </Button>
                 <div className="min-w-0 flex-1">
                   {attachedFiles.length > 0 ? (
-                    <div className="mb-1.5 text-[11px] text-slate-500">
-                      {attachedFiles.length} file đính kèm đã sẵn sàng để AI phân tích
+                    <div className="mb-1.5 text-[11px] text-ink-3">
+                      {attachedFiles.length === 1
+                        ? t("composer.fileReady", { count: attachedFiles.length })
+                        : t("composer.filesReady", { count: attachedFiles.length })}
                     </div>
                   ) : null}
                   <Textarea
-                    placeholder="Bạn đang nghĩ gì?..."
+                    placeholder={t("composer.placeholder")}
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyDown={(e) => {
@@ -3381,7 +3544,7 @@ export default function AiChatPage() {
                       }
                     }}
                     rows={1}
-                    className="min-h-[48px] max-h-40 resize-none border-none bg-transparent px-0 py-2 text-sm leading-6 text-white shadow-none focus-visible:ring-0 placeholder:text-slate-500 dark:placeholder:text-slate-500"
+                    className="min-h-[44px] max-h-40 resize-none border-none bg-transparent px-0 py-2 text-ed-base leading-6 text-ink-1 shadow-none focus-visible:ring-0 placeholder:text-ink-3"
                   />
                 </div>
                 <Button
@@ -3394,17 +3557,17 @@ export default function AiChatPage() {
                     uploadFileMutation.isPending
                   }
                   size="icon"
-                  className="h-11 w-11 flex-shrink-0 rounded-full bg-white/8 text-slate-300 hover:bg-blue-600 hover:text-white disabled:bg-white/5 disabled:text-slate-600"
+                  className="h-10 w-10 flex-shrink-0 rounded-sm bg-ink-1 text-paper hover:bg-ochre hover:text-ochre-foreground disabled:bg-rule disabled:text-ink-3 transition-colors"
                 >
                   {chatMutation.isPending || isStreaming ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Send className="h-4 w-4" />
+                    <Send className="h-3.5 w-3.5" />
                   )}
                 </Button>
               </div>
             </div>
-            <p className="text-[11px] text-slate-400 text-center mt-2 hidden sm:block">
+            <p className="text-[11px] text-ink-3 text-center mt-2 hidden sm:block">
               {t("enterToSend") || "Press Enter to send, Shift + Enter for new line"}
             </p>
           </div>
@@ -3415,13 +3578,13 @@ export default function AiChatPage() {
         <div
           onMouseDown={startAnalysisResize}
           className="relative hidden w-2 cursor-col-resize bg-transparent lg:block"
-          title="Drag to resize analysis workspace"
+          title={t("sidebar.dragResize")}
         >
-          <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200/70 transition-colors hover:bg-blue-400 dark:bg-neutral-800" />
+          <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-rule transition-colors hover:bg-ochre" />
         </div>
         <aside
           style={{ ['--analysis-w' as any]: `${effectiveAnalysisWidth}px` }}
-          className="flex min-h-[34vh] w-full min-w-0 flex-col border-t border-slate-200/70 bg-white/90 backdrop-blur-xl dark:border-neutral-800/70 dark:bg-slate-950/80 lg:min-h-0 lg:w-[var(--analysis-w)] lg:min-w-[360px] lg:max-w-[860px] lg:border-l lg:border-l-slate-200/70 lg:border-t-0 lg:dark:border-l-neutral-800/70"
+          className="flex min-h-[34vh] w-full min-w-0 flex-col border-t border-rule bg-surface lg:min-h-0 lg:w-[var(--analysis-w)] lg:min-w-[420px] lg:max-w-[960px] lg:border-l lg:border-l-rule lg:border-t-0"
         >
           <AnalysisWorkspacePanel
             message={selectedInsightMessage}
@@ -3526,10 +3689,17 @@ export default function AiChatPage() {
         />
       ) : null}
 
+      {previewAttachment ? (
+        <AttachmentPreviewOverlay
+          file={previewAttachment}
+          onClose={() => setPreviewAttachment(null)}
+        />
+      ) : null}
+
       {/* AI Chat Onboarding Tour */}
       {showTour && userProfile && (
         <AiChatOnboardingTour
-          userName={userProfile.fullName || userProfile.username || "bạn"}
+          userName={userProfile.fullName || userProfile.username || t("defaultUserName")}
           onComplete={handleTourComplete}
           onSkip={handleTourSkip}
         />
@@ -3538,17 +3708,136 @@ export default function AiChatPage() {
   );
 }
 
+function AttachmentPreviewOverlay({
+  file,
+  onClose,
+}: {
+  file: AttachedFileContext;
+  onClose: () => void;
+}) {
+  const t = useTranslations("AiChat");
+  const previewUrl = getAttachmentPreviewUrl(file);
+  const sourceUrl = getAttachmentSourceUrl(file);
+  const textContent = (file.content || file.excerpt || "").trim();
+  const displayText = textContent.slice(0, ATTACHMENT_PREVIEW_CHARS);
+  const isTextTruncated = textContent.length > displayText.length;
+  const isImage = isImageAttachment(file);
+  const isVideo = isVideoAttachment(file);
+  const isAudio = isAudioAttachment(file);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("attachmentPreview.aria")}
+      className="ai-chat-theme font-ui fixed inset-0 z-[70] flex flex-col bg-ink-1/60"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        onClick={onClose}
+        aria-label={t("attachmentPreview.closeAria")}
+      />
+      <div className="relative m-0 flex h-full w-full flex-col overflow-hidden bg-paper sm:m-6 sm:h-[calc(100vh-3rem)] sm:rounded-sm sm:border sm:border-rule">
+        <div className="flex items-start justify-between gap-4 border-b border-rule bg-paper px-4 py-4 sm:px-6">
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+              {t("attachmentPreview.title")}
+            </div>
+            <div className="mt-2 truncate text-ed-lg font-medium text-ink-1">
+              {file.name}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ink-3">
+              <span>{file.mimeType || file.fileType || t("attachmentPreview.file")}</span>
+              {typeof file.size === "number" ? <span>{t("attachmentPreview.bytes", { count: file.size })}</span> : null}
+              {file.processingStatus ? <span>{file.processingStatus}</span> : null}
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            {sourceUrl ? (
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-rule px-2.5 text-ed-xs text-ink-2 transition-colors hover:border-ink-2 hover:text-ink-1"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                {t("attachmentPreview.open")}
+              </a>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-sm text-ink-3 hover:bg-surface hover:text-ink-1"
+              onClick={onClose}
+              title={t("attachmentPreview.closeTitle")}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto bg-surface p-4 sm:p-6">
+          {displayText ? (
+            <div className="mx-auto h-full max-w-6xl overflow-hidden rounded-sm border border-rule bg-paper">
+              <pre className="h-full overflow-auto p-4 text-[12px] leading-5 text-ink-1">
+                <code>{displayText}</code>
+              </pre>
+              {isTextTruncated ? (
+                <div className="border-t border-rule px-4 py-2 text-[11px] text-ink-3">
+                  {t("attachmentPreview.truncated")}
+                </div>
+              ) : null}
+            </div>
+          ) : isImage && previewUrl ? (
+            <div className="flex h-full items-center justify-center">
+              <img
+                src={previewUrl}
+                alt={file.name}
+                className="max-h-full max-w-full rounded-sm border border-rule object-contain"
+              />
+            </div>
+          ) : isVideo && sourceUrl ? (
+            <div className="flex h-full items-center justify-center">
+              <video
+                src={sourceUrl}
+                controls
+                className="max-h-full max-w-full rounded-sm border border-rule bg-black"
+              />
+            </div>
+          ) : isAudio && sourceUrl ? (
+            <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-sm border border-rule bg-paper p-6">
+              <FileText className="h-8 w-8 text-ink-3" />
+              <audio src={sourceUrl} controls className="w-full" />
+            </div>
+          ) : (
+            <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-3 rounded-sm border border-rule bg-paper px-6 py-12 text-center">
+              <FileText className="h-10 w-10 text-ink-3" />
+              <div className="text-ed-base font-medium text-ink-1">{t("attachmentPreview.unavailableTitle")}</div>
+              <div className="max-w-md text-ed-sm text-ink-2">
+                {t("attachmentPreview.unavailableDesc")}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Claude-style shimmering "thinking" indicator
 function ThinkingIndicator() {
+  const t = useTranslations("AiChat");
   return (
-    <div className="inline-flex items-center gap-2 text-sm">
-      <span className="relative inline-block overflow-hidden text-transparent bg-clip-text bg-[linear-gradient(110deg,#94a3b8_30%,#1e293b_50%,#94a3b8_70%)] dark:bg-[linear-gradient(110deg,#64748b_30%,#f1f5f9_50%,#64748b_70%)] bg-[length:200%_100%] animate-shimmer font-medium">
-        Đang suy nghĩ…
+    <div className="inline-flex items-baseline gap-2 text-ed-sm">
+      <span className="font-editorial italic text-ink-2">
+        {t("runtime.thinking")}
       </span>
       <span className="flex gap-0.5 items-center">
-        <span className="w-1 h-1 rounded-full bg-slate-400 animate-pulse" />
-        <span className="w-1 h-1 rounded-full bg-slate-400 animate-pulse" style={{ animationDelay: "0.2s" }} />
-        <span className="w-1 h-1 rounded-full bg-slate-400 animate-pulse" style={{ animationDelay: "0.4s" }} />
+        <span className="w-1 h-1 rounded-full bg-ink-3 animate-pulse" />
+        <span className="w-1 h-1 rounded-full bg-ink-3 animate-pulse" style={{ animationDelay: "0.2s" }} />
+        <span className="w-1 h-1 rounded-full bg-ink-3 animate-pulse" style={{ animationDelay: "0.4s" }} />
       </span>
     </div>
   );
@@ -3564,44 +3853,46 @@ function DetailsPanel({
   nodeTimings: Array<[string, number]>;
   trace: MessageTraceItem[];
 }) {
+  const t = useTranslations("AiChat");
   const [open, setOpen] = useState(false);
   const hasRuntime = !!requestId || nodeTimings.length > 0;
   const hasTrace = trace.length > 0;
   if (!hasRuntime && !hasTrace) return null;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/60 dark:border-neutral-800 dark:bg-neutral-900/40">
+    <div>
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-neutral-800/60 rounded-xl transition-colors"
+        className="w-full flex items-center justify-between py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3 hover:text-ink-1 transition-colors"
       >
-        <span className="flex items-center gap-2">
-          <Activity className="h-3.5 w-3.5" />
-          Chi tiết xử lý
+        <span className="flex items-center gap-1.5">
+          {t("runtime.howBuilt")}
         </span>
-        {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
       </button>
       {open && (
-        <div className="px-3 pb-3 pt-0 space-y-3 border-t border-slate-200/70 dark:border-neutral-800/70">
+        <div className="pb-2 space-y-3 border-t border-rule pt-2.5">
           {hasRuntime && (
-            <div className="pt-3">
-              <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
-                <Activity className="h-3 w-3" /> Runtime
+            <div>
+              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+                {t("runtime.howBuilt")}
               </div>
               {requestId && (
-                <div className="mt-1.5 text-[11px] text-slate-600 dark:text-slate-400">
-                  Request ID: <span className="font-mono">{String(requestId)}</span>
+                <div className="mt-1 text-[11px] text-ink-3">
+                  <span>{t("runtime.traceId")} </span>
+                  <span className="text-ink-2 font-mono tabular-nums break-all" title={t("runtime.traceIdTitle")}>{String(requestId)}</span>
                 </div>
               )}
               {nodeTimings.length > 0 && (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
                   {nodeTimings.map(([step, duration]) => (
                     <span
                       key={step}
-                      className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] bg-white border border-slate-200 text-slate-600 dark:bg-neutral-900 dark:border-neutral-800 dark:text-slate-300"
+                      className="inline-flex items-baseline gap-1 text-[11px] text-ink-2"
                     >
-                      {step}: {Number(duration).toFixed(1)}ms
+                      <span className="text-ink-3">{humanizeAgentStep(step, t)}</span>
+                      <span className="font-mono tabular-nums">{Number(duration).toFixed(0)}ms</span>
                     </span>
                   ))}
                 </div>
@@ -3609,17 +3900,18 @@ function DetailsPanel({
             </div>
           )}
           {hasTrace && (
-            <div className={hasRuntime ? "pt-1" : "pt-3"}>
-              <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
-                <Workflow className="h-3 w-3" /> Planning Trace
+            <div>
+              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+                {t("runtime.reasoningSteps")}
               </div>
-              <div className="mt-1.5 space-y-1">
+              <ol className="mt-1.5 space-y-0.5 list-none">
                 {trace.slice(0, 6).map((item, index) => (
-                  <div key={`${item.step || "step"}-${index}`} className="text-[11px] text-slate-600 dark:text-slate-400">
-                    <span className="font-semibold">{item.step || "step"}:</span> {item.detail || ""}
-                  </div>
+                  <li key={`${item.step || "step"}-${index}`} className="flex items-baseline gap-2 text-[11px] text-ink-2">
+                    <span className="font-mono text-ink-3 tabular-nums">{String(index + 1).padStart(2, "0")}</span>
+                    <span><span className="text-ink-1 font-medium">{humanizeAgentStep(item.step, t)}</span>{item.detail ? ` — ${item.detail}` : ""}</span>
+                  </li>
                 ))}
-              </div>
+              </ol>
             </div>
           )}
         </div>
@@ -3637,10 +3929,11 @@ function ChartPreviewCard({
   queryResult?: Record<string, any> | null;
   isStreaming?: boolean;
 }) {
+  const t = useTranslations("AiChat");
   const labels: string[] = Array.isArray(chartSpec?.data?.labels) ? chartSpec.data.labels : [];
   const datasets: Array<{ label?: string; values?: number[] }> = Array.isArray(chartSpec?.data?.datasets) ? chartSpec.data.datasets : [];
   const initialType = String(chartSpec.type || "bar").toLowerCase();
-  const chartTitle = String(chartSpec.title || "Chart");
+  const chartTitle = String(chartSpec.title || t("chart.title"));
   const chartSubtitle = String(chartSpec.subtitle || queryResult?.summary || "").trim();
   const scopeLabel = String(queryResult?.scopeLabel || queryResult?.scope || "").trim();
   // Prefer BE-provided chartOptions (W9 contract) when available; fall back to
@@ -3761,7 +4054,8 @@ function ChartPreviewCard({
     emptyStateHint === "single_category" || (!emptyStateHint && labels.length === 1);
   const totalPoints = numericValues.length;
 
-  const DEFAULT_COLORS = ["#3b82f6", "#8b5cf6", "#06b6d4", "#f59e0b", "#ef4444", "#10b981"];
+  // Editorial palette: ochre (primary), navy, forest, wine, warm tan, muted lilac.
+  const DEFAULT_COLORS = ["#B4531A", "#3D5A80", "#2F6F3E", "#A23535", "#A68A64", "#6B5B95"];
   const COLORS =
     Array.isArray(beOptions?.colorPalette) && beOptions!.colorPalette!.length > 0
       ? beOptions!.colorPalette!
@@ -3776,18 +4070,17 @@ function ChartPreviewCard({
 
   if (!chartData.length || !datasets.length) {
     return (
-      <div className="rounded-[28px] border border-slate-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
+      <div className="border-l border-rule pl-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
-              <BarChart3 className="h-3.5 w-3.5" />
-              Chart
+            <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+              {t("chart.title")}
             </div>
-            <div className="mt-2 text-lg font-semibold text-slate-950 dark:text-slate-50">
+            <div className="font-editorial mt-1.5 text-[22px] leading-[1.15] text-ink-1">
               {chartTitle}
             </div>
             {chartSubtitle ? (
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+              <p className="mt-2 max-w-[52ch] text-ed-sm leading-relaxed text-ink-2">
                 {chartSubtitle}
               </p>
             ) : null}
@@ -3796,19 +4089,19 @@ function ChartPreviewCard({
             <ScopeBadge queryResult={queryResult} tone="prominent" />
           ) : null}
         </div>
-        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center dark:border-neutral-800 dark:bg-neutral-950/60">
+        <div className="mt-5 border-t border-dashed border-rule py-10 text-center">
           {isStreaming ? (
-            <div className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <div className="inline-flex items-center gap-2 text-ed-sm text-ink-3">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Waiting for chart payload...
+              {t("chart.waiting")}
             </div>
           ) : (
             <>
-              <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                No data available for chart.
+              <div className="font-editorial text-ed-md italic text-ink-2">
+                {t("chart.noData")}
               </div>
-              <p className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                The current result does not contain enough numeric data to render a chart.
+              <p className="mt-2 text-ed-xs leading-relaxed text-ink-3 max-w-[46ch] mx-auto">
+                {t("chart.noDataDesc")}
               </p>
             </>
           )}
@@ -3817,38 +4110,43 @@ function ChartPreviewCard({
     );
   }
 
-  const seriesLabels = datasets.map((dataset, index) => dataset.label || `Series ${index + 1}`);
+  const seriesLabels = datasets.map((dataset, index) => dataset.label || t("chart.series", { index: index + 1 }));
   const stateMessage = allZero
-    ? "All chart values are 0. The panel is still rendered so you can verify the current state."
+    ? t("chart.allZero")
     : singleCategory
-      ? "Only one category is available for this chart, so comparisons will be limited."
+      ? t("chart.singleCategory")
       : null;
   const stateTone = allZero ? "warning" : singleCategory ? "info" : null;
   const chartNote = String(chartSpec.note || chartSpec.description || "").trim();
   const tooltipFormatter = (value: unknown, name: string) => [
-    formatQueryResultValue(value, String(name || "value")),
+    formatQueryResultValue(value, String(name || "value"), null, t),
     String(name),
   ];
+
+  const GRID_COLOR = "#E8E6DF";
+  const AXIS_COLOR = "#8A8A90";
+  const axisTick = { fontSize: 11, fill: AXIS_COLOR, fontFamily: "var(--font-mono)" };
+  const legendStyle = { fontSize: 11, fontFamily: "var(--font-ui)", color: "#54545A" };
 
   const renderChart = () => {
     if (selectedType === "line") {
       return (
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} tickFormatter={formatAxisTick} />
-            <YAxis tick={{ fontSize: 11, fill: "#64748b" }} />
-            <Tooltip formatter={tooltipFormatter} />
-            <Legend />
+          <LineChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+            <CartesianGrid stroke={GRID_COLOR} strokeWidth={1} vertical={false} />
+            <XAxis dataKey="name" tick={axisTick} tickLine={false} axisLine={{ stroke: GRID_COLOR }} tickFormatter={formatAxisTick} />
+            <YAxis tick={axisTick} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
+            <Tooltip formatter={tooltipFormatter} contentStyle={{ fontFamily: "var(--font-mono)", fontSize: 12, borderRadius: 2, border: "1px solid #E8E6DF", background: "#FFFFFF", color: "#0F0F10" }} />
+            <Legend wrapperStyle={legendStyle} iconType="plainline" />
             {datasets.map((ds: any, i: number) => (
               <Line
                 key={ds.label || i}
                 type="monotone"
                 dataKey={ds.label || "value"}
                 stroke={COLORS[i % COLORS.length]}
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                activeDot={{ r: 5 }}
+                strokeWidth={1.75}
+                dot={{ r: 2.5, strokeWidth: 0, fill: COLORS[i % COLORS.length] }}
+                activeDot={{ r: 4, strokeWidth: 0, fill: COLORS[i % COLORS.length] }}
               />
             ))}
           </LineChart>
@@ -3868,15 +4166,17 @@ function ChartPreviewCard({
               cy="50%"
               innerRadius={72}
               outerRadius={104}
-              paddingAngle={4}
+              paddingAngle={2}
+              stroke="#FAFAF7"
+              strokeWidth={2}
               label
             >
               {pieData.map((_: any, idx: number) => (
                 <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip formatter={tooltipFormatter} />
-            <Legend />
+            <Tooltip formatter={tooltipFormatter} contentStyle={{ fontFamily: "var(--font-mono)", fontSize: 12, borderRadius: 2, border: "1px solid #E8E6DF", background: "#FFFFFF", color: "#0F0F10" }} />
+            <Legend wrapperStyle={legendStyle} iconType="square" />
           </PieChart>
         </ResponsiveContainer>
       );
@@ -3884,14 +4184,14 @@ function ChartPreviewCard({
 
     return (
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-          <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} tickFormatter={formatAxisTick} />
-          <YAxis tick={{ fontSize: 11, fill: "#64748b" }} />
-          <Tooltip formatter={tooltipFormatter} />
-          <Legend />
+        <BarChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+          <CartesianGrid stroke={GRID_COLOR} strokeWidth={1} vertical={false} />
+          <XAxis dataKey="name" tick={axisTick} tickLine={false} axisLine={{ stroke: GRID_COLOR }} tickFormatter={formatAxisTick} />
+          <YAxis tick={axisTick} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
+          <Tooltip formatter={tooltipFormatter} cursor={{ fill: "rgba(15,15,16,0.04)" }} contentStyle={{ fontFamily: "var(--font-mono)", fontSize: 12, borderRadius: 2, border: "1px solid #E8E6DF", background: "#FFFFFF", color: "#0F0F10" }} />
+          <Legend wrapperStyle={legendStyle} iconType="square" />
           {datasets.map((ds: any, i: number) => (
-            <Bar key={ds.label || i} dataKey={ds.label || "value"} fill={COLORS[i % COLORS.length]} radius={[10, 10, 0, 0]} />
+            <Bar key={ds.label || i} dataKey={ds.label || "value"} fill={COLORS[i % COLORS.length]} radius={[2, 2, 0, 0]} />
           ))}
         </BarChart>
       </ResponsiveContainer>
@@ -3899,101 +4199,86 @@ function ChartPreviewCard({
   };
 
   return (
-    <div className="rounded-[28px] border border-slate-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
+    <div className="border-l border-rule pl-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
-            <BarChart3 className="h-3.5 w-3.5" />
+          <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
             Chart
-            <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[10px] normal-case tracking-normal">
+            <span className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0 text-[10px] tabular-nums normal-case tracking-normal text-ink-2">
               {selectedType}
-            </Badge>
+            </span>
             {queryResult ? (
               <ScopeBadge queryResult={queryResult} tone="prominent" />
             ) : null}
           </div>
-          <div className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">
+          <div className="font-editorial mt-1.5 text-[22px] leading-[1.15] text-ink-1">
             {chartTitle}
           </div>
           {chartSubtitle ? (
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+            <p className="mt-2 max-w-[52ch] text-ed-sm leading-relaxed text-ink-2">
               {chartSubtitle}
             </p>
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1">
           {availableTypes.map((type) => (
-            <Button
+            <button
               key={type}
               type="button"
-              variant={selectedType === type ? "default" : "outline"}
-              size="sm"
               className={cn(
-                "h-8 rounded-full px-3 text-[11px] capitalize",
+                "h-7 px-2.5 text-[11px] capitalize rounded-sm border transition-colors",
                 selectedType === type
-                  ? "bg-slate-950 text-white hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-400"
-                  : "bg-white dark:bg-neutral-950"
+                  ? "border-ochre text-ink-1 bg-surface"
+                  : "border-rule text-ink-3 hover:text-ink-1 hover:border-ink-2 bg-paper"
               )}
               onClick={() => setSelectedType(type)}
             >
               {type}
-            </Button>
+            </button>
           ))}
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="h-8 rounded-full px-3 text-[11px]"
+            className="h-7 rounded-sm px-2 text-[11px] text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1"
             disabled={chartDownloading}
             onClick={handleDownloadChartAsPng}
-            title="Tải chart PNG"
+            title={t("chart.downloadPng")}
           >
             {chartDownloading ? (
-              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
             ) : (
-              <Download className="mr-1 h-3.5 w-3.5" />
+              <Download className="mr-1 h-3 w-3" />
             )}
             PNG
           </Button>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950/60">
-          <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Categories
-          </div>
-          <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {labels.length}
-          </div>
+      <dl className="mt-5 grid gap-x-6 gap-y-1 sm:grid-cols-3 border-t border-rule pt-4">
+        <div>
+          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("chart.categories")}</dt>
+          <dd className="mt-1 text-ed-sm font-medium text-ink-1 tabular-nums">{labels.length}</dd>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950/60">
-          <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Series
-          </div>
-          <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {seriesLabels.length}
-          </div>
+        <div>
+          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("chart.seriesLabel")}</dt>
+          <dd className="mt-1 text-ed-sm font-medium text-ink-1 tabular-nums">{seriesLabels.length}</dd>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950/60">
-          <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Data points
-          </div>
-          <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {totalPoints}
-          </div>
+        <div>
+          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("chart.dataPoints")}</dt>
+          <dd className="mt-1 text-ed-sm font-medium text-ink-1 tabular-nums">{totalPoints}</dd>
         </div>
-      </div>
+      </dl>
 
       <div className="mt-4 flex flex-wrap gap-1.5">
         {seriesLabels.map((seriesLabel, index) => (
           <span
             key={`${seriesLabel}-${index}`}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600 dark:border-neutral-800 dark:bg-neutral-950 dark:text-slate-300"
+            className="inline-flex items-center gap-2 text-[11px] text-ink-2 tabular-nums"
           >
             <span
-              className="inline-block h-2.5 w-2.5 rounded-full"
+              className="inline-block h-2 w-2 rounded-sm"
               style={{ backgroundColor: COLORS[index % COLORS.length] }}
             />
             {seriesLabel}
@@ -4004,10 +4289,10 @@ function ChartPreviewCard({
       {stateMessage ? (
         <div
           className={cn(
-            "mt-4 rounded-2xl border px-4 py-3 text-sm leading-6",
+            "mt-4 border-l-2 px-4 py-2.5 text-ed-xs leading-relaxed italic font-editorial",
             stateTone === "warning"
-              ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
-              : "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200"
+              ? "border-ochre text-ink-2 bg-surface"
+              : "border-[hsl(var(--data-info))] text-ink-2 bg-surface"
           )}
         >
           {stateMessage}
@@ -4016,13 +4301,13 @@ function ChartPreviewCard({
 
       <div
         ref={chartSvgContainerRef}
-        className="mt-4 rounded-[26px] border border-slate-200 bg-white px-3 py-4 shadow-inner dark:border-neutral-800 dark:bg-slate-950/80"
+        className="mt-5 border border-rule bg-surface px-2 py-3"
       >
         {renderChart()}
       </div>
 
       {chartNote ? (
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm leading-6 text-slate-600 dark:border-neutral-800 dark:bg-neutral-950/60 dark:text-slate-300">
+        <div className="mt-4 text-ed-sm leading-relaxed text-ink-2 italic font-editorial max-w-[68ch] border-l-2 border-rule pl-3">
           {chartNote}
         </div>
       ) : null}
@@ -4039,7 +4324,8 @@ interface ColumnFormatHint {
 function formatQueryResultValue(
   value: unknown,
   column: string,
-  hint?: ColumnFormatHint | null
+  hint?: ColumnFormatHint | null,
+  t?: (key: any, values?: any) => string
 ): string {
   if (value === null || value === undefined || value === "") {
     return "—";
@@ -4088,7 +4374,7 @@ function formatQueryResultValue(
   }
 
   if (typeof value === "boolean") {
-    return value ? "Yes" : "No";
+    return value ? (t ? t("yes") : "Yes") : (t ? t("no") : "No");
   }
 
   if (kind === "datetime" && typeof value === "string") {
@@ -4099,7 +4385,7 @@ function formatQueryResultValue(
   }
 
   if (Array.isArray(value)) {
-    return value.map((item) => formatQueryResultValue(item, column, hint)).join(", ");
+    return value.map((item) => formatQueryResultValue(item, column, hint, t)).join(", ");
   }
 
   if (typeof value === "object") {
@@ -4122,6 +4408,7 @@ function QueryResultCard({
   onCopyTable?: (format: "tsv" | "markdown") => void;
   onExportCsv?: () => void;
 }) {
+  const t = useTranslations("AiChat");
   const rows = useMemo(
     () => (Array.isArray(queryResult.rows) ? queryResult.rows : []),
     [queryResult.rows]
@@ -4191,109 +4478,84 @@ function QueryResultCard({
   const visibleRows = rows.slice(startIndex, endIndex);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
-      <div className="flex flex-wrap items-start gap-2">
+    <div className="border-l border-rule pl-4">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-100">
-            <Database className="h-3.5 w-3.5" />
-            Query Result
-            <ScopeBadge queryResult={queryResult} tone="prominent" />
+          <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+            {t("queryResultPanel.title")}
+            <ScopeBadge queryResult={queryResult} tone="inline" />
             {queryResult.metric ? (
-              <Badge variant="outline" className="text-[10px]">
+              <span className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0 text-[10px] tabular-nums normal-case tracking-normal text-ink-2">
                 {String(queryResult.metric)}
-              </Badge>
+              </span>
             ) : null}
           </div>
           {queryResult.summary ? (
-            <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+            <p className="mt-2 text-ed-sm leading-relaxed text-ink-1 max-w-[68ch] font-editorial italic">
               {String(queryResult.summary)}
             </p>
           ) : null}
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 xl:max-w-[45%] xl:justify-end">
           {onCopyTable && rows.length > 0 ? (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="h-7 rounded-full px-2.5 text-[11px]"
+              className="h-7 rounded-sm px-2.5 text-[11px] text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1"
               onClick={() => onCopyTable("tsv")}
-              title="Sao chép bảng (dán vào Excel / Sheets)"
+              title={t("queryResultPanel.copyTableTitle")}
             >
               <Copy className="mr-1 h-3 w-3" />
-              Copy
+              {t("queryResultPanel.copy")}
             </Button>
           ) : null}
           {onExportCsv && rows.length > 0 ? (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="h-7 rounded-full px-2.5 text-[11px]"
+              className="h-7 rounded-sm px-2.5 text-[11px] text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1"
               onClick={onExportCsv}
-              title="Tải CSV"
+              title={t("queryResultPanel.downloadCsvTitle")}
             >
               <Download className="mr-1 h-3 w-3" />
-              CSV
+              {t("queryResultPanel.csv")}
             </Button>
-          ) : null}
-          <Badge variant="outline" className="text-[10px]">
-            {totalRows} row{totalRows === 1 ? "" : "s"}
-          </Badge>
-          <Badge variant="outline" className="text-[10px]">
-            {columns.length} column{columns.length === 1 ? "" : "s"}
-          </Badge>
-          {tableNames.length > 0 ? (
-            <Badge variant="outline" className="text-[10px]">
-              {tableNames.length} source{tableNames.length === 1 ? "" : "s"}
-            </Badge>
           ) : null}
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/60">
-          <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Scope
-          </div>
-          <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
-            {String(queryResult.scopeLabel || queryResult.scope || "Analytics")}
-          </div>
+      <dl className="mt-4 grid gap-x-6 gap-y-1 sm:grid-cols-3 border-t border-rule pt-4">
+        <div>
+          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("queryResultPanel.scope")}</dt>
+          <dd className="mt-1 text-ed-sm font-medium text-ink-1">{humanizeScope(queryResult.scopeLabel || queryResult.scope, t)}</dd>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/60">
-          <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Rows Loaded
-          </div>
-          <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
-            {rows.length} / {totalRows}
-          </div>
+        <div>
+          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("queryResultPanel.rowsLoaded")}</dt>
+          <dd className="mt-1 text-ed-sm font-medium text-ink-1 tabular-nums">{rows.length} / {totalRows}</dd>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/60">
-          <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Columns
-          </div>
-          <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
-            {columns.join(", ") || "No columns"}
-          </div>
+        <div>
+          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("queryResultPanel.columns")}</dt>
+          <dd className="mt-1 break-words text-ed-sm font-medium text-ink-1 font-mono">{columns.join(", ") || t("queryResultPanel.none")}</dd>
         </div>
-      </div>
+      </dl>
 
       {rows.length > 0 && columns.length > 0 ? (
         <>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
-              Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{startIndex + 1}</span>
-              {" - "}
-              <span className="font-semibold text-slate-700 dark:text-slate-200">{endIndex}</span>
-              {" of "}
-              <span className="font-semibold text-slate-700 dark:text-slate-200">{rows.length}</span>
-              {" loaded rows"}
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-[11px] text-ink-3 tabular-nums">
+              {t("queryResultPanel.showingRows", {
+                start: startIndex + 1,
+                end: endIndex,
+                total: rows.length,
+              })}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-                <span>Rows / page</span>
+              <div className="flex items-center gap-2 text-[11px] text-ink-3">
+                <span>{t("queryResultPanel.rowsPerPage")}</span>
                 <Select
                   value={String(pageSize)}
                   onValueChange={(value) => {
@@ -4304,7 +4566,7 @@ function QueryResultCard({
                     }
                   }}
                 >
-                  <SelectTrigger className="h-7 w-[78px] text-[11px]">
+                  <SelectTrigger className="h-7 w-[72px] text-[11px] rounded-sm border-rule bg-paper focus:ring-0 focus:border-ink-2 tabular-nums">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -4320,42 +4582,42 @@ function QueryResultCard({
               <div className="flex items-center gap-1">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-[11px]"
+                  className="h-7 px-2 text-[11px] rounded-sm text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1 disabled:opacity-40"
                   disabled={page <= 1}
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                 >
                   <ChevronRight className="mr-1 h-3 w-3 rotate-180" />
-                  Prev
+                  {t("queryResultPanel.prev")}
                 </Button>
-                <Badge variant="secondary" className="h-7 rounded-md px-2 text-[10px]">
+                <span className="h-7 rounded-sm px-2 text-[10px] border border-rule bg-paper inline-flex items-center text-ink-2 tabular-nums font-mono">
                   {page} / {totalPages}
-                </Badge>
+                </span>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-[11px]"
+                  className="h-7 px-2 text-[11px] rounded-sm text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1 disabled:opacity-40"
                   disabled={page >= totalPages}
                   onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                 >
-                  Next
+                  {t("queryResultPanel.next")}
                   <ChevronRight className="ml-1 h-3 w-3" />
                 </Button>
               </div>
             </div>
           </div>
 
-          <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+          <div className="mt-3 border border-rule bg-surface">
             <div className="max-h-[24rem] overflow-auto">
-              <table className="min-w-full text-left text-xs">
-                <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur dark:bg-slate-900/95">
+              <table className="min-w-full text-left text-[12.5px]">
+                <thead className="sticky top-0 z-10 bg-paper">
                   <tr>
                     {columns.map((column) => (
                       <th
                         key={column}
-                        className="whitespace-nowrap border-b border-slate-200 px-3 py-2 font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300"
+                        className="whitespace-nowrap border-b border-rule px-3 py-2 font-medium uppercase tracking-[0.1em] text-[10px] text-ink-3"
                       >
                         {column}
                       </th>
@@ -4366,19 +4628,24 @@ function QueryResultCard({
                   {visibleRows.map((row, rowIndex) => (
                     <tr
                       key={`${page}-${rowIndex}`}
-                      className="border-b border-slate-100 align-top last:border-0 hover:bg-slate-50/80 dark:border-slate-900 dark:hover:bg-slate-900/40"
+                      className="border-b border-rule align-top last:border-0 hover:bg-paper/60"
                     >
                       {columns.map((column) => {
                         const formatted = formatQueryResultValue(
                           row?.[column],
                           column,
-                          columnMetaMap[column]
+                          columnMetaMap[column],
+                          t
                         );
-                        const compact = formatted.length > 120 ? `${formatted.slice(0, 117)}...` : formatted;
+                        const compact = formatted.length > 120 ? `${formatted.slice(0, 117)}…` : formatted;
+                        const isNumeric = typeof row?.[column] === "number";
                         return (
                           <td
                             key={`${page}-${rowIndex}-${column}`}
-                            className="max-w-[280px] px-3 py-2 text-slate-600 dark:text-slate-300"
+                            className={cn(
+                              "max-w-[280px] px-3 py-2 text-ink-1",
+                              isNumeric && "font-mono tabular-nums"
+                            )}
                             title={formatted}
                           >
                             <div className="break-words leading-relaxed">{compact}</div>
@@ -4393,18 +4660,17 @@ function QueryResultCard({
           </div>
 
           {tableNames.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-ink-3">
+              <span className="uppercase tracking-[0.18em] text-[10px]">{t("queryResultPanel.sources")}</span>
               {tableNames.map((tableName) => (
-                <Badge key={tableName} variant="outline" className="text-[10px]">
-                  {tableName}
-                </Badge>
+                <span key={tableName} className="font-mono text-ink-2">{tableName}</span>
               ))}
             </div>
           ) : null}
         </>
       ) : (
-        <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
-          Query executed successfully, but no rows matched the current filter.
+        <div className="mt-3 border-l-2 border-rule bg-surface px-3 py-3 text-ed-sm text-ink-2 italic font-editorial">
+          {t("queryResultPanel.noRows")}
         </div>
       )}
     </div>
@@ -4413,8 +4679,69 @@ function QueryResultCard({
 
 type AnalysisTab = "data" | "sql" | "chart" | "sources";
 
-function humanizeAgentStep(step?: string) {
-  if (!step) return "Agent step";
+function humanizeIntent(intent?: string, t?: (key: any, values?: any) => string): string {
+  if (!intent) return "";
+  const key = intent.trim().toLowerCase();
+  const map: Record<string, string> = {
+    data_query: t ? t("humanized.dataQuestion") : "Data question",
+    analytics: t ? t("humanized.dataQuestion") : "Data question",
+    sql: t ? t("humanized.dataQuestion") : "Data question",
+    visualization: t ? t("humanized.chartRequest") : "Chart request",
+    chart: t ? t("humanized.chartRequest") : "Chart request",
+    advisor: t ? t("humanized.advice") : "Advice",
+    recommendation: t ? t("humanized.advice") : "Advice",
+    general: t ? t("humanized.conversation") : "Conversation",
+    chat: t ? t("humanized.conversation") : "Conversation",
+    clarification: t ? t("humanized.clarifyingQuestion") : "Clarifying question",
+    hitl: t ? t("humanized.clarifyingQuestion") : "Clarifying question",
+  };
+  if (map[key]) return map[key];
+  return intent
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function humanizeMode(mode?: string, t?: (key: any, values?: any) => string): string {
+  if (!mode) return "";
+  const key = mode.trim().toUpperCase();
+  const map: Record<string, string> = {
+    AUTO: t ? t("humanized.autoRouted") : "Auto-routed",
+    GENERAL: t ? t("humanized.conversation") : "Conversation",
+    ADVISOR: t ? t("humanized.advisor") : "Advisor",
+  };
+  return map[key] || mode.charAt(0) + mode.slice(1).toLowerCase();
+}
+
+function humanizeScope(scope?: string | null, t?: (key: any, values?: any) => string): string {
+  if (!scope) return t ? t("humanized.analytics") : "Analytics";
+  const key = String(scope).trim().toLowerCase();
+  if (!key) return t ? t("humanized.analytics") : "Analytics";
+  const map: Record<string, string> = {
+    personal: t ? t("humanized.myData") : "My data",
+    user: t ? t("humanized.myData") : "My data",
+    platform: t ? t("humanized.platformWide") : "Platform-wide",
+    system: t ? t("humanized.platformWide") : "Platform-wide",
+    global: t ? t("humanized.platformWide") : "Platform-wide",
+    unknown: t ? t("humanized.analytics") : "Analytics",
+  };
+  if (map[key]) return map[key];
+  return String(scope)
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function humanizeExecutionMode(mode?: string, t?: (key: any, values?: any) => string): string {
+  if (!mode) return "";
+  const key = mode.trim().toLowerCase();
+  if (key === "deterministic_fallback") return t ? t("humanized.directQuery") : "Direct query";
+  if (key === "llm_planner") return t ? t("humanized.llmPlanner") : "LLM planner";
+  return mode
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function humanizeAgentStep(step?: string, t?: (key: any, values?: any) => string) {
+  if (!step) return t ? t("runtime.agentStep") : "Agent step";
   return step
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
@@ -4424,10 +4751,12 @@ function buildAgentSteps({
   trace,
   nodeTimings,
   thinkingText,
+  t,
 }: {
   trace: MessageTraceItem[];
   nodeTimings: Array<[string, number]>;
   thinkingText?: string;
+  t?: (key: any, values?: any) => string;
 }) {
   if (trace.length > 0) {
     return trace.map((item, index) => {
@@ -4440,7 +4769,7 @@ function buildAgentSteps({
           : "done";
       return {
         key: `${item.step || "step"}-${index}`,
-        title: humanizeAgentStep(item.step),
+        title: humanizeAgentStep(item.step, t),
         detail,
         duration,
         status,
@@ -4451,8 +4780,8 @@ function buildAgentSteps({
   if (nodeTimings.length > 0) {
     return nodeTimings.map(([step, duration]) => ({
       key: step,
-      title: humanizeAgentStep(step),
-      detail: "Completed orchestration step.",
+      title: humanizeAgentStep(step, t),
+      detail: t ? t("runtime.completedStep") : "Completed orchestration step.",
       duration,
       status: "done" as const,
     }));
@@ -4466,7 +4795,7 @@ function buildAgentSteps({
 
   return thinkingLines.map((line, index) => ({
     key: `thinking-${index}`,
-    title: index === 0 ? "Reasoning" : `Reasoning ${index + 1}`,
+    title: index === 0 ? (t ? t("runtime.reasoning") : "Reasoning") : `${t ? t("runtime.reasoning") : "Reasoning"} ${index + 1}`,
     detail: line,
     duration: undefined,
     status: "done" as const,
@@ -4484,139 +4813,115 @@ function AgentStepsPanel({
   thinkingText?: string;
   isStreaming?: boolean;
 }) {
+  const t = useTranslations("AiChat");
   const steps = useMemo(
-    () => buildAgentSteps({ trace, nodeTimings, thinkingText }),
-    [trace, nodeTimings, thinkingText]
+    () => buildAgentSteps({ trace, nodeTimings, thinkingText, t }),
+    [trace, nodeTimings, thinkingText, t]
   );
   const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({});
-  const areAllStepsOpen = steps.length > 0 && steps.every((step) => openSteps[step.key]);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
-    const nextState: Record<string, boolean> = {};
-    steps.forEach((step, index) => {
-      nextState[step.key] = index < 3;
+    if (!isExpanded) return;
+    setOpenSteps((current) => {
+      const next = { ...current };
+      let changed = false;
+      steps.forEach((step) => {
+        if (next[step.key] === undefined) {
+          next[step.key] = true;
+          changed = true;
+        }
+      });
+      return changed ? next : current;
     });
-    setOpenSteps(nextState);
-  }, [steps]);
+  }, [isExpanded, steps]);
 
   if (steps.length === 0) {
     return isStreaming ? (
-      <div className="rounded-2xl border border-slate-200 bg-white/90 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
-          <Sparkles className="h-3.5 w-3.5" />
-          Agent steps
-          <Badge variant="secondary" className="text-[10px]">
-            running
-          </Badge>
-        </div>
-        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Preparing execution trace...
+      <div className="border-l border-rule pl-4 py-2">
+        <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+          {t("runtime.agentTrace")}
+          <Loader2 className="h-3 w-3 animate-spin text-ink-3" />
+          <span className="text-[10px] text-ochre normal-case tracking-normal italic font-editorial">{t("runtime.live")}</span>
         </div>
       </div>
     ) : null;
   }
 
   return (
-    <div className="rounded-[26px] border border-slate-200 bg-white/90 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/60">
+    <div className="border-l border-rule pl-4 py-2">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-          <Workflow className="h-4 w-4" />
-          Agent Steps ({steps.length})
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 rounded-full px-3 text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-            onClick={() =>
-              setOpenSteps(
-                Object.fromEntries(steps.map((step) => [step.key, !areAllStepsOpen]))
-              )
-            }
-          >
-            {areAllStepsOpen ? (
-              <ChevronUp className="mr-1.5 h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="mr-1.5 h-3.5 w-3.5" />
-            )}
-            {areAllStepsOpen ? "Hide all" : "Show all"}
-          </Button>
+        <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+          {t("runtime.agentTrace")}
+          <span className="tabular-nums">({steps.length})</span>
           {isStreaming ? (
-            <Badge variant="secondary" className="text-[10px]">
-              live
-            </Badge>
+            <span className="text-[10px] text-ochre normal-case tracking-normal italic font-editorial">{t("runtime.live")}</span>
           ) : null}
         </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-6 rounded-sm px-1.5 text-[11px] text-ink-3 hover:text-ink-1 hover:bg-transparent"
+          onClick={() => {
+            const next = !isExpanded;
+            setIsExpanded(next);
+            setOpenSteps(
+              next
+                ? Object.fromEntries(steps.map((step) => [step.key, true]))
+                : {}
+            );
+          }}
+        >
+          {isExpanded ? t("runtime.hide") : t("runtime.show")}
+        </Button>
       </div>
 
-      <div className="relative mt-4 space-y-3 pl-8">
-        <div className="absolute left-[14px] top-1 bottom-1 w-px bg-gradient-to-b from-slate-200 via-slate-200 to-transparent dark:from-neutral-700 dark:via-neutral-700" />
-        {steps.map((step, index) => {
-          const isOpen = openSteps[step.key] ?? index < 2;
+      {isExpanded ? (
+      <ol className="mt-2 space-y-1 list-none">
+        {steps.map((step, idx) => {
+          const isOpen = openSteps[step.key] ?? false;
           const isWarning = step.status === "warning";
           return (
-            <div key={step.key} className="relative">
+            <li key={step.key} className="text-ed-xs">
+              <button
+                type="button"
+                className="flex w-full items-baseline justify-between gap-2 text-left py-1 hover:text-ink-1 transition-colors group"
+                onClick={() =>
+                  setOpenSteps((current) => ({
+                    ...current,
+                    [step.key]: !isOpen,
+                  }))
+                }
+              >
+                <div className="flex items-baseline gap-2 min-w-0">
+                  <span className="font-mono text-ink-3 tabular-nums">{String(idx + 1).padStart(2, "0")}</span>
+                  <span className={cn("flex-shrink-0 self-center", isWarning ? "text-ochre" : "text-data-pos")}>
+                    {isWarning ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
+                  </span>
+                  <span className="text-ink-2 group-hover:text-ink-1 truncate">{step.title}</span>
+                </div>
+                {typeof step.duration === "number" ? (
+                  <span className="font-mono text-[10px] text-ink-3 tabular-nums flex-shrink-0">
+                    {step.duration.toFixed(1)}ms
+                  </span>
+                ) : null}
+              </button>
               <div
                 className={cn(
-                  "absolute -left-8 top-3 flex h-7 w-7 items-center justify-center rounded-full border bg-white shadow-sm dark:bg-neutral-950",
-                  isWarning
-                    ? "border-amber-300 text-amber-500 dark:border-amber-700 dark:text-amber-400"
-                    : "border-emerald-200 text-emerald-500 dark:border-emerald-800 dark:text-emerald-400"
+                  "overflow-hidden pl-8 transition-all duration-150",
+                  isOpen ? "max-h-40 pb-1.5 opacity-100" : "max-h-0 opacity-0"
                 )}
               >
-                {isWarning ? <AlertTriangle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
-              </div>
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 shadow-sm transition-all duration-200 dark:border-neutral-800 dark:bg-neutral-950/60">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-                  onClick={() =>
-                    setOpenSteps((current) => ({
-                      ...current,
-                      [step.key]: !isOpen,
-                    }))
-                  }
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="rounded-full text-[10px]">
-                        {step.title}
-                      </Badge>
-                      {typeof step.duration === "number" ? (
-                        <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                          {step.duration.toFixed(1)}ms
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                      {step.detail || "Completed."}
-                    </div>
-                  </div>
-                  {isOpen ? (
-                    <ChevronUp className="h-4 w-4 flex-shrink-0 text-slate-400" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 flex-shrink-0 text-slate-400" />
-                  )}
-                </button>
-                <div
-                  className={cn(
-                    "overflow-hidden border-t border-transparent px-4 transition-all duration-200",
-                    isOpen
-                      ? "max-h-40 border-slate-200/70 pb-4 opacity-100 dark:border-neutral-800/70"
-                      : "max-h-0 py-0 opacity-0"
-                  )}
-                >
-                  <div className="rounded-xl bg-white/80 px-3 py-2 text-xs leading-6 text-slate-500 dark:bg-neutral-900 dark:text-slate-400">
-                    {step.detail || "Completed orchestration step."}
-                  </div>
+                <div className="text-[11px] leading-relaxed text-ink-3 italic font-editorial">
+                  {step.detail || t("runtime.completedStep")}
                 </div>
               </div>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
+      ) : null}
     </div>
   );
 }
@@ -4630,10 +4935,11 @@ function SqlPreviewPanel({
   queryResult?: Record<string, any> | null;
   onCopySql: (messageId: string, content: string) => void;
 }) {
+  const t = useTranslations("AiChat");
   const sql = String(queryResult?.sql || "").trim();
   const explanation = String(queryResult?.explanation || "").trim();
   const executionMode = String(queryResult?.executionMode || "llm_planner").trim();
-  const scopeLabel = String(queryResult?.scopeLabel || queryResult?.scope || "Analytics").trim();
+  const scopeLabel = humanizeScope(queryResult?.scopeLabel || queryResult?.scope, t);
   const tables = Array.isArray(queryResult?.tables) ? queryResult.tables.map((tableName: unknown) => String(tableName)) : [];
   const policy = queryResult?.policy && typeof queryResult.policy === "object" ? queryResult.policy : null;
   const logicSummary = queryResult?.logicSummary && typeof queryResult.logicSummary === "object" ? queryResult.logicSummary : null;
@@ -4647,162 +4953,148 @@ function SqlPreviewPanel({
 
   if (!sql) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-6 text-sm text-slate-500 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-slate-400">
-        No SQL payload was returned for this result.
+      <div className="border-l border-rule pl-4 py-6 text-ed-sm text-ink-3 italic font-editorial">
+        {t("sqlPanel.noSql")}
       </div>
     );
   }
 
   return (
-    <div className="rounded-[28px] border border-slate-200 bg-white/95 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
-      <div className="flex items-center justify-between gap-3 border-b border-slate-200/70 px-4 py-4 dark:border-neutral-800/70">
+    <div className="border-l border-rule pl-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-rule">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
-            SQL / Logic
+          <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+            {t("sqlPanel.eyebrow")}
           </div>
-          <div className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Safe execution preview
+          <div className="font-editorial mt-1.5 text-[22px] leading-[1.15] text-ink-1">
+            {t("sqlPanel.title")}
           </div>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Verify how the assistant queried the data before trusting the result.
+          <p className="mt-2 text-ed-sm leading-relaxed text-ink-2 max-w-[52ch]">
+            {t("sqlPanel.description")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {queryResult ? <ScopeBadge queryResult={queryResult} tone="prominent" /> : null}
-          <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[10px]">
-            {executionMode === "deterministic_fallback" ? "Deterministic fallback" : "LLM planner"}
-          </Badge>
+          <span className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0.5 text-[10px] tabular-nums text-ink-2">
+            {humanizeExecutionMode(executionMode, t)}
+          </span>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="rounded-full"
+            className="h-7 rounded-sm px-2.5 text-ed-xs text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1"
             onClick={() => onCopySql(message.id, sql)}
           >
             <Copy className="mr-1.5 h-3.5 w-3.5" />
-            Copy SQL
+            {t("sqlPanel.copySql")}
           </Button>
         </div>
       </div>
 
-      <div className="space-y-4 px-4 py-4">
-        <div className="grid gap-2 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950/60">
-            <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Scope
-            </div>
-            <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {scopeLabel}
-            </div>
+      <div className="space-y-5 py-5">
+        <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-3">
+          <div>
+            <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("queryResultPanel.scope")}</dt>
+            <dd className="mt-1 text-ed-sm font-medium text-ink-1">{scopeLabel}</dd>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950/60">
-            <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Tables
-            </div>
-            <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {tables.length}
-            </div>
+          <div>
+            <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("sqlPanel.tables")}</dt>
+            <dd className="mt-1 text-ed-sm font-medium text-ink-1 tabular-nums">{tables.length}</dd>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950/60">
-              <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Rows returned
-              </div>
-              <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {rowCount}
-              </div>
-            </div>
+          <div>
+            <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("sqlPanel.rowsReturned")}</dt>
+            <dd className="mt-1 text-ed-sm font-medium text-ink-1 tabular-nums">{rowCount}</dd>
           </div>
+        </dl>
 
         {explanation ? (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-950/60">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-              Query explanation
+          <div>
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+              {t("sqlPanel.queryExplanation")}
             </div>
-            <p className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-300">
+            <p className="mt-2 text-ed-sm leading-[1.75] text-ink-1 max-w-[68ch]">
               {explanation}
             </p>
           </div>
         ) : null}
 
         {logicSummary ? (
-          <div className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-950/70">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-              Logic summary
+          <div>
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+              {t("sqlPanel.logicSummary")}
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {Object.entries(logicSummary).map(([key, value]) => (
-                <Badge key={key} variant="outline" className="rounded-full px-2.5 py-1 text-[10px]">
+                <span key={key} className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0.5 text-[11px] text-ink-2 font-mono tabular-nums">
                   {key}: {String(value)}
-                </Badge>
+                </span>
               ))}
             </div>
           </div>
         ) : null}
 
         {tables.length > 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-950/70">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-              Tables referenced
+          <div>
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+              {t("sqlPanel.tablesReferenced")}
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {tables.map((tableName) => (
-                <Badge key={tableName} variant="outline" className="rounded-full px-2.5 py-1 text-[10px]">
+                <span key={tableName} className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0.5 text-[11px] text-ink-2 font-mono">
                   {tableName}
-                </Badge>
+                </span>
               ))}
             </div>
           </div>
         ) : null}
 
         {policy ? (
-          <div className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-950/70">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-              Runtime policy
+          <div>
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+              {t("sqlPanel.runtimePolicy")}
             </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <div className="rounded-xl bg-slate-50/80 px-3 py-2 text-xs text-slate-600 dark:bg-neutral-900 dark:text-slate-300">
-                <div className="font-medium text-slate-400 dark:text-slate-500">User role</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{String(policy.userRole ?? "n/a")}</div>
+            <dl className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-3">
+              <div>
+                <dt className="text-[11px] text-ink-3">{t("sqlPanel.yourRole")}</dt>
+                <dd className="mt-0.5 text-ed-sm font-medium text-ink-1 capitalize">{policy.userRole ? String(policy.userRole).toLowerCase() : "—"}</dd>
               </div>
-              <div className="rounded-xl bg-slate-50/80 px-3 py-2 text-xs text-slate-600 dark:bg-neutral-900 dark:text-slate-300">
-                <div className="font-medium text-slate-400 dark:text-slate-500">SQL max rows</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{String(policy.sqlMaxRows ?? "n/a")}</div>
+              <div>
+                <dt className="text-[11px] text-ink-3">{t("sqlPanel.maxRows")}</dt>
+                <dd className="mt-0.5 text-ed-sm font-medium text-ink-1 tabular-nums">{policy.sqlMaxRows != null ? String(policy.sqlMaxRows) : "—"}</dd>
               </div>
-              <div className="rounded-xl bg-slate-50/80 px-3 py-2 text-xs text-slate-600 dark:bg-neutral-900 dark:text-slate-300">
-                <div className="font-medium text-slate-400 dark:text-slate-500">PII access</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{String(policy.piiAccess ?? false)}</div>
+              <div>
+                <dt className="text-[11px] text-ink-3">{t("sqlPanel.personalData")}</dt>
+                <dd className="mt-0.5 text-ed-sm font-medium text-ink-1">{policy.piiAccess ? t("sqlPanel.included") : t("sqlPanel.excluded")}</dd>
               </div>
-            </div>
+            </dl>
           </div>
         ) : null}
 
-        <div className="rounded-2xl border border-slate-200 bg-white/90 dark:border-neutral-800 dark:bg-neutral-950/70">
+        <div className="border-t border-rule pt-4">
           <button
             type="button"
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+            className="flex w-full items-center justify-between gap-3 text-left"
             onClick={() => setSqlOpen((current) => !current)}
           >
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-                Raw SQL
+              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+                {t("sqlPanel.rawSql")}
               </div>
-              <div className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                Expand to inspect the executed statement
+              <div className="mt-0.5 text-ed-sm font-medium text-ink-1">
+                {sqlOpen ? t("sqlPanel.collapseStatement") : t("sqlPanel.expandStatement")}
               </div>
             </div>
-            {sqlOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+            {sqlOpen ? <ChevronUp className="h-4 w-4 text-ink-3" /> : <ChevronDown className="h-4 w-4 text-ink-3" />}
           </button>
 
           <div
             className={cn(
-              "overflow-hidden border-t border-transparent transition-all duration-200",
-              sqlOpen ? "max-h-[520px] border-slate-200/70 dark:border-neutral-800/70" : "max-h-0"
+              "overflow-hidden transition-all duration-200",
+              sqlOpen ? "max-h-[520px] mt-3" : "max-h-0"
             )}
           >
-            <div className="overflow-auto px-4 py-4">
-              <pre className="min-w-full whitespace-pre-wrap break-words rounded-2xl bg-slate-950 px-4 py-4 text-xs leading-6 text-slate-100">
-                {sql}
-              </pre>
-            </div>
+            <pre className="font-mono min-w-full whitespace-pre-wrap break-words border border-rule bg-surface px-4 py-3.5 text-[12.5px] leading-[1.65] text-ink-1">
+              {sql}
+            </pre>
           </div>
         </div>
       </div>
@@ -4832,38 +5124,39 @@ function ScopeBadge({
   queryResult?: Record<string, any> | null;
   tone?: "inline" | "prominent";
 }) {
+  const t = useTranslations("AiChat");
   const kind = resolveScopeKind(queryResult);
   const explicitLabel = String(queryResult?.scopeLabel || "").trim();
   const fallbackLabel =
     kind === "personal"
-      ? "Dữ liệu của tôi"
+      ? t("humanized.myData")
       : kind === "platform"
-        ? "Toàn hệ thống"
-        : "Phạm vi dữ liệu";
+        ? t("humanized.platformWide")
+        : t("humanized.dataScope");
   const label = explicitLabel || fallbackLabel;
   const Icon = kind === "personal" ? UserRound : kind === "platform" ? Globe : Database;
   const toneClass =
     kind === "personal"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200"
+      ? "border-ochre/40 text-ochre"
       : kind === "platform"
-        ? "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800/80 dark:bg-blue-950/40 dark:text-blue-200"
-        : "border-slate-200 bg-slate-50 text-slate-700 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-slate-200";
+        ? "border-[hsl(var(--data-info))]/40 text-data-info"
+        : "border-rule text-ink-3";
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border font-medium",
-        tone === "prominent" ? "px-2.5 py-1 text-[11px]" : "px-2 py-0.5 text-[10px]",
+        "inline-flex items-center gap-1.5 rounded-sm border bg-paper font-medium normal-case tracking-normal",
+        tone === "prominent" ? "px-2 py-0.5 text-[11px]" : "px-1.5 py-0 text-[10px]",
         toneClass
       )}
       title={
         kind === "personal"
-          ? "Truy vấn trả về dữ liệu cá nhân của bạn"
+          ? t("scopeBadge.personalTitle")
           : kind === "platform"
-            ? "Truy vấn trả về dữ liệu toàn hệ thống"
-            : "Phạm vi dữ liệu chưa xác định rõ"
+            ? t("scopeBadge.platformTitle")
+            : t("scopeBadge.unknownTitle")
       }
     >
-      <Icon className={tone === "prominent" ? "h-3.5 w-3.5" : "h-3 w-3"} />
+      <Icon className={tone === "prominent" ? "h-3 w-3" : "h-2.5 w-2.5"} />
       {label}
     </span>
   );
@@ -4916,7 +5209,11 @@ function normalizeIncomingAction(raw: Record<string, any>): SuggestedAction | nu
   };
 }
 
-function buildLocalFollowUpActions(message: Message, currentChartType?: string): SuggestedAction[] {
+function buildLocalFollowUpActions(
+  message: Message,
+  currentChartType?: string,
+  t?: (key: any, values?: any) => string
+): SuggestedAction[] {
   const metadata = message.metadata;
   if (!metadata) return [];
   const queryResult = metadata.queryResult;
@@ -4931,19 +5228,19 @@ function buildLocalFollowUpActions(message: Message, currentChartType?: string):
   if (chartSpec && hasRows) {
     const chartAlternatives: Array<{ id: string; label: string; type: string; icon: string }> = [];
     if (effectiveChartType !== "line") {
-      chartAlternatives.push({ id: "chart-line", label: "Đổi sang biểu đồ đường", type: "line", icon: "chart-line" });
+      chartAlternatives.push({ id: "chart-line", label: t ? t("followUps.chartLine") : "Chuyển sang biểu đồ đường", type: "line", icon: "chart-line" });
     }
     if (effectiveChartType !== "bar") {
-      chartAlternatives.push({ id: "chart-bar", label: "Đổi sang biểu đồ cột", type: "bar", icon: "chart-bar" });
+      chartAlternatives.push({ id: "chart-bar", label: t ? t("followUps.chartBar") : "Chuyển sang biểu đồ cột", type: "bar", icon: "chart-bar" });
     }
     if (effectiveChartType !== "pie") {
-      chartAlternatives.push({ id: "chart-pie", label: "Đổi sang biểu đồ tròn", type: "pie", icon: "chart-pie" });
+      chartAlternatives.push({ id: "chart-pie", label: t ? t("followUps.chartPie") : "Chuyển sang biểu đồ tròn", type: "pie", icon: "chart-pie" });
     }
     chartAlternatives.slice(0, 2).forEach((alt) => {
       actions.push({
         id: alt.id,
         label: alt.label,
-        description: `Hiển thị lại dữ liệu hiện tại dưới dạng ${alt.type}.`,
+        description: t ? t("followUps.chartChangeDesc", { type: alt.type }) : `Hiển thị lại dữ liệu hiện tại dưới dạng biểu đồ ${alt.type}.`,
         kind: "change_chart_type",
         payload: { chartType: alt.type },
         icon: alt.icon,
@@ -4955,20 +5252,20 @@ function buildLocalFollowUpActions(message: Message, currentChartType?: string):
   if (scope === "personal") {
     actions.push({
       id: "scope-platform",
-      label: "So sánh với toàn hệ thống",
-      description: "Chạy lại truy vấn với dữ liệu toàn hệ thống để đối chiếu.",
+      label: t ? t("followUps.scopePlatform") : "So sánh với toàn hệ thống",
+      description: t ? t("followUps.scopePlatformDesc") : "Chạy lại truy vấn trên dữ liệu toàn hệ thống để đối chiếu.",
       kind: "prompt",
-      prompt: `So sánh ${metric} của tôi với toàn hệ thống`,
+      prompt: t ? t("followUps.scopePlatformPrompt", { metric }) : `So sánh ${metric} của tôi với toàn hệ thống`,
       icon: "scope",
       tone: "primary",
     });
   } else if (scope === "platform") {
     actions.push({
       id: "scope-personal",
-      label: "Chỉ lấy dữ liệu của tôi",
-      description: "Thu hẹp lại truy vấn về dữ liệu cá nhân của bạn.",
+      label: t ? t("followUps.scopePersonal") : "Chỉ lấy dữ liệu của tôi",
+      description: t ? t("followUps.scopePersonalDesc") : "Thu hẹp lại truy vấn về dữ liệu cá nhân của bạn.",
       kind: "prompt",
-      prompt: `Chỉ lấy ${metric} của tôi`,
+      prompt: t ? t("followUps.scopePersonalPrompt", { metric }) : `Chỉ lấy ${metric} của tôi`,
       icon: "scope",
       tone: "primary",
     });
@@ -4977,10 +5274,10 @@ function buildLocalFollowUpActions(message: Message, currentChartType?: string):
   if (hasSql) {
     actions.push({
       id: "explain-sql",
-      label: "Giải thích câu SQL này",
-      description: "Nhờ AI mô tả từng bước của SQL vừa chạy.",
+      label: t ? t("followUps.explainSql") : "Giải thích câu SQL này",
+      description: t ? t("followUps.explainSqlDesc") : "Nhờ trợ lý mô tả từng bước của câu SQL vừa chạy.",
       kind: "prompt",
-      prompt: "Giải thích chi tiết câu SQL vừa chạy: từng bước làm gì, tại sao dùng các JOIN và WHERE này.",
+      prompt: t ? t("followUps.explainSqlPrompt") : "Giải thích chi tiết câu SQL vừa chạy: từng bước làm gì, tại sao dùng các mệnh đề JOIN và WHERE như vậy.",
       icon: "explain",
       tone: "secondary",
     });
@@ -4989,8 +5286,8 @@ function buildLocalFollowUpActions(message: Message, currentChartType?: string):
   if (hasRows) {
     actions.push({
       id: "export-csv",
-      label: "Xuất CSV",
-      description: "Tải xuống toàn bộ kết quả dạng CSV.",
+      label: t ? t("followUps.exportCsv") : "Xuất CSV",
+      description: t ? t("followUps.exportCsvDesc") : "Tải xuống toàn bộ kết quả dạng CSV.",
       kind: "export_csv",
       icon: "download",
       tone: "secondary",
@@ -5000,8 +5297,8 @@ function buildLocalFollowUpActions(message: Message, currentChartType?: string):
   if (hasSql) {
     actions.push({
       id: "copy-sql",
-      label: "Sao chép SQL",
-      description: "Copy câu SQL đã chạy vào clipboard.",
+      label: t ? t("followUps.copySql") : "Sao chép SQL",
+      description: t ? t("followUps.copySqlDesc") : "Sao chép câu SQL đã chạy vào clipboard.",
       kind: "copy_sql",
       icon: "copy",
       tone: "secondary",
@@ -5013,8 +5310,63 @@ function buildLocalFollowUpActions(message: Message, currentChartType?: string):
 
 function mergeSuggestedActions(
   remote: SuggestedAction[] | undefined,
-  local: SuggestedAction[]
+  local: SuggestedAction[],
+  t?: (key: any, values?: any) => string
 ): SuggestedAction[] {
+  // Build a lookup of local overrides by id and by (kind,label) so we can replace
+  // backend-provided labels/descriptions that come back without Vietnamese
+  // diacritics. We keep the remote prompt/payload so backend semantics win.
+  const localById = new Map<string, SuggestedAction>();
+  const localByKindLabel = new Map<string, SuggestedAction>();
+  const stripDiacritics = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  // Fallback dictionary for BE-generated Vietnamese labels that arrive without
+  // diacritics. Keys are already stripped-lowercased; values are the canonical
+  // Vietnamese phrasing we want displayed.
+  const VI_RESTORE: Record<string, { label: string; description?: string }> = {
+    "chuyen sang bieu do duong": { label: t ? t("followUps.chartLine") : "Chuyển sang biểu đồ đường" },
+    "chuyen sang bieu do cot": { label: t ? t("followUps.chartBar") : "Chuyển sang biểu đồ cột" },
+    "chuyen sang bieu do tron": { label: t ? t("followUps.chartPie") : "Chuyển sang biểu đồ tròn" },
+    "so sanh voi toan he thong": { label: t ? t("followUps.scopePlatform") : "So sánh với toàn hệ thống" },
+    "chi lay du lieu cua toi": { label: t ? t("followUps.scopePersonal") : "Chỉ lấy dữ liệu của tôi" },
+    "giai thich cau sql nay": { label: t ? t("followUps.explainSql") : "Giải thích câu SQL này" },
+    "giai thich sql": { label: t ? t("followUps.explainSql") : "Giải thích SQL" },
+    "xuat csv": { label: t ? t("followUps.exportCsv") : "Xuất CSV" },
+    "sao chep sql": { label: t ? t("followUps.copySql") : "Sao chép SQL" },
+    "sao chep bang": { label: t ? t("queryResultPanel.copy") : "Sao chép bảng" },
+    "mo rong workspace": { label: t ? t("analysisWorkspace.expandFull") : "Mở rộng workspace" },
+    "tai xuong": { label: t ? t("attachmentPreview.open") : "Tải xuống" },
+  };
+
+  local.forEach((action) => {
+    if (action.id) localById.set(action.id, action);
+    localByKindLabel.set(`${action.kind}:${stripDiacritics(action.label || "")}`, action);
+  });
+
+  const applyLocalOverride = (action: SuggestedAction): SuggestedAction => {
+    const byId = action.id ? localById.get(action.id) : undefined;
+    if (byId) {
+      return { ...action, label: byId.label, description: byId.description ?? action.description, icon: action.icon ?? byId.icon };
+    }
+    const strippedLabel = stripDiacritics(action.label || "");
+    const byLabel = localByKindLabel.get(`${action.kind}:${strippedLabel}`);
+    if (byLabel) {
+      return { ...action, label: byLabel.label, description: byLabel.description ?? action.description, icon: action.icon ?? byLabel.icon };
+    }
+    const fromDict = VI_RESTORE[strippedLabel];
+    if (fromDict) {
+      return { ...action, label: fromDict.label, description: fromDict.description ?? action.description };
+    }
+    return action;
+  };
+
   const seen = new Set<string>();
   const out: SuggestedAction[] = [];
   const pushIfNew = (action: SuggestedAction | null | undefined) => {
@@ -5024,7 +5376,7 @@ function mergeSuggestedActions(
     seen.add(key);
     out.push(action);
   };
-  (remote || []).forEach(pushIfNew);
+  (remote || []).map(applyLocalOverride).forEach(pushIfNew);
   local.forEach(pushIfNew);
   return out.slice(0, 7);
 }
@@ -5036,6 +5388,7 @@ function FollowUpActions({
   feedback,
   onDispatch,
   disabled,
+  variant = "stacked",
 }: {
   message: Message;
   actions: SuggestedAction[];
@@ -5043,57 +5396,99 @@ function FollowUpActions({
   feedback: Record<string, string>;
   onDispatch: (message: Message, action: SuggestedAction) => void;
   disabled?: boolean;
+  variant?: "stacked" | "inline";
 }) {
+  const t = useTranslations("AiChat");
   if (!actions.length) return null;
+
+  if (variant === "inline") {
+    return (
+      <div className="flex items-center gap-3 overflow-hidden" data-follow-up-actions>
+        <span className="flex-shrink-0 text-[10px] font-medium uppercase tracking-[0.2em] text-ink-3">
+          {t("followUps.next")}
+        </span>
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+          {actions.map((action) => {
+            const key = `${message.id}:${action.id}`;
+            const isDone = feedback[key] === "done";
+            const isPrimary = action.tone === "primary";
+            return (
+              <button
+                key={action.id}
+                type="button"
+                disabled={disabled}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onDispatch(message, action);
+                }}
+                className={cn(
+                  "group inline-flex flex-shrink-0 items-center gap-1.5 rounded-sm border px-2 py-1 text-[11px] transition-colors",
+                  isPrimary
+                    ? "border-rule bg-paper text-ink-1 font-medium hover:border-ochre hover:text-ochre"
+                    : "border-rule bg-paper text-ink-2 hover:border-ink-2 hover:text-ink-1",
+                  disabled && "cursor-not-allowed opacity-50 hover:border-rule",
+                  isDone && "border-[hsl(var(--data-pos))]/40 text-data-pos"
+                )}
+                title={action.description || action.label}
+              >
+                <span className={cn("flex h-3 w-3 flex-shrink-0 items-center justify-center", isDone ? "text-data-pos" : "text-ink-3")}>
+                  {isDone ? <CheckCircle className="h-3 w-3" /> : followUpIconFor(action)}
+                </span>
+                <span className="max-w-[180px] truncate">{action.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "rounded-2xl border bg-white/95 dark:bg-neutral-900/70",
-        compact
-          ? "border-slate-200/80 px-3 py-2 dark:border-neutral-800"
-          : "border-slate-200 px-4 py-3 shadow-sm dark:border-neutral-800"
+        "border-l border-rule pl-4",
+        compact ? "py-2" : "py-3"
       )}
       data-follow-up-actions
     >
-      <div className="flex items-center gap-2">
-        <Sparkles className="h-3.5 w-3.5 text-blue-500" />
-        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-          Follow-up actions
-        </span>
+      <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+        {t("followUps.nextSteps")}
       </div>
-      <div className={cn("flex flex-wrap", compact ? "mt-2 gap-1.5" : "mt-3 gap-2")}>
+      <ul className={cn("flex flex-col", compact ? "mt-1.5 gap-0.5" : "mt-2 gap-1")}>
         {actions.map((action) => {
           const key = `${message.id}:${action.id}`;
           const isDone = feedback[key] === "done";
           const isPrimary = action.tone === "primary";
           return (
-            <button
-              key={action.id}
-              type="button"
-              disabled={disabled}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                onDispatch(message, action);
-              }}
-              className={cn(
-                "group inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-150",
-                isPrimary
-                  ? "border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100 dark:border-blue-800/80 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-900/40"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-slate-200 dark:hover:bg-neutral-800",
-                disabled ? "cursor-not-allowed opacity-60 hover:bg-inherit" : "cursor-pointer",
-                isDone ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200" : null
-              )}
-              title={action.description || action.label}
-            >
-              <span className={cn("flex h-4 w-4 items-center justify-center", isDone ? "text-emerald-600 dark:text-emerald-300" : "")}>
-                {isDone ? <CheckCircle className="h-3.5 w-3.5" /> : followUpIconFor(action)}
-              </span>
-              <span className="max-w-[220px] truncate">{action.label}</span>
-            </button>
+            <li key={action.id}>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onDispatch(message, action);
+                }}
+                className={cn(
+                  "group inline-flex items-baseline gap-2.5 text-left text-ed-sm transition-colors py-0.5",
+                  isPrimary ? "text-ink-1 font-medium" : "text-ink-2",
+                  "underline decoration-rule decoration-1 underline-offset-[5px]",
+                  !disabled && "hover:text-ochre hover:decoration-ochre",
+                  disabled && "cursor-not-allowed opacity-50",
+                  isDone && "text-data-pos no-underline"
+                )}
+                title={action.description || action.label}
+              >
+                <span className={cn("flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center self-center", isDone ? "text-data-pos" : "text-ink-3")}>
+                  {isDone ? <CheckCircle className="h-3 w-3" /> : followUpIconFor(action)}
+                </span>
+                <span className="max-w-[280px] truncate">{action.label}</span>
+              </button>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </div>
   );
 }
@@ -5135,17 +5530,19 @@ function AnalysisWorkspacePanel({
   onSave?: () => void;
   isSaved?: boolean;
 }) {
+  const t = useTranslations("AiChat");
   const metadata = message?.metadata;
   const queryResult = metadata?.queryResult;
   const chartSpec = metadata?.chartSpec;
   const citations = Array.isArray(metadata?.citations) ? metadata!.citations! : [];
   const availableTabs: Array<{ id: AnalysisTab; label: string; visible: boolean }> = [
-    { id: "data", label: "Data Preview", visible: !!queryResult },
-    { id: "sql", label: "SQL Query", visible: !!queryResult?.sql },
-    { id: "chart", label: "Chart", visible: !!chartSpec },
-    { id: "sources", label: "Sources", visible: citations.length > 0 },
+    { id: "data", label: t("analysisWorkspace.dataPreview"), visible: !!queryResult },
+    { id: "sql", label: t("analysisWorkspace.sqlQuery"), visible: !!queryResult?.sql },
+    { id: "chart", label: t("analysisWorkspace.chart"), visible: !!chartSpec },
+    { id: "sources", label: t("analysisWorkspace.sources"), visible: citations.length > 0 },
   ];
   const visibleTabs = availableTabs.filter((tab) => tab.visible);
+  const hasFollowUpActions = followUpActions.length > 0;
 
   useEffect(() => {
     if (!visibleTabs.some((tab) => tab.id === activeTab) && visibleTabs[0]) {
@@ -5156,22 +5553,22 @@ function AnalysisWorkspacePanel({
   if (!message || !metadata) {
     return (
       <div className="flex h-full items-center justify-center px-6 py-8">
-        <div className="max-w-sm rounded-[28px] border border-slate-200 bg-white/95 p-6 text-center shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 dark:bg-neutral-800 dark:text-slate-300">
-            <BarChart3 className="h-5 w-5" />
+        <div className="max-w-sm text-left">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-ink-3 font-medium">
+            {t("analysisWorkspace.title")}
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Analysis workspace
+          <h3 className="font-editorial mt-4 text-[28px] leading-[1.1] text-ink-1">
+            {t("analysisWorkspace.emptyTitle")}
           </h3>
-          <p className="mt-2 text-sm leading-7 text-slate-500 dark:text-slate-400">
-            Ask for data, charts, or file analysis. When the assistant returns structured output, it will appear here.
+          <p className="mt-4 text-ed-sm leading-[1.7] text-ink-2">
+            {t("analysisWorkspace.emptyDesc")}
           </p>
         </div>
       </div>
     );
   }
 
-  const chartTitle = String(chartSpec?.title || queryResult?.title || "Analysis");
+  const chartTitle = String(chartSpec?.title || queryResult?.title || t("analysisWorkspace.fallbackTitle"));
 
   const exportCsv = () => {
     const rows = Array.isArray(queryResult?.rows) ? queryResult.rows : [];
@@ -5196,17 +5593,17 @@ function AnalysisWorkspacePanel({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-slate-200/70 px-5 py-4 dark:border-neutral-800/70">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="shrink-0 border-b border-rule px-4 pt-3 pb-3 bg-paper sm:px-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-              Analysis workspace
+            <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+              {t("analysisWorkspace.title")}
               {queryResult ? (
                 <ScopeBadge queryResult={queryResult} tone="prominent" />
               ) : null}
             </div>
-            <div className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">
+            <div className="font-editorial mt-1.5 text-[20px] leading-[1.2] text-ink-1">
               {chartTitle}
             </div>
           </div>
@@ -5217,24 +5614,22 @@ function AnalysisWorkspacePanel({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-10 rounded-full px-3 text-xs",
+                  "h-8 rounded-sm px-2.5 text-ed-xs border border-transparent transition-colors",
                   isSaved
-                    ? "text-emerald-600 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
-                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-300 dark:hover:bg-neutral-800 dark:hover:text-slate-100"
+                    ? "text-data-pos border-rule"
+                    : "text-ink-2 hover:text-ink-1 hover:border-rule hover:bg-surface"
                 )}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
                   onSave();
                 }}
-                title={isSaved ? "Analysis đã được lưu" : "Lưu analysis để mở lại sau"}
+                title={isSaved ? t("analysisWorkspace.saved") : t("analysisWorkspace.saveThis")}
               >
                 {isSaved ? (
-                  <CheckCircle className="mr-1.5 h-4 w-4" />
-                ) : (
-                  <Sparkles className="mr-1.5 h-4 w-4" />
-                )}
-                <span className="hidden sm:inline">{isSaved ? "Đã lưu" : "Lưu"}</span>
+                  <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                ) : null}
+                <span className="hidden sm:inline">{isSaved ? t("analysisWorkspace.saved") : t("analysisWorkspace.save")}</span>
               </Button>
             ) : null}
             {onExpand ? (
@@ -5242,13 +5637,13 @@ function AnalysisWorkspacePanel({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-neutral-800 dark:hover:text-slate-200"
+                className="h-8 w-8 rounded-sm text-ink-3 hover:bg-surface hover:text-ink-1"
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
                   onExpand();
                 }}
-                title="Mở rộng thành workspace đầy đủ"
+                title={t("analysisWorkspace.expandFull")}
               >
                 <Maximize2 className="h-4 w-4" />
               </Button>
@@ -5257,110 +5652,137 @@ function AnalysisWorkspacePanel({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-neutral-800 dark:hover:text-slate-200"
+              className="h-8 w-8 rounded-sm text-ink-3 hover:bg-surface hover:text-ink-1"
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 onClose();
               }}
-              title="Hide workspace"
+              title={t("analysisWorkspace.hide")}
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
         {prompt ? (
-          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-slate-600 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-slate-300">
-            {prompt}
+          <div className="mt-3 border-l-2 border-rule bg-surface px-3 py-2 text-ed-sm italic text-ink-2 font-editorial leading-relaxed">
+            &ldquo;{prompt}&rdquo;
           </div>
         ) : null}
       </div>
 
-      <div className="border-b border-slate-200/70 px-4 py-3 dark:border-neutral-800/70">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="shrink-0 border-b border-rule bg-paper px-4 py-0 sm:px-5">
+        <div className="flex flex-wrap items-center gap-0">
           {visibleTabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                "rounded-full px-3 py-1.5 text-sm transition-colors",
+                "px-3 py-2.5 text-ed-xs font-medium transition-colors border-b-2 -mb-px",
                 activeTab === tab.id
-                  ? "bg-slate-950 text-white dark:bg-blue-500"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-neutral-900 dark:text-slate-300 dark:hover:bg-neutral-800"
+                  ? "border-ochre text-ink-1"
+                  : "border-transparent text-ink-3 hover:text-ink-1"
               )}
             >
               {tab.label}
             </button>
           ))}
-          {queryResult?.rows?.length ? (
-            <Button variant="outline" size="sm" className="ml-auto rounded-full" onClick={exportCsv}>
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              Export CSV
-            </Button>
-          ) : null}
+          <div className="ml-auto flex items-center gap-1">
+            {onExpand ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="my-1.5 h-7 rounded-sm px-2.5 text-ed-xs text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1"
+                onClick={onExpand}
+                title={t("analysisWorkspace.fullScreenTitle")}
+              >
+                <Maximize2 className="mr-1.5 h-3.5 w-3.5" />
+                {t("analysisWorkspace.fullScreen")}
+              </Button>
+            ) : null}
+            {queryResult?.rows?.length ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="my-1.5 h-7 rounded-sm px-2.5 text-ed-xs text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1"
+                onClick={exportCsv}
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                {t("analysisWorkspace.exportCsv")}
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto p-4">
-        {activeTab === "data" && queryResult ? (
-          <QueryResultCard
-            queryResult={queryResult}
-            onCopyTable={onCopyTable ? (format) => onCopyTable(queryResult, format) : undefined}
-            onExportCsv={onExportCsv ? () => onExportCsv(queryResult, chartTitle) : undefined}
-          />
-        ) : null}
-        {activeTab === "sql" ? <SqlPreviewPanel message={message} queryResult={queryResult} onCopySql={onCopySql} /> : null}
-        {activeTab === "chart" && chartSpec ? (
-          <ChartPreviewCard
-            chartSpec={chartTypeOverride ? { ...chartSpec, type: chartTypeOverride } : chartSpec}
-            queryResult={queryResult}
-            isStreaming={isStreamingMessage}
-          />
-        ) : null}
-        {activeTab === "sources" ? (
-          <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
-            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
-              Sources
-            </div>
-            <div className="mt-4 space-y-3">
-              {citations.length > 0 ? (
-                citations.map((citation, index) => {
-                  const courseId = citation.courseId || citation.course_id;
-                  const label = String(citation.title || citation.kind || `source-${index + 1}`);
-                  return (
-                    <div key={`${label}-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-950/70">
-                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{label}</div>
-                      {courseId ? (
-                        <a
-                          href={`/courses/${courseId}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                        >
-                          Open source
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
-                      ) : null}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-sm text-slate-500 dark:text-slate-400">No sources available.</div>
-              )}
-            </div>
+      <div className="min-h-0 flex-1 overflow-hidden bg-paper">
+        <div className="h-full overflow-y-auto px-2 py-4 sm:px-3">
+          <div className="space-y-4">
+            {activeTab === "data" && queryResult ? (
+              <QueryResultCard
+                queryResult={queryResult}
+                onCopyTable={onCopyTable ? (format) => onCopyTable(queryResult, format) : undefined}
+                onExportCsv={onExportCsv ? () => onExportCsv(queryResult, chartTitle) : undefined}
+              />
+            ) : null}
+            {activeTab === "sql" ? <SqlPreviewPanel message={message} queryResult={queryResult} onCopySql={onCopySql} /> : null}
+            {activeTab === "chart" && chartSpec ? (
+              <ChartPreviewCard
+                chartSpec={chartTypeOverride ? { ...chartSpec, type: chartTypeOverride } : chartSpec}
+                queryResult={queryResult}
+                isStreaming={isStreamingMessage}
+              />
+            ) : null}
+            {activeTab === "sources" ? (
+              <div className="border-l border-rule pl-4">
+                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+                  {t("analysisWorkspace.sources")}
+                </div>
+                <ol className="mt-4 space-y-4 list-none">
+                  {citations.length > 0 ? (
+                    citations.map((citation, index) => {
+                      const courseId = citation.courseId || citation.course_id;
+                      const label = String(citation.title || citation.kind || `source-${index + 1}`);
+                      return (
+                        <li key={`${label}-${index}`} className="flex items-baseline gap-3 text-ed-sm leading-relaxed">
+                          <span className="font-mono text-ed-xs text-ink-3 tabular-nums min-w-[1.5em]">{String(index + 1).padStart(2, "0")}</span>
+                          <div className="flex-1">
+                            <div className="font-medium text-ink-1">{label}</div>
+                            {courseId ? (
+                              <a
+                                href={`/courses/${courseId}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-1 inline-flex items-center gap-1 text-ed-xs text-ink-2 underline decoration-rule decoration-1 underline-offset-4 hover:text-ochre hover:decoration-ochre"
+                              >
+                                {t("analysisWorkspace.openSource")}
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            ) : null}
+                          </div>
+                        </li>
+                      );
+                    })
+                  ) : (
+                    <div className="text-ed-sm text-ink-3 italic font-editorial">{t("analysisWorkspace.noSources")}</div>
+                  )}
+                </ol>
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </div>
 
-      {followUpActions.length > 0 && message ? (
-        <div className="border-t border-slate-200/70 bg-white/60 px-4 py-3 backdrop-blur dark:border-neutral-800/70 dark:bg-neutral-950/60">
+      {hasFollowUpActions && message ? (
+        <div className="shrink-0 border-t border-rule bg-paper px-3 py-2 sm:px-4">
           <FollowUpActions
             message={message}
             actions={followUpActions}
             feedback={followUpFeedback}
             onDispatch={onFollowUpAction}
             disabled={followUpDisabled}
+            variant="inline"
           />
         </div>
       ) : null}
@@ -5401,11 +5823,12 @@ function FullscreenAnalysisView({
   isSaved?: boolean;
   readOnly?: boolean;
 }) {
+  const t = useTranslations("AiChat");
   const metadata = message.metadata;
   const queryResult = metadata?.queryResult;
   const chartSpec = metadata?.chartSpec;
   const citations = Array.isArray(metadata?.citations) ? metadata!.citations! : [];
-  const title = String(chartSpec?.title || queryResult?.title || "Analysis");
+  const title = String(chartSpec?.title || queryResult?.title || t("analysisWorkspace.fallbackTitle"));
   const answerContent = String(message.content || "").replace(/▌+$/, "").trim();
   const effectiveChartSpec = chartSpec
     ? chartTypeOverride
@@ -5417,48 +5840,45 @@ function FullscreenAnalysisView({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Analysis workspace"
-      className="fixed inset-0 z-[60] flex flex-col bg-slate-950/80 backdrop-blur-sm"
+      aria-label={t("analysisWorkspace.aria")}
+      className="ai-chat-theme font-ui fixed inset-0 z-[60] flex flex-col bg-ink-1/60"
     >
       <div
         className="absolute inset-0"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="relative m-0 flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl dark:bg-neutral-950 sm:m-4 sm:h-[calc(100vh-2rem)] sm:rounded-[28px] sm:border sm:border-slate-200/80 sm:dark:border-neutral-800/80">
-        <div className="flex items-start justify-between gap-3 border-b border-slate-200/70 bg-white/95 px-4 py-4 backdrop-blur dark:border-neutral-800/70 dark:bg-neutral-950/80 sm:px-6">
+      <div className="relative m-0 flex h-full w-full flex-col overflow-hidden bg-paper sm:m-4 sm:h-[calc(100vh-2rem)] sm:rounded-sm sm:border sm:border-rule">
+        <div className="flex items-start justify-between gap-3 border-b border-rule bg-paper px-4 py-4 sm:px-6">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">
-              Analysis workspace
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-ink-3">
+              {t("analysisWorkspace.title")}
               {readOnly ? (
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
-                >
-                  Chỉ xem (saved)
-                </Badge>
+                <span className="inline-flex items-center rounded-sm border border-rule bg-surface px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-ink-2">
+                  {t("analysisWorkspace.readOnlySaved")}
+                </span>
               ) : null}
               {queryResult ? <ScopeBadge queryResult={queryResult} tone="prominent" /> : null}
               {metadata?.intent ? (
-                <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[10px]">
-                  {metadata.intent}
-                </Badge>
+                <span className="inline-flex items-center rounded-sm border border-rule bg-surface px-1.5 py-0 text-[10px] font-normal normal-case tracking-normal text-ink-2">
+                  {humanizeIntent(metadata.intent, t)}
+                </span>
               ) : null}
               {metadata?.resolvedMode ? (
-                <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[10px]">
-                  {metadata.resolvedMode}
-                </Badge>
+                <span className="inline-flex items-center rounded-sm border border-rule bg-surface px-1.5 py-0 text-[10px] font-normal normal-case tracking-normal text-ink-2">
+                  {humanizeMode(metadata.resolvedMode, t)}
+                </span>
               ) : null}
             </div>
-            <div className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50 sm:text-2xl">
+            <div className="font-editorial mt-3 text-[clamp(1.75rem,3vw,2.5rem)] leading-[1.1] text-ink-1">
               {title}
             </div>
             {prompt ? (
-              <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-slate-600 dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-slate-300">
-                <span className="mr-2 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-blue-700 dark:bg-blue-950/60 dark:text-blue-200">
-                  Prompt
+              <div className="mt-3 border-l-2 border-rule bg-surface px-3 py-2 text-ed-sm italic font-editorial text-ink-2 leading-relaxed">
+                <span className="mr-2 inline-flex items-center text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3 not-italic font-ui">
+                  {t("analysisWorkspace.prompt")}
                 </span>
-                {prompt}
+                &ldquo;{prompt}&rdquo;
               </div>
             ) : null}
           </div>
@@ -5469,31 +5889,29 @@ function FullscreenAnalysisView({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-10 rounded-full px-3 text-xs",
+                  "h-8 rounded-sm px-2.5 text-ed-xs border border-transparent transition-colors",
                   readOnly
-                    ? "text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                    ? "text-[hsl(var(--data-neg))] hover:border-rule hover:bg-surface"
                     : isSaved
-                      ? "text-emerald-600 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-300 dark:hover:bg-neutral-800 dark:hover:text-slate-100"
+                      ? "text-data-pos border-rule"
+                      : "text-ink-2 hover:text-ink-1 hover:border-rule hover:bg-surface"
                 )}
                 onClick={onSave}
                 title={
                   readOnly
-                    ? "Gỡ analysis này khỏi danh sách saved"
+                    ? t("analysisWorkspace.removeFromSaved")
                     : isSaved
-                      ? "Gỡ khỏi saved"
-                      : "Lưu analysis để mở lại sau"
+                      ? t("analysisWorkspace.removeFromSaved")
+                      : t("analysisWorkspace.saveAnalysis")
                 }
               >
                 {readOnly ? (
-                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                 ) : isSaved ? (
-                  <CheckCircle className="mr-1.5 h-4 w-4" />
-                ) : (
-                  <Sparkles className="mr-1.5 h-4 w-4" />
-                )}
+                  <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                ) : null}
                 <span className="hidden sm:inline">
-                  {readOnly ? "Gỡ lưu" : isSaved ? "Đã lưu" : "Lưu"}
+                  {readOnly ? t("analysisWorkspace.remove") : isSaved ? t("analysisWorkspace.saved") : t("analysisWorkspace.save")}
                 </span>
               </Button>
             ) : null}
@@ -5501,9 +5919,9 @@ function FullscreenAnalysisView({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-neutral-800 dark:hover:text-slate-200"
+              className="h-8 w-8 rounded-sm text-ink-3 hover:bg-surface hover:text-ink-1"
               onClick={onClose}
-              title="Thu gọn workspace (Esc)"
+              title={t("analysisWorkspace.minimizeTitle")}
             >
               <Minimize2 className="h-4 w-4" />
             </Button>
@@ -5511,30 +5929,29 @@ function FullscreenAnalysisView({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-neutral-800 dark:hover:text-slate-200"
+              className="h-8 w-8 rounded-sm text-ink-3 hover:bg-surface hover:text-ink-1"
               onClick={onClose}
-              title="Đóng workspace"
+              title={t("analysisWorkspace.closeTitle")}
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto bg-slate-50/60 px-4 py-5 dark:bg-neutral-950/40 sm:px-6">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
+        <div className="min-h-0 flex-1 overflow-auto bg-paper px-4 py-6 sm:px-8">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
             {answerContent ? (
-              <section className="rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
-                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  AI answer
+              <section className="border-l border-rule pl-4">
+                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+                  {t("analysisWorkspace.answer")}
                 </div>
-                <div className="mt-3 text-sm leading-7 text-slate-800 dark:text-slate-100">
+                <div className="mt-3 text-ed-base leading-[1.75] text-ink-1 max-w-[68ch]">
                   <MarkdownRenderer content={answerContent} />
                 </div>
               </section>
             ) : null}
 
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-8 xl:grid-cols-2">
               {effectiveChartSpec ? (
                 <section className="xl:col-span-2">
                   <ChartPreviewCard
@@ -5569,40 +5986,37 @@ function FullscreenAnalysisView({
             </div>
 
             {citations.length > 0 ? (
-              <section className="rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70">
-                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  Sources
+              <section className="border-l border-rule pl-4">
+                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+                  {t("analysisWorkspace.sources")}
                 </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <ol className="mt-4 space-y-4 list-none">
                   {citations.map((citation, index) => {
                     const courseId = citation.courseId || citation.course_id;
                     const label = String(
                       citation.title || citation.kind || `source-${index + 1}`
                     );
                     return (
-                      <div
-                        key={`${label}-${index}`}
-                        className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm dark:border-neutral-800 dark:bg-neutral-950/60"
-                      >
-                        <div className="font-medium text-slate-900 dark:text-slate-100">
-                          {label}
+                      <li key={`${label}-${index}`} className="flex items-baseline gap-3 text-ed-sm">
+                        <span className="font-mono text-ed-xs text-ink-3 tabular-nums min-w-[1.5em]">{String(index + 1).padStart(2, "0")}</span>
+                        <div className="flex-1">
+                          <div className="font-medium text-ink-1">{label}</div>
+                          {courseId ? (
+                            <a
+                              href={`/courses/${courseId}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-1 inline-flex items-center gap-1 text-ed-xs text-ink-2 underline decoration-rule decoration-1 underline-offset-4 hover:text-ochre hover:decoration-ochre"
+                            >
+                              {t("analysisWorkspace.openSource")}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : null}
                         </div>
-                        {courseId ? (
-                          <a
-                            href={`/courses/${courseId}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                          >
-                            Open source
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
-                        ) : null}
-                      </div>
+                      </li>
                     );
                   })}
-                </div>
+                </ol>
               </section>
             ) : null}
 
@@ -5635,6 +6049,7 @@ function SavedAnalysisItem({
   onSelect: () => void;
   onDelete: () => void;
 }) {
+  const t = useTranslations("AiChat");
   const savedWhen = (() => {
     try {
       const when = new Date(saved.savedAt);
@@ -5646,23 +6061,17 @@ function SavedAnalysisItem({
   return (
     <div
       className={cn(
-        "group flex items-start gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors",
+        "group flex items-start gap-2 pl-3 pr-2 py-1.5 rounded-sm cursor-pointer transition-colors border-l-2",
         isActive
-          ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300"
-          : "hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-700 dark:text-slate-300"
+          ? "border-ochre bg-surface text-ink-1"
+          : "border-transparent text-ink-2 hover:text-ink-1 hover:border-rule"
       )}
       onClick={onSelect}
       title={saved.prompt || saved.title}
     >
-      <BarChart3
-        className={cn(
-          "h-3.5 w-3.5 mt-0.5 flex-shrink-0",
-          isActive ? "" : "opacity-70"
-        )}
-      />
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-medium truncate">{saved.title}</div>
-        <div className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500">
+        <div className="text-ed-xs font-medium truncate text-ink-1">{saved.title}</div>
+        <div className="mt-0.5 flex items-center gap-1 text-[10px] text-ink-3 tabular-nums">
           {saved.scopeLabel ? (
             <span className="truncate">{saved.scopeLabel}</span>
           ) : null}
@@ -5673,12 +6082,12 @@ function SavedAnalysisItem({
       <Button
         variant="ghost"
         size="icon"
-        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-ink-3 hover:bg-transparent hover:text-[hsl(var(--data-neg))]"
         onClick={(e) => {
           e.stopPropagation();
           onDelete();
         }}
-        title="Xóa khỏi saved"
+        title={t("analysisWorkspace.removeFromSaved")}
       >
         <Trash2 className="h-3 w-3" />
       </Button>
@@ -5698,26 +6107,26 @@ function SessionItem({
   onSelect: () => void;
   onDelete: () => void;
 }) {
+  const t = useTranslations("AiChat");
   return (
     <div
-      className={`group flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${
+      className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-sm cursor-pointer transition-colors border-l-2 ${
         isActive
-          ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300"
-          : "hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-700 dark:text-slate-300"
+          ? "border-ochre bg-surface text-ink-1"
+          : "border-transparent text-ink-2 hover:text-ink-1 hover:border-rule"
       }`}
       onClick={onSelect}
     >
-      <MessageSquare className={`h-3.5 w-3.5 flex-shrink-0 ${isActive ? "" : "opacity-70"}`} />
-      <span className="flex-1 text-xs truncate">{session.label}</span>
+      <span className="flex-1 text-ed-xs truncate">{session.label}</span>
       <Button
         variant="ghost"
         size="icon"
-        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-ink-3 hover:bg-transparent hover:text-[hsl(var(--data-neg))]"
         onClick={(e) => {
           e.stopPropagation();
           onDelete();
         }}
-        title="Xóa"
+        title={t("deleteSession")}
       >
         <Trash2 className="h-3 w-3" />
       </Button>

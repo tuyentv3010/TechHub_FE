@@ -3,10 +3,17 @@
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -25,12 +32,23 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
+import {
+  getAccessCopy,
+  getResourceMeta,
+  groupPermissionsByResource,
+  METHOD_BADGE_TONE,
+} from "@/lib/access-control";
 import { handleErrorApi } from "@/lib/utils";
 import { useGetPermissions } from "@/queries/usePermission";
 import {
-  useAssignPermissionsToRoleMutation,
   useCreateRoleMutation,
   useGetRole,
   useUpdateRoleMutation,
@@ -40,22 +58,13 @@ import {
   CreateRoleBodyType,
   UpdateRoleBodyType,
 } from "@/schemaValidations/role.schema";
+import type { PermissionSchemaType } from "@/schemaValidations/permission.schema";
 
 type RoleModalProps = {
   open: boolean;
   setOpen: (value: boolean) => void;
   roleId?: string;
   onSubmitSuccess?: () => void;
-};
-
-type PermissionGroup = {
-  resource: string;
-  permissions: Array<{
-    id: string;
-    name: string;
-    method: string;
-    url: string;
-  }>;
 };
 
 export default function RoleModal({
@@ -65,47 +74,18 @@ export default function RoleModal({
   onSubmitSuccess,
 }: RoleModalProps) {
   const t = useTranslations("ManageRole");
+  const locale = useLocale();
+  const accessCopy = getAccessCopy(locale);
   const isEdit = !!roleId;
   const { data: roleData } = useGetRole(roleId!, isEdit);
   const { data: permissionsData } = useGetPermissions();
-  const permissions = permissionsData?.payload?.data ?? [];
+  const permissions: PermissionSchemaType[] = permissionsData?.payload?.data ?? [];
+  const groupedPermissions = groupPermissionsByResource(permissions);
 
   const createRoleMutation = useCreateRoleMutation();
   const updateRoleMutation = useUpdateRoleMutation();
-  const assignPermissionsMutation = useAssignPermissionsToRoleMutation();
 
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<Set<string>>(new Set());
-
-  const groupedPermissions: PermissionGroup[] = permissions.reduce(
-    (
-      acc: PermissionGroup[],
-      perm: { id: string; name: string; method: string; url: string; resource: string }
-    ) => {
-      const existing = acc.find((group) => group.resource === perm.resource);
-      if (existing) {
-        existing.permissions.push({
-          id: perm.id,
-          name: perm.name,
-          method: perm.method,
-          url: perm.url,
-        });
-      } else {
-        acc.push({
-          resource: perm.resource,
-          permissions: [
-            {
-              id: perm.id,
-              name: perm.name,
-              method: perm.method,
-              url: perm.url,
-            },
-          ],
-        });
-      }
-      return acc;
-    },
-    [] as PermissionGroup[]
-  );
 
   const form = useForm<CreateRoleBodyType>({
     resolver: zodResolver(CreateRoleBody),
@@ -137,7 +117,11 @@ export default function RoleModal({
   }, [roleData, isEdit, form]);
 
   const reset = () => {
-    form.reset();
+    form.reset({
+      name: "",
+      description: "",
+      active: true,
+    });
     setSelectedPermissionIds(new Set());
     setOpen(false);
   };
@@ -186,38 +170,24 @@ export default function RoleModal({
     setSelectedPermissionIds(nextSelected);
   };
 
-  const toggleResourceAll = (resource: string) => {
-    const group = groupedPermissions.find((item) => item.resource === resource);
-    if (!group) return;
-
-    const allSelected = group.permissions.every((permission) =>
-      selectedPermissionIds.has(permission.id)
+  const toggleResourceAll = (permissionIds: string[]) => {
+    const allSelected = permissionIds.every((permissionId) =>
+      selectedPermissionIds.has(permissionId)
     );
     const nextSelected = new Set(selectedPermissionIds);
 
     if (allSelected) {
-      group.permissions.forEach((permission) => nextSelected.delete(permission.id));
+      permissionIds.forEach((permissionId) => nextSelected.delete(permissionId));
     } else {
-      group.permissions.forEach((permission) => nextSelected.add(permission.id));
+      permissionIds.forEach((permissionId) => nextSelected.add(permissionId));
     }
 
     setSelectedPermissionIds(nextSelected);
   };
 
-  const getMethodColor = (method: string) => {
-    const colors: Record<string, string> = {
-      GET: "text-green-600 font-semibold",
-      POST: "text-orange-600 font-semibold",
-      PUT: "text-blue-600 font-semibold",
-      DELETE: "text-red-600 font-semibold",
-      PATCH: "text-purple-600 font-semibold",
-    };
-    return colors[method] || "";
-  };
-
   return (
     <Dialog open={open} onOpenChange={(value) => !value && reset()}>
-      <DialogContent className="manage-dialog-panel sm:max-w-[800px] max-h-[90vh] flex flex-col rounded-[1.35rem] border-border/50">
+      <DialogContent className="manage-dialog-panel flex max-h-[90vh] flex-col rounded-[1.35rem] border-border/50 sm:max-w-[860px]">
         <DialogHeader>
           <DialogTitle>{isEdit ? t("EditRole") : t("AddRole")}</DialogTitle>
           <DialogDescription>
@@ -231,99 +201,175 @@ export default function RoleModal({
               className="grid gap-4 py-4"
               onSubmit={form.handleSubmit(onSubmit)}
             >
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {t("NameLabel")} <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder={t("NamePlaceholder")} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <Tabs defaultValue="overview" className="space-y-4">
+                <TabsList className="manage-glass h-auto rounded-2xl border border-border/50 p-1">
+                  <TabsTrigger value="overview">{accessCopy.tabs.overview}</TabsTrigger>
+                  <TabsTrigger value="permissions">{accessCopy.tabs.permissions}</TabsTrigger>
+                </TabsList>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("DescriptionLabel")}</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder={t("DescriptionPlaceholder")} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <TabsContent value="overview" className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t("NameLabel")} <span className="text-red-500">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder={t("NamePlaceholder")} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="active"
-                render={({ field }) => (
-                  <FormItem className="flex items-center gap-2">
-                    <FormLabel>{t("StatusLabel")}</FormLabel>
-                    <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                    <span className="text-sm">{field.value ? t("Active") : t("Inactive")}</span>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("DescriptionLabel")}</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder={t("DescriptionPlaceholder")} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <FormLabel>{t("PermissionsLabel")}</FormLabel>
-                  <Badge variant="secondary">
-                    {t("SelectedCount", { count: selectedPermissionIds.size })}
-                  </Badge>
-                </div>
-                <div className="space-y-4 rounded-lg border p-4">
-                  {groupedPermissions.map((group) => {
-                    const allSelected = group.permissions.every((permission) =>
-                      selectedPermissionIds.has(permission.id)
-                    );
-
-                    return (
-                      <div key={group.resource} className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={allSelected}
-                            onCheckedChange={() => toggleResourceAll(group.resource)}
-                          />
-                          <span className="font-semibold text-lg">{group.resource}</span>
+                  <FormField
+                    control={form.control}
+                    name="active"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center gap-3 rounded-2xl border border-border/50 bg-background/60 p-4">
+                        <div className="space-y-1">
+                          <FormLabel>{t("StatusLabel")}</FormLabel>
+                          <div className="text-sm text-muted-foreground">
+                            {field.value ? t("Active") : t("Inactive")}
+                          </div>
                         </div>
-                        <div className="ml-8 grid grid-cols-1 gap-2">
-                          {group.permissions.map((permission) => (
-                            <div key={permission.id} className="flex items-center gap-2">
-                              <Switch
-                                checked={selectedPermissionIds.has(permission.id)}
-                                onCheckedChange={() => togglePermission(permission.id)}
-                              />
-                              <div className="flex-1">
-                                <span className="text-sm">{permission.name}</span>
-                                {" - "}
-                                <span className={`text-xs ${getMethodColor(permission.method)}`}>
-                                  {permission.method}
-                                </span>
-                                {" "}
-                                <code className="text-xs text-muted-foreground">
-                                  {permission.url}
-                                </code>
-                              </div>
-                            </div>
-                          ))}
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Card className="manage-surface border-border/50">
+                    <CardHeader>
+                      <CardTitle className="text-base">{accessCopy.roleView.title}</CardTitle>
+                      <CardDescription>{accessCopy.roleView.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-4 md:grid-cols-2">
+                      <div className="rounded-2xl border border-border/50 bg-background/60 p-4">
+                        <div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                          {accessCopy.roleView.permissionsLabel}
+                        </div>
+                        <div className="mt-2 text-2xl font-semibold">
+                          {selectedPermissionIds.size}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                      <div className="rounded-2xl border border-border/50 bg-background/60 p-4">
+                        <div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                          {accessCopy.roleView.resourcesLabel}
+                        </div>
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          {Array.from(
+                            new Set(
+                              permissions
+                                .filter((permission) => selectedPermissionIds.has(permission.id))
+                                .map((permission) => getResourceMeta(permission.resource, locale).label)
+                            )
+                          ).join(", ") || accessCopy.shared.emptyResources}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="permissions" className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <FormLabel>{t("PermissionsLabel")}</FormLabel>
+                    <Badge variant="secondary">
+                      {t("SelectedCount", { count: selectedPermissionIds.size })}
+                    </Badge>
+                  </div>
+
+                  <Card className="manage-surface border-border/50">
+                    <CardHeader>
+                      <CardTitle className="text-base">{accessCopy.permissionView.title}</CardTitle>
+                      <CardDescription>{accessCopy.shared.technicalHint}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {groupedPermissions.map((group) => {
+                        const resourceMeta = getResourceMeta(group.resource, locale);
+                        const permissionIds = group.permissions.map((permission) => permission.id);
+                        const allSelected = permissionIds.every((permissionId) =>
+                          selectedPermissionIds.has(permissionId)
+                        );
+
+                        return (
+                          <div
+                            key={group.resource}
+                            className="rounded-2xl border border-border/50 bg-background/60 p-4"
+                          >
+                            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                              <div>
+                                <div className="text-base font-semibold">{resourceMeta.label}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {resourceMeta.description}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <Badge variant="outline">{group.permissions.length}</Badge>
+                                <Switch
+                                  checked={allSelected}
+                                  onCheckedChange={() => toggleResourceAll(permissionIds)}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="mt-4 grid gap-3">
+                              {group.permissions.map((permission) => (
+                                <div
+                                  key={permission.id}
+                                  className="rounded-2xl border border-border/50 bg-card/70 p-3"
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <Switch
+                                      checked={selectedPermissionIds.has(permission.id)}
+                                      onCheckedChange={() => togglePermission(permission.id)}
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-sm font-medium">{permission.name}</span>
+                                        <Badge
+                                          variant="secondary"
+                                          className={METHOD_BADGE_TONE[permission.method]}
+                                        >
+                                          {accessCopy.methodLabels[permission.method]}
+                                        </Badge>
+                                      </div>
+                                      <div className="mt-1 text-sm text-muted-foreground">
+                                        {permission.description || resourceMeta.description}
+                                      </div>
+                                      <code className="mt-2 inline-block rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
+                                        {permission.url}
+                                      </code>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </form>
           </Form>
         </div>
@@ -332,11 +378,7 @@ export default function RoleModal({
             type="submit"
             form="role-form"
             className="manage-primary-button"
-            disabled={
-              createRoleMutation.isPending ||
-              updateRoleMutation.isPending ||
-              assignPermissionsMutation.isPending
-            }
+            disabled={createRoleMutation.isPending || updateRoleMutation.isPending}
           >
             {isEdit ? t("UpdateRole") : t("AddRole")}
           </Button>

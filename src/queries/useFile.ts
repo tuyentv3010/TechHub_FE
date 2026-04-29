@@ -2,8 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import fileApiRequest from "@/apiRequests/file";
 import {
   CreateFolderBodyType,
-  UpdateFolderBodyType,
-  UpdateFileBodyType,
 } from "@/schemaValidations/file.schema";
 
 export const useGetFilesByUser = (userId: string, page?: number, size?: number) => {
@@ -83,10 +81,14 @@ export const useUploadMultipleFilesMutation = () => {
 export const useDeleteFileMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, userId }: { id: string; userId: string }) =>
+    mutationFn: ({ id, userId }: { id: string; userId: string; folderId?: string | null }) =>
       fileApiRequest.deleteFile(id, userId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["files", "user", variables.userId] });
+      if (variables.folderId) {
+        queryClient.invalidateQueries({ queryKey: ["files", "folder", variables.folderId, variables.userId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["files", "folder"] });
       queryClient.invalidateQueries({ queryKey: ["files", "statistics", variables.userId] });
       queryClient.invalidateQueries({ queryKey: ["folders", "user", variables.userId] });
     },
@@ -101,6 +103,20 @@ export const useCreateFolderMutation = () => {
     onSuccess: (_data, variables) => {
       const userId = variables.userId;
       queryClient.invalidateQueries({ queryKey: ["folders", "user", userId] });
+    },
+  });
+};
+
+export const useDeleteFolderMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, userId }: { id: string; userId: string }) =>
+      fileApiRequest.deleteFolder(id, userId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["folders", "user", variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ["files", "user", variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ["files", "folder"] });
+      queryClient.invalidateQueries({ queryKey: ["files", "statistics", variables.userId] });
     },
   });
 };

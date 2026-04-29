@@ -94,6 +94,7 @@ export default function UploadFileDialog({
         const formData = new FormData();
         formData.append('file', file);
         formData.append('userId', userId);
+        formData.append('uploadSource', 'MANAGE_FILES');
         if (selectedFolderId) formData.append('folderId', selectedFolderId);
         if (tags) formData.append('tags', tags);
         if (description) formData.append('description', description);

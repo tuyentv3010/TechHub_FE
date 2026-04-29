@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +15,6 @@ import {
   useGetAiRuntimeStats,
   useGetAiProviderConfig,
   useGetLearningPathDrafts,
-  useApproveLearningPathDraftMutation,
   useRejectDraftMutation,
   useGetLangfuseAnalytics,
 } from "@/queries/useAi";
@@ -35,23 +35,27 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AdminPageFrame, AdminSurface } from "@/components/manage/admin-page-frame";
+import {
+  LearningPathDraftPublishError,
+  publishLearningPathDraft,
+} from "@/app/manage/learning-paths/draft-publish";
+import type { DraftItemType } from "@/schemaValidations/ai.schema";
 
-type DraftItem = {
-  taskId: string;
-  taskType?: string;
-  prompt?: string;
+type DashboardDraftItem = DraftItemType & {
   created?: string;
   resultPayload?: {
     title?: string;
-  };
+  } & Record<string, unknown>;
 };
 
 export default function DashboardPage() {
   const t = useTranslations("AiDashboard");
   const locale = useLocale();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [showResultDialog, setShowResultDialog] = useState(false);
   const [reindexResults, setReindexResults] = useState<any>(null);
+  const [publishingDraftId, setPublishingDraftId] = useState<string | null>(null);
 
   const reindexAllMutation = useReindexAllMutation();
   const { data: qdrantStatsData } = useGetQdrantStats();
@@ -60,7 +64,6 @@ export default function DashboardPage() {
   const { data: analyticsData } = useGetLangfuseAnalytics(7);
   const { data: pathDraftsData } = useGetLearningPathDrafts();
 
-  const approvePathDraftMutation = useApproveLearningPathDraftMutation();
   const rejectDraftMutation = useRejectDraftMutation();
 
   const qdrantStats = qdrantStatsData?.payload?.data;
@@ -69,7 +72,7 @@ export default function DashboardPage() {
   const config = providerConfigData?.payload?.data || {};
   const metadata = config.metadata || {};
   const analytics = analyticsData?.payload?.data || {};
-  const pendingDrafts: DraftItem[] = pathDraftsData?.payload?.data || [];
+  const pendingDrafts: DashboardDraftItem[] = pathDraftsData?.payload?.data || [];
   const recentRuns = runtime?.chatRuns?.recent || [];
 
   const totalCourses = qdrantStats?.collections?.courses?.vectorCount || 0;
@@ -88,10 +91,22 @@ export default function DashboardPage() {
 
   const handleApproveDraft = async (taskId: string) => {
     try {
-      await approvePathDraftMutation.mutateAsync(taskId);
+      setPublishingDraftId(taskId);
+      const draft = pendingDrafts.find((item) => item.taskId === taskId);
+      await publishLearningPathDraft({ taskId, draft });
+      await queryClient.invalidateQueries({ queryKey: ["learning-path-drafts"] });
+      await queryClient.invalidateQueries({ queryKey: ["learning-path-list"] });
       toast({ title: t("draftApproved") });
     } catch (error: any) {
+      if (error instanceof LearningPathDraftPublishError && error.pathId) {
+        await queryClient.invalidateQueries({ queryKey: ["learning-path-drafts"] });
+        await queryClient.invalidateQueries({ queryKey: ["learning-path-list"] });
+        toast({ title: t("draftApproved"), description: error.message });
+        return;
+      }
       toast({ title: t("error"), description: error?.message, variant: "destructive" });
+    } finally {
+      setPublishingDraftId(null);
     }
   };
 
@@ -240,15 +255,20 @@ export default function DashboardPage() {
                                 t("overview.pendingReview.generatedDraft")}
                             </p>
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{formatDate(draft.created)}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {formatDate(draft.createdAt || draft.created)}
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleApproveDraft(draft.taskId)}
-                                disabled={approvePathDraftMutation.isPending}
+                                disabled={publishingDraftId === draft.taskId}
                               >
+                                {publishingDraftId === draft.taskId ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : null}
                                 {t("overview.pendingReview.approve")}
                               </Button>
                               <Button

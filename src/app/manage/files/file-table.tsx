@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS, ja, vi } from 'date-fns/locale';
 import { useLocale, useTranslations } from 'next-intl';
@@ -48,6 +47,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useAccountProfile } from '@/queries/useAccount';
+import envConfig from '@/config';
 import {
   useDeleteFileMutation,
   useGetFileStatistics,
@@ -56,6 +56,11 @@ import {
 } from '@/queries/useFile';
 import type { FileType } from '@/schemaValidations/file.schema';
 import { useToast } from '@/hooks/use-toast';
+import {
+  getFilePreviewCandidates,
+  getFileSourceCandidates,
+  resolveFileSourceUrl,
+} from '@/lib/file-media';
 import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
 
@@ -100,15 +105,144 @@ const getProcessingBadgeVariant = (
   return 'outline';
 };
 
-const getFilePreviewUrl = (file: FileType) => {
-  if (file.fileType === 'VIDEO') {
-    return file.thumbnailUrl || '/placeholder-image.png';
+const PROCESSING_STATUS_LABELS = new Set(['READY', 'PENDING', 'PROCESSING', 'FAILED']);
+const VISIBLE_PROCESSING_STATUSES = new Set(['PENDING', 'PROCESSING']);
+
+const getFileSourceUrl = (file: FileType) => resolveFileSourceUrl(file) || '';
+
+const getAccessToken = () =>
+  typeof window === 'undefined' ? null : window.localStorage.getItem('accessToken');
+
+const buildFileMediaUrl = (
+  fileId: string,
+  userId: string,
+  variant: 'content' | 'thumbnail'
+) =>
+  `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/app/api/proxy/files/${fileId}/${variant}?userId=${encodeURIComponent(userId)}`;
+
+const fetchWithAuth = (url: string, init?: RequestInit) => {
+  const headers = new Headers(init?.headers);
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    headers.set('Authorization', `Bearer ${accessToken}`);
   }
-  return file.secureUrl || file.publicUrl || file.cloudinarySecureUrl;
+
+  return fetch(url, {
+    ...init,
+    headers,
+    credentials: 'include',
+  });
 };
 
-const getFileSourceUrl = (file: FileType) =>
-  file.secureUrl || file.publicUrl || file.cloudinarySecureUrl || '';
+const isHtmlResponse = (response: Response) =>
+  (response.headers.get('content-type') || '').toLowerCase().includes('text/html');
+
+const FileTypeIcon = ({
+  type,
+  className,
+}: {
+  type: FileType['fileType'];
+  className?: string;
+}) => {
+  const Icon = FILE_TYPE_ICONS[type];
+  return <Icon className={cn('h-5 w-5', className)} />;
+};
+
+function FileMediaPreview({
+  file,
+  userId,
+  variant,
+  directUrls,
+  iconSizeClass,
+  mediaFitClass,
+}: {
+  file: FileType;
+  userId: string;
+  variant: 'content' | 'thumbnail';
+  directUrls: string[];
+  iconSizeClass: string;
+  mediaFitClass: string;
+}) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [authFailed, setAuthFailed] = useState(false);
+  const [directIndex, setDirectIndex] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    let nextObjectUrl: string | null = null;
+
+    setObjectUrl(null);
+    setAuthFailed(false);
+    setDirectIndex(0);
+
+    if (!userId) {
+      setAuthFailed(true);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    fetchWithAuth(buildFileMediaUrl(file.id, userId, variant), {
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok || isHtmlResponse(response)) {
+          throw new Error(`Media request failed with status ${response.status}`);
+        }
+        return response.blob();
+      })
+      .then((blob) => {
+        if (cancelled) {
+          return;
+        }
+        nextObjectUrl = window.URL.createObjectURL(blob);
+        setObjectUrl(nextObjectUrl);
+      })
+      .catch((error) => {
+        if (!cancelled && error?.name !== 'AbortError') {
+          setAuthFailed(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (nextObjectUrl) {
+        window.URL.revokeObjectURL(nextObjectUrl);
+      }
+    };
+  }, [file.id, userId, variant]);
+
+  if (objectUrl) {
+    return (
+      <img
+        src={objectUrl}
+        alt={file.name}
+        className={cn('h-full w-full', mediaFitClass)}
+      />
+    );
+  }
+
+  if (authFailed) {
+    const directUrl = directUrls[directIndex];
+    if (directUrl) {
+      return (
+        <img
+          src={directUrl}
+          alt={file.name}
+          className={cn('h-full w-full', mediaFitClass)}
+          onError={() => setDirectIndex((current) => current + 1)}
+        />
+      );
+    }
+  }
+
+  return (
+    <div className={cn('flex h-full w-full items-center justify-center', FILE_TYPE_COLORS[file.fileType])}>
+      <FileTypeIcon type={file.fileType} className={iconSizeClass} />
+    </div>
+  );
+}
 
 export default function FileTable() {
   const t = useTranslations('ManageFile');
@@ -119,8 +253,8 @@ export default function FileTable() {
   const userId = profileData?.payload?.data?.id || '';
 
   const canUploadFiles = hasPermission('POST', '/api/files/upload');
-  const canDeleteFiles = hasPermission('DELETE', '/api/files');
-  const canDownloadFiles = hasPermission('GET', '/api/files/download');
+  const canDeleteFiles = hasPermission('DELETE', '/api/files/{id}');
+  const canDownloadFiles = hasPermission('GET', '/api/files/{id}');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -130,10 +264,21 @@ export default function FileTable() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileType | null>(null);
-  const [videoPreviewErrors, setVideoPreviewErrors] = useState<Record<string, boolean>>({});
+  const [pendingDeletedFileIds, setPendingDeletedFileIds] = useState<Set<string>>(new Set());
+  const [previewFallbackState, setPreviewFallbackState] = useState<
+    Record<string, { previewIndex?: number; sourceIndex?: number }>
+  >({});
 
-  const { data: userFilesData, isLoading: loadingUserFiles } = useGetFilesByUser(userId, 0, 100);
-  const { data: folderFilesData, isLoading: loadingFolderFiles } = useGetFilesByFolder(
+  const {
+    data: userFilesData,
+    isLoading: loadingUserFiles,
+    refetch: refetchUserFiles,
+  } = useGetFilesByUser(userId, 0, 100);
+  const {
+    data: folderFilesData,
+    isLoading: loadingFolderFiles,
+    refetch: refetchFolderFiles,
+  } = useGetFilesByFolder(
     selectedFolder || '',
     userId
   );
@@ -146,7 +291,7 @@ export default function FileTable() {
     'content' in userFilesData.payload.data;
 
   const filesFromUser = isPageResponse
-    ? (userFilesData.payload.data as any).content
+    ? (userFilesData.payload.data as { content: FileType[] }).content
     : Array.isArray(userFilesData?.payload?.data)
       ? userFilesData.payload.data
       : [];
@@ -158,16 +303,94 @@ export default function FileTable() {
   const files: FileType[] = selectedFolder ? filesFromFolder : filesFromUser;
   const statistics = statisticsData?.payload?.data;
   const loading = selectedFolder ? loadingFolderFiles : loadingUserFiles;
-  const filteredFiles = files.filter((file) =>
-    file.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredFiles = files.filter(
+    (file) => !pendingDeletedFileIds.has(file.id) && file.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const getErrorDescription = (error: unknown, fallback: string) => {
+    if (error && typeof error === 'object') {
+      const payload = (error as { payload?: unknown }).payload;
+      if (payload && typeof payload === 'object') {
+        const message = (payload as { message?: unknown; error?: unknown; data?: { message?: unknown } }).message
+          ?? (payload as { error?: unknown }).error
+          ?? (payload as { data?: { message?: unknown } }).data?.message;
+        if (typeof message === 'string' && message.trim()) {
+          return message;
+        }
+      }
+      if (typeof payload === 'string' && payload.trim()) {
+        try {
+          const parsed = JSON.parse(payload) as { message?: unknown; error?: unknown };
+          const message = parsed.message ?? parsed.error;
+          if (typeof message === 'string' && message.trim()) {
+            return message;
+          }
+        } catch {
+          if (payload.includes('Cannot delete folder with files')) {
+            return t('DeleteFolderNotEmpty');
+          }
+          if (payload.includes('Cannot delete folder with subfolders')) {
+            return t('DeleteFolderNotEmpty');
+          }
+          if (payload.length < 180 && !payload.includes('<html')) {
+            return payload;
+          }
+        }
+      }
+      if (error instanceof Error && error.message) {
+        return error.message;
+      }
+    }
+    return fallback;
+  };
+
+  const filePreviewSignature = files
+    .map((file) => `${file.id}:${file.thumbnailUrl ?? ''}:${file.secureUrl ?? ''}:${file.publicUrl ?? ''}`)
+    .join('|');
+
+  useEffect(() => {
+    setPreviewFallbackState({});
+  }, [filePreviewSignature]);
+
+  const hasUnfinishedVideoProcessing = files.some(
+    (file) =>
+      file.fileType === 'VIDEO' &&
+      (file.processingStatus === 'PENDING' || file.processingStatus === 'PROCESSING')
+  );
+
+  useEffect(() => {
+    if (!hasUnfinishedVideoProcessing || !userId) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      if (selectedFolder) {
+        void refetchFolderFiles();
+        return;
+      }
+      void refetchUserFiles();
+    }, 3000);
+
+    return () => window.clearInterval(intervalId);
+  }, [
+    hasUnfinishedVideoProcessing,
+    refetchFolderFiles,
+    refetchUserFiles,
+    selectedFolder,
+    userId,
+  ]);
 
   const getFileTypeLabel = (type: FileType['fileType']) => t(`FileType.${type}`);
   const getProcessingStatusLabel = (status?: string | null) =>
-    status ? t(`ProcessingStatus.${status}`) : '';
+    status ? (PROCESSING_STATUS_LABELS.has(status) ? t(`ProcessingStatus.${status}`) : status) : '';
+  const shouldShowProcessingStatus = (file: FileType) =>
+    file.fileType === 'VIDEO' &&
+    !!file.processingStatus &&
+    VISIBLE_PROCESSING_STATUSES.has(file.processingStatus);
 
   const handleDelete = async () => {
     if (!fileToDelete || !userId) return;
+    const deletingFile = fileToDelete;
     if (!canDeleteFiles) {
       toast({
         title: t('PermissionDeniedTitle'),
@@ -177,19 +400,25 @@ export default function FileTable() {
       return;
     }
 
+    setPendingDeletedFileIds((current) => new Set(current).add(deletingFile.id));
+    setDeleteDialogOpen(false);
+    setFileToDelete(null);
+
     try {
-      await deleteFileMutation.mutateAsync({ id: fileToDelete.id, userId });
+      await deleteFileMutation.mutateAsync({ id: deletingFile.id, userId, folderId: selectedFolder });
       toast({ title: t('SuccessTitle'), description: t('DeleteSuccess') });
     } catch (error) {
+      setPendingDeletedFileIds((current) => {
+        const next = new Set(current);
+        next.delete(deletingFile.id);
+        return next;
+      });
       console.error('Error deleting file:', error);
       toast({
         title: t('ErrorTitle'),
-        description: t('DeleteError'),
+        description: getErrorDescription(error, t('DeleteError')),
         variant: 'destructive',
       });
-    } finally {
-      setDeleteDialogOpen(false);
-      setFileToDelete(null);
     }
   };
 
@@ -204,7 +433,19 @@ export default function FileTable() {
     }
 
     try {
-      const response = await fetch(getFileSourceUrl(file));
+      let response = await fetchWithAuth(buildFileMediaUrl(file.id, userId, 'content'));
+      if (!response.ok || isHtmlResponse(response)) {
+        const sourceUrl = getFileSourceUrl(file);
+        if (!sourceUrl) {
+          throw new Error('Missing file source');
+        }
+        response = await fetch(sourceUrl);
+      }
+
+      if (!response.ok || isHtmlResponse(response)) {
+        throw new Error('Failed to download file content');
+      }
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -225,15 +466,69 @@ export default function FileTable() {
     }
   };
 
-  const FileTypeIcon = ({
-    type,
-    className,
-  }: {
-    type: FileType['fileType'];
-    className?: string;
-  }) => {
-    const Icon = FILE_TYPE_ICONS[type];
-    return <Icon className={cn('h-5 w-5', className)} />;
+  const advancePreviewCandidate = (
+    fileId: string,
+    candidateType: 'previewIndex' | 'sourceIndex'
+  ) => {
+    setPreviewFallbackState((current) => ({
+      ...current,
+      [fileId]: {
+        ...current[fileId],
+        [candidateType]: (current[fileId]?.[candidateType] ?? 0) + 1,
+      },
+    }));
+  };
+
+  const getActivePreviewUrl = (file: FileType) => {
+    const previewIndex = previewFallbackState[file.id]?.previewIndex ?? 0;
+    return getFilePreviewCandidates(file)[previewIndex] ?? null;
+  };
+
+  const getActiveSourceUrl = (file: FileType) => {
+    const sourceIndex = previewFallbackState[file.id]?.sourceIndex ?? 0;
+    return getFileSourceCandidates(file)[sourceIndex] ?? '';
+  };
+
+  const renderFilePreview = (
+    file: FileType,
+    iconSizeClass = 'h-7 w-7',
+    mediaFitClass = 'object-cover',
+    mediaVariant: 'content' | 'thumbnail' = 'thumbnail'
+  ) => {
+    const previewUrl = getActivePreviewUrl(file);
+    const sourceUrl = getActiveSourceUrl(file);
+
+    if (file.fileType === 'IMAGE' || previewUrl) {
+      return (
+        <FileMediaPreview
+          file={file}
+          userId={userId}
+          variant={mediaVariant}
+          directUrls={getFilePreviewCandidates(file)}
+          iconSizeClass={iconSizeClass}
+          mediaFitClass={mediaFitClass}
+        />
+      );
+    }
+
+    if (file.fileType === 'VIDEO' && sourceUrl) {
+      return (
+        <video
+          src={sourceUrl}
+          className={cn('h-full w-full', mediaFitClass)}
+          muted
+          playsInline
+          preload="metadata"
+          onError={() => advancePreviewCandidate(file.id, 'sourceIndex')}
+        />
+      );
+    }
+
+    return (
+      <div className={cn('flex h-full w-full items-center justify-center', FILE_TYPE_COLORS[file.fileType])}>
+        <FileTypeIcon type={file.fileType} className={iconSizeClass} />
+      </div>
+    );
   };
 
   return (
@@ -300,7 +595,7 @@ export default function FileTable() {
               <TableHead>{t('SizeColumn')}</TableHead>
               <TableHead>{t('FolderColumn')}</TableHead>
               <TableHead>{t('CreatedAtColumn')}</TableHead>
-              <TableHead className="w-[80px]" />
+              <TableHead className="w-[104px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -316,33 +611,19 @@ export default function FileTable() {
               filteredFiles.map((file) => (
                 <TableRow key={file.id}>
                   <TableCell>
-                    <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-inner dark:border-white/10 dark:bg-slate-800/90">
-                      {file.fileType === 'IMAGE' ? (
-                        <Image src={getFilePreviewUrl(file)} alt={file.name} fill className="object-cover" />
-                      ) : file.fileType === 'VIDEO' &&
-                        !videoPreviewErrors[file.id] &&
-                        getFilePreviewUrl(file) !== '/placeholder-image.png' ? (
-                        <Image
-                          src={getFilePreviewUrl(file)}
-                          alt={file.name}
-                          fill
-                          className="object-cover"
-                          onError={() =>
-                            setVideoPreviewErrors((current) => ({ ...current, [file.id]: true }))
-                          }
-                        />
-                      ) : (
-                        <div className={cn('flex h-full w-full items-center justify-center', FILE_TYPE_COLORS[file.fileType])}>
-                          <FileTypeIcon type={file.fileType} className="h-7 w-7" />
-                        </div>
-                      )}
+                    <div className="relative h-20 w-20 overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/10 dark:bg-slate-900/80">
+                      {renderFilePreview(file, 'h-7 w-7', 'object-contain')}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="max-w-[300px]">
                       <p className="truncate font-medium">{file.name}</p>
-                      {file.fileType === 'VIDEO' && file.processingStatus && file.processingStatus !== 'READY' && (
-                        <Badge variant={getProcessingBadgeVariant(file.processingStatus)} className="mt-1 text-xs">
+                      {shouldShowProcessingStatus(file) && (
+                        <Badge
+                          variant={getProcessingBadgeVariant(file.processingStatus)}
+                          className="mt-1 text-xs"
+                          title={file.processingError || undefined}
+                        >
                           {getProcessingStatusLabel(file.processingStatus)}
                         </Badge>
                       )}
@@ -368,42 +649,42 @@ export default function FileTable() {
                     {formatDistanceToNow(new Date(file.created), { addSuffix: true, locale: getDateLocale(locale) })}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-slate-600 hover:bg-slate-900/5 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>{t('Actions')}</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setPreviewFile(file)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          {t('PreviewAction')}
-                        </DropdownMenuItem>
-                        {canDownloadFiles && (
-                          <DropdownMenuItem onClick={() => handleDownload(file)}>
-                            <Download className="mr-2 h-4 w-4" />
-                            {t('DownloadAction')}
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={!canDeleteFiles}
+                        title={!canDeleteFiles ? t('DeletePermissionDenied') : t('DeleteAction')}
+                        onClick={() => {
+                          setFileToDelete(file);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-slate-600 hover:bg-slate-900/5 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>{t('Actions')}</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setPreviewFile(file)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            {t('PreviewAction')}
                           </DropdownMenuItem>
-                        )}
-                        {canDeleteFiles && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => {
-                                setFileToDelete(file);
-                                setDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              {t('DeleteAction')}
+                          {canDownloadFiles && (
+                            <DropdownMenuItem onClick={() => handleDownload(file)}>
+                              <Download className="mr-2 h-4 w-4" />
+                              {t('DownloadAction')}
                             </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -439,7 +720,9 @@ export default function FileTable() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>{t('Cancel')}</Button>
-            <Button variant="destructive" onClick={handleDelete}>{t('DeleteAction')}</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteFileMutation.isPending}>
+              {t('DeleteAction')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -454,19 +737,29 @@ export default function FileTable() {
             <div className="space-y-4">
               {previewFile.fileType === 'IMAGE' && (
                 <div className="relative h-[400px] w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 dark:border-white/10 dark:bg-slate-900/80">
-                  <Image src={getFilePreviewUrl(previewFile)} alt={previewFile.name} fill className="object-contain" />
+                  {renderFilePreview(previewFile, 'h-12 w-12', 'object-contain', 'content')}
                 </div>
               )}
               {previewFile.fileType === 'VIDEO' && (
                 <div className="relative w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 dark:border-white/10 dark:bg-slate-900/80">
-                  <video src={getFileSourceUrl(previewFile)} controls className="w-full max-h-[400px]">
+                  <video
+                    src={getActiveSourceUrl(previewFile) || getFileSourceUrl(previewFile)}
+                    controls
+                    className="w-full max-h-[400px]"
+                    onError={() => advancePreviewCandidate(previewFile.id, 'sourceIndex')}
+                  >
                     {t('BrowserUnsupportedVideo')}
                   </video>
                 </div>
               )}
               {previewFile.fileType === 'AUDIO' && (
                 <div className="relative w-full rounded-2xl border border-slate-200/80 bg-slate-100 p-4 dark:border-white/10 dark:bg-slate-900/80">
-                  <audio src={getFileSourceUrl(previewFile)} controls className="w-full">
+                  <audio
+                    src={getActiveSourceUrl(previewFile) || getFileSourceUrl(previewFile)}
+                    controls
+                    className="w-full"
+                    onError={() => advancePreviewCandidate(previewFile.id, 'sourceIndex')}
+                  >
                     {t('BrowserUnsupportedAudio')}
                   </audio>
                 </div>

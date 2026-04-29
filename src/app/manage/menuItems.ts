@@ -73,7 +73,7 @@ const menuItems: MenuItem[] = [
     roles: [Role.Admin, Role.SuperAdmin, Role.Instructor],
   },
   {
-    title: "Nhân viên",
+    title: "Người dùng",
     titleKey: "accounts",
     Icon: Users2,
     href: "/manage/accounts",

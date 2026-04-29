@@ -12,10 +12,21 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { ChevronDown, Edit, Loader2, MoreHorizontal, Route, Sparkles, Trash } from "lucide-react";
 
-import { ChevronDown, Edit, MoreHorizontal, Trash, Route, Sparkles, Loader2 } from "lucide-react";
-
+import { formatDateTimeToLocaleString } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -26,6 +37,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -34,44 +53,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-import { useState } from "react";
-import { useTranslations } from "next-intl";
-import { useGetLearningPathList, useDeleteLearningPathMutation } from "@/queries/useLearningPath";
-import { LearningPathItemType } from "@/schemaValidations/learning-path.schema";
 import { useToast } from "@/hooks/use-toast";
+import { useDeleteLearningPathMutation, useGetLearningPathList } from "@/queries/useLearningPath";
+import { useGetLearningPathDrafts, useRejectDraftMutation } from "@/queries/useAi";
+import { normalizeLearningPathListPayload } from "@/lib/learning-paths";
+import { DraftItemType } from "@/schemaValidations/ai.schema";
+import { LearningPathItemType } from "@/schemaValidations/learning-path.schema";
+
 import AddLearningPath from "./add-learning-path";
 import EditLearningPath from "./edit-learning-path";
 import GenerateAiLearningPath from "./generate-ai-learning-path";
-import { formatDateTimeToLocaleString } from "@/lib/utils";
-import { useRouter } from "next/navigation";
 import {
-  useGetLearningPathDrafts,
-  useApproveLearningPathDraftMutation,
-  useRejectDraftMutation,
-} from "@/queries/useAi";
-import { Separator } from "@/components/ui/separator";
+  LearningPathDraftPublishError,
+  publishLearningPathDraft,
+} from "./draft-publish";
 
 export default function LearningPathTable() {
   const t = useTranslations("ManageLearningPath");
   const tAiDrafts = useTranslations("AiDrafts");
   const paginationT = useTranslations("Pagination");
   const router = useRouter();
+  const { toast } = useToast();
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -80,40 +83,32 @@ export default function LearningPathTable() {
     pageIndex: 0,
     pageSize: 10,
   });
+  const [editingPath, setEditingPath] = useState<LearningPathItemType | null>(null);
+  const [publishingDraftId, setPublishingDraftId] = useState<string | null>(null);
 
-  // Filters
-  const [searchKeyword, setSearchKeyword] = useState("");
-
-  // Query
   const { data, isLoading, refetch } = useGetLearningPathList({
     page: pagination.pageIndex,
     size: pagination.pageSize,
   });
+  const { data: aiDraftsData, refetch: refetchDrafts, isLoading: aiDraftsLoading } = useGetLearningPathDrafts();
+  const learningPathList = normalizeLearningPathListPayload(data?.payload);
 
   const deleteMutation = useDeleteLearningPathMutation();
-  const { toast } = useToast();
-  const { data: aiDraftsData, refetch: refetchDrafts, isLoading: aiDraftsLoading } = useGetLearningPathDrafts();
-  const approveDraftMutation = useApproveLearningPathDraftMutation();
   const rejectDraftMutation = useRejectDraftMutation();
 
-  // Edit state
-  const [editingPath, setEditingPath] = useState<LearningPathItemType | null>(null);
-
   const handleDelete = async (id: string) => {
-    if (!confirm(t("DeleteConfirm"))) return;
+    if (!confirm(t("DeleteConfirm"))) {
+      return;
+    }
 
     try {
       await deleteMutation.mutateAsync(id);
-      toast({
-        title: t("DeleteSuccess"),
-        variant: "default",
-      });
+      toast({ title: t("DeleteSuccess") });
       refetch();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An error occurred";
       toast({
         title: t("DeleteError"),
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     }
@@ -121,29 +116,45 @@ export default function LearningPathTable() {
 
   const handleApproveDraft = async (taskId: string) => {
     try {
-      await approveDraftMutation.mutateAsync(taskId);
-      toast({ title: t("ApproveSuccess", { defaultValue: "Đã duyệt draft" }) });
+      setPublishingDraftId(taskId);
+      const draft = (aiDraftsData?.payload?.data || []).find(
+        (item: DraftItemType) => item.taskId === taskId
+      );
+
+      await publishLearningPathDraft({ taskId, draft });
+      toast({ title: tAiDrafts("approveSuccess") });
+      refetch();
       refetchDrafts();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An error occurred";
+      if (error instanceof LearningPathDraftPublishError && error.pathId) {
+        toast({
+          title: tAiDrafts("approveSuccess"),
+          description: error.message,
+        });
+        refetch();
+        refetchDrafts();
+        return;
+      }
+
       toast({
-        title: t("ApproveError", { defaultValue: "Lỗi duyệt draft" }),
-        description: errorMessage,
+        title: tAiDrafts("approveError"),
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
+    } finally {
+      setPublishingDraftId(null);
     }
   };
 
   const handleRejectDraft = async (taskId: string) => {
     try {
       await rejectDraftMutation.mutateAsync({ taskId });
-      toast({ title: t("RejectSuccess", { defaultValue: "Đã từ chối draft" }) });
+      toast({ title: tAiDrafts("rejectSuccess") });
       refetchDrafts();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An error occurred";
       toast({
-        title: t("RejectError", { defaultValue: "Lỗi từ chối draft" }),
-        description: errorMessage,
+        title: tAiDrafts("rejectError"),
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     }
@@ -153,25 +164,23 @@ export default function LearningPathTable() {
     {
       accessorKey: "title",
       header: t("TableTitle"),
-      cell: ({ row }) => (
-        <div className="font-medium">{row.getValue("title")}</div>
-      ),
+      cell: ({ row }) => <div className="font-medium">{row.getValue("title")}</div>,
     },
     {
       accessorKey: "description",
       header: t("TableDescription"),
-      cell: ({ row }) => (
-        <div className="max-w-[300px] truncate">
-          {row.getValue("description")}
-        </div>
-      ),
+      cell: ({ row }) => <div className="max-w-[300px] truncate">{row.getValue("description")}</div>,
     },
     {
       accessorKey: "courses",
       header: t("TableCourses"),
       cell: ({ row }) => {
         const courses = row.original.courses || [];
-        return <Badge variant="outline">{courses.length} {t("Courses")}</Badge>;
+        return (
+          <Badge variant="outline">
+            {courses.length} {t("Courses")}
+          </Badge>
+        );
       },
     },
     {
@@ -181,16 +190,16 @@ export default function LearningPathTable() {
         const skills = row.original.skills || [];
         return (
           <div className="flex flex-wrap gap-1">
-            {skills.slice(0, 3).map((skill, idx) => (
-              <Badge key={idx} variant="secondary" className="text-xs">
+            {skills.slice(0, 3).map((skill, index) => (
+              <Badge key={`${skill}-${index}`} variant="secondary" className="text-xs">
                 {skill}
               </Badge>
             ))}
-            {skills.length > 3 && (
+            {skills.length > 3 ? (
               <Badge variant="secondary" className="text-xs">
                 +{skills.length - 3}
               </Badge>
-            )}
+            ) : null}
           </div>
         );
       },
@@ -210,8 +219,8 @@ export default function LearningPathTable() {
         const path = row.original;
 
         return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="manage-ghost-button h-8 w-8 p-0">
                 <span className="sr-only">Open menu</span>
                 <MoreHorizontal className="h-4 w-4" />
@@ -219,9 +228,7 @@ export default function LearningPathTable() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>{t("Actions")}</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => router.push(`/manage/learning-paths/${path.id}/designer`)}
-              >
+              <DropdownMenuItem onClick={() => router.push(`/manage/learning-paths/${path.id}/designer`)}>
                 <Route className="mr-2 h-4 w-4" />
                 {t("DesignPath")}
               </DropdownMenuItem>
@@ -230,10 +237,7 @@ export default function LearningPathTable() {
                 <Edit className="mr-2 h-4 w-4" />
                 {t("Edit")}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleDelete(path.id)}
-                className="text-red-600"
-              >
+              <DropdownMenuItem onClick={() => handleDelete(path.id)} className="text-red-600">
                 <Trash className="mr-2 h-4 w-4" />
                 {t("Delete")}
               </DropdownMenuItem>
@@ -245,7 +249,7 @@ export default function LearningPathTable() {
   ];
 
   const table = useReactTable({
-    data: data?.payload?.data || [],
+    data: learningPathList.data,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -257,7 +261,7 @@ export default function LearningPathTable() {
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
     manualPagination: true,
-    pageCount: data?.payload?.pagination?.totalPages ?? -1,
+    pageCount: learningPathList.pagination?.totalPages ?? -1,
     state: {
       sorting,
       columnFilters,
@@ -272,8 +276,8 @@ export default function LearningPathTable() {
       <div className="manage-toolbar py-1">
         <Input
           placeholder={t("SearchPlaceholder")}
-          value={searchKeyword}
-          onChange={(e) => setSearchKeyword(e.target.value)}
+          value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
+          onChange={(event) => table.getColumn("title")?.setFilterValue(event.target.value)}
           className="manage-field max-w-sm"
         />
         <DropdownMenu>
@@ -286,24 +290,23 @@ export default function LearningPathTable() {
             {table
               .getAllColumns()
               .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
+              .map((column) => (
+                <DropdownMenuCheckboxItem
+                  key={column.id}
+                  className="capitalize"
+                  checked={column.getIsVisible()}
+                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                >
+                  {column.id}
+                </DropdownMenuCheckboxItem>
+              ))}
           </DropdownMenuContent>
         </DropdownMenu>
         <GenerateAiLearningPath
-          onSuccess={() => refetch()}
+          onSuccess={() => {
+            refetch();
+            refetchDrafts();
+          }}
           triggerClassName="manage-secondary-button"
         />
         <AddLearningPath
@@ -311,58 +314,40 @@ export default function LearningPathTable() {
           triggerClassName="manage-primary-button"
         />
       </div>
+
       <div className="manage-table-shell">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   {t("Loading")}
                 </TableCell>
               </TableRow>
-            ) : table.getRowModel().rows?.length ? (
+            ) : table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
+                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   {t("NoResults")}
                 </TableCell>
               </TableRow>
@@ -370,10 +355,11 @@ export default function LearningPathTable() {
           </TableBody>
         </Table>
       </div>
+
       <div className="manage-pagination pt-4">
         <div className="manage-pagination-copy">
           {t("Page")} <strong>{pagination.pageIndex + 1}</strong> {t("Of")}{" "}
-          <strong>{data?.payload?.pagination?.totalPages ?? 1}</strong>
+          <strong>{Math.max(learningPathList.pagination?.totalPages ?? 1, 1)}</strong>
         </div>
         <div className="manage-pagination-actions">
           <Button
@@ -416,7 +402,7 @@ export default function LearningPathTable() {
         </div>
       </div>
 
-      {editingPath && (
+      {editingPath ? (
         <EditLearningPath
           learningPath={editingPath}
           onClose={() => setEditingPath(null)}
@@ -425,20 +411,19 @@ export default function LearningPathTable() {
             refetch();
           }}
         />
-      )}
+      ) : null}
 
       <Separator className="my-6" />
+
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
+        <h3 className="flex items-center gap-2 text-lg font-semibold">
           <Sparkles className="h-4 w-4" />
           {tAiDrafts("title")}
         </h3>
         <Card className="manage-surface border-border/50">
           <CardHeader>
             <CardTitle className="text-base">{tAiDrafts("pendingPaths")}</CardTitle>
-            <CardDescription>
-              {tAiDrafts("pendingPathsDescription")}
-            </CardDescription>
+            <CardDescription>{tAiDrafts("pendingPathsDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
             {aiDraftsLoading ? (
@@ -447,57 +432,59 @@ export default function LearningPathTable() {
               <div className="text-sm text-muted-foreground">{tAiDrafts("noDrafts")}</div>
             ) : (
               <div className="space-y-3">
-                {(aiDraftsData?.payload?.data || []).map((draft: { taskId: string; taskType: string; status: string; createdAt: string }) => (
-                  <Card key={draft.taskId} className="manage-subsurface border-border/50">
-                    <CardContent className="py-3 flex items-center justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{draft.taskType}</Badge>
-                          <Badge variant={draft.status === "DRAFT" ? "secondary" : "default"}>
-                            {draft.status}
-                          </Badge>
+                {(aiDraftsData?.payload?.data || []).map(
+                  (draft: { taskId: string; taskType: string; status: string; createdAt: string }) => (
+                    <Card key={draft.taskId} className="manage-subsurface border-border/50">
+                      <CardContent className="flex items-center justify-between py-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{draft.taskType}</Badge>
+                            <Badge variant={draft.status === "DRAFT" ? "secondary" : "default"}>
+                              {draft.status}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(draft.createdAt).toLocaleString()}
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(draft.createdAt).toLocaleString()}
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="manage-primary-button"
+                            onClick={() => router.push(`/manage/learning-paths/drafts/${draft.taskId}/designer`)}
+                          >
+                            <Route className="mr-2 h-4 w-4" />
+                            {t("DesignPath")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="manage-primary-button"
+                            disabled={publishingDraftId === draft.taskId}
+                            onClick={() => handleApproveDraft(draft.taskId)}
+                          >
+                            {publishingDraftId === draft.taskId ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : null}
+                            {tAiDrafts("approve")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="manage-secondary-button"
+                            disabled={rejectDraftMutation.isPending}
+                            onClick={() => handleRejectDraft(draft.taskId)}
+                          >
+                            {rejectDraftMutation.isPending ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : null}
+                            {tAiDrafts("reject")}
+                          </Button>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className="manage-primary-button"
-                          onClick={() => router.push(`/manage/learning-paths/drafts/${draft.taskId}/designer`)}
-                        >
-                          <Route className="mr-2 h-4 w-4" />
-                          {t("DesignPath", { defaultValue: "Design" })}
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="manage-primary-button"
-                          disabled={approveDraftMutation.isPending}
-                          onClick={() => handleApproveDraft(draft.taskId)}
-                        >
-                          {approveDraftMutation.isPending ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : null}
-                          {tAiDrafts("approve")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="manage-secondary-button"
-                          disabled={rejectDraftMutation.isPending}
-                          onClick={() => handleRejectDraft(draft.taskId)}
-                        >
-                          {rejectDraftMutation.isPending ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : null}
-                          {tAiDrafts("reject")}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  )
+                )}
               </div>
             )}
           </CardContent>

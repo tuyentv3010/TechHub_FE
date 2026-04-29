@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { cookies } from "next/headers";
 import envConfig from "@/config";
+import { normalizeLearningPathListPayload } from "@/lib/learning-paths";
 import LearningPathsClient from "./LearningPathsClient";
 
 export const metadata: Metadata = {
@@ -43,10 +44,7 @@ async function getLearningPaths(accessToken?: string) {
 
     const json = await res.json();
 
-    return {
-      data: json.data ?? [],
-      pagination: json.pagination ?? null,
-    };
+    return normalizeLearningPathListPayload(json);
   } catch (error) {
     console.error("[Learning Paths SSR] Error fetching learning paths:", error);
     return { data: [], pagination: null };

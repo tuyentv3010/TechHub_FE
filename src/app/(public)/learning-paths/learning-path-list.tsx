@@ -7,23 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { 
   BookOpen, 
-  Clock, 
   TrendingUp, 
   ArrowRight,
   Search,
-  Filter,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { normalizeLearningPathListPayload } from "@/lib/learning-paths";
 import { LearningPathItemType } from "@/schemaValidations/learning-path.schema";
 
 export default function LearningPathList() {
@@ -38,9 +30,9 @@ export default function LearningPathList() {
     sortBy: "created",
     sortDirection: "DESC",
   });
-
-  const paths = data?.payload?.data || [];
-  const pagination = data?.payload?.pagination;
+  const learningPathList = normalizeLearningPathListPayload(data?.payload);
+  const paths = learningPathList.data;
+  const pagination = learningPathList.pagination;
 
   const filteredPaths = paths.filter((path: LearningPathItemType) => {
     const matchesSearch = 
