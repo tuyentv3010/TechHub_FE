@@ -1,6 +1,19 @@
 import http from "@/lib/http";
 import envConfig from "@/config";
 
+export type FxRateResponse = {
+  from: string;
+  to: string;
+  rate: number;
+};
+
+export const fxApi = {
+  getRate: (from: string, to: string) =>
+    http.get<{ payload: { data: FxRateResponse } }>(
+      `/app/api/proxy/payments/fx/rate?from=${from}&to=${to}`
+    ),
+};
+
 export interface VNPayPaymentRequest {
   amount: number;
   bankCode?: string;

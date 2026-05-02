@@ -70,6 +70,7 @@ type NormalizedTransaction = {
   admin: number;
   method: string;
   status: string;
+  currency: string;
   createdAt: string;
 };
 
@@ -129,6 +130,7 @@ const toNormalizedTransaction = (
     admin,
     method: String(item.paymentMethod || labels.notAvailable),
     status,
+    currency: String((item as any).currency || "VND").toUpperCase(),
     createdAt,
   };
 };
@@ -185,6 +187,28 @@ export default function RevenueDashboardPage() {
   const [transactionPage, setTransactionPage] = useState(0);
   const [transactionPageSize, setTransactionPageSize] = useState(10);
   const [selectedTransactionId, setSelectedTransactionId] = useState("");
+  // Tỉ giá tham khảo VND → USD (1 USD ≈ 25.000 VND).
+  const VND_PER_USD = 25000;
+  const toUsd = (vnd: number) =>
+    vnd > 0 ? `≈ $${(vnd / VND_PER_USD).toFixed(2)} USD` : "";
+  // Format số tiền theo currency của course/giao dịch (USD/VND).
+  const fmtMoney = (value: number, currency?: string) => {
+    const code = (currency || "VND").toUpperCase();
+    if (code === "USD") {
+      return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value || 0);
+    }
+    return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value || 0);
+  };
+  // Quy đổi sang đối ứng (USD ↔ VND) để hiển thị 2 đơn vị.
+  const altMoney = (value: number, currency?: string) => {
+    const code = (currency || "VND").toUpperCase();
+    if (!value) return "";
+    if (code === "USD") {
+      const vnd = value * VND_PER_USD;
+      return `≈ ${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(vnd)}`;
+    }
+    return toUsd(value);
+  };
   const [policyScopeFilter, setPolicyScopeFilter] = useState<RevenuePolicyScope>("GLOBAL");
   const [newPolicyScope, setNewPolicyScope] = useState<RevenuePolicyScope>("GLOBAL");
   const [newPolicyInstructorId, setNewPolicyInstructorId] = useState("");
@@ -260,6 +284,7 @@ export default function RevenueDashboardPage() {
   type SummaryCard = {
     title: string;
     value: string;
+    sub?: string;
     icon: LucideIcon;
     tone: string;
   };
@@ -310,6 +335,33 @@ export default function RevenueDashboardPage() {
 
   const detailPayload = detailResponse?.payload?.data ?? detailResponse?.payload;
   const detailAmount = Number(detailPayload?.amount ?? detailPayload?.grossAmount ?? 0);
+  const detailCurrency = String(detailPayload?.currency || "VND").toUpperCase();
+  const [buyerInfo, setBuyerInfo] = useState<{ name?: string; email?: string }>({});
+
+  useEffect(() => {
+    const uid = String(detailPayload?.userId || "").trim();
+    if (!uid) {
+      setBuyerInfo({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        // Dùng accountApi.getById đã có sẵn auth header.
+        const accountApi = (await import("@/apiRequests/account")).default;
+        const res: any = await accountApi.getAccountById(uid);
+        const data = res?.payload?.data ?? res?.payload ?? res;
+        if (cancelled) return;
+        setBuyerInfo({
+          name: String(data?.username || data?.fullName || data?.profile?.fullName || data?.name || "").trim() || undefined,
+          email: String(data?.email || "").trim() || undefined,
+        });
+      } catch (_) {
+        if (!cancelled) setBuyerInfo({});
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [detailPayload?.userId]);
   const detailStatus = String(detailPayload?.status || notAvailable).toUpperCase();
   const detailMethod = String(detailPayload?.paymentMethod || detailPayload?.method || notAvailable);
   const detailCreatedAt = String(detailPayload?.createdAt || detailPayload?.created || "");
@@ -345,6 +397,7 @@ export default function RevenueDashboardPage() {
     {
       title: "Tổng doanh thu",
       value: formatCurrency(Number(overview?.grossRevenue || 0)),
+      sub: toUsd(Number(overview?.grossRevenue || 0)),
       icon: Coins,
       tone: "from-[#adc6ff]/15 to-transparent",
     },
@@ -353,6 +406,7 @@ export default function RevenueDashboardPage() {
       value: formatCurrency(
         Number(dashboardRole === "ADMIN" ? overview?.adminRevenue || 0 : overview?.instructorRevenue || 0)
       ),
+      sub: toUsd(Number(dashboardRole === "ADMIN" ? overview?.adminRevenue || 0 : overview?.instructorRevenue || 0)),
       icon: dashboardRole === "ADMIN" ? Wallet : Coins,
       tone: "from-[#ffb95f]/15 to-transparent",
     },
@@ -374,6 +428,7 @@ export default function RevenueDashboardPage() {
     {
       title: t("SummaryGrossRevenue"),
       value: formatCurrency(Number(overview?.grossRevenue || 0)),
+      sub: toUsd(Number(overview?.grossRevenue || 0)),
       icon: Coins,
       tone: "from-[#adc6ff]/15 to-transparent",
     },
@@ -382,6 +437,7 @@ export default function RevenueDashboardPage() {
       value: formatCurrency(
         Number(dashboardRole === "ADMIN" ? overview?.adminRevenue || 0 : overview?.instructorRevenue || 0)
       ),
+      sub: toUsd(Number(dashboardRole === "ADMIN" ? overview?.adminRevenue || 0 : overview?.instructorRevenue || 0)),
       icon: dashboardRole === "ADMIN" ? Wallet : Coins,
       tone: "from-[#ffb95f]/15 to-transparent",
     },
@@ -645,6 +701,9 @@ export default function RevenueDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100">{card.value}</div>
+                {card.sub && (
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{card.sub}</div>
+                )}
               </CardContent>
             </Card>
           );
@@ -887,16 +946,17 @@ export default function RevenueDashboardPage() {
                       </div>
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-slate-500 dark:text-slate-400">{t("GrossColumn")}</span>
-                        <span className="font-semibold text-slate-900 dark:text-slate-100">
-                          {formatCurrency(row.gross)}
+                        <span className="text-right font-semibold text-slate-900 dark:text-slate-100">
+                          {fmtMoney(row.gross, row.currency)}
+                          <div className="text-[11px] font-normal text-slate-400">{altMoney(row.gross, row.currency)}</div>
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-slate-500 dark:text-slate-400">{t("SplitColumn")}</span>
                         <span className="text-right font-medium">
-                          <span className="text-amber-600 dark:text-amber-300">{formatCurrency(row.admin)}</span>
+                          <span className="text-amber-600 dark:text-amber-300">{fmtMoney(row.admin, row.currency)}</span>
                           <span className="mx-1 text-slate-400 dark:text-slate-500">/</span>
-                          <span className="text-emerald-600 dark:text-emerald-300">{formatCurrency(row.instructor)}</span>
+                          <span className="text-emerald-600 dark:text-emerald-300">{fmtMoney(row.instructor, row.currency)}</span>
                         </span>
                       </div>
                     </div>
@@ -951,11 +1011,19 @@ export default function RevenueDashboardPage() {
                         <td className="px-4 py-3 font-medium">#{row.transactionId.slice(0, 12)}</td>
                         <td className="px-4 py-3">{row.userLabel}</td>
                         <td className="px-4 py-3">{row.courseLabel}</td>
-                        <td className="px-4 py-3 text-right">{formatCurrency(row.gross)}</td>
                         <td className="px-4 py-3 text-right">
-                          <span className="text-amber-600 dark:text-amber-300">{formatCurrency(row.admin)}</span>
-                          <span className="mx-1 text-slate-400 dark:text-slate-500">/</span>
-                          <span className="text-emerald-600 dark:text-emerald-300">{formatCurrency(row.instructor)}</span>
+                          <div>{fmtMoney(row.gross, row.currency)}</div>
+                          <div className="text-[11px] text-slate-400">{altMoney(row.gross, row.currency)}</div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div>
+                            <span className="text-amber-600 dark:text-amber-300">{fmtMoney(row.admin, row.currency)}</span>
+                            <span className="mx-1 text-slate-400 dark:text-slate-500">/</span>
+                            <span className="text-emerald-600 dark:text-emerald-300">{fmtMoney(row.instructor, row.currency)}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400">
+                            {altMoney(row.admin, row.currency)}<span className="mx-1">/</span>{altMoney(row.instructor, row.currency)}
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -1109,9 +1177,18 @@ export default function RevenueDashboardPage() {
                   trends.map((row: any) => (
                     <tr key={String(row.metricDate)} className="border-b border-blue-100 text-slate-700 dark:border-slate-800 dark:text-slate-200 last:border-0">
                       <td className="px-4 py-3">{row.metricDate}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(Number(row.grossRevenue || 0))}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(Number(row.instructorRevenue || 0))}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(Number(row.adminRevenue || 0))}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div>{formatCurrency(Number(row.grossRevenue || 0))}</div>
+                        <div className="text-[11px] text-slate-400">{toUsd(Number(row.grossRevenue || 0))}</div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div>{formatCurrency(Number(row.instructorRevenue || 0))}</div>
+                        <div className="text-[11px] text-slate-400">{toUsd(Number(row.instructorRevenue || 0))}</div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div>{formatCurrency(Number(row.adminRevenue || 0))}</div>
+                        <div className="text-[11px] text-slate-400">{toUsd(Number(row.adminRevenue || 0))}</div>
+                      </td>
                       <td className="px-4 py-3 text-right">{Number(row.totalOrders || 0)}</td>
                       <td className="px-4 py-3 text-xs">{row.policyScope || notAvailable} {row.policyVersion ? `v${row.policyVersion}` : ""}</td>
                     </tr>
@@ -1242,8 +1319,14 @@ export default function RevenueDashboardPage() {
                     </div>
                     <div className="space-y-1 rounded-2xl bg-[#313442] p-5">
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">{t("TotalAmountLabel")}</p>
-                      <p className="text-3xl font-extrabold tracking-tight text-[#dfe2f3]">{formatCurrency(detailAmount)}</p>
+                      <p className="text-3xl font-extrabold tracking-tight text-[#dfe2f3]">{fmtMoney(detailAmount, detailCurrency)}</p>
+                      <p className="text-xs text-slate-400">{altMoney(detailAmount, detailCurrency)}</p>
                       <p className="text-xs text-[#6ffbbe]">{t("NetAmountHint")}</p>
+                      {detailCreatedAt && (
+                        <p className="mt-2 text-xs text-slate-400">
+                          🕒 {formatDateTime(detailCreatedAt, locale, notAvailable)}
+                        </p>
+                      )}
                     </div>
                   </section>
 
@@ -1254,8 +1337,12 @@ export default function RevenueDashboardPage() {
                         <UserRound className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-base font-semibold text-[#dfe2f3]">{detailUserLabel}</p>
-                        <p className="truncate text-sm text-slate-400">{detailUserId}</p>
+                        <p className="truncate text-base font-semibold text-[#dfe2f3]">
+                          {buyerInfo.name || buyerInfo.email || detailUserLabel}
+                        </p>
+                        <p className="truncate text-sm text-slate-400">
+                          {buyerInfo.email && buyerInfo.name ? `${buyerInfo.email} · ` : ""}{detailUserId}
+                        </p>
                       </div>
                       <Button
                         variant="outline"
@@ -1290,7 +1377,10 @@ export default function RevenueDashboardPage() {
                                     <span className="text-sm font-medium text-[#dfe2f3]">{item.title}</span>
                                   </div>
                                 </td>
-                                <td className="px-6 py-4 text-right font-mono text-sm text-[#dfe2f3]">{formatCurrency(item.price)}</td>
+                                <td className="px-6 py-4 text-right font-mono text-sm text-[#dfe2f3]">
+                                  <div>{fmtMoney(item.price, detailCurrency)}</div>
+                                  <div className="text-[11px] text-slate-400">{altMoney(item.price, detailCurrency)}</div>
+                                </td>
                               </tr>
                             );
                           })}
@@ -1311,7 +1401,7 @@ export default function RevenueDashboardPage() {
                             })}
                           </span>
                         </div>
-                        <span className="text-sm font-bold text-[#dfe2f3]">{formatCurrency(detailInstructorAmount)}</span>
+                        <span className="text-sm font-bold text-[#dfe2f3]">{fmtMoney(detailInstructorAmount, detailCurrency)}</span>
                       </div>
                       <div className="flex items-center justify-between rounded-xl bg-[#313442] p-4">
                         <div className="flex items-center gap-3">
@@ -1322,7 +1412,7 @@ export default function RevenueDashboardPage() {
                             })}
                           </span>
                         </div>
-                        <span className="text-sm font-bold text-[#dfe2f3]">{formatCurrency(detailAdminAmount)}</span>
+                        <span className="text-sm font-bold text-[#dfe2f3]">{fmtMoney(detailAdminAmount, detailCurrency)}</span>
                       </div>
                       <div className="flex items-center justify-between rounded-xl bg-[#313442] p-4">
                         <div className="flex items-center gap-3">
