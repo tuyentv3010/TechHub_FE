@@ -19,67 +19,75 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
+import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { ArrowLeft, Check, Loader2, Route, X } from "lucide-react";
+
+import aiApiRequest from "@/apiRequests/ai";
+import {
+  extractLearningPathDraftData,
+  LearningPathDraftData,
+  LearningPathDraftPublishError,
+  publishLearningPathDraft,
+} from "@/app/manage/learning-paths/draft-publish";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Route, Check, Loader2, X, ArrowLeft } from "lucide-react";
-
-import { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import aiApiRequest from "@/apiRequests/ai";
-import learningPathApiRequest from "@/apiRequests/learning-path";
-import { useApproveLearningPathDraftMutation, useRejectDraftMutation } from "@/queries/useAi";
+import { useRejectDraftMutation } from "@/queries/useAi";
+import type { DraftItemType } from "@/schemaValidations/ai.schema";
 
 interface DraftDesignerProps {
   taskId: string;
 }
 
-// Root node component for Learning Path
-const RootNode = ({ data }: { data: { title: string; description: string; totalCourses: number } }) => {
+const RootNode = ({
+  data,
+}: {
+  data: { title: string; description: string; totalCourses: number };
+}) => {
   return (
     <>
-      <Card className="p-4 min-w-[300px] border-4 border-primary shadow-lg bg-primary/5">
+      <Card className="min-w-[300px] border-4 border-primary bg-primary/5 p-4 shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-primary rounded-lg">
+          <div className="rounded-lg bg-primary p-3">
             <Route className="h-6 w-6 text-primary-foreground" />
           </div>
           <div className="flex-1">
-            <h3 className="font-bold text-lg mb-1">{data.title}</h3>
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {data.description}
-            </p>
-            <div className="flex gap-2 mt-2">
+            <h3 className="mb-1 text-lg font-bold">{data.title}</h3>
+            <p className="line-clamp-2 text-sm text-muted-foreground">{data.description}</p>
+            <div className="mt-2 flex gap-2">
               <Badge variant="outline">{data.totalCourses} Courses</Badge>
             </div>
           </div>
         </div>
       </Card>
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="w-4 h-4 !bg-primary"
-      />
+      <Handle type="source" position={Position.Bottom} className="!bg-primary h-4 w-4" />
     </>
   );
 };
 
-// Custom node component for courses
-const CourseNode = ({ data }: { data: { title?: string; description?: string; order?: number; isOptional?: boolean; thumbnail?: string } }) => {
+const CourseNode = ({
+  data,
+}: {
+  data: {
+    title?: string;
+    description?: string;
+    order?: number;
+    isOptional?: boolean;
+    thumbnail?: string;
+  };
+}) => {
   return (
     <>
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="w-4 h-4 !bg-blue-500"
-      />
-      
-      <Card className="p-3 min-w-[280px] max-w-[320px] border-2 shadow-md">
+      <Handle type="target" position={Position.Top} className="!bg-blue-500 h-4 w-4" />
+
+      <Card className="min-w-[280px] max-w-[320px] border-2 p-3 shadow-md">
         <div className="flex flex-col gap-2">
-          {data.thumbnail && (
-            <div className="relative w-full h-32 rounded-md overflow-hidden bg-muted">
+          {data.thumbnail ? (
+            <div className="relative h-32 w-full overflow-hidden rounded-md bg-muted">
               <Image
                 src={data.thumbnail}
                 alt={data.title || "Course"}
@@ -88,40 +96,34 @@ const CourseNode = ({ data }: { data: { title?: string; description?: string; or
                 sizes="320px"
               />
             </div>
-          )}
-          
+          ) : null}
+
           <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <h4 className="font-semibold text-sm leading-tight line-clamp-2">
+            <div className="min-w-0 flex-1">
+              <h4 className="line-clamp-2 text-sm font-semibold leading-tight">
                 {data.title || "Untitled Course"}
               </h4>
-              {data.order && (
+              {data.order ? (
                 <Badge variant="secondary" className="mt-1 text-xs">
                   Week {data.order}
                 </Badge>
-              )}
+              ) : null}
             </div>
           </div>
-          
-          {data.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2">
-              {data.description}
-            </p>
-          )}
-          
-          {data.isOptional && (
-            <Badge variant="outline" className="text-xs w-fit">
+
+          {data.description ? (
+            <p className="line-clamp-2 text-xs text-muted-foreground">{data.description}</p>
+          ) : null}
+
+          {data.isOptional ? (
+            <Badge variant="outline" className="w-fit text-xs">
               Optional
             </Badge>
-          )}
+          ) : null}
         </div>
       </Card>
 
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="w-4 h-4 !bg-blue-500"
-      />
+      <Handle type="source" position={Position.Bottom} className="!bg-blue-500 h-4 w-4" />
     </>
   );
 };
@@ -135,95 +137,45 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
   const tCommon = useTranslations("common");
   const { toast } = useToast();
   const router = useRouter();
-  
-  interface CourseData {
-    courseId: string;
-    title?: string;
-    description?: string;
-    order?: number;
-    positionX?: number;
-    positionY?: number;
-    isOptional?: string;
-    thumbnail?: string;
-  }
-
-  interface LayoutEdge {
-    source: string;
-    target: string;
-  }
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const [_draftData, setDraftData] = useState<{resultPayload: string} | null>(null);
-  const [pathData, setPathData] = useState<{
-    title: string;
-    description: string;
-    skills?: string[];
-    courses: CourseData[];
-    layoutEdges: LayoutEdge[];
-  } | null>(null);
+  const [draftData, setDraftData] = useState<DraftItemType | null>(null);
+  const [pathData, setPathData] = useState<LearningPathDraftData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  const approveMutation = useApproveLearningPathDraftMutation();
+  const [isPublishing, setIsPublishing] = useState(false);
+
   const rejectMutation = useRejectDraftMutation();
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
+    (params: Connection) => setEdges((current) => addEdge(params, current)),
     [setEdges]
   );
 
-  // Load draft data
   useEffect(() => {
     const loadDraftData = async () => {
       try {
         setIsLoading(true);
         const response = await aiApiRequest.getDraftById(taskId);
         const draft = response.payload.data;
+        const parsedPathData = extractLearningPathDraftData(draft);
+
         setDraftData(draft);
-
-        console.log('📦 Draft data received:', draft);
-        console.log('📦 resultPayload:', draft.resultPayload);
-
-        // Extract learning path data from resultPayload
-        // New format: resultPayload directly contains { title, courses, ... }
-        // Old format: resultPayload.choices[0].message.content contains JSON string
-        let parsedPathData;
-        
-        if (draft.resultPayload.title && draft.resultPayload.courses) {
-          // New format: already parsed object with title and courses
-          console.log('✅ Already learning path object (new format)');
-          parsedPathData = draft.resultPayload;
-        } else if (draft.resultPayload.choices && draft.resultPayload.choices[0]?.message?.content) {
-          // Old format: Parse the content which is a JSON string
-          const contentString = draft.resultPayload.choices[0].message.content;
-          console.log('🔄 Parsing content from OpenAI response (old format)...');
-          parsedPathData = JSON.parse(contentString);
-        } else if (typeof draft.resultPayload === 'string') {
-          console.log('🔄 Parsing JSON string...');
-          parsedPathData = JSON.parse(draft.resultPayload);
-        } else {
-          throw new Error('Invalid resultPayload format - missing title/courses or choices');
-        }
-
-        console.log('✅ Path data:', parsedPathData);
         setPathData(parsedPathData);
-        
-        // Build a map from nodes array for course titles/labels
-        const nodeDataMap = new Map();
-        if (parsedPathData.nodes && Array.isArray(parsedPathData.nodes)) {
-          parsedPathData.nodes.forEach((node: { id: string; data?: { label?: string; title?: string; description?: string; thumbnail?: string } }) => {
-            if (node.id && node.data) {
-              nodeDataMap.set(node.id, {
-                title: node.data.label || node.data.title,
-                description: node.data.description,
-                thumbnail: node.data.thumbnail,
-              });
-            }
+
+        const nodeDataMap = new Map<string, { title?: string; description?: string; thumbnail?: string }>();
+        parsedPathData.nodes.forEach((node) => {
+          if (!node.id || !node.data) {
+            return;
+          }
+
+          nodeDataMap.set(node.id, {
+            title: node.data.label || node.data.title,
+            description: node.data.description,
+            thumbnail: node.data.thumbnail,
           });
-        }
-        console.log('📋 Node data map:', Array.from(nodeDataMap.entries()));
-        
-        // Build nodes from AI data
+        });
+
         const rootNode: Node = {
           id: "root",
           type: "root",
@@ -231,20 +183,19 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
           data: {
             title: parsedPathData.title,
             description: parsedPathData.description,
-            totalCourses: parsedPathData.courses?.length || 0,
+            totalCourses: parsedPathData.courses.length,
           },
         };
-        
-        const courseNodes: Node[] = (parsedPathData.courses || []).map((course: CourseData, index: number) => {
-          // Get course details from nodes array
+
+        const courseNodes: Node[] = parsedPathData.courses.map((course, index) => {
           const nodeData = nodeDataMap.get(course.courseId);
-          
+
           return {
             id: course.courseId,
             type: "course",
             position: {
-              x: course.positionX || 50 + (index % 3) * 350,
-              y: course.positionY || 200 + Math.floor(index / 3) * 250,
+              x: course.positionX ?? 50 + (index % 3) * 350,
+              y: course.positionY ?? 200 + Math.floor(index / 3) * 250,
             },
             data: {
               courseId: course.courseId,
@@ -257,23 +208,20 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
           };
         });
 
-        setNodes([rootNode, ...courseNodes] as Node[]);
-
-        // Build edges from layoutEdges
-        const pathEdges: Edge[] = (parsedPathData.layoutEdges || []).map((edge: LayoutEdge, index: number) => ({
+        const pathEdges: Edge[] = parsedPathData.layoutEdges.map((edge, index) => ({
           id: `edge-${index}`,
           source: edge.source,
           target: edge.target,
           animated: true,
-          type: 'smoothstep',
+          type: "smoothstep",
         }));
 
+        setNodes([rootNode, ...courseNodes]);
         setEdges(pathEdges);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to load draft";
         toast({
           title: tCommon("error"),
-          description: errorMessage,
+          description: error instanceof Error ? error.message : "Failed to load draft",
           variant: "destructive",
         });
       } finally {
@@ -286,7 +234,7 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
   }, [taskId]);
 
   const handleApprove = async () => {
-    if (!pathData) {
+    if (!draftData || !pathData) {
       toast({
         title: tCommon("error"),
         description: "No learning path data to approve",
@@ -296,74 +244,46 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
     }
 
     try {
-      // Step 1: Approve draft trong AI Service (chỉ update status)
-      console.log("📤 Step 1: Approving draft in AI Service...");
-      await approveMutation.mutateAsync(taskId);
-      
-      // Prepare layoutEdges from current UI state (may have been modified by user)
-      const currentLayoutEdges = edges.map(edge => ({
-        source: edge.source,
-        target: edge.target,
-      }));
-      
-      // Step 2: Tạo Learning Path qua proxy-client (with layoutEdges)
-      console.log("📤 Step 2: Creating learning path via proxy-client...");
-      console.log("📦 Path data:", pathData);
-      console.log("📦 Layout edges:", currentLayoutEdges);
-      
-      const createResponse = await learningPathApiRequest.createLearningPath({
-        title: pathData.title,
-        description: pathData.description,
-        skills: pathData.skills || [],
-        layoutEdges: currentLayoutEdges,
-        isActive: "Y",
+      setIsPublishing(true);
+      await publishLearningPathDraft({
+        taskId,
+        draft: draftData,
+        layoutEdges: edges.map((edge) => ({
+          source: edge.source,
+          target: edge.target,
+        })),
       });
-      
-      const newPathId = createResponse.payload.data.id;
-      console.log("✅ Learning path created:", newPathId);
-      
-      // Step 3: Add courses to learning path
-      if (pathData.courses && pathData.courses.length > 0) {
-        console.log("📤 Step 3: Adding courses to learning path...");
-        console.log("📦 Courses data:", pathData.courses);
-        
-        const coursesToAdd = pathData.courses.map(course => ({
-          courseId: course.courseId,
-          order: course.order || 1,
-          positionX: course.positionX,
-          positionY: course.positionY,
-          isOptional: course.isOptional || "N",
-        }));
-        
-        console.log("📤 Courses to add:", coursesToAdd);
-        
-        await learningPathApiRequest.addCoursesToPath(
-          newPathId,
-          { courses: coursesToAdd }
-        );
-        
-        console.log("✅ Courses added successfully");
-      }
-      
+
       toast({
         title: tCommon("success"),
         description: "Learning path approved and created successfully",
       });
       router.push("/manage/learning-paths");
     } catch (error) {
-      console.error("❌ Error approving draft:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to approve draft";
+      if (error instanceof LearningPathDraftPublishError && error.pathId) {
+        toast({
+          title: tCommon("success"),
+          description: error.message,
+        });
+        router.push("/manage/learning-paths");
+        return;
+      }
+
       toast({
         title: tCommon("error"),
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Failed to approve draft",
         variant: "destructive",
       });
+    } finally {
+      setIsPublishing(false);
     }
   };
 
   const handleReject = async () => {
-    if (!confirm("Are you sure you want to reject this draft?")) return;
-    
+    if (!confirm("Are you sure you want to reject this draft?")) {
+      return;
+    }
+
     try {
       await rejectMutation.mutateAsync({ taskId });
       toast({
@@ -372,10 +292,9 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
       });
       router.replace("/manage/learning-paths");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to reject draft";
       toast({
         title: tCommon("error"),
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Failed to reject draft",
         variant: "destructive",
       });
     }
@@ -383,7 +302,7 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
 
   if (isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
@@ -402,61 +321,44 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
         className="bg-background"
         defaultEdgeOptions={{
           animated: true,
-          type: 'smoothstep',
-          style: { strokeWidth: 2, stroke: '#3b82f6' },
+          type: "smoothstep",
+          style: { strokeWidth: 2, stroke: "#3b82f6" },
         }}
-        connectionLineStyle={{ strokeWidth: 2, stroke: '#3b82f6' }}
+        connectionLineStyle={{ strokeWidth: 2, stroke: "#3b82f6" }}
         connectionLineType={ConnectionLineType.SmoothStep}
       >
         <Panel position="top-left" className="space-y-2">
-          <Card className="p-4 max-w-md">
-            <div className="flex items-center gap-2 mb-2">
+          <Card className="max-w-md p-4">
+            <div className="mb-2 flex items-center gap-2">
               <Badge variant="secondary">AI Generated</Badge>
               <Badge variant="outline">Draft</Badge>
             </div>
-            <h2 className="font-bold text-lg mb-1">
-              {pathData?.title || "Loading..."}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {pathData?.description || ""}
-            </p>
-            <div className="flex gap-2 mt-3">
-              <Badge variant="outline">
-                {Math.max(0, nodes.length - 1)} Courses
-              </Badge>
+            <h2 className="mb-1 text-lg font-bold">{pathData?.title || "Loading..."}</h2>
+            <p className="text-sm text-muted-foreground">{pathData?.description || ""}</p>
+            <div className="mt-3 flex gap-2">
+              <Badge variant="outline">{Math.max(0, nodes.length - 1)} Courses</Badge>
             </div>
           </Card>
         </Panel>
 
         <Panel position="top-right" className="space-x-2">
-          <Button
-            onClick={() => router.back()}
-            variant="ghost"
-            size="sm"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+          <Button onClick={() => router.back()} variant="ghost" size="sm">
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <Button
-            onClick={handleReject}
-            variant="outline"
-            disabled={rejectMutation.isPending}
-          >
+          <Button onClick={handleReject} variant="outline" disabled={rejectMutation.isPending}>
             {rejectMutation.isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <X className="h-4 w-4 mr-2" />
+              <X className="mr-2 h-4 w-4" />
             )}
             Reject
           </Button>
-          <Button
-            onClick={handleApprove}
-            disabled={approveMutation.isPending}
-          >
-            {approveMutation.isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          <Button onClick={handleApprove} disabled={isPublishing}>
+            {isPublishing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Check className="h-4 w-4 mr-2" />
+              <Check className="mr-2 h-4 w-4" />
             )}
             Approve & Create
           </Button>

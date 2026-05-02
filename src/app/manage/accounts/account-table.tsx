@@ -188,12 +188,11 @@ export default function AccountTable() {
       header: t("Avatar"),
       cell: ({ row }) => {
         const avatarUrl = row.getValue("avatar") as string | null;
-        const imageSrc = avatarUrl ? avatarUrl : "/default-avatar.png";
         return (
           <div>
             <Avatar className="aspect-square w-[100px] h-[100px] rounded-md object-cover">
               <AvatarImage
-                src={imageSrc}
+                src={avatarUrl || undefined}
                 alt={`${row.original.username}'s avatar`}
               />
               <AvatarFallback className="rounded-none">
@@ -385,14 +384,14 @@ export default function AccountTable() {
                 className="manage-field max-w-sm w-[150px]"
               />
               <Input
-                placeholder={t("FilterNames")}
+                placeholder={t("FilterName")}
                 value={
-                  (table.getColumn("fullName")?.getFilterValue() as string) ??
+                  (table.getColumn("username")?.getFilterValue() as string) ??
                   ""
                 }
                 onChange={(event) =>
                   table
-                    .getColumn("fullName")
+                    .getColumn("username")
                     ?.setFilterValue(event.target.value)
                 }
                 className="manage-field max-w-sm w-[150px]"

@@ -10,11 +10,12 @@ import { Input } from "@/components/ui/input";
 import { BookOpen, TrendingUp, ArrowRight, Search } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { LearningPathItemType } from "@/schemaValidations/learning-path.schema";
+import { normalizeLearningPathListPayload } from "@/lib/learning-paths";
+import { LearningPathItemType, LearningPathPaginationType } from "@/schemaValidations/learning-path.schema";
 
 interface LearningPathsClientProps {
   initialPaths: LearningPathItemType[];
-  initialPagination: any;
+  initialPagination: LearningPathPaginationType | null;
 }
 
 export default function LearningPathsClient({
@@ -33,14 +34,19 @@ export default function LearningPathsClient({
     sortBy: "created",
     sortDirection: "DESC",
   });
+  const clientLearningPaths = normalizeLearningPathListPayload(data?.payload);
 
   // Use SSR data for initial render, client data after filtering
   const paths = isClientFiltering 
-    ? (data?.payload?.data || [])
-    : (data?.payload?.data || initialPaths);
+    ? clientLearningPaths.data
+    : data
+      ? clientLearningPaths.data
+      : initialPaths;
   const pagination = isClientFiltering 
-    ? data?.payload?.pagination
-    : (data?.payload?.pagination || initialPagination);
+    ? clientLearningPaths.pagination
+    : data
+      ? clientLearningPaths.pagination
+      : initialPagination;
 
   const filteredPaths = paths.filter((path: LearningPathItemType) => {
     if (!searchKeyword) return true;

@@ -2,12 +2,13 @@ import { useAccountProfile, useUserPermissions } from "@/queries/useAccount";
 import { useMemo } from "react";
 
 type PermissionMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+type PermissionMethodOrWildcard = PermissionMethod | "*";
 
 interface Permission {
   id: string;
   name: string;
   url: string;
-  method: PermissionMethod;
+  method: PermissionMethodOrWildcard;
   resource: string;
   source: string;
   allowed: boolean;
@@ -50,7 +51,7 @@ export const usePermissions = () => {
   const hasPermission = (method: PermissionMethod, urlPattern: string) => {
     const result = permissions.some(
       (p: Permission) =>
-        p.method === method &&
+        methodMatches(p.method, method) &&
         p.allowed &&
         (p.url === urlPattern || matchPattern(p.url, urlPattern))
     );
@@ -72,12 +73,23 @@ export const usePermissions = () => {
   };
 };
 
+function methodMatches(permissionMethod: PermissionMethodOrWildcard, requestedMethod: PermissionMethod): boolean {
+  return permissionMethod === "*" || permissionMethod === requestedMethod;
+}
+
 // Simple pattern matching for URLs
 function matchPattern(pattern: string, url: string): boolean {
-  // Convert pattern like /api/users/{id} to regex
   const regexPattern = pattern
-    .replace(/\{[^}]+\}/g, "[^/]+") // Replace {id} with regex
-    .replace(/\//g, "\\/"); // Escape slashes
+    .replace(/\/\*\*$/g, "__TAIL_WILDCARD__")
+    .replace(/\*\*/g, "__DOUBLE_WILDCARD__")
+    .replace(/\*/g, "__WILDCARD__")
+    .replace(/\{[^/}]+\}/g, "__PATH_PARAM__")
+    .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\//g, "\\/")
+    .replaceAll("__TAIL_WILDCARD__", "(?:\\/.*)?")
+    .replaceAll("__DOUBLE_WILDCARD__", ".*")
+    .replaceAll("__WILDCARD__", "[^/]*")
+    .replaceAll("__PATH_PARAM__", "[^/]+");
   const regex = new RegExp(`^${regexPattern}$`);
   return regex.test(url);
 }

@@ -34,6 +34,12 @@ const buildRemotePatterns = () => {
       port: '',
       pathname: '/**',
     },
+    {
+      protocol: 'https',
+      hostname: 'minio.inova.id.vn',
+      port: '',
+      pathname: '/**',
+    },
   ];
 
   const publicUrl = process.env.NEXT_PUBLIC_MINIO_PUBLIC_URL;

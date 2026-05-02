@@ -313,52 +313,45 @@ export default function AiChatOnboardingTour({
       {/* Highlight border with glow effect */}
       {getTargetRect() && (
         <div
-          className="fixed z-[101] pointer-events-none border-4 border-pink-400 shadow-[0_0_20px_rgba(236,72,153,0.8)] animate-pulse"
+          className="fixed z-[101] pointer-events-none border-2 border-ochre"
           style={getHighlightStyle()}
         />
       )}
 
       {/* Tour Card */}
       <Card
-        className="fixed z-[102] w-96 p-6 shadow-2xl"
+        className="ai-chat-theme font-ui fixed z-[102] w-96 p-5 shadow-drawer border-rule bg-surface rounded-sm"
         style={getTooltipPosition()}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold">
-                <Image
-                src="/ai/TechHub_Logo.png"
-                alt="Student learning"
-                width={80}
-                height={80}
-                className="object-cover rounded-full"
-                priority
-                />
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-8 h-8 rounded-sm bg-ink-1 flex items-center justify-center font-editorial text-[15px] leading-none text-paper">
+                T
               </div>
               <div>
-                <h3 className="font-bold text-lg">{currentTourStep.title}</h3>
-                <p className="text-xs text-muted-foreground">
+                <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
                   {t("stepOf", { current: currentStep + 1, total: tourSteps.length })}
-                </p>
+                </div>
+                <h3 className="font-editorial text-[20px] leading-[1.2] text-ink-1 mt-0.5">{currentTourStep.title}</h3>
               </div>
             </div>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7 rounded-sm text-ink-3 hover:text-ink-1 hover:bg-paper"
             onClick={handleSkip}
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        <p className="text-sm mb-4 leading-relaxed">{currentTourStep.content}</p>
+        <p className="text-ed-sm mb-5 leading-[1.7] text-ink-1 max-w-[56ch]">{currentTourStep.content}</p>
 
         {/* Voice Control */}
-        <div className="flex items-center gap-2 mb-4 p-3 bg-muted rounded-lg">
+        <div className="flex items-center gap-2 mb-5 py-2.5 border-t border-b border-rule">
           <Checkbox
             id="enable-voice-ai"
             checked={enableVoice}
@@ -373,7 +366,7 @@ export default function AiChatOnboardingTour({
           />
           <label
             htmlFor="enable-voice-ai"
-            className="text-sm font-medium cursor-pointer flex-1"
+            className="text-ed-xs cursor-pointer flex-1 text-ink-2"
           >
             {t("enableVoice")}
           </label>
@@ -381,6 +374,7 @@ export default function AiChatOnboardingTour({
             <Button
               variant="ghost"
               size="sm"
+              className="h-7 w-7 p-0 text-ink-3 hover:text-ink-1 hover:bg-transparent"
               onClick={() => (isPlaying ? stopSpeech() : speak(currentTourStep.content))}
             >
               {isPlaying ? (
@@ -395,20 +389,21 @@ export default function AiChatOnboardingTour({
         {/* Navigation */}
         <div className="flex items-center justify-between">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
+            className="h-8 rounded-sm px-2.5 text-ed-xs text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1 disabled:opacity-40"
             onClick={handlePrevious}
             disabled={currentStep === 0}
           >
             {t("previous")}
           </Button>
 
-          <div className="flex gap-1">
+          <div className="flex gap-1.5">
             {tourSteps.map((_, index) => (
               <div
                 key={index}
-                className={`h-2 w-2 rounded-full ${
-                  index === currentStep ? "bg-pink-500" : "bg-muted"
+                className={`h-1 w-6 rounded-sm transition-colors ${
+                  index === currentStep ? "bg-ochre" : index < currentStep ? "bg-ink-2" : "bg-rule"
                 }`}
               />
             ))}
@@ -416,8 +411,8 @@ export default function AiChatOnboardingTour({
 
           <Button
             size="sm"
+            className="h-8 rounded-sm px-3 text-ed-xs bg-ink-1 text-paper hover:bg-ochre hover:text-ochre-foreground transition-colors"
             onClick={handleNext}
-            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
           >
             {currentStep === tourSteps.length - 1 ? t("finish") : t("next")}
           </Button>
@@ -436,7 +431,7 @@ export function AiChatTourButton({ onClick }: { onClick: () => void }) {
       variant="ghost"
       size="sm"
       onClick={onClick}
-      className="text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-900/20"
+      className="text-ink-2 hover:text-ink-1 hover:bg-transparent rounded-sm"
     >
       <HelpCircle className="h-4 w-4 mr-1" />
       {t("tourButton")}

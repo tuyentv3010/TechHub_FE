@@ -14,11 +14,18 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { createContext, useContext, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import TableSkeleton from "@/components/Skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -35,6 +42,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,9 +68,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import {
+  getAccessCopy,
+  getResourceMeta,
+  groupPermissionsByResource,
+  METHOD_BADGE_TONE,
+  summarizePermissionActions,
+} from "@/lib/access-control";
+import {
   PermissionSchemaType,
   HTTP_METHODS,
-  RESOURCES,
 } from "@/schemaValidations/permission.schema";
 import { useDeletePermissionMutation, useGetPermissions } from "@/queries/usePermission";
 
@@ -99,10 +118,10 @@ function DeletePermissionDialog({
         description: t("PermissionDeleted", { name: permissionDelete.name }),
       });
       setPermissionDelete(null);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: t("DeleteFailed"),
-        description: error?.message || t("UnknownError"),
+        description: error instanceof Error ? error.message : t("UnknownError"),
         variant: "destructive",
       });
     }
@@ -133,17 +152,132 @@ function DeletePermissionDialog({
   );
 }
 
-const METHOD_BADGE_TONE: Record<string, string> = {
-  GET: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-  POST: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
-  PUT: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  DELETE: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
-  PATCH: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-};
+function BusinessPermissionView({
+  permissions,
+  onEdit,
+  onDelete,
+}: {
+  permissions: PermissionItem[];
+  onEdit: (permissionId: string) => void;
+  onDelete: (permission: PermissionItem) => void;
+}) {
+  const t = useTranslations("ManagePermission");
+  const locale = useLocale();
+  const accessCopy = getAccessCopy(locale);
+  const permissionGroups = groupPermissionsByResource(permissions);
+
+  if (permissionGroups.length === 0) {
+    return (
+      <div className="manage-subsurface rounded-3xl p-6 text-center text-sm text-muted-foreground">
+        {t("NoResults")}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card className="manage-surface border-border/50">
+        <CardHeader>
+          <CardTitle>{accessCopy.permissionView.title}</CardTitle>
+          <CardDescription>
+            {accessCopy.permissionView.description} {accessCopy.shared.technicalHint}
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        {permissionGroups.map((group) => {
+          const resourceMeta = getResourceMeta(group.resource, locale);
+          const actionBadges = summarizePermissionActions(group.permissions, locale);
+
+          return (
+            <Card key={group.resource} className="manage-surface border-border/50">
+              <CardHeader className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base">{resourceMeta.label}</CardTitle>
+                    <CardDescription>{resourceMeta.description}</CardDescription>
+                  </div>
+                  <Badge variant="outline">
+                    {group.permissions.length} {accessCopy.permissionView.permissionsLabel}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                    {accessCopy.permissionView.actionsLabel}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {actionBadges.map((action) => (
+                      <Badge
+                        key={`${group.resource}-${action.method}`}
+                        variant="secondary"
+                        className={METHOD_BADGE_TONE[action.method]}
+                      >
+                        {action.label}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {group.permissions.map((permission) => (
+                  <div
+                    key={permission.id}
+                    className="rounded-2xl border border-border/50 bg-background/60 p-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{permission.name}</div>
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          {permission.description || resourceMeta.description}
+                        </div>
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className={METHOD_BADGE_TONE[permission.method]}
+                      >
+                        {accessCopy.methodLabels[permission.method]}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      <code className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
+                        {permission.url}
+                      </code>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="manage-secondary-button"
+                          onClick={() => onEdit(permission.id)}
+                        >
+                          {t("Edit")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="manage-secondary-button"
+                          onClick={() => onDelete(permission)}
+                        >
+                          {t("Delete")}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function PermissionTable() {
   const t = useTranslations("ManagePermission");
   const paginationT = useTranslations("Pagination");
+  const locale = useLocale();
+  const accessCopy = getAccessCopy(locale);
   const [permissionIdEdit, setPermissionIdEdit] = useState<string | undefined>();
   const [permissionDelete, setPermissionDelete] = useState<PermissionItem | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -154,6 +288,7 @@ export default function PermissionTable() {
 
   const { data, isLoading, error } = useGetPermissions();
   const permissions = data?.payload?.data ?? [];
+  const resourceOptions = groupPermissionsByResource(permissions).map((group) => group.resource);
 
   const columns: ColumnDef<PermissionItem>[] = [
     {
@@ -180,9 +315,9 @@ export default function PermissionTable() {
       accessorKey: "method",
       header: t("MethodColumn"),
       cell: ({ row }) => {
-        const method = row.getValue("method") as string;
+        const method = row.getValue("method") as PermissionItem["method"];
         return (
-          <Badge className={METHOD_BADGE_TONE[method] || ""} variant="secondary">
+          <Badge className={METHOD_BADGE_TONE[method]} variant="secondary">
             {method}
           </Badge>
         );
@@ -202,7 +337,10 @@ export default function PermissionTable() {
     {
       accessorKey: "resource",
       header: t("ResourceColumn"),
-      cell: ({ row }) => <Badge variant="outline">{row.getValue("resource")}</Badge>,
+      cell: ({ row }) => {
+        const resource = row.getValue("resource") as PermissionItem["resource"];
+        return <Badge variant="outline">{getResourceMeta(resource, locale).label}</Badge>;
+      },
       filterFn: (row, columnId, filterValue) => {
         if (!filterValue || filterValue === "all") return true;
         return row.getValue(columnId) === filterValue;
@@ -300,143 +438,179 @@ export default function PermissionTable() {
           </div>
         ) : (
           <>
-            <div className="manage-toolbar py-2">
-              <Input
-                placeholder={t("SearchPlaceholder")}
-                value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-                onChange={(event) =>
-                  table.getColumn("name")?.setFilterValue(event.target.value)
-                }
-                className="manage-field max-w-sm"
-              />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Tabs defaultValue="overview" className="space-y-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <TabsList className="manage-glass h-auto rounded-2xl border border-border/50 p-1">
+                    <TabsTrigger value="overview">{accessCopy.tabs.overview}</TabsTrigger>
+                    <TabsTrigger value="advanced">{accessCopy.tabs.advanced}</TabsTrigger>
+                  </TabsList>
 
-              <Select
-                value={(table.getColumn("method")?.getFilterValue() as string) ?? "all"}
-                onValueChange={(value) =>
-                  table.getColumn("method")?.setFilterValue(value === "all" ? undefined : value)
-                }
-              >
-                <SelectTrigger className="manage-filter-trigger w-[150px]">
-                  <SelectValue placeholder={t("FilterMethod")} />
-                </SelectTrigger>
-                <SelectContent className="manage-popover-panel">
-                  <SelectItem value="all">{t("AllOption")}</SelectItem>
-                  {HTTP_METHODS.map((method) => (
-                    <SelectItem key={method} value={method}>
-                      {method}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <Button
+                    size="sm"
+                    className="manage-primary-button"
+                    onClick={() => setAddModalOpen(true)}
+                  >
+                    <PlusCircledIcon className="mr-2 h-4 w-4" />
+                    {t("AddPermission")}
+                  </Button>
+                </div>
 
-              <Select
-                value={(table.getColumn("resource")?.getFilterValue() as string) ?? "all"}
-                onValueChange={(value) =>
-                  table.getColumn("resource")?.setFilterValue(value === "all" ? undefined : value)
-                }
-              >
-                <SelectTrigger className="manage-filter-trigger w-[150px]">
-                  <SelectValue placeholder={t("FilterResource")} />
-                </SelectTrigger>
-                <SelectContent className="manage-popover-panel">
-                  <SelectItem value="all">{t("AllOption")}</SelectItem>
-                  {RESOURCES.map((resource) => (
-                    <SelectItem key={resource} value={resource}>
-                      {resource}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <TabsContent value="overview" className="space-y-4">
+                  <BusinessPermissionView
+                    permissions={permissions}
+                    onEdit={setPermissionIdEdit}
+                    onDelete={setPermissionDelete}
+                  />
+                </TabsContent>
 
-              <div className="manage-toolbar-spacer">
-                <Button
-                  size="sm"
-                  className="manage-primary-button"
-                  onClick={() => setAddModalOpen(true)}
-                >
-                  <PlusCircledIcon className="mr-2 h-4 w-4" />
-                  {t("AddPermission")}
-                </Button>
-                <AddPermission open={addModalOpen} setOpen={setAddModalOpen} />
-              </div>
+                <TabsContent value="advanced" className="space-y-4">
+                  <Card className="manage-surface border-border/50">
+                    <CardHeader>
+                      <CardTitle className="text-base">{accessCopy.tabs.advanced}</CardTitle>
+                      <CardDescription>{accessCopy.shared.technicalHint}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="manage-toolbar py-2">
+                        <Input
+                          placeholder={t("SearchPlaceholder")}
+                          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+                          onChange={(event) =>
+                            table.getColumn("name")?.setFilterValue(event.target.value)
+                          }
+                          className="manage-field max-w-sm"
+                        />
+
+                        <Select
+                          value={(table.getColumn("method")?.getFilterValue() as string) ?? "all"}
+                          onValueChange={(value) =>
+                            table
+                              .getColumn("method")
+                              ?.setFilterValue(value === "all" ? undefined : value)
+                          }
+                        >
+                          <SelectTrigger className="manage-filter-trigger w-[150px]">
+                            <SelectValue placeholder={t("FilterMethod")} />
+                          </SelectTrigger>
+                          <SelectContent className="manage-popover-panel">
+                            <SelectItem value="all">{t("AllOption")}</SelectItem>
+                            {HTTP_METHODS.map((method) => (
+                              <SelectItem key={method} value={method}>
+                                {method}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select
+                          value={(table.getColumn("resource")?.getFilterValue() as string) ?? "all"}
+                          onValueChange={(value) =>
+                            table
+                              .getColumn("resource")
+                              ?.setFilterValue(value === "all" ? undefined : value)
+                          }
+                        >
+                          <SelectTrigger className="manage-filter-trigger w-[180px]">
+                            <SelectValue placeholder={t("FilterResource")} />
+                          </SelectTrigger>
+                          <SelectContent className="manage-popover-panel">
+                            <SelectItem value="all">{t("AllOption")}</SelectItem>
+                            {resourceOptions.map((resource) => (
+                              <SelectItem key={resource} value={resource}>
+                                {getResourceMeta(resource, locale).label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="manage-table-shell">
+                        <Table>
+                          <TableHeader>
+                            {table.getHeaderGroups().map((headerGroup) => (
+                              <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => (
+                                  <TableHead key={header.id}>
+                                    {header.isPlaceholder
+                                      ? null
+                                      : flexRender(
+                                          header.column.columnDef.header,
+                                          header.getContext()
+                                        )}
+                                  </TableHead>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableHeader>
+                          <TableBody>
+                            {table.getRowModel().rows?.length ? (
+                              table.getRowModel().rows.map((row) => (
+                                <TableRow key={row.id}>
+                                  {row.getVisibleCells().map((cell) => (
+                                    <TableCell key={cell.id}>
+                                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={columns.length} className="h-24 text-center">
+                                  {t("NoResults")}
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      <div className="manage-pagination py-2">
+                        <div className="manage-pagination-copy">
+                          {paginationT("Page")}{" "}
+                          <strong>{table.getState().pagination.pageIndex + 1}</strong>{" "}
+                          {paginationT("Of")} <strong>{Math.max(table.getPageCount(), 1)}</strong>
+                        </div>
+                        <div className="manage-pagination-actions">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="manage-secondary-button manage-pagination-button"
+                            onClick={() => table.previousPage()}
+                            disabled={!table.getCanPreviousPage()}
+                          >
+                            {paginationT("Previous")}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="manage-secondary-button manage-pagination-button"
+                            onClick={() => table.nextPage()}
+                            disabled={!table.getCanNextPage()}
+                          >
+                            {paginationT("Next")}
+                          </Button>
+                          <Select
+                            value={String(table.getState().pagination.pageSize)}
+                            onValueChange={(value) => table.setPageSize(Number(value))}
+                          >
+                            <SelectTrigger className="manage-filter-trigger w-[120px]">
+                              <SelectValue placeholder={paginationT("RowsPerPage")} />
+                            </SelectTrigger>
+                            <SelectContent className="manage-popover-panel">
+                              <SelectItem value="10">10</SelectItem>
+                              <SelectItem value="20">20</SelectItem>
+                              <SelectItem value="50">50</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </div>
 
-            <div className="manage-table-shell">
-              <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {table.getRowModel().rows?.length ? (
-                    table.getRowModel().rows.map((row) => (
-                      <TableRow key={row.id}>
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={columns.length} className="h-24 text-center">
-                        {t("NoResults")}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-
-            <div className="manage-pagination py-2">
-              <div className="manage-pagination-copy">
-                {paginationT("Page")} <strong>{table.getState().pagination.pageIndex + 1}</strong>{" "}
-                {paginationT("Of")} <strong>{Math.max(table.getPageCount(), 1)}</strong>
-              </div>
-              <div className="manage-pagination-actions">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="manage-secondary-button manage-pagination-button"
-                  onClick={() => table.previousPage()}
-                  disabled={!table.getCanPreviousPage()}
-                >
-                  {paginationT("Previous")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="manage-secondary-button manage-pagination-button"
-                  onClick={() => table.nextPage()}
-                  disabled={!table.getCanNextPage()}
-                >
-                  {paginationT("Next")}
-                </Button>
-                <Select
-                  value={String(table.getState().pagination.pageSize)}
-                  onValueChange={(value) => table.setPageSize(Number(value))}
-                >
-                  <SelectTrigger className="manage-filter-trigger w-[120px]">
-                    <SelectValue placeholder={paginationT("RowsPerPage")} />
-                  </SelectTrigger>
-                  <SelectContent className="manage-popover-panel">
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <AddPermission open={addModalOpen} setOpen={setAddModalOpen} />
           </>
         )}
       </div>
