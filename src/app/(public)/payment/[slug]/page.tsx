@@ -357,7 +357,7 @@ export default function PaymentPage() {
             >
               {isProcessing
                 ? "Đang xử lý..."
-                : `Thanh toán ${formatPrice(finalPrice)}`}
+                : `Thanh toán ${formatPrice(finalPrice, courseSummary.currency)}`}
             </Button>
           </div>
 
@@ -413,7 +413,7 @@ export default function PaymentPage() {
                         courseSummary.discountPrice ? "line-through" : "font-semibold"
                       }
                     >
-                      {formatPrice(courseSummary.price)}
+                      {formatPrice(courseSummary.price, courseSummary.currency)}
                     </span>
                   </div>
 
@@ -426,7 +426,7 @@ export default function PaymentPage() {
                             -{discountPercentage}%
                           </Badge>
                           <span className="font-semibold text-green-600">
-                            -{formatPrice(courseSummary.price - courseSummary.discountPrice)}
+                            -{formatPrice(courseSummary.price - courseSummary.discountPrice, courseSummary.currency)}
                           </span>
                         </div>
                       </div>
@@ -436,7 +436,7 @@ export default function PaymentPage() {
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">Tổng thanh toán</span>
                         <span className="text-2xl font-bold text-purple-600">
-                          {formatPrice(courseSummary.discountPrice)}
+                          {formatPrice(courseSummary.discountPrice, courseSummary.currency)}
                         </span>
                       </div>
                     </>

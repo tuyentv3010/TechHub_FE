@@ -218,6 +218,7 @@ export default function PayoutManagementPage() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [requestAmount, setRequestAmount] = useState("");
   const [requestNote, setRequestNote] = useState("");
+  const [requestCurrency, setRequestCurrency] = useState<"VND" | "USD">("VND");
   const [paymentReference, setPaymentReference] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [manualBatchName, setManualBatchName] = useState("");
@@ -340,6 +341,10 @@ export default function PayoutManagementPage() {
     const totalEarned = toNumber(balance?.totalEarned);
     const pendingAmount = toNumber(balance?.pendingAmount);
     const availableAmount = toNumber(balance?.availableAmount);
+    const totalEarnedUsd = toNumber((balance as any)?.totalEarnedUsd);
+    const pendingAmountUsd = toNumber((balance as any)?.pendingAmountUsd);
+    const availableAmountUsd = toNumber((balance as any)?.availableAmountUsd);
+    const usdRate = toNumber((balance as any)?.usdRate);
     const totalRequested = visibleRequests.reduce((acc, request) => acc + request.amount, 0);
     const pendingRequests = visibleRequests.filter((request) => ["REQUESTED", "PENDING"].includes(request.status)).length;
     const approvedRequests = visibleRequests.filter((request) => request.status === "APPROVED").length;
@@ -347,6 +352,10 @@ export default function PayoutManagementPage() {
       totalEarned,
       pendingAmount,
       availableAmount,
+      totalEarnedUsd,
+      pendingAmountUsd,
+      availableAmountUsd,
+      usdRate,
       totalRequested,
       pendingRequests,
       approvedRequests,
@@ -444,7 +453,11 @@ export default function PayoutManagementPage() {
       return;
     }
 
-    if (summary.availableAmount > 0 && amount > summary.availableAmount) {
+    // Quy đổi sang VND để so sánh với available (canonical là VND).
+    const amountVnd = requestCurrency === "USD" && summary.usdRate > 0
+      ? amount / summary.usdRate
+      : amount;
+    if (summary.availableAmount > 0 && amountVnd > summary.availableAmount) {
       toast({
         title: t("ExceedAvailableTitle"),
         description: t("ExceedAvailableDescription"),
@@ -454,7 +467,7 @@ export default function PayoutManagementPage() {
     }
 
     try {
-      await createRequestMutation.mutateAsync({ amount, note: requestNote.trim() || undefined });
+      await createRequestMutation.mutateAsync({ amount, note: requestNote.trim() || undefined, currency: requestCurrency } as any);
       toast({
         title: t("CreateRequestSuccessTitle"),
         description: t("CreateRequestSuccessDescription"),
@@ -676,10 +689,10 @@ export default function PayoutManagementPage() {
 
       <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
-          { title: t("SummaryTotalEarned"), value: formatCurrency(summary.totalEarned), icon: CircleDollarSign, accent: "text-[#adc6ff]" },
-          { title: t("SummaryPendingPayout"), value: formatCurrency(summary.pendingAmount), icon: WalletCards, accent: "text-[#ffddb8]" },
-          { title: t("SummaryAvailableBalance"), value: formatCurrency(summary.availableAmount), icon: CheckCircle2, accent: "text-[#4edea3]" },
-          { title: t("SummaryOpenRequests"), value: String(summary.pendingRequests), icon: Layers3, accent: "text-white/70" },
+          { title: t("SummaryTotalEarned"), value: formatCurrency(summary.totalEarned), sub: summary.totalEarnedUsd > 0 ? `≈ $${summary.totalEarnedUsd.toFixed(2)} USD` : "", icon: CircleDollarSign, accent: "text-[#adc6ff]" },
+          { title: t("SummaryPendingPayout"), value: formatCurrency(summary.pendingAmount), sub: summary.pendingAmountUsd > 0 ? `≈ $${summary.pendingAmountUsd.toFixed(2)} USD` : "", icon: WalletCards, accent: "text-[#ffddb8]" },
+          { title: t("SummaryAvailableBalance"), value: formatCurrency(summary.availableAmount), sub: summary.availableAmountUsd > 0 ? `≈ $${summary.availableAmountUsd.toFixed(2)} USD` : "", icon: CheckCircle2, accent: "text-[#4edea3]" },
+          { title: t("SummaryOpenRequests"), value: String(summary.pendingRequests), sub: "", icon: Layers3, accent: "text-white/70" },
         ].map((card) => {
           const Icon = card.icon;
           return (
@@ -693,6 +706,7 @@ export default function PayoutManagementPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-[#f0f4ff]">{card.value}</div>
+                {card.sub && <div className="mt-1 text-xs text-white/55">{card.sub}</div>}
                 <div className="mt-2 text-[11px] text-white/45">{t("UpdatedProjection")}</div>
               </CardContent>
             </Card>
@@ -739,16 +753,25 @@ export default function PayoutManagementPage() {
             <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
               <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("LifetimeEarned")}</div>
               <div className="mt-2 text-2xl font-bold text-[#f0f4ff]">{formatCurrency(summary.totalEarned)}</div>
+              {summary.totalEarnedUsd > 0 && (
+                <div className="text-xs text-white/50">≈ ${summary.totalEarnedUsd.toFixed(2)} USD</div>
+              )}
             </div>
             <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
               <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("CurrentPending")}</div>
               <div className="mt-2 text-2xl font-bold text-[#ffddb8]">{formatCurrency(summary.pendingAmount)}</div>
+              {summary.pendingAmountUsd > 0 && (
+                <div className="text-xs text-white/50">≈ ${summary.pendingAmountUsd.toFixed(2)} USD</div>
+              )}
             </div>
             <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
               <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-300">
                 {t("Available")} <span className="h-2 w-2 rounded-full bg-emerald-400" />
               </div>
               <div className="mt-2 text-2xl font-extrabold text-[#f0f4ff]">{formatCurrency(summary.availableAmount)}</div>
+              {summary.availableAmountUsd > 0 && (
+                <div className="text-xs text-emerald-200/70">≈ ${summary.availableAmountUsd.toFixed(2)} USD</div>
+              )}
             </div>
           </div>
 
@@ -776,14 +799,22 @@ export default function PayoutManagementPage() {
         </div>
 
         {dashboardRole === "INSTRUCTOR" && (
-          <div className="mt-5 grid gap-3 xl:grid-cols-[1.1fr_1fr_auto]">
+          <div className="mt-5 grid gap-3 xl:grid-cols-[1.1fr_auto_1fr_auto]">
             <Input
               value={requestAmount}
               onChange={(event) => setRequestAmount(event.target.value)}
-              placeholder={t("AmountPlaceholder")}
+              placeholder={requestCurrency === "USD" ? "49.99" : t("AmountPlaceholder")}
               inputMode="decimal"
               className="manage-finance-input h-12"
             />
+            <select
+              value={requestCurrency}
+              onChange={(e) => setRequestCurrency(e.target.value as "VND" | "USD")}
+              className="manage-finance-input h-12 rounded-md border border-white/10 bg-white/5 px-3 text-sm text-white"
+            >
+              <option value="VND">VNĐ</option>
+              <option value="USD">USD</option>
+            </select>
             <Input
               value={requestNote}
               onChange={(event) => setRequestNote(event.target.value)}

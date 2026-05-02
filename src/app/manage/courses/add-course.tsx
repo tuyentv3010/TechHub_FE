@@ -81,6 +81,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
       title: "",
       description: "",
       price: 0,
+      currency: "VND",
       discountPrice: undefined,
       level: "BEGINNER",
       language: "VI",
@@ -269,6 +270,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
         title: data.title,
         description: data.description,
         price: data.price,
+        currency: (data.currency as "VND" | "USD") || "VND",
         discountPrice: data.discountPrice,
         level: data.level,
         language: data.language,
@@ -390,7 +392,9 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
                     id="price"
                     placeholder="49 000"
                     value={field.value}
+                    currency={(form.watch("currency") as "VND" | "USD") || "VND"}
                     onChange={(numericValue) => field.onChange(numericValue)}
+                    onCurrencyChange={(c) => form.setValue("currency", c)}
                   />
                 )}
               />
@@ -411,7 +415,9 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
                     id="discountPrice"
                     placeholder="29 000"
                     value={field.value}
+                    currency={(form.watch("currency") as "VND" | "USD") || "VND"}
                     onChange={(numericValue) => field.onChange(numericValue)}
+                    onCurrencyChange={(c) => form.setValue("currency", c)}
                   />
                 )}
               />

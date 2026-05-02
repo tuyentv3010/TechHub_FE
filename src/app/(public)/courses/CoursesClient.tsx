@@ -521,15 +521,15 @@ export default function CoursesClient({
                       {course.discountPrice ? (
                         <div>
                           <span className="text-lg font-bold text-purple-600">
-                            {formatPrice(course.discountPrice)}
+                            {formatPrice(course.discountPrice, course.currency)}
                           </span>
                           <span className="ml-2 text-sm text-muted-foreground line-through">
-                            {formatPrice(course.price)}
+                            {formatPrice(course.price, course.currency)}
                           </span>
                         </div>
                       ) : (
                         <span className="text-lg font-bold text-purple-600">
-                          {formatPrice(course.price)}
+                          {formatPrice(course.price, course.currency)}
                         </span>
                       )}
                     </div>

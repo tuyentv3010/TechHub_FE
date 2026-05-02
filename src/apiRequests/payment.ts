@@ -82,6 +82,17 @@ export type PayoutBalanceResponse = {
   totalEarned: number;
   pendingAmount: number;
   availableAmount: number;
+  totalEarnedUsd?: number;
+  pendingAmountUsd?: number;
+  availableAmountUsd?: number;
+  usdRate?: number;
+  currency?: string;
+};
+
+export type CreatePayoutRequestPayload = {
+  amount: number;
+  note?: string;
+  currency?: "VND" | "USD";
 };
 
 export type PayoutRequestResponse = {

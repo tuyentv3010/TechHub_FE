@@ -485,10 +485,10 @@ export default function CourseDetailPage() {
                             <>
                               <div className="flex items-baseline gap-2">
                                 <span className="text-3xl font-bold text-[#3dcbb1]">
-                                  {formatPrice(courseSummary.discountPrice)}
+                                  {formatPrice(courseSummary.discountPrice, courseSummary.currency)}
                                 </span>
                                 <span className="text-lg text-muted-foreground line-through">
-                                  {formatPrice(courseSummary.price)}
+                                  {formatPrice(courseSummary.price, courseSummary.currency)}
                                 </span>
                               </div>
                               <Badge className="mt-2 bg-[#3dcbb1] text-white hover:bg-[#35b5a0]">
@@ -499,7 +499,7 @@ export default function CourseDetailPage() {
                         }
                         return (
                           <div className="text-3xl font-bold text-[#3dcbb1]">
-                            {formatPrice(courseSummary.price)}
+                            {formatPrice(courseSummary.price, courseSummary.currency)}
                           </div>
                         );
                       })()}
