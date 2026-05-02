@@ -94,9 +94,11 @@ export default function MediaLibraryDialog({
   const loading = selectedLibraryFolder ? loadingFolderFiles : loadingFiles;
   const totalPages = allFilesData?.payload?.pagination?.totalPages || 1;
 
+  // Reset fallback state khi danh sách file thực sự đổi (so theo IDs ổn định).
+  const allFilesKey = allFiles.map((f) => f.id).join("|");
   useEffect(() => {
     setPreviewFallbackState({});
-  }, [allFiles]);
+  }, [allFilesKey]);
 
   const filteredFiles = allFiles.filter((file) => {
     const matchesType = mediaType === "ALL" || file.fileType === mediaType;

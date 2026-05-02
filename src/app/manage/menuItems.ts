@@ -84,6 +84,17 @@ const menuItems: MenuItem[] = [
     },
   },
   {
+    title: "Đơn ứng tuyển GV",
+    titleKey: "instructorApplications",
+    Icon: Users2,
+    href: "/manage/instructor-applications",
+    roles: [Role.Admin],
+    requiredPermission: {
+      method: "GET",
+      url: "/api/v1/instructor-applications",
+    },
+  },
+  {
     title: "Vai trò",
     titleKey: "roles",
     Icon: UserRoundPen,
