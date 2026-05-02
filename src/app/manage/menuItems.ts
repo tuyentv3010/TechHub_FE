@@ -89,10 +89,6 @@ const menuItems: MenuItem[] = [
     Icon: Users2,
     href: "/manage/instructor-applications",
     roles: [Role.Admin],
-    requiredPermission: {
-      method: "GET",
-      url: "/api/v1/instructor-applications",
-    },
   },
   {
     title: "Vai trò",

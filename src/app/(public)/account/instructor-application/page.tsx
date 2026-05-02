@@ -97,10 +97,12 @@ export default function InstructorApplicationPage() {
   const aiData = useMemo(() => safeParse(latest?.aiExtractedData), [latest]);
   const isAiPending = latest?.aiStatus === "PENDING";
   const isAiProcessed = latest?.aiStatus === "PROCESSED";
+  const isAiFailed = latest?.aiStatus === "FAILED";
   const isApproved = latest?.adminStatus === "APPROVED";
   const isRejected = latest?.adminStatus === "REJECTED";
   const isAdminPending = latest?.adminStatus === "PENDING";
-  const canApply = !latest || isRejected;
+  // Cho nộp lại khi: chưa nộp đơn nào, đã bị admin reject, hoặc AI scan fail.
+  const canApply = !latest || isRejected || isAiFailed;
 
   // Auto-poll khi AI đang processing.
   useEffect(() => {
