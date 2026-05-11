@@ -28,6 +28,7 @@ import courseApiRequest from "@/apiRequests/course";
 import { CourseItemResType } from "@/schemaValidations/course.schema";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 interface PathViewerProps {
   pathId: string;
@@ -209,7 +210,9 @@ export default function PathViewer({ pathId }: PathViewerProps) {
               courseId: course.courseId,
               title: courseDetail?.title || course.title || "Untitled Course",
               description: courseDetail?.description || course.description || "",
-              thumbnail: courseDetail?.thumbnail?.secureUrl || courseDetail?.thumbnail?.url,
+              thumbnail: normalizePersistedMediaUrl(
+                courseDetail?.thumbnail?.secureUrl || courseDetail?.thumbnail?.url
+              ),
               order: course.order,
               level: courseDetail?.level,
               isOptional: course.isOptional === "Y",

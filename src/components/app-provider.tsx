@@ -4,6 +4,7 @@ import { RoleType, Permission } from "@/types/jwt.types";
 import {
   decodeToken,
   getAccessTokenFromLocalStorage,
+  removeTokenFromLocalStorage,
   setUserInfoToAuthStorage,
 } from "@/lib/utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -31,6 +32,16 @@ type AppContextType = {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const isTokenFresh = (token: string) => {
+  try {
+    const decoded = decodeToken(token);
+    const now = Math.round(Date.now() / 1000);
+    return Boolean(decoded?.exp && decoded.exp > now);
+  } catch {
+    return false;
+  }
+};
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isAuth, setIsAuth] = useState(false);
   const [role, setRole] = useState<RoleType | null>(null);
@@ -42,9 +53,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const applyProfileRole = async () => {
       const token = getAccessTokenFromLocalStorage();
       if (token) {
+        if (!isTokenFresh(token)) {
+          removeTokenFromLocalStorage();
+          if (isMounted) {
+            setIsAuth(false);
+            setRole(null);
+            setPermissions(null);
+          }
+          return;
+        }
+
         try {
           setIsAuth(true);
-          const profileResponse = await accountApiRequest.getProfile();
+          const profileResponse = await accountApiRequest.getProfile({
+            redirectOnUnauthorized: false,
+          });
           const profile = profileResponse?.payload?.data;
           const primaryRole = profile?.roles?.[0] || null;
 
@@ -56,6 +79,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (error) {
           console.error("Failed to load profile for auth role:", error);
+
+          if ((error as { status?: number })?.status === 401) {
+            removeTokenFromLocalStorage();
+            if (isMounted) {
+              setIsAuth(false);
+              setRole(null);
+              setPermissions(null);
+            }
+            return;
+          }
 
           try {
             const decoded = decodeToken(token);

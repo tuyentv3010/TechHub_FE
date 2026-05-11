@@ -29,29 +29,52 @@ const fileApiRequest = {
     }),
 
   // Get all files by user (GET /api/files?userId={userId}&page={page}&size={size})
-  getFilesByUser: (userId: string, page: number = 0, size: number = 20) =>
-    http.get<FileListResponseType>(
-      `/app/api/proxy/files?userId=${userId}&page=${page}&size=${size}`
-    ),
+  getFilesByUser: (userId: string, page: number = 0, size: number = 10, keyword?: string) => {
+    const params = new URLSearchParams({
+      userId,
+      page: String(page),
+      size: String(size),
+    });
+    const normalizedKeyword = keyword?.trim();
+
+    if (normalizedKeyword) {
+      params.set("keyword", normalizedKeyword);
+    }
+
+    return http.get<FileListResponseType>(`/app/api/proxy/files?${params.toString()}`);
+  },
 
   // Get files by folder (GET /api/files/folder/{folderId}?userId={userId})
-  getFilesByFolder: (folderId: string, userId: string) =>
-    http.get<FileListResponseType>(
-      `/app/api/proxy/files/folder/${folderId}?userId=${userId}`
-    ),
+  getFilesByFolder: (
+    folderId: string,
+    userId: string,
+    page: number = 0,
+    size: number = 10,
+    keyword?: string
+  ) => {
+    const params = new URLSearchParams({
+      userId,
+      page: String(page),
+      size: String(size),
+    });
+    const normalizedKeyword = keyword?.trim();
+
+    if (normalizedKeyword) {
+      params.set("keyword", normalizedKeyword);
+    }
+
+    return http.get<FileListResponseType>(
+      `/app/api/proxy/files/folder/${folderId}?${params.toString()}`
+    );
+  },
 
   // Get file by id (GET /api/files/{id}?userId={userId})
   getFileById: (id: string, userId: string) =>
     http.get<FileResponseType>(`/app/api/proxy/files/${id}?userId=${userId}`),
 
   // Search files (GET /api/files?userId={userId}&page={page}&size={size})
-  searchFiles: (userId: string, keyword?: string, page: number = 0, size: number = 20) => {
-    let url = `/app/api/proxy/files?userId=${userId}&page=${page}&size=${size}`;
-    if (keyword) {
-      url += `&keyword=${encodeURIComponent(keyword)}`;
-    }
-    return http.get<FileListResponseType>(url);
-  },
+  searchFiles: (userId: string, keyword?: string, page: number = 0, size: number = 10) =>
+    fileApiRequest.getFilesByUser(userId, page, size, keyword),
 
   // Update file metadata (PUT /api/files/{id}?userId={userId})
   updateFile: (id: string, userId: string, body: UpdateFileBodyType) =>

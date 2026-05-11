@@ -2,6 +2,7 @@
 
 import { useState, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { Loader2, MessageCircle, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -29,6 +30,7 @@ export function CourseCommentsList({
   onSubmitComment,
   onSubmitReply,
 }: CommentsListProps) {
+  const t = useTranslations("CourseComments");
   const { toast } = useToast();
   const [commentContent, setCommentContent] = useState("");
   const [replyContent, setReplyContent] = useState("");
@@ -57,7 +59,7 @@ export function CourseCommentsList({
   const handleSubmitComment = () => {
     if (!commentContent.trim()) {
       toast({
-        title: "Vui lòng nhập nội dung bình luận",
+        title: t("emptyCommentTitle"),
         variant: "destructive",
       });
       return;
@@ -70,7 +72,7 @@ export function CourseCommentsList({
   const handleSubmitReply = (parentId: string, content: string) => {
     if (!content.trim()) {
       toast({
-        title: "Vui lòng nhập nội dung phản hồi",
+        title: t("emptyReplyTitle"),
         variant: "destructive",
       });
       return;
@@ -120,15 +122,15 @@ export function CourseCommentsList({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-lg font-semibold">
           <MessageCircle className="h-5 w-5" />
-          <span>{totalCommentCount} Bình luận</span>
+          <span>{t("count", { count: totalCommentCount })}</span>
         </div>
         <select
           value={sortOrder}
           onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
           className="text-sm rounded-lg border border-muted bg-background px-3 py-1.5 text-muted-foreground hover:bg-muted/50 transition"
         >
-          <option value="newest">Mới nhất</option>
-          <option value="oldest">Cũ nhất</option>
+          <option value="newest">{t("sortNewest")}</option>
+          <option value="oldest">{t("sortOldest")}</option>
         </select>
       </div>
 
@@ -136,7 +138,7 @@ export function CourseCommentsList({
       <div className="space-y-3">
         <div className="relative">
           <Textarea
-            placeholder="Chia sẻ cảm nhận của bạn..."
+            placeholder={t("commentPlaceholder")}
             value={commentContent}
             onChange={(event) => setCommentContent(event.target.value)}
             rows={3}
@@ -147,7 +149,7 @@ export function CourseCommentsList({
             type="button"
             onClick={() => setShowEmojiPickerMain((s) => !s)}
             className="absolute right-2 bottom-2 inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:text-foreground"
-            title="Chèn emoji"
+            title={t("insertEmoji")}
           >
             <Smile className="h-5 w-5" />
           </button>
@@ -173,7 +175,7 @@ export function CourseCommentsList({
             disabled={isSubmitting || !commentContent.trim()}
           >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Bình luận
+            {t("submitComment")}
           </Button>
         </div>
       </div>
@@ -190,7 +192,7 @@ export function CourseCommentsList({
           </div>
         ) : sortedComments.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
-            Hãy là người đầu tiên chia sẻ cảm nghĩ của bạn.
+            {t("empty")}
           </p>
         ) : (
           sortedComments.map((comment: CourseComment) => (

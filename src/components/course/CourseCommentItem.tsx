@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { format } from "date-fns";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import {
   ChevronDown,
   ChevronUp,
@@ -32,6 +33,7 @@ type CommentItemProps = {
 };
 
 const CommentUserInfo = ({ userId }: { userId: string }) => {
+  const t = useTranslations("CourseComments");
   const { data: userResponse, isLoading } = useGetAccount({
     id: userId,
     enabled: !!userId,
@@ -57,7 +59,7 @@ const CommentUserInfo = ({ userId }: { userId: string }) => {
       {user.avatar ? (
         <img
           src={user.avatar}
-          alt={user.username || "User"}
+          alt={user.username || t("userAvatarAlt")}
           className="h-10 w-10 rounded-full object-cover"
         />
       ) : (
@@ -80,6 +82,7 @@ export function CourseCommentItem({
   isSubmitting,
   onCancelReply,
 }: CommentItemProps) {
+  const t = useTranslations("CourseComments");
   const localReplyRef = useRef<HTMLTextAreaElement | null>(null);
   const [showLocalEmoji, setShowLocalEmoji] = useState(false);
   const [showReplies, setShowReplies] = useState(true);
@@ -142,7 +145,7 @@ export function CourseCommentItem({
               onClick={() => onReply(comment.id)}
               className="text-xs font-semibold text-muted-foreground hover:text-foreground transition"
             >
-              Trả lời
+              {t("reply")}
             </button>
           </div>
 
@@ -151,7 +154,7 @@ export function CourseCommentItem({
             <div className="pt-3 space-y-2">
               <div className="relative">
                 <Textarea
-                  placeholder="Viết phản hồi..."
+                  placeholder={t("replyPlaceholder")}
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
                   rows={3}
@@ -163,7 +166,7 @@ export function CourseCommentItem({
                   type="button"
                   onClick={() => setShowLocalEmoji((s) => !s)}
                   className="absolute right-2 bottom-2 inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:text-foreground"
-                  title="Chèn emoji"
+                  title={t("insertEmoji")}
                 >
                   <Smile className="h-5 w-5" />
                 </button>
@@ -186,7 +189,7 @@ export function CourseCommentItem({
                   onClick={onCancelReply}
                   disabled={isSubmitting}
                 >
-                  Hủy
+                  {t("cancel")}
                 </Button>
                 <Button
                   size="sm"
@@ -194,7 +197,7 @@ export function CourseCommentItem({
                   disabled={!replyContent.trim() || isSubmitting}
                 >
                   {isSubmitting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                  Phản hồi
+                  {t("submitReply")}
                 </Button>
               </div>
             </div>
@@ -211,7 +214,7 @@ export function CourseCommentItem({
               ) : (
                 <ChevronDown className="h-4 w-4" />
               )}
-              <span>{comment.replies.length} phản hồi</span>
+              <span>{t("replyCount", { count: comment.replies.length })}</span>
             </button>
           )}
         </div>

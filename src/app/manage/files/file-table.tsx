@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS, ja, vi } from 'date-fns/locale';
 import { useLocale, useTranslations } from 'next-intl';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   File,
   Image as ImageIcon,
@@ -38,6 +39,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -107,6 +115,92 @@ const getProcessingBadgeVariant = (
 
 const PROCESSING_STATUS_LABELS = new Set(['READY', 'PENDING', 'PROCESSING', 'FAILED']);
 const VISIBLE_PROCESSING_STATUSES = new Set(['PENDING', 'PROCESSING']);
+const DEFAULT_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+type FilePagePayload = {
+  content?: FileType[];
+  totalElements?: number;
+  totalPages?: number;
+  numberOfElements?: number;
+  number?: number;
+  size?: number;
+  first?: boolean;
+  last?: boolean;
+};
+
+type FilePaginationInfo = {
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+  hasNext: boolean;
+  hasPrevious: boolean;
+};
+
+type FileListPayload = {
+  data?: FileType[] | FilePagePayload;
+  pagination?: Partial<FilePaginationInfo>;
+};
+
+const toPositiveInteger = (value: string | null, fallback: number) => {
+  const parsedValue = Number(value);
+  return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
+};
+
+const parsePageSize = (value: string | null) => {
+  const parsedValue = toPositiveInteger(value, DEFAULT_PAGE_SIZE);
+  return PAGE_SIZE_OPTIONS.includes(parsedValue) ? parsedValue : DEFAULT_PAGE_SIZE;
+};
+
+const isFilePagePayload = (value: unknown): value is FilePagePayload =>
+  !!value && typeof value === 'object' && 'content' in value;
+
+const getFileListFromPayload = (payload?: FileListPayload): FileType[] => {
+  const data = payload?.data;
+
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (isFilePagePayload(data) && Array.isArray(data.content)) {
+    return data.content;
+  }
+
+  return [];
+};
+
+const getPaginationFromPayload = (
+  payload: FileListPayload | undefined,
+  fallbackPageIndex: number,
+  fallbackPageSize: number
+): FilePaginationInfo => {
+  const fallbackDataLength = getFileListFromPayload(payload).length;
+  const data = payload?.data;
+  const pagePayload = isFilePagePayload(data) ? data : null;
+  const pagination = payload?.pagination;
+  const totalElements =
+    pagination?.totalElements ?? pagePayload?.totalElements ?? fallbackDataLength;
+  const totalPages = Math.max(
+    pagination?.totalPages ?? pagePayload?.totalPages ?? (totalElements > 0 ? 1 : 0),
+    1
+  );
+  const page = pagination?.page ?? pagePayload?.number ?? fallbackPageIndex;
+  const size = pagination?.size ?? pagePayload?.size ?? fallbackPageSize;
+
+  return {
+    page,
+    size,
+    totalElements,
+    totalPages,
+    first: pagination?.first ?? pagePayload?.first ?? page <= 0,
+    last: pagination?.last ?? pagePayload?.last ?? page >= totalPages - 1,
+    hasNext: pagination?.hasNext ?? page < totalPages - 1,
+    hasPrevious: pagination?.hasPrevious ?? page > 0,
+  };
+};
 
 const getFileSourceUrl = (file: FileType) => resolveFileSourceUrl(file) || '';
 
@@ -246,17 +340,25 @@ function FileMediaPreview({
 
 export default function FileTable() {
   const t = useTranslations('ManageFile');
+  const paginationT = useTranslations('Pagination');
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { data: profileData } = useAccountProfile();
   const { hasPermission } = usePermissions();
   const userId = profileData?.payload?.data?.id || '';
+  const page = toPositiveInteger(searchParams.get('page'), 1);
+  const pageIndex = page - 1;
+  const pageSize = parsePageSize(searchParams.get('pageSize'));
+  const keyword = searchParams.get('keyword')?.trim() || '';
 
   const canUploadFiles = hasPermission('POST', '/api/files/upload');
   const canDeleteFiles = hasPermission('DELETE', '/api/files/{id}');
   const canDownloadFiles = hasPermission('GET', '/api/files/{id}');
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(keyword);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [selectedFolderName, setSelectedFolderName] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -273,39 +375,97 @@ export default function FileTable() {
     data: userFilesData,
     isLoading: loadingUserFiles,
     refetch: refetchUserFiles,
-  } = useGetFilesByUser(userId, 0, 100);
+  } = useGetFilesByUser(userId, pageIndex, pageSize, keyword);
   const {
     data: folderFilesData,
     isLoading: loadingFolderFiles,
     refetch: refetchFolderFiles,
   } = useGetFilesByFolder(
     selectedFolder || '',
-    userId
+    userId,
+    pageIndex,
+    pageSize,
+    keyword
   );
   const { data: statisticsData } = useGetFileStatistics(userId);
   const deleteFileMutation = useDeleteFileMutation();
 
-  const isPageResponse =
-    userFilesData?.payload?.data &&
-    typeof userFilesData.payload.data === 'object' &&
-    'content' in userFilesData.payload.data;
-
-  const filesFromUser = isPageResponse
-    ? (userFilesData.payload.data as { content: FileType[] }).content
-    : Array.isArray(userFilesData?.payload?.data)
-      ? userFilesData.payload.data
-      : [];
-
-  const filesFromFolder = Array.isArray(folderFilesData?.payload?.data)
-    ? folderFilesData.payload.data
-    : [];
-
+  const filesFromUser = getFileListFromPayload(userFilesData?.payload);
+  const filesFromFolder = getFileListFromPayload(folderFilesData?.payload);
+  const userPagination = getPaginationFromPayload(userFilesData?.payload, pageIndex, pageSize);
+  const folderPagination = getPaginationFromPayload(folderFilesData?.payload, pageIndex, pageSize);
   const files: FileType[] = selectedFolder ? filesFromFolder : filesFromUser;
+  const pagination = selectedFolder ? folderPagination : userPagination;
+  const totalItems = pagination.totalElements;
+  const totalPages = pagination.totalPages;
   const statistics = statisticsData?.payload?.data;
   const loading = selectedFolder ? loadingFolderFiles : loadingUserFiles;
   const filteredFiles = files.filter(
-    (file) => !pendingDeletedFileIds.has(file.id) && file.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (file) => !pendingDeletedFileIds.has(file.id)
   );
+
+  const updatePaginationParams = (updates: {
+    page?: number;
+    pageSize?: number;
+    keyword?: string | null;
+  }) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (updates.page !== undefined) {
+      params.set('page', String(updates.page));
+    }
+
+    if (updates.pageSize !== undefined) {
+      params.set('pageSize', String(updates.pageSize));
+    }
+
+    if (updates.keyword !== undefined) {
+      const nextKeyword = updates.keyword?.trim();
+      if (nextKeyword) {
+        params.set('keyword', nextKeyword);
+      } else {
+        params.delete('keyword');
+      }
+    }
+
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  useEffect(() => {
+    setSearchTerm(keyword);
+  }, [keyword]);
+
+  useEffect(() => {
+    const normalizedSearchTerm = searchTerm.trim();
+    const timerId = window.setTimeout(() => {
+      if (normalizedSearchTerm === keyword) {
+        return;
+      }
+
+      updatePaginationParams({
+        page: 1,
+        keyword: normalizedSearchTerm,
+      });
+    }, 400);
+
+    return () => window.clearTimeout(timerId);
+  }, [keyword, searchTerm]);
+
+  useEffect(() => {
+    if (!loading && page > totalPages) {
+      updatePaginationParams({ page: totalPages });
+    }
+  }, [loading, page, totalPages]);
+
+  const handlePageChange = (nextPage: number) => {
+    if (nextPage >= 1 && nextPage <= totalPages) {
+      updatePaginationParams({ page: nextPage });
+    }
+  };
+
+  const handlePageSizeChange = (nextPageSize: number) => {
+    updatePaginationParams({ page: 1, pageSize: nextPageSize });
+  };
 
   const getErrorDescription = (error: unknown, fallback: string) => {
     if (error && typeof error === 'object') {
@@ -570,12 +730,12 @@ export default function FileTable() {
       <div className="manage-toolbar">
         <div className="flex flex-1 items-center gap-2">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={t('SearchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="manage-field pl-10"
+              className="manage-field !pl-11"
             />
           </div>
           <Button
@@ -706,6 +866,52 @@ export default function FileTable() {
         </Table>
       </div>
 
+      <div className="manage-pagination py-4">
+        <div className="manage-pagination-copy">
+          {paginationT('Pagi1')} <strong>{filteredFiles.length}</strong>{' '}
+          {paginationT('Pagi2')} <strong>{totalItems}</strong>{' '}
+          {paginationT('Pagi3')}
+        </div>
+        <div className="manage-pagination-actions">
+          <Button
+            variant="outline"
+            size="sm"
+            className="manage-secondary-button manage-pagination-button"
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page <= 1 || loading}
+          >
+            {paginationT('Previous')}
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            {paginationT('Page')} {page} {paginationT('Of')} {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="manage-secondary-button manage-pagination-button"
+            onClick={() => handlePageChange(page + 1)}
+            disabled={page >= totalPages || loading}
+          >
+            {paginationT('Next')}
+          </Button>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => handlePageSizeChange(Number(value))}
+          >
+            <SelectTrigger className="manage-filter-trigger w-[120px]">
+              <SelectValue placeholder={paginationT('RowsPerPage')} />
+            </SelectTrigger>
+            <SelectContent className="manage-popover-panel">
+              {PAGE_SIZE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={String(option)}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <UploadFileDialog
         open={uploadDialogOpen}
         onOpenChange={setUploadDialogOpen}
@@ -719,6 +925,7 @@ export default function FileTable() {
         onSelectFolder={(folderId: string | null, folderName?: string) => {
           setSelectedFolder(folderId);
           setSelectedFolderName(folderName || '');
+          updatePaginationParams({ page: 1 });
           setFolderDialogOpen(false);
         }}
       />

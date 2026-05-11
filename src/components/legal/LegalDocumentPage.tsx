@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { LegalBackButton } from "./LegalBackButton";
 
 export type LegalSection = {
   title: string;
@@ -10,6 +10,7 @@ type LegalDocumentPageProps = {
   eyebrow: string;
   title: string;
   description: string;
+  lastUpdatedLabel: string;
   lastUpdated: string;
   sections: LegalSection[];
 };
@@ -18,6 +19,7 @@ export function LegalDocumentPage({
   eyebrow,
   title,
   description,
+  lastUpdatedLabel,
   lastUpdated,
   sections,
 }: LegalDocumentPageProps) {
@@ -25,12 +27,7 @@ export function LegalDocumentPage({
     <main className="bg-background text-foreground">
       <section className="border-b border-border bg-card">
         <div className="container mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-          <Link
-            href="/login"
-            className="mb-8 inline-flex text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-          >
-            Quay lại đăng nhập
-          </Link>
+          <LegalBackButton />
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             {eyebrow}
           </p>
@@ -41,7 +38,7 @@ export function LegalDocumentPage({
             {description}
           </p>
           <p className="mt-5 text-sm text-muted-foreground">
-            Cập nhật lần cuối: {lastUpdated}
+            {lastUpdatedLabel}: {lastUpdated}
           </p>
         </div>
       </section>

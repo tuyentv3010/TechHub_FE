@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2, Upload, X } from 'lucide-react';
 
@@ -20,7 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAccountProfile } from '@/queries/useAccount';
-import { useUploadFileMutation } from '@/queries/useFile';
+import { useUploadMultipleFilesMutation } from '@/queries/useFile';
 
 interface UploadFileDialogProps {
   open: boolean;
@@ -45,29 +44,40 @@ export default function UploadFileDialog({
   const [tags, setTags] = useState('');
   const [description, setDescription] = useState('');
 
-  const uploadMutation = useUploadFileMutation();
+  const uploadMutation = useUploadMultipleFilesMutation();
+
+  const clearPreviews = () => {
+    previews.forEach((preview) => {
+      if (preview) {
+        window.URL.revokeObjectURL(preview);
+      }
+    });
+    setPreviews([]);
+  };
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    return () => {
+      previews.forEach((preview) => {
+        if (preview) {
+          window.URL.revokeObjectURL(preview);
+        }
+      });
+    };
+  }, [open, previews]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
+    clearPreviews();
     setFiles(selectedFiles);
-
-    const nextPreviews: string[] = [];
-    selectedFiles.forEach((file) => {
-      if (!file.type.startsWith('image/')) {
-        nextPreviews.push('');
-        if (nextPreviews.length === selectedFiles.length) setPreviews(nextPreviews);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        nextPreviews.push(reader.result as string);
-        if (nextPreviews.length === selectedFiles.length) {
-          setPreviews(nextPreviews);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    setPreviews(
+      selectedFiles.map((file) =>
+        file.type.startsWith('image/') ? window.URL.createObjectURL(file) : ''
+      )
+    );
   };
 
   const handleUpload = async () => {
@@ -90,23 +100,22 @@ export default function UploadFileDialog({
     }
 
     try {
-      for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('userId', userId);
-        formData.append('uploadSource', 'MANAGE_FILES');
-        if (selectedFolderId) formData.append('folderId', selectedFolderId);
-        if (tags) formData.append('tags', tags);
-        if (description) formData.append('description', description);
-        await uploadMutation.mutateAsync(formData);
-      }
+      const formData = new FormData();
+      files.forEach((file) => formData.append('files', file));
+      formData.append('userId', userId);
+      formData.append('uploadSource', 'MANAGE_FILES');
+      if (selectedFolderId) formData.append('folderId', selectedFolderId);
+      if (tags) formData.append('tags', tags);
+      if (description) formData.append('description', description);
+
+      await uploadMutation.mutateAsync(formData);
 
       toast({
         title: t('SuccessTitle'),
         description: t('UploadCompleted', { count: files.length }),
       });
       setFiles([]);
-      setPreviews([]);
+      clearPreviews();
       setTags('');
       setDescription('');
       onSuccess();
@@ -122,6 +131,10 @@ export default function UploadFileDialog({
   };
 
   const handleRemoveFile = (index: number) => {
+    const preview = previews[index];
+    if (preview) {
+      window.URL.revokeObjectURL(preview);
+    }
     setFiles(files.filter((_, i) => i !== index));
     setPreviews(previews.filter((_, i) => i !== index));
   };
@@ -158,7 +171,7 @@ export default function UploadFileDialog({
                   size="icon"
                   onClick={() => {
                     setFiles([]);
-                    setPreviews([]);
+                    clearPreviews();
                   }}
                 >
                   <X className="h-4 w-4" />
@@ -175,7 +188,7 @@ export default function UploadFileDialog({
                   <div key={`${file.name}-${index}`} className="group relative">
                     <div className="aspect-square overflow-hidden rounded-lg border bg-muted">
                       {previews[index] ? (
-                        <Image src={previews[index]} alt={file.name} fill className="object-cover" />
+                        <img src={previews[index]} alt={file.name} className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center">
                           <Upload className="h-8 w-8 text-muted-foreground" />

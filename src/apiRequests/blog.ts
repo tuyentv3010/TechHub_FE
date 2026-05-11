@@ -34,7 +34,9 @@ const blogApiRequest = {
         url += `&tags=${encodeURIComponent(tag)}`;
       }
     }
-    return http.get<BlogListResponseType>(url);
+    return http.get<BlogListResponseType>(url, {
+      redirectOnUnauthorized: false,
+    });
   },
 
   // Get single blog by id

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMyEnrollments } from "@/queries/useMyLearning";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Clock, CheckCircle, PlayCircle, Calendar } from "lucide-react";
+import { BookOpen, Clock, CheckCircle, PlayCircle, Calendar, XCircle } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +12,60 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Enrollment } from "@/types/enrollment.types";
 
+type LearningTab = "all" | "enrolled" | "in_progress" | "completed" | "dropped";
+
+const emptyStateContent: Record<
+  LearningTab,
+  {
+    icon: typeof BookOpen;
+    title: string;
+    description: string;
+    actionLabel: string;
+  }
+> = {
+  all: {
+    icon: BookOpen,
+    title: "Chưa có khóa học nào",
+    description:
+      "Bạn chưa đăng ký khóa học nào. Khám phá các khóa học và bắt đầu học ngay!",
+    actionLabel: "Khám phá khóa học",
+  },
+  enrolled: {
+    icon: BookOpen,
+    title: "Chưa có khóa học đang học",
+    description:
+      "Các khóa học bạn đã đăng ký nhưng chưa bắt đầu tiến độ sẽ hiển thị ở đây.",
+    actionLabel: "Khám phá khóa học",
+  },
+  in_progress: {
+    icon: Clock,
+    title: "Chưa có khóa học đang tiến hành",
+    description:
+      "Khi bạn bắt đầu học và có tiến độ, các khóa học đang học dở sẽ xuất hiện ở đây.",
+    actionLabel: "Tiếp tục khám phá",
+  },
+  completed: {
+    icon: CheckCircle,
+    title: "Chưa hoàn thành khóa học nào",
+    description:
+      "Các khóa học bạn hoàn thành sẽ được lưu tại đây để xem lại và theo dõi kết quả.",
+    actionLabel: "Xem khóa học",
+  },
+  dropped: {
+    icon: XCircle,
+    title: "Chưa có khóa học đã bỏ",
+    description:
+      "Các khóa học bạn đã bỏ sẽ xuất hiện ở đây. Hiện tại bạn chưa bỏ khóa học nào.",
+    actionLabel: "Quay lại danh sách khóa học",
+  },
+};
+
 export default function MyLearningPage() {
+  const [activeTab, setActiveTab] = useState<LearningTab>("all");
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const { data, isLoading, error } = useMyEnrollments(statusFilter);
   const enrollments = (data?.payload?.data || []) as Enrollment[];
+  const EmptyIcon = emptyStateContent[activeTab].icon;
   console.log("enrollments", enrollments);
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -79,7 +129,9 @@ export default function MyLearningPage() {
 
         {/* Filters */}
         <Tabs defaultValue="all" className="mb-8" onValueChange={(value) => {
-          setStatusFilter(value === "all" ? undefined : value.toUpperCase());
+          const nextTab = value as LearningTab;
+          setActiveTab(nextTab);
+          setStatusFilter(nextTab === "all" ? undefined : nextTab.toUpperCase());
         }}>
           <TabsList className="grid w-full max-w-2xl grid-cols-5">
             <TabsTrigger value="all">Tất cả</TabsTrigger>
@@ -94,13 +146,13 @@ export default function MyLearningPage() {
         {enrollments.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
-              <BookOpen className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-xl font-semibold mb-2">Chưa có khóa học nào</h3>
+              <EmptyIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-xl font-semibold mb-2">{emptyStateContent[activeTab].title}</h3>
               <p className="text-muted-foreground mb-6">
-                Bạn chưa đăng ký khóa học nào. Khám phá các khóa học và bắt đầu học ngay!
+                {emptyStateContent[activeTab].description}
               </p>
               <Button asChild>
-                <Link href="/courses">Khám phá khóa học</Link>
+                <Link href="/courses">{emptyStateContent[activeTab].actionLabel}</Link>
               </Button>
             </CardContent>
           </Card>

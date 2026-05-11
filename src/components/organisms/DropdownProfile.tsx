@@ -25,6 +25,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useLogoutMutation } from "@/queries/useAuth";
 import { useAccountProfile } from "@/queries/useAccount";
 import { getUserInfoFromStorage, removeTokenFromLocalStorage } from "@/lib/utils";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 interface MenuItem {
   title: string;
@@ -136,6 +137,11 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
     }
   };
 
+  const avatarUrl =
+    normalizePersistedMediaUrl(userInfo?.avatar) ||
+    normalizePersistedMediaUrl(account?.avatar) ||
+    "/placeholder-avatar.jpg";
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
@@ -197,9 +203,9 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="app-control app-control-icon relative">
-                  <Avatar className="app-control-avatar">
-                    <AvatarImage 
-                      src={userInfo?.avatar || account?.avatar || "/placeholder-avatar.jpg"} 
+                    <Avatar className="app-control-avatar">
+                      <AvatarImage
+                      src={avatarUrl}
                       alt={userInfo?.username || account?.username || "User"}
                       className="object-cover"
                     />

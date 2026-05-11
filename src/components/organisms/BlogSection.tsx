@@ -8,7 +8,12 @@ import Link from "next/link";
 import { AppSurface, PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getExcerptFromContent, estimateReadingTime, createBlogSlug } from "@/lib/blog";
+import {
+  createBlogSlug,
+  estimateReadingTime,
+  getBlogImageUrl,
+  getExcerptFromContent,
+} from "@/lib/blog";
 import { useBlogs } from "@/queries/useBlog";
 import type { Blog } from "@/types/blog.types";
 
@@ -74,19 +79,25 @@ export function BlogSection({ title, subtitle }: BlogSectionProps) {
             const createdDate = new Date(blog.created);
             const dateNum = format(createdDate, "dd");
             const monthName = format(createdDate, "MMM");
-            const coverImage = blog.thumbnail || "/blogs/default.jpg";
+            const coverImage = getBlogImageUrl(blog);
             const blogSlug = createBlogSlug(blog.title, blog.id);
 
             return (
               <Link href={`/blog/${blogSlug}`} key={blog.id} className="group block">
                 <AppSurface padding="none" className="h-full overflow-hidden">
                   <div className="relative h-48 overflow-hidden bg-muted">
-                    <Image
-                      src={coverImage}
-                      alt={blog.title}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                    />
+                    {coverImage ? (
+                      <Image
+                        src={coverImage}
+                        alt={blog.title}
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-muted">
+                        <FileText className="h-10 w-10 text-muted-foreground" />
+                      </div>
+                    )}
                     <div className="absolute left-4 top-4 rounded-lg border border-border bg-card px-3 py-2 text-center shadow-sm">
                       <div className="text-lg font-semibold leading-none text-foreground">{dateNum}</div>
                       <div className="mt-1 text-xs font-medium uppercase text-muted-foreground">{monthName}</div>

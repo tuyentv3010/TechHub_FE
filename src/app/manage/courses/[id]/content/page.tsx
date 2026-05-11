@@ -100,6 +100,7 @@ import {
 import TableSkeleton from "@/components/Skeleton";
 import { useAccountProfile } from "@/queries/useAccount";
 import AiExercisePanel from "@/app/manage/courses/[id]/ai-exercise-panel";
+import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
 
 const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"), {
   ssr: false,
@@ -2405,7 +2406,7 @@ function LessonDialog({
         contentType: backendData.contentType || 'VIDEO',
         content: backendData.content || '',
         duration: backendData.estimatedDuration || 0, // Backend uses estimatedDuration
-        videoUrl: backendData.videoUrl || '', // Video URL for VIDEO type
+        videoUrl: normalizePersistedMediaUrl(backendData.videoUrl) || '', // Video URL for VIDEO type
         isFree: backendData.isFree ?? false,
       };
       
@@ -2453,7 +2454,10 @@ function LessonDialog({
       formData.append('userId', userId);
 
       const response = await fileApiRequest.uploadFile(formData);
-      const videoUrl = response.payload.data.cloudinarySecureUrl;
+      const videoUrl = resolveManagedFileUrl(response.payload.data, userId, "content");
+      if (!videoUrl) {
+        throw new Error("Upload response did not include a usable video URL");
+      }
       
       setValue('videoUrl', videoUrl);
       toast({ 
@@ -2475,8 +2479,18 @@ function LessonDialog({
     }
   };
 
-  const handleMediaSelect = (fileUrl: string) => {
-    setValue('videoUrl', fileUrl);
+  const handleMediaSelect = (file: any) => {
+    const videoUrl = resolveManagedFileUrl(file, userId, "content");
+    if (!videoUrl) {
+      toast({
+        title: t("Error") || "Error",
+        description: "Selected file does not include a usable video URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setValue('videoUrl', videoUrl);
     setShowMediaLibrary(false);
     toast({ 
       title: t("Success") || "Success", 
@@ -2485,6 +2499,8 @@ function LessonDialog({
   };
 
   const onSubmit = (formData: any) => {
+    const normalizedVideoUrl = normalizePersistedMediaUrl(formData.videoUrl) || formData.videoUrl;
+
     if (mode === 'create') {
       // Map frontend field names to backend field names for CREATE
       const createData: CreateLessonBodyType = {
@@ -2495,7 +2511,7 @@ function LessonDialog({
         duration: formData.duration, // Frontend uses 'duration', backend maps to 'estimatedDuration'
         orderIndex: formData.order, // Map 'order' to 'orderIndex'
         isFree: formData.isFree ?? false,
-        videoUrl: formData.videoUrl,
+        videoUrl: normalizedVideoUrl,
       };
       onCreate(createData);
     } else {
@@ -2507,7 +2523,7 @@ function LessonDialog({
         content: formData.content,
         estimatedDuration: formData.duration, // Backend expects estimatedDuration
         isFree: formData.isFree,
-        videoUrl: formData.videoUrl,
+        videoUrl: normalizedVideoUrl,
       };
       onUpdate(updateData);
     }
@@ -2515,7 +2531,7 @@ function LessonDialog({
 
   const contentType = watch("contentType");
   const isFree = watch("isFree");
-  const videoUrl = watch("videoUrl");
+  const videoUrl = normalizePersistedMediaUrl(watch("videoUrl")) || "";
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -2678,7 +2694,7 @@ function LessonDialog({
         <MediaLibraryDialog
           open={showMediaLibrary}
           onOpenChange={setShowMediaLibrary}
-          onSelectFile={(file) => handleMediaSelect(file.cloudinarySecureUrl)}
+          onSelectFile={handleMediaSelect}
           userId={userId}
           mediaType="VIDEO"
           title={t("SelectVideoFromLibrary") || "Select Video from Library"}
@@ -2725,7 +2741,16 @@ function AssetDialog({
 
   useEffect(() => {
     if (open) {
-      reset(data || { assetType: 'DOCUMENT' });
+      reset(
+        data
+          ? {
+              ...data,
+              externalUrl:
+                normalizePersistedMediaUrl((data as any).externalUrl) ||
+                (data as any).externalUrl,
+            }
+          : { assetType: 'DOCUMENT' }
+      );
     }
   }, [open, data, reset]);
 
@@ -2771,7 +2796,10 @@ function AssetDialog({
       formData.append('userId', userId);
 
       const response = await fileApiRequest.uploadFile(formData);
-      const fileUrl = response.payload.data.cloudinarySecureUrl;
+      const fileUrl = resolveManagedFileUrl(response.payload.data, userId, "content");
+      if (!fileUrl) {
+        throw new Error("Upload response did not include a usable file URL");
+      }
       const originalName = response.payload.data.originalName || file.name;
       
       setValue('externalUrl', fileUrl);
@@ -2802,7 +2830,17 @@ function AssetDialog({
   };
 
   const handleMediaSelect = (file: any) => {
-    setValue('externalUrl', file.cloudinarySecureUrl);
+    const fileUrl = resolveManagedFileUrl(file, userId, "content");
+    if (!fileUrl) {
+      toast({
+        title: t("Error") || "Error",
+        description: "Selected file does not include a usable URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setValue('externalUrl', fileUrl);
     
     // Auto-fill title with original filename if title is empty
     const currentTitle = watch('title');
@@ -2818,15 +2856,22 @@ function AssetDialog({
   };
 
   const onSubmit = (formData: CreateAssetBodyType | UpdateAssetBodyType) => {
+    const normalizedFormData = {
+      ...formData,
+      externalUrl:
+        normalizePersistedMediaUrl(formData.externalUrl) ||
+        formData.externalUrl,
+    };
+
     if (mode === 'create') {
-      onCreate(formData as CreateAssetBodyType);
+      onCreate(normalizedFormData as CreateAssetBodyType);
     } else {
-      onUpdate(formData as UpdateAssetBodyType);
+      onUpdate(normalizedFormData as UpdateAssetBodyType);
     }
   };
 
   const assetType = watch("assetType");
-  const externalUrl = watch("externalUrl");
+  const externalUrl = normalizePersistedMediaUrl(watch("externalUrl")) || "";
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

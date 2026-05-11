@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { FileText } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useBlogs } from "@/queries/useBlog";
 import { useGetSkills } from "@/queries/useCourse";
+import { createBlogSlug, getBlogImageUrl } from "@/lib/blog";
+import type { Blog } from "@/types/blog.types";
 
 export default function Footer() {
-  const t = useTranslations("HomePage");
   const footerT = useTranslations("Footer");
+  const currentYear = new Date().getFullYear();
 
   // Fetch latest 6 blogs for gallery
   const { data: blogsData } = useBlogs({ page: 1, size: 6 });
@@ -17,9 +20,6 @@ export default function Footer() {
   // Fetch skills
   const { data: skillsData } = useGetSkills();
   const skills = skillsData?.payload?.data || [];
-
-  console.log("🔐 Footer - blogs:", blogs);
-  console.log("🔐 Footer - skills:", skills);
 
   return (
     <footer className="bg-slate-900 text-white py-12 px-4 md:px-8">
@@ -30,11 +30,11 @@ export default function Footer() {
           <div className="lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <Link href="/" className="flex items-center space-x-2">
-                <Image src="/logo.png" alt="TechHub Logo" width={80} height={80} />
+                <Image src="/logo.png" alt={footerT("logoAlt")} width={80} height={80} />
               </Link>
             </div>
             <p className="text-gray-300 text-sm leading-relaxed mb-4">
-              TechHub - Nền tảng học tập công nghệ trực tuyến hàng đầu. Khám phá các khóa học chất lượng cao, lộ trình học tập cá nhân hóa và cộng đồng học viên năng động.
+              {footerT("brandDescription")}
             </p>
             {/* Social Media Icons */}
             <div className="flex items-center gap-3">
@@ -83,7 +83,7 @@ export default function Footer() {
 
           {/* Skills */}
           <div>
-            <h3 className="text-white font-semibold text-lg mb-4">Kỹ năng:</h3>
+            <h3 className="text-white font-semibold text-lg mb-4">{footerT("skillsTitle")}</h3>
             <ul className="space-y-3">
               {skills.slice(0, 6).map((skill: any) => (
                 <li key={skill.id}>
@@ -96,49 +96,52 @@ export default function Footer() {
                 </li>
               ))}
               {skills.length === 0 && (
-                <>
-                  <li><span className="text-gray-300 text-sm">Web Development</span></li>
-                  <li><span className="text-gray-300 text-sm">Mobile Development</span></li>
-                  <li><span className="text-gray-300 text-sm">Data Science</span></li>
-                  <li><span className="text-gray-300 text-sm">DevOps</span></li>
-                  <li><span className="text-gray-300 text-sm">UI/UX Design</span></li>
-                </>
+                <li>
+                  <span className="text-gray-300 text-sm">
+                    {footerT("noSkillsAvailable")}
+                  </span>
+                </li>
               )}
             </ul>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-white font-semibold text-lg mb-4">Liên kết nhanh:</h3>
+            <h3 className="text-white font-semibold text-lg mb-4">{footerT("quickLinksTitle")}</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/about-us" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Về chúng tôi
+                <Link href="/about" className="text-gray-300 hover:text-white transition-colors text-sm">
+                  {footerT("quickLinks.about")}
                 </Link>
               </li>
               <li>
                 <Link href="/contact" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Liên hệ
+                  {footerT("quickLinks.contact")}
                 </Link>
               </li>
               <li>
                 <Link href="/courses" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Khóa học
+                  {footerT("quickLinks.courses")}
                 </Link>
               </li>
               <li>
                 <Link href="/learning-paths" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Lộ trình học tập
+                  {footerT("quickLinks.learningPaths")}
                 </Link>
               </li>
               <li>
                 <Link href="/blog" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Blog & Tin tức
+                  {footerT("quickLinks.blog")}
                 </Link>
               </li>
               <li>
-                <Link href="/privacy-policy" className="text-gray-300 hover:text-white transition-colors text-sm">
-                  Chính sách bảo mật
+                <Link href="/privacy" className="text-gray-300 hover:text-white transition-colors text-sm">
+                  {footerT("privacyPolicy")}
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="text-gray-300 hover:text-white transition-colors text-sm">
+                  {footerT("termsOfService")}
                 </Link>
               </li>
             </ul>
@@ -146,82 +149,39 @@ export default function Footer() {
 
           {/* Blog Gallery */}
           <div>
-            <h3 className="text-white font-semibold text-lg mb-4">Bài viết mới</h3>
+            <h3 className="text-white font-semibold text-lg mb-4">{footerT("latestPostsTitle")}</h3>
             <div className="grid grid-cols-3 gap-2">
               {blogs.length > 0 ? (
-                blogs.slice(0, 6).map((blog: any) => (
-                  <Link 
-                    key={blog.id} 
-                    href={`/blog/${blog.slug || blog.id}`}
-                    className="aspect-square bg-gray-700 rounded overflow-hidden hover:opacity-80 transition-opacity"
-                  >
-                    <Image
-                      src={blog.thumbnail || blog.coverImage || "/blogs/default-blog.jpg"}
-                      alt={blog.title || "Blog image"}
-                      width={80}
-                      height={80}
-                      className="w-full h-full object-cover"
-                    />
-                  </Link>
-                ))
+                blogs.slice(0, 6).map((blog: Blog) => {
+                  const blogImageUrl = getBlogImageUrl(blog);
+                  const blogSlug = createBlogSlug(blog.title, blog.id);
+
+                  return (
+                    <Link
+                      key={blog.id}
+                      href={`/blog/${blogSlug}`}
+                      className="aspect-square bg-gray-700 rounded overflow-hidden hover:opacity-80 transition-opacity"
+                    >
+                      {blogImageUrl ? (
+                        <Image
+                          src={blogImageUrl}
+                          alt={blog.title || footerT("blogImageAlt")}
+                          width={80}
+                          height={80}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gray-800">
+                          <FileText className="h-6 w-6 text-gray-500" />
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })
               ) : (
-                // Fallback images when no blogs
-                <>
-                  <div className="aspect-square bg-gray-700 rounded overflow-hidden">
-                    <Image
-                      src="/gallery/gallery-1.jpg"
-                      alt="Gallery image 1"
-                      width={80}
-                      height={80}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="aspect-square bg-gray-700 rounded overflow-hidden">
-                    <Image
-                      src="/gallery/gallery-2.jpg"
-                      alt="Gallery image 2"
-                      width={80}
-                      height={80}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="aspect-square bg-gray-700 rounded overflow-hidden">
-                    <Image
-                      src="/gallery/gallery-3.jpg"
-                      alt="Gallery image 3"
-                      width={80}
-                      height={80}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="aspect-square bg-gray-700 rounded overflow-hidden">
-                    <Image
-                      src="/gallery/gallery-4.jpg"
-                      alt="Gallery image 4"
-                      width={80}
-                      height={80}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="aspect-square bg-gray-700 rounded overflow-hidden">
-                    <Image
-                      src="/gallery/gallery-5.jpg"
-                      alt="Gallery image 5"
-                      width={80}
-                      height={80}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="aspect-square bg-gray-700 rounded overflow-hidden">
-                    <Image
-                      src="/gallery/gallery-6.jpg"
-                      alt="Gallery image 6"
-                      width={80}
-                      height={80}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </>
+                <p className="col-span-3 text-sm text-gray-400">
+                  {footerT("noLatestPosts")}
+                </p>
               )}
             </div>
           </div>
@@ -231,7 +191,9 @@ export default function Footer() {
         <div className="border-t border-gray-700 pt-6">
           <div className="text-center">
             <p className="text-gray-400 text-sm">
-              Copyright © 2024 <span className="text-white font-medium">TechHub</span> || All Rights Reserved
+              {footerT("copyrightPrefix", { year: currentYear })}{" "}
+              <span className="text-white font-medium">TechHub</span> ||{" "}
+              {footerT("allRightsReserved")}
             </p>
           </div>
         </div>

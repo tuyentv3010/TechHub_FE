@@ -57,12 +57,29 @@ export const useGetCourseList = (params?: {
   maxPrice?: number;
   instructorId?: string;
   enabled?: boolean;
+  auth?: boolean;
+  redirectOnUnauthorized?: boolean;
+  suppressErrorLog?: boolean;
+  retry?: boolean | number;
 }) => {
-  const { enabled = true, ...queryParams } = params || {};
+  const {
+    auth,
+    enabled = true,
+    redirectOnUnauthorized,
+    suppressErrorLog,
+    retry,
+    ...queryParams
+  } = params || {};
   return useQuery({
     queryKey: ["course-list", queryParams],
-    queryFn: () => courseApiRequest.getCourseList(queryParams),
+    queryFn: () =>
+      courseApiRequest.getCourseList(queryParams, {
+        auth,
+        redirectOnUnauthorized,
+        suppressErrorLog,
+      }),
     enabled,
+    retry: retry ?? (auth === false ? false : undefined),
   });
 };
 
@@ -142,10 +159,20 @@ export const useGetChapters = (courseId: string) => {
 // ============================================
 
 // Get all skills
-export const useGetSkills = () => {
+export const useGetSkills = (options?: {
+  enabled?: boolean;
+  auth?: boolean;
+  redirectOnUnauthorized?: boolean;
+  suppressErrorLog?: boolean;
+  retry?: boolean | number;
+}) => {
+  const { enabled = true, retry, ...requestOptions } = options || {};
+
   return useQuery({
-    queryKey: ["skills"],
-    queryFn: () => courseApiRequest.getSkills(),
+    queryKey: ["skills", requestOptions.auth === false ? "public" : "default"],
+    queryFn: () => courseApiRequest.getSkills(requestOptions),
+    enabled,
+    retry: retry ?? (requestOptions.auth === false ? false : undefined),
   });
 };
 
@@ -399,6 +426,26 @@ export const useCreateExercisesMutation = () => {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["exercises", variables.courseId, variables.lessonId] });
       queryClient.invalidateQueries({ queryKey: ["chapters", variables.courseId] });
+    },
+  });
+};
+
+export const useSubmitExerciseMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      courseId,
+      lessonId,
+      body,
+    }: {
+      courseId: string;
+      lessonId: string;
+      body: any;
+    }) => courseApiRequest.submitExercise(courseId, lessonId, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["exercises", variables.courseId, variables.lessonId] });
+      queryClient.invalidateQueries({ queryKey: ["course-progress", variables.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["progress", variables.courseId] });
     },
   });
 };

@@ -61,6 +61,7 @@ import CourseFilters from "./course-filters";
 import { useDeleteCourseMutation, useGetMyCourses, useGetSkills, useGetTags } from "@/queries/useCourse";
 import { CourseListResponseType } from "@/schemaValidations/course.schema";
 import { DollarSign } from "lucide-react";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 type CourseItem = CourseListResponseType["data"][0];
 
@@ -225,11 +226,12 @@ export default function CourseTable() {
         header: t("ThumbnailColumn"),
         cell: ({ row }) => {
           const thumbnail = row.original.thumbnail;
+          const thumbnailUrl = normalizePersistedMediaUrl(thumbnail?.secureUrl || thumbnail?.url);
           return (
             <div className="flex items-center justify-center">
-              {thumbnail?.url ? (
+              {thumbnailUrl ? (
                 <img
-                  src={thumbnail.url}
+                  src={thumbnailUrl}
                   alt="Course thumbnail"
                   className="w-16 h-16 object-cover rounded-md border"
                 />
@@ -247,12 +249,13 @@ export default function CourseTable() {
         header: t("IntroVideoColumn"),
         cell: ({ row }) => {
           const introVideo = row.original.introVideo;
+          const introVideoUrl = normalizePersistedMediaUrl(introVideo?.secureUrl || introVideo?.url);
           return (
             <div className="flex items-center justify-center">
-              {introVideo?.url ? (
+              {introVideoUrl ? (
                 <div className="relative w-16 h-16 bg-black rounded-md overflow-hidden">
                   <video
-                    src={introVideo.url}
+                    src={introVideoUrl}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30">

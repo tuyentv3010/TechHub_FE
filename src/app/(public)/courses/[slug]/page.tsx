@@ -40,6 +40,7 @@ import {
   formatTagLabel,
 } from "@/lib/course";
 import { useToast } from "@/hooks/use-toast";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 import { 
   useCourseComments, 
   useAddCourseCommentMutation 
@@ -57,6 +58,7 @@ export default function CourseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const t = useTranslations("courses");
+  const commentT = useTranslations("CourseComments");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const slug = params.slug as string;
@@ -75,6 +77,12 @@ export default function CourseDetailPage() {
 
   const course = courseResponse?.payload?.data;
   const courseSummary = course?.summary;
+  const courseThumbnailUrl = normalizePersistedMediaUrl(
+    courseSummary?.thumbnail?.secureUrl || courseSummary?.thumbnail?.url
+  );
+  const courseIntroVideoUrl = normalizePersistedMediaUrl(
+    courseSummary?.introVideo?.secureUrl || courseSummary?.introVideo?.url
+  );
   const chapters = course?.chapters || [];
 
   // Transform skills/categories from backend format (could be IDs, names, or objects)
@@ -157,8 +165,8 @@ export default function CourseDetailPage() {
             queryClient.invalidateQueries({ queryKey: ["course-comments", courseId] });
             
             toast({
-              title: "Bình luận mới",
-              description: "Có người vừa bình luận trong khóa học này!",
+              title: commentT("newCourseCommentTitle"),
+              description: commentT("newCourseCommentDescription"),
             });
           } catch (e) {
             console.error("[WebSocket] Error parsing message:", e);
@@ -179,13 +187,13 @@ export default function CourseDetailPage() {
       console.log("[WebSocket] Cleaning up connection...");
       client.deactivate();
     };
-  }, [courseId, queryClient, toast]);
+  }, [commentT, courseId, queryClient, toast]);
 
   const handleSubmitComment = (content: string) => {
     if (!courseId) {
       toast({
-        title: "Không thể gửi bình luận",
-        description: "Vui lòng thử lại.",
+        title: commentT("submitCommentErrorTitle"),
+        description: commentT("tryAgainDescription"),
         variant: "destructive",
       });
       return;
@@ -202,13 +210,13 @@ export default function CourseDetailPage() {
       {
         onSuccess: () => {
           toast({
-            title: "Đã gửi bình luận",
+            title: commentT("submitCommentSuccessTitle"),
           });
         },
         onError: () => {
           toast({
-            title: "Không thể gửi bình luận",
-            description: "Vui lòng đăng nhập và thử lại.",
+            title: commentT("submitCommentErrorTitle"),
+            description: commentT("loginAndRetryDescription"),
             variant: "destructive",
           });
         },
@@ -239,8 +247,8 @@ export default function CourseDetailPage() {
   const handleSubmitReply = (parentId: string, content: string) => {
     if (!courseId) {
       toast({
-        title: "Không thể gửi phản hồi",
-        description: "Vui lòng thử lại.",
+        title: commentT("submitReplyErrorTitle"),
+        description: commentT("tryAgainDescription"),
         variant: "destructive",
       });
       return;
@@ -257,13 +265,13 @@ export default function CourseDetailPage() {
       {
         onSuccess: () => {
           toast({
-            title: "Đã gửi phản hồi",
+            title: commentT("submitReplySuccessTitle"),
           });
         },
         onError: () => {
           toast({
-            title: "Không thể gửi phản hồi",
-            description: "Vui lòng đăng nhập và thử lại.",
+            title: commentT("submitReplyErrorTitle"),
+            description: commentT("loginAndRetryDescription"),
             variant: "destructive",
           });
         },
@@ -277,6 +285,7 @@ export default function CourseDetailPage() {
     enabled: !!courseSummary?.instructorId,
   });
   const instructor = instructorResponse?.payload?.data;
+  const instructorAvatarUrl = normalizePersistedMediaUrl(instructor?.avatar);
 
   const toggleChapter = (chapterId: string) => {
     setExpandedChapters((prev) => {
@@ -356,6 +365,10 @@ export default function CourseDetailPage() {
   const discountPercentage = courseSummary.discountPrice
     ? calculateDiscountPercentage(courseSummary.price, courseSummary.discountPrice)
     : 0;
+  const totalEstimatedDurationMinutes = Number(
+    course.totalEstimatedDurationMinutes ?? 0
+  );
+  const hasTotalEstimatedDuration = totalEstimatedDurationMinutes > 0;
 
   return (
     <main className="min-h-screen bg-background pb-20 pt-6">
@@ -373,7 +386,7 @@ export default function CourseDetailPage() {
             {/* Left Content */}
             <div className="lg:col-span-2">
                 <Image 
-                src={courseSummary.thumbnail?.url || "/courses/Thumbnail.png"} 
+                src={courseThumbnailUrl || "/courses/Thumbnail.png"}
                 alt={courseSummary.title || "Course Thumbnail"} 
                 width={1000}
                 height={600}
@@ -405,10 +418,10 @@ export default function CourseDetailPage() {
                   <BookOpen className="h-5 w-5" />
                   <span>{course.totalLessons} {t("lectures")}</span>
                 </div>
-                {course.totalEstimatedDurationMinutes && (
+                {hasTotalEstimatedDuration && (
                   <div className="flex items-center gap-2">
                     <Clock className="h-5 w-5" />
-                    <span>{formatDuration(course.totalEstimatedDurationMinutes)}</span>
+                    <span>{formatDuration(totalEstimatedDurationMinutes)}</span>
                   </div>
                 )}
               </div>
@@ -416,9 +429,9 @@ export default function CourseDetailPage() {
               {/* Instructor */}
               {instructor && (
                 <div className="flex items-center gap-3">
-                  {instructor.avatar ? (
+                  {instructorAvatarUrl ? (
                     <img
-                      src={instructor.avatar}
+                      src={instructorAvatarUrl}
                       alt={instructor.username || instructor.name || "Instructor"}
                       className="h-12 w-12 rounded-full object-cover"
                     />
@@ -440,21 +453,21 @@ export default function CourseDetailPage() {
               <Card className="overflow-hidden border-border shadow-sm">
                 <CardContent className="p-0">
                   {/* Video/Image Preview */}
-                  {courseSummary.introVideo?.url ? (
+                  {courseIntroVideoUrl ? (
                     <div className="relative aspect-video bg-black">
                       <video
-                        src={courseSummary.introVideo.url}
+                        src={courseIntroVideoUrl}
                         controls
                         className="h-full w-full object-contain"
-                        poster={courseSummary.thumbnail?.url || undefined}
+                        poster={courseThumbnailUrl || undefined}
                       >
                         Your browser does not support the video tag.
                       </video>
                     </div>
-                  ) : courseSummary.thumbnail?.url ? (
+                  ) : courseThumbnailUrl ? (
                     <div className="relative aspect-video">
                       <img
-                        src={courseSummary.thumbnail.url}
+                        src={courseThumbnailUrl}
                         alt={`${courseSummary.title} - Course thumbnail`}
                         className="h-full w-full object-cover"
                       />
@@ -548,11 +561,11 @@ export default function CourseDetailPage() {
                           {course.totalLessons} {t("lectures")}
                         </span>
                       </div>
-                      {course.totalEstimatedDurationMinutes && (
+                      {hasTotalEstimatedDuration && (
                         <div className="flex items-center gap-3">
                           <Clock className="h-5 w-5 text-muted-foreground" />
                           <span className="text-sm">
-                            {formatDuration(course.totalEstimatedDurationMinutes)} {t("totalLength")}
+                            {formatDuration(totalEstimatedDurationMinutes)} {t("totalLength")}
                           </span>
                         </div>
                       )}
@@ -656,7 +669,7 @@ export default function CourseDetailPage() {
                                       </Badge>
                                     )}
                                   </div>
-                                  {lesson.estimatedDuration && (
+                                  {Number(lesson.estimatedDuration ?? 0) > 0 && (
                                     <span className="text-xs text-muted-foreground">
                                       {formatDuration(lesson.estimatedDuration)}
                                     </span>

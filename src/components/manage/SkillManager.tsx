@@ -19,6 +19,7 @@ import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { useAccountProfile } from "@/queries/useAccount";
 import fileApiRequest from "@/apiRequests/file";
 import { Badge } from "@/components/ui/badge";
+import { resolveManagedFileUrl } from "@/lib/file-media";
 
 type Skill = { id: string; name: string; thumbnail?: string; category?: string };
 
@@ -90,10 +91,12 @@ export default function SkillManager({
   };
 
   const handleSelectFile = (file: any) => {
-    if (file?.payload?.data?.cloudinarySecureUrl) {
-      setEditingThumbnail(file.payload.data.cloudinarySecureUrl);
-    } else if (file?.cloudinarySecureUrl) {
-      setEditingThumbnail(file.cloudinarySecureUrl);
+    const thumbnailUrl = file?.payload?.data
+      ? resolveManagedFileUrl(file.payload.data, userId, "thumbnail")
+      : resolveManagedFileUrl(file, userId, "thumbnail");
+
+    if (thumbnailUrl) {
+      setEditingThumbnail(thumbnailUrl);
     }
     setShowMedia(false);
   };
@@ -107,8 +110,12 @@ export default function SkillManager({
     formData.append("caption", "Skill thumbnail");
     try {
       const response = await fileApiRequest.uploadFile(formData);
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        setEditingThumbnail(response.payload.data.cloudinarySecureUrl);
+      const thumbnailUrl = response.payload?.data
+        ? resolveManagedFileUrl(response.payload.data, userId, "thumbnail")
+        : null;
+
+      if (thumbnailUrl) {
+        setEditingThumbnail(thumbnailUrl);
       }
     } catch (err) {
       console.error("Upload failed", err);

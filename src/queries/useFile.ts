@@ -4,18 +4,33 @@ import {
   CreateFolderBodyType,
 } from "@/schemaValidations/file.schema";
 
-export const useGetFilesByUser = (userId: string, page?: number, size?: number) => {
+export const useGetFilesByUser = (
+  userId: string,
+  page?: number,
+  size?: number,
+  keyword?: string
+) => {
+  const normalizedKeyword = keyword?.trim() || undefined;
+
   return useQuery({
-    queryKey: ["files", "user", userId, page, size],
-    queryFn: () => fileApiRequest.getFilesByUser(userId, page, size),
+    queryKey: ["files", "user", userId, page, size, normalizedKeyword],
+    queryFn: () => fileApiRequest.getFilesByUser(userId, page, size, normalizedKeyword),
     enabled: !!userId,
   });
 };
 
-export const useGetFilesByFolder = (folderId: string, userId: string) => {
+export const useGetFilesByFolder = (
+  folderId: string,
+  userId: string,
+  page?: number,
+  size?: number,
+  keyword?: string
+) => {
+  const normalizedKeyword = keyword?.trim() || undefined;
+
   return useQuery({
-    queryKey: ["files", "folder", folderId, userId],
-    queryFn: () => fileApiRequest.getFilesByFolder(folderId, userId),
+    queryKey: ["files", "folder", folderId, userId, page, size, normalizedKeyword],
+    queryFn: () => fileApiRequest.getFilesByFolder(folderId, userId, page, size, normalizedKeyword),
     enabled: !!folderId && !!userId,
   });
 };

@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import fileApiRequest from "@/apiRequests/file";
 import { Upload } from "lucide-react";
+import { resolveManagedFileUrl } from "@/lib/file-media";
 
 const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"), {
   ssr: false,
@@ -126,8 +127,12 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        form.setValue('thumbnail', response.payload.data.cloudinarySecureUrl);
+      const thumbnailUrl = response.payload?.data
+        ? resolveManagedFileUrl(response.payload.data, userId, "thumbnail")
+        : null;
+
+      if (thumbnailUrl) {
+        form.setValue('thumbnail', thumbnailUrl);
         toast({ description: "Thumbnail uploaded successfully" });
       }
     } catch (error: any) {
@@ -330,7 +335,10 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
       open={showThumbnailLibrary}
       onOpenChange={setShowThumbnailLibrary}
       onSelectFile={(file) => {
-        form.setValue('thumbnail', file.cloudinarySecureUrl);
+        const thumbnailUrl = resolveManagedFileUrl(file, userId, "thumbnail");
+        if (thumbnailUrl) {
+          form.setValue('thumbnail', thumbnailUrl);
+        }
         setShowThumbnailLibrary(false);
       }}
       userId={userId}

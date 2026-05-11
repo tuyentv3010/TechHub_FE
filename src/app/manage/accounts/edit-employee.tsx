@@ -27,6 +27,7 @@ import { useGetAccount, useUpdateAccountMutation, useAccountProfile } from "@/qu
 import { useGetRoles } from "@/queries/useRole";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import fileApiRequest from "@/apiRequests/file";
+import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
 
 type EditEmployeeProps = {
   id: string; // UUID
@@ -97,7 +98,7 @@ export default function EditEmployee({
       setPreviewUrl(url);
       return url;
     }
-    return avatar;
+    return normalizePersistedMediaUrl(avatar);
   }, [file, avatar]);
 
   useEffect(() => {
@@ -192,8 +193,12 @@ export default function EditEmployee({
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        form.setValue('avatar', response.payload.data.cloudinarySecureUrl);
+      const avatarUrl = response.payload?.data
+        ? resolveManagedFileUrl(response.payload.data, userId, "thumbnail")
+        : null;
+
+      if (avatarUrl) {
+        form.setValue('avatar', avatarUrl);
         setFile(undefined);
         toast({ description: "Avatar uploaded successfully" });
       }
@@ -257,7 +262,7 @@ export default function EditEmployee({
                   <FormItem>
                     <div className="flex gap-2 items-start justify-start">
                       <Avatar className="aspect-square w-[100px] h-[100px] rounded-md object-cover">
-                        <AvatarImage src={previewAvatarFromFile} className="object-cover" />
+                        <AvatarImage src={previewAvatarFromFile || undefined} className="object-cover" />
                         <AvatarFallback className="rounded-none">
                           {username || t("AvatarFallback")}
                         </AvatarFallback>
@@ -462,7 +467,10 @@ export default function EditEmployee({
         open={showAvatarLibrary}
         onOpenChange={setShowAvatarLibrary}
         onSelectFile={(file) => {
-          form.setValue('avatar', file.cloudinarySecureUrl);
+          const avatarUrl = resolveManagedFileUrl(file, userId, "thumbnail");
+          if (avatarUrl) {
+            form.setValue('avatar', avatarUrl);
+          }
           setFile(undefined);
           setShowAvatarLibrary(false);
         }}

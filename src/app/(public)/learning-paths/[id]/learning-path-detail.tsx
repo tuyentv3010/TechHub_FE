@@ -31,6 +31,7 @@ import { CourseInPathType } from "@/schemaValidations/learning-path.schema";
 import PathViewer from "./path-viewer";
 import envConfig from "@/config";
 import { toast } from "sonner";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 interface LearningPathDetailProps {
   pathId: string;
@@ -234,7 +235,9 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
                     .sort((a: CourseInPathType, b: CourseInPathType) => a.order - b.order)
                     .map((course: CourseInPathType, idx: number) => {
                       const courseDetail = courseDetailsMap.get(course.courseId);
-                      const thumbnail = courseDetail?.thumbnail?.secureUrl || courseDetail?.thumbnail?.url;
+                      const thumbnail = normalizePersistedMediaUrl(
+                        courseDetail?.thumbnail?.secureUrl || courseDetail?.thumbnail?.url
+                      );
                       
                       return (
                         <Link 

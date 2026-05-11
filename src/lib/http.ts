@@ -11,8 +11,10 @@ import { LoginResType } from "@/schemaValidations/auth.schema";
 import { redirect } from "next/navigation";
 
 type CustomOptions = Omit<RequestInit, "method"> & {
+  auth?: boolean;
   baseUrl?: string | undefined;
   params?: Record<string, string | number | boolean | undefined>;
+  redirectOnUnauthorized?: boolean;
   suppressErrorLog?: boolean;
 };
 
@@ -128,7 +130,7 @@ const request = async <Response>(
         };
 
   let accessToken: string | null = null;
-  if (isClient) {
+  if (isClient && options?.auth !== false) {
     accessToken = getAccessTokenFromLocalStorage();
     if (accessToken) {
       baseHeaders.Authorization = `Bearer ${accessToken}`;
@@ -229,6 +231,18 @@ const request = async <Response>(
           }
         );
       } else if (res.status === AUTHENTICATION_ERROR_STATUS) {
+        const message = contentType.includes("application/json")
+          ? payload.message || "Unauthorized"
+          : `Non-JSON response: ${payload.slice(0, 100)}...`;
+
+        if (options?.redirectOnUnauthorized === false) {
+          throw new HttpError({
+            status: res.status,
+            payload,
+            message,
+          });
+        }
+
         console.warn('🔐 [HTTP] 401 Unauthorized - Token expired or invalid');
         if (isClient && !clientLogoutRequest) {
           console.log('🚪 [HTTP] Logging out user...');
@@ -256,6 +270,11 @@ const request = async <Response>(
           )[1];
           redirect(`/logout?accessToken=${token}`);
         }
+        throw new HttpError({
+          status: res.status,
+          payload,
+          message,
+        });
       } else if (res.status === FORBIDDEN_ERROR_STATUS) {
         let message = "Không có quyền truy cập.";
         if (
@@ -332,7 +351,7 @@ const request = async <Response>(
 
 // Token refresh logic
 // Use Next.js API route instead of direct backend call to enable server-side cookie clearing
-const refreshToken = async () => {
+const refreshToken = async (redirectOnFailure = true) => {
   const refreshToken = getRefreshTokenFromLocalStorage();
   if (!refreshToken) {
     throw new HttpError({
@@ -393,7 +412,9 @@ const refreshToken = async () => {
     document.cookie = `accessToken=; ${clearCookieOptions}`;
     document.cookie = `refreshToken=; ${clearCookieOptions}`;
     document.cookie = `authStorageMode=; ${clearCookieOptions}`;
-    location.href = "/login";
+    if (redirectOnFailure) {
+      location.href = "/login";
+    }
     throw error;
   }
 };
@@ -407,10 +428,16 @@ const requestWithRefresh = async <Response>(
   try {
     return await request<Response>(method, url, options);
   } catch (error: any) {
-    if (error.status === AUTHENTICATION_ERROR_STATUS && isClient) {
+    if (
+      error.status === AUTHENTICATION_ERROR_STATUS &&
+      isClient &&
+      options?.auth !== false
+    ) {
       console.log('🔄 [HTTP] Attempting to refresh token...');
       try {
-        const newAccessToken = await refreshToken();
+        const newAccessToken = await refreshToken(
+          options?.redirectOnUnauthorized !== false
+        );
         console.log('✅ [HTTP] Token refreshed successfully');
         const newOptions = {
           ...options,

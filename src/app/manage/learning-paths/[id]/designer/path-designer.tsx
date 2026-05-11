@@ -39,6 +39,7 @@ import CourseSelector from "../../course-selector";
 import courseApiRequest from "@/apiRequests/course";
 import { CourseItemResType } from "@/schemaValidations/course.schema";
 import Image from "next/image";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 interface PathDesignerProps {
   pathId: string;
@@ -220,6 +221,9 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
         console.log('🏗️ Starting to create nodes...');
         const courseNodes: Node[] = courses.map((course: CourseInPathType, index: number) => {
           const courseDetail = detailsMap.get(course.courseId);
+          const thumbnailUrl = normalizePersistedMediaUrl(
+            courseDetail?.thumbnail?.secureUrl || courseDetail?.thumbnail?.url
+          );
           
           // Use saved position if available, otherwise use grid layout
           const position = course.positionX !== undefined && course.positionY !== undefined
@@ -230,7 +234,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
             courseId: course.courseId,
             hasCourseDetail: !!courseDetail,
             title: courseDetail?.title || course.title,
-            thumbnailUrl: courseDetail?.thumbnail?.secureUrl || courseDetail?.thumbnail?.url,
+            thumbnailUrl,
             position,
             usingSavedPosition: course.positionX !== undefined,
           });
@@ -242,7 +246,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
             data: {
               title: courseDetail?.title || course.title || "Untitled Course",
               description: courseDetail?.description || course.description || "",
-              thumbnail: courseDetail?.thumbnail?.secureUrl || courseDetail?.thumbnail?.url,
+              thumbnail: thumbnailUrl,
               order: course.order,
               isOptional: course.isOptional === "Y",
               isCompleted: course.isCompleted || false,

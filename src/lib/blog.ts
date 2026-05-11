@@ -1,4 +1,4 @@
-import { TocItem } from "@/types/blog.types";
+import type { Blog, BlogAttachment, TocItem } from "@/types/blog.types";
 import { marked } from "marked";
 
 const DEFAULT_WPM = 200;
@@ -22,6 +22,33 @@ export const createBlogSlug = (title: string, id: string): string => {
   const titleSlug = slugify(title);
   // Sử dụng full UUID để đảm bảo có thể query được từ backend
   return `${titleSlug}-${id}`;
+};
+
+const resolveBlogImageUrl = (value: unknown): string | null => {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+
+  if (typeof value === "object") {
+    const image = value as {
+      secureUrl?: string;
+      publicUrl?: string;
+      url?: string;
+    };
+    return image.secureUrl || image.publicUrl || image.url || null;
+  }
+
+  return null;
+};
+
+export const getBlogImageUrl = (blog: Blog) => {
+  const thumbnailUrl = resolveBlogImageUrl(blog.thumbnail);
+  if (thumbnailUrl) return thumbnailUrl;
+
+  const imageAttachment = blog.attachments?.find((attachment: BlogAttachment) =>
+    attachment.type?.toLowerCase().startsWith("image")
+  );
+
+  return resolveBlogImageUrl(imageAttachment?.url);
 };
 
 /**

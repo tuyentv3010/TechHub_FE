@@ -27,6 +27,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useCreateVNPayPayment, useCreatePayPalPayment } from "@/queries/usePayment";
 import { useAccountProfile } from "@/queries/useAccount";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 type PaymentMethod = "vnpay" | "paypal" | null;
 
@@ -241,6 +242,9 @@ export default function PaymentPage() {
     : 0;
 
   const finalPrice = courseSummary.discountPrice || courseSummary.price;
+  const courseThumbnailUrl = normalizePersistedMediaUrl(
+    courseSummary.thumbnail?.secureUrl || courseSummary.thumbnail?.url
+  );
 
   return (
     <main className="min-h-screen bg-background pb-20 pt-24">
@@ -369,10 +373,10 @@ export default function PaymentPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Course Thumbnail */}
-                {courseSummary.thumbnail?.url && (
+                {courseThumbnailUrl && (
                   <div className="overflow-hidden rounded-lg">
                     <img
-                      src={courseSummary.thumbnail.url}
+                      src={courseThumbnailUrl}
                       alt={courseSummary.title}
                       className="h-40 w-full object-cover"
                     />

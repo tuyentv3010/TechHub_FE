@@ -455,6 +455,7 @@
     letter-spacing: 0.18em;
     text-align: left;
     text-transform: uppercase;
+    vertical-align: middle;
   }
 
   .dark .manage-shell .manage-table-shell th {
@@ -464,7 +465,7 @@
   .manage-shell .manage-table-shell td {
     padding: 1rem 0.9rem;
     text-align: left;
-    vertical-align: top;
+    vertical-align: middle;
     color: #0f172a;
   }
 
@@ -820,6 +821,11 @@
 
   .manage-shell .manage-finance-table thead {
     background: rgba(241, 245, 249, 0.92);
+  }
+
+  .manage-shell .manage-finance-table th,
+  .manage-shell .manage-finance-table td {
+    vertical-align: middle;
   }
 
   .dark .manage-shell .manage-finance-table thead {
@@ -1485,6 +1491,40 @@
 .animate-marquee-pause {
   animation: marqueePause 30s linear infinite; /* Chạy 40s nhưng nghỉ chỉ 5% thời gian */
   animation-play-state: running;
+}
+
+@keyframes orbitCategoriesSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbitCategoriesCounterSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.orbit-categories-spin {
+  animation-name: orbitCategoriesSpin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-play-state: running;
+  will-change: transform;
+}
+
+.orbit-categories-counter-spin {
+  animation-name: orbitCategoriesCounterSpin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-play-state: running;
+  will-change: transform;
 }
 
 @layer components {

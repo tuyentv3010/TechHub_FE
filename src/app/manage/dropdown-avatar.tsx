@@ -17,6 +17,7 @@ import { useTranslations } from "next-intl";
 import { useAppContext } from "@/components/app-provider";
 import { useAccountProfile } from "@/queries/useAccount";
 import { getUserInfoFromStorage, removeTokenFromLocalStorage } from "@/lib/utils";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 import { User, LogOut, BookText, BarChart3 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -138,6 +139,11 @@ export default function DropdownAvatar() {
     );
   }
 
+  const avatarUrl =
+    normalizePersistedMediaUrl(userInfo?.avatar) ||
+    normalizePersistedMediaUrl(account?.avatar) ||
+    "/placeholder-avatar.jpg";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -146,9 +152,9 @@ export default function DropdownAvatar() {
           size="icon"
           className="app-control app-control-icon relative"
         >
-          <Avatar className="app-control-avatar">
-            <AvatarImage 
-              src={userInfo?.avatar || account?.avatar || "/placeholder-avatar.jpg"} 
+            <Avatar className="app-control-avatar">
+              <AvatarImage
+              src={avatarUrl}
               alt={userInfo?.username || account?.username || "User"}
               className="object-cover"
             />

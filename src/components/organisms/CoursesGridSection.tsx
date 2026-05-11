@@ -63,7 +63,7 @@ export function CoursesGridSection({
             actions={<Button asChild variant="outline"><Link href="/courses">{viewAllText}</Link></Button>}
           />
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid auto-rows-fr grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[...Array(6)].map((_, index) => (
               <div key={index} className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
                 <div className="h-48 animate-pulse bg-muted"></div>
@@ -101,7 +101,7 @@ export function CoursesGridSection({
           title={title}
           actions={<Button asChild variant="outline"><Link href="/courses">{viewAllText}</Link></Button>}
         />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid auto-rows-fr grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {displayCoursesWithInstructors.length > 0 ? (
             displayCoursesWithInstructors.map((course, index) => (
               <CourseCardWithInstructor key={course.instructorId + index} course={course} />

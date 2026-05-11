@@ -41,7 +41,47 @@ type MediaLibraryDialogProps = {
 };
 
 type FilePagePayload = {
-  content: FileType[];
+  content?: FileType[];
+  totalPages?: number;
+};
+
+type FileListPayload = {
+  data?: FileType[] | FilePagePayload;
+  pagination?: {
+    totalPages?: number;
+  };
+};
+
+type FileListResponse = {
+  payload?: FileListPayload;
+};
+
+const DEFAULT_PAGE_SIZE = 10;
+
+const isFilePagePayload = (value: unknown): value is FilePagePayload =>
+  !!value && typeof value === "object" && "content" in value;
+
+const getFilesFromResponse = (response?: FileListResponse): FileType[] => {
+  const data = response?.payload?.data;
+
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (isFilePagePayload(data) && Array.isArray(data.content)) {
+    return data.content;
+  }
+
+  return [];
+};
+
+const getTotalPagesFromResponse = (response?: FileListResponse) => {
+  const data = response?.payload?.data;
+  const totalPages =
+    response?.payload?.pagination?.totalPages ||
+    (isFilePagePayload(data) ? data.totalPages : undefined);
+
+  return Math.max(totalPages || 1, 1);
 };
 
 export default function MediaLibraryDialog({
@@ -60,7 +100,7 @@ export default function MediaLibraryDialog({
   const [previewFallbackState, setPreviewFallbackState] = useState<
     Record<string, { previewIndex?: number; sourceIndex?: number }>
   >({});
-  const pageSize = 54;
+  const pageSize = DEFAULT_PAGE_SIZE;
 
   const { data: foldersData } = useGetFoldersByUser(userId);
   const folders: FolderType[] = foldersData?.payload?.data || [];
@@ -72,31 +112,29 @@ export default function MediaLibraryDialog({
   );
   const { data: folderFilesData, isLoading: loadingFolderFiles } = useGetFilesByFolder(
     selectedLibraryFolder || "",
-    userId
+    userId,
+    currentPage,
+    pageSize
   );
 
-  const isPageResponse =
-    allFilesData?.payload?.data &&
-    typeof allFilesData.payload.data === "object" &&
-    "content" in allFilesData.payload.data;
-
-  const filesFromAllFiles: FileType[] = isPageResponse
-    ? ((allFilesData.payload.data as FilePagePayload).content || [])
-    : Array.isArray(allFilesData?.payload?.data)
-      ? allFilesData.payload.data
-      : [];
-
-  const filesFromFolder: FileType[] = Array.isArray(folderFilesData?.payload?.data)
-    ? folderFilesData.payload.data
-    : [];
+  const filesFromAllFiles = getFilesFromResponse(allFilesData);
+  const filesFromFolder = getFilesFromResponse(folderFilesData);
 
   const allFiles = selectedLibraryFolder ? filesFromFolder : filesFromAllFiles;
   const loading = selectedLibraryFolder ? loadingFolderFiles : loadingFiles;
-  const totalPages = allFilesData?.payload?.pagination?.totalPages || 1;
+  const totalPages = selectedLibraryFolder
+    ? getTotalPagesFromResponse(folderFilesData)
+    : getTotalPagesFromResponse(allFilesData);
 
   useEffect(() => {
     setPreviewFallbackState({});
   }, [allFiles]);
+
+  useEffect(() => {
+    if (currentPage > totalPages - 1) {
+      setCurrentPage(Math.max(totalPages - 1, 0));
+    }
+  }, [currentPage, totalPages]);
 
   const filteredFiles = allFiles.filter((file) => {
     const matchesType = mediaType === "ALL" || file.fileType === mediaType;
@@ -155,7 +193,10 @@ export default function MediaLibraryDialog({
             <Folder className="h-4 w-4 text-blue-500" />
             <span
               className="flex-1 truncate text-sm"
-              onClick={() => setSelectedLibraryFolder(folder.id)}
+              onClick={() => {
+                setCurrentPage(0);
+                setSelectedLibraryFolder(folder.id);
+              }}
             >
               {folder.name}
             </span>
@@ -186,12 +227,12 @@ export default function MediaLibraryDialog({
 
   const getPreviewUrl = (file: FileType) => {
     const previewIndex = previewFallbackState[file.id]?.previewIndex ?? 0;
-    return getFilePreviewCandidates(file)[previewIndex] ?? null;
+    return getFilePreviewCandidates(file, userId)[previewIndex] ?? null;
   };
 
   const getSourceUrl = (file: FileType) => {
     const sourceIndex = previewFallbackState[file.id]?.sourceIndex ?? 0;
-    return getFileSourceCandidates(file)[sourceIndex] ?? null;
+    return getFileSourceCandidates(file, userId)[sourceIndex] ?? null;
   };
 
   const advancePreviewCandidate = (
@@ -338,7 +379,10 @@ export default function MediaLibraryDialog({
                 className={`flex cursor-pointer items-center gap-2 rounded px-2 py-2 hover:bg-muted ${
                   selectedLibraryFolder === null ? "bg-muted font-medium" : ""
                 }`}
-                onClick={() => setSelectedLibraryFolder(null)}
+                onClick={() => {
+                  setCurrentPage(0);
+                  setSelectedLibraryFolder(null);
+                }}
               >
                 <Folder className="h-4 w-4 text-gray-500" />
                 <span className="flex-1 text-sm">All Media</span>

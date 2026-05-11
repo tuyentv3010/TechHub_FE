@@ -3,6 +3,7 @@ import type { FileType } from "@/schemaValidations/file.schema";
 type FileLike = Partial<
   Pick<
     FileType,
+    | "id"
     | "fileType"
     | "objectKey"
     | "thumbnailObjectKey"
@@ -66,6 +67,32 @@ const normalizeMediaUrl = (value: unknown): string | null => {
   return value.trim();
 };
 
+const removePresignedQuery = (value: unknown): string | null => {
+  const normalizedUrl = normalizeMediaUrl(value);
+  if (!normalizedUrl) {
+    return null;
+  }
+
+  try {
+    const url = new URL(normalizedUrl);
+    const hasPresignedParams = Array.from(url.searchParams.keys()).some((key) =>
+      key.toLowerCase().startsWith("x-amz-")
+    );
+
+    if (hasPresignedParams) {
+      url.search = "";
+      return url.toString();
+    }
+  } catch {
+    return normalizedUrl;
+  }
+
+  return normalizedUrl;
+};
+
+export const normalizePersistedMediaUrl = (value: unknown): string | null =>
+  removePresignedQuery(value);
+
 const collectAvailableUrls = (...values: unknown[]) => {
   const resolvedUrls: string[] = [];
   const seenUrls = new Set<string>();
@@ -81,9 +108,31 @@ const collectAvailableUrls = (...values: unknown[]) => {
   return resolvedUrls;
 };
 
-export const getFilePreviewCandidates = (file: FileLike): string[] => {
+type FileVariant = "content" | "thumbnail";
+
+export const buildFileMediaProxyUrl = (
+  fileId: unknown,
+  userId: unknown,
+  variant: FileVariant = "content"
+): string | null => {
+  if (!isNonEmptyString(fileId) || !isNonEmptyString(userId)) {
+    return null;
+  }
+
+  return `/api/proxy/files/${encodeURIComponent(fileId.trim())}/${variant}?userId=${encodeURIComponent(userId.trim())}`;
+};
+
+export const getFilePreviewCandidates = (
+  file: FileLike,
+  userId?: unknown
+): string[] => {
+  const thumbnailProxyUrl = buildFileMediaProxyUrl(file.id, userId, "thumbnail");
+  const contentProxyUrl = buildFileMediaProxyUrl(file.id, userId, "content");
+
   if (file.fileType === "IMAGE") {
     return collectAvailableUrls(
+      thumbnailProxyUrl,
+      contentProxyUrl,
       file.secureUrl,
       file.cloudinarySecureUrl,
       file.publicUrl,
@@ -96,6 +145,7 @@ export const getFilePreviewCandidates = (file: FileLike): string[] => {
 
   if (file.fileType === "VIDEO") {
     return collectAvailableUrls(
+      thumbnailProxyUrl,
       file.thumbnailUrl,
       getPublicMinioUrlFromObjectKey(file.thumbnailObjectKey)
     );
@@ -104,8 +154,12 @@ export const getFilePreviewCandidates = (file: FileLike): string[] => {
   return [];
 };
 
-export const getFileSourceCandidates = (file: FileLike): string[] =>
+export const getFileSourceCandidates = (
+  file: FileLike,
+  userId?: unknown
+): string[] =>
   collectAvailableUrls(
+    buildFileMediaProxyUrl(file.id, userId, "content"),
     file.secureUrl,
     file.cloudinarySecureUrl,
     file.publicUrl,
@@ -113,8 +167,45 @@ export const getFileSourceCandidates = (file: FileLike): string[] =>
     getPublicMinioUrlFromObjectKey(file.objectKey)
   );
 
-export const resolveFilePreviewUrl = (file: FileLike): string | null =>
-  getFilePreviewCandidates(file)[0] ?? null;
+export const resolveFilePreviewUrl = (
+  file: FileLike,
+  userId?: unknown
+): string | null => getFilePreviewCandidates(file, userId)[0] ?? null;
 
-export const resolveFileSourceUrl = (file: FileLike): string | null =>
-  getFileSourceCandidates(file)[0] ?? null;
+export const resolveFileSourceUrl = (
+  file: FileLike,
+  userId?: unknown
+): string | null => getFileSourceCandidates(file, userId)[0] ?? null;
+
+export const resolvePersistentFileUrl = (
+  file: FileLike,
+  variant: "content" | "thumbnail" = "content"
+): string | null => {
+  if (variant === "thumbnail") {
+    return (
+      getPublicMinioUrlFromObjectKey(file.thumbnailObjectKey) ||
+      getPublicMinioUrlFromObjectKey(file.objectKey) ||
+      removePresignedQuery(file.thumbnailUrl) ||
+      removePresignedQuery(file.publicUrl) ||
+      removePresignedQuery(file.cloudinaryUrl) ||
+      removePresignedQuery(file.secureUrl) ||
+      removePresignedQuery(file.cloudinarySecureUrl)
+    );
+  }
+
+  return (
+    getPublicMinioUrlFromObjectKey(file.objectKey) ||
+    removePresignedQuery(file.publicUrl) ||
+    removePresignedQuery(file.cloudinaryUrl) ||
+    removePresignedQuery(file.secureUrl) ||
+    removePresignedQuery(file.cloudinarySecureUrl)
+  );
+};
+
+export const resolveManagedFileUrl = (
+  file: FileLike,
+  userId: unknown,
+  variant: FileVariant = "content"
+): string | null =>
+  buildFileMediaProxyUrl(file.id, userId, variant) ||
+  resolvePersistentFileUrl(file, variant);

@@ -14,13 +14,15 @@ import { AdminPageFrame, AdminSurface } from "@/components/manage/admin-page-fra
 import { useGetLangfuseTraceDetail, useGetLangfuseTraces } from "@/queries/useAi";
 import { Activity, ExternalLink, Eye, Settings, Sparkles } from "lucide-react";
 
+const DEFAULT_PAGE_SIZE = 10;
+
 export default function AiTracesPage() {
   const t = useTranslations("AiTraces");
   const paginationT = useTranslations("Pagination");
   const locale = useLocale();
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const { data: tracesRes, isLoading, isFetching } = useGetLangfuseTraces(page, pageSize);
   const { data: detailRes } = useGetLangfuseTraceDetail(selectedTraceId || "");

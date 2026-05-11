@@ -19,6 +19,7 @@ import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useTranslations } from "next-intl";
+import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
 
 export default function ProfilePage() {
   const t = useTranslations("ProfilePage");
@@ -89,8 +90,12 @@ export default function ProfilePage() {
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        profileForm.setValue('avatar', response.payload.data.cloudinarySecureUrl);
+      const avatarUrl = response.payload?.data
+        ? resolveManagedFileUrl(response.payload.data, userId, "thumbnail")
+        : null;
+
+      if (avatarUrl) {
+        profileForm.setValue('avatar', avatarUrl);
         toast({ description: "Avatar uploaded successfully" });
       }
     } catch (error: any) {
@@ -187,7 +192,7 @@ export default function ProfilePage() {
                   <div className="flex items-start gap-6">
                     <Avatar className="h-24 w-24">
                       <AvatarImage 
-                        src={profileForm.watch('avatar') || undefined} 
+                        src={normalizePersistedMediaUrl(profileForm.watch('avatar')) || undefined}
                         alt={account?.username}
                         className="object-cover"
                       />
@@ -392,7 +397,10 @@ export default function ProfilePage() {
         open={showAvatarLibrary}
         onOpenChange={setShowAvatarLibrary}
         onSelectFile={(file) => {
-          profileForm.setValue('avatar', file.cloudinarySecureUrl);
+          const avatarUrl = resolveManagedFileUrl(file, userId, "thumbnail");
+          if (avatarUrl) {
+            profileForm.setValue('avatar', avatarUrl);
+          }
           setShowAvatarLibrary(false);
         }}
         userId={userId}

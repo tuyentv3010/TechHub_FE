@@ -280,7 +280,7 @@ const aiApiRequest = {
   // LANGFUSE ANALYTICS
   // ============================================
 
-  getLangfuseTraces: (page: number = 1, limit: number = 50) =>
+  getLangfuseTraces: (page: number = 1, limit: number = 10) =>
     http.get<{ payload: { data: { traces: any[]; total: number } } }>(
       `/app/api/proxy/ai/admin/langfuse-traces?page=${page}&limit=${limit}`
     ),

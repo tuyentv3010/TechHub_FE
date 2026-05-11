@@ -405,11 +405,44 @@ export type UpdateExerciseBodyType = z.TypeOf<typeof UpdateExerciseBody>;
 
 // Submit Exercise Body
 export const SubmitExerciseBody = z.object({
+  exerciseId: z.string().optional(),
   answer: z.string().min(1, "Answer is required"),
   submissionData: z.any().optional(),
 });
 
 export type SubmitExerciseBodyType = z.TypeOf<typeof SubmitExerciseBody>;
+
+export const QuizReviewSuggestion = z.object({
+  lessonId: z.string().nullable().optional(),
+  title: z.string(),
+  reason: z.string(),
+  action: z.string(),
+});
+
+export const QuizFeedback = z.object({
+  correct: z.boolean(),
+  summary: z.string(),
+  explanation: z.string(),
+  selectedAnswers: z.array(z.string()).optional(),
+  correctAnswers: z.array(z.string()).optional(),
+  weakConcepts: z.array(z.string()).optional(),
+  reviewSuggestions: z.array(QuizReviewSuggestion).optional(),
+  nextAction: z.string().optional(),
+  source: z.string().optional(),
+});
+
+export const SubmitExerciseResponse = z.object({
+  submissionId: z.string(),
+  status: z.string(),
+  grade: z.number().nullable().optional(),
+  gradedAt: z.string().nullable().optional(),
+  passed: z.boolean().nullable().optional(),
+  testCaseResults: z.array(z.any()).optional(),
+  feedback: QuizFeedback.nullable().optional(),
+});
+
+export type QuizFeedbackType = z.TypeOf<typeof QuizFeedback>;
+export type SubmitExerciseResponseType = z.TypeOf<typeof SubmitExerciseResponse>;
 
 // ============================================
 // PROGRESS SCHEMAS

@@ -41,6 +41,7 @@ import fileApiRequest from "@/apiRequests/file";
 import { useAccountProfile } from "@/queries/useAccount";
 import { FolderOpen } from "lucide-react";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
+import { resolveManagedFileUrl } from "@/lib/file-media";
 
 const lowlight = createLowlight(common);
 
@@ -58,6 +59,11 @@ type FileUploadResponse = {
       id: string;
       cloudinarySecureUrl: string;
       cloudinaryUrl: string;
+      objectKey?: string | null;
+      publicUrl?: string | null;
+      secureUrl?: string | null;
+      thumbnailObjectKey?: string | null;
+      thumbnailUrl?: string | null;
       name: string;
       fileType: string;
     };
@@ -126,16 +132,22 @@ export default function RichTextEditor({
   }
 
   const handleSelectImageFromLibrary = (file: any) => {
-    editor.chain().focus().setImage({ src: file.cloudinarySecureUrl }).run();
+    const imageUrl = resolveManagedFileUrl(file, userId, "thumbnail");
+    if (imageUrl) {
+      editor.chain().focus().setImage({ src: imageUrl }).run();
+    }
     setShowImageLibrary(false);
   };
 
   const handleSelectVideoFromLibrary = (file: any) => {
-    editor
-      .chain()
-      .focus()
-      .setVideo({ src: file.cloudinarySecureUrl, width: 640, height: 360 })
-      .run();
+    const videoUrl = resolveManagedFileUrl(file, userId, "content");
+    if (videoUrl) {
+      editor
+        .chain()
+        .focus()
+        .setVideo({ src: videoUrl, width: 640, height: 360 })
+        .run();
+    }
     setShowVideoLibrary(false);
   };
 
@@ -197,8 +209,12 @@ export default function RichTextEditor({
 
       const result = await fileApiRequest.uploadFile(formData);
       
-      if (result.status === 200 && result.payload?.data?.cloudinarySecureUrl) {
-        editor.chain().focus().setImage({ src: result.payload.data.cloudinarySecureUrl }).run();
+      const imageUrl = result.payload?.data
+        ? resolveManagedFileUrl(result.payload.data, userId, "thumbnail")
+        : null;
+
+      if (result.status === 200 && imageUrl) {
+        editor.chain().focus().setImage({ src: imageUrl }).run();
         console.log("Image uploaded successfully:", result.payload.data);
       } else {
         throw new Error("Invalid response from server");
@@ -247,11 +263,15 @@ export default function RichTextEditor({
 
       const result = await fileApiRequest.uploadFile(formData);
 
-      if (result.status === 200 && result.payload?.data?.cloudinarySecureUrl) {
+      const videoUrl = result.payload?.data
+        ? resolveManagedFileUrl(result.payload.data, userId, "content")
+        : null;
+
+      if (result.status === 200 && videoUrl) {
         editor
           .chain()
           .focus()
-          .setVideo({ src: result.payload.data.cloudinarySecureUrl, width: 640, height: 360 })
+          .setVideo({ src: videoUrl, width: 640, height: 360 })
           .run();
         console.log("Video uploaded successfully:", result.payload.data);
       } else {

@@ -213,6 +213,7 @@ export const checkAndRefreshToken = async (param?: {
   onError?: () => void;
   onSuccess?: () => void;
   force?: boolean;
+  redirectOnError?: boolean;
 }) => {
   // Khong nen dua logic lay access vs refresh token ra khoi cai function 'checkAndRefreshToken'
   // Vi de moi lan ma checkAndRefreshToken() duoc goi thi chung ta se co mot access va refresh token moi
@@ -311,7 +312,13 @@ export const checkAndRefreshToken = async (param?: {
       
       // If refresh token not found in database (revoked), force redirect to login
       // This happens when token was rotated but old token still in cookies
-      if (error?.status === 401 || error?.message?.includes("not found") || error?.message?.includes("revoked") || error?.message?.includes("Cant not find")) {
+      if (
+        param?.redirectOnError !== false &&
+        (error?.status === 401 ||
+          error?.message?.includes("not found") ||
+          error?.message?.includes("revoked") ||
+          error?.message?.includes("Cant not find"))
+      ) {
         console.log("[checkAndRefreshToken] Refresh token revoked or invalid, redirecting to login");
         // Use window.location for full page reload to clear all state
         if (typeof window !== "undefined") {

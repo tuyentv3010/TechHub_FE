@@ -42,6 +42,7 @@ import { useGetSkills, useGetTags } from "@/queries/useCourse";
 import SkillManager from "@/components/manage/SkillManager";
 import TagManager from "@/components/manage/TagManager";
 import { CurrencyInputWithSwitch } from "@/components/ui/currency-input-with-switch";
+import { resolveManagedFileUrl } from "@/lib/file-media";
 
 export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   const t = useTranslations("ManageCourse");
@@ -168,9 +169,13 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        form.setValue('thumbnail', response.payload.data.cloudinarySecureUrl);
-        setThumbnailPreview(response.payload.data.cloudinarySecureUrl);
+      const thumbnailUrl = response.payload?.data
+        ? resolveManagedFileUrl(response.payload.data, userId, "thumbnail")
+        : null;
+
+      if (thumbnailUrl) {
+        form.setValue('thumbnail', thumbnailUrl);
+        setThumbnailPreview(thumbnailUrl);
         toast({ description: t("ThumbnailUploadSuccess") });
       }
     } catch (error: any) {
@@ -220,9 +225,13 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        form.setValue('introVideo', response.payload.data.cloudinarySecureUrl);
-        setVideoPreview(response.payload.data.cloudinarySecureUrl);
+      const videoUrl = response.payload?.data
+        ? resolveManagedFileUrl(response.payload.data, userId, "content")
+        : null;
+
+      if (videoUrl) {
+        form.setValue('introVideo', videoUrl);
+        setVideoPreview(videoUrl);
         toast({ description: t("VideoUploadSuccess") });
       }
     } catch (error: any) {
@@ -735,8 +744,11 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             mediaType="IMAGE"
             title={t("SelectThumbnail") || "Select Thumbnail"}
             onSelectFile={(file) => {
-              form.setValue("thumbnail", file.cloudinarySecureUrl);
-              setThumbnailPreview(file.cloudinarySecureUrl);
+              const thumbnailUrl = resolveManagedFileUrl(file, userId, "thumbnail");
+              if (thumbnailUrl) {
+                form.setValue("thumbnail", thumbnailUrl);
+                setThumbnailPreview(thumbnailUrl);
+              }
               setShowThumbnailLibrary(false);
             }}
           />
@@ -747,8 +759,11 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             mediaType="VIDEO"
             title={t("SelectIntroVideo") || "Select Intro Video"}
             onSelectFile={(file) => {
-              form.setValue("introVideo", file.cloudinarySecureUrl);
-              setVideoPreview(file.cloudinarySecureUrl);
+              const videoUrl = resolveManagedFileUrl(file, userId, "content");
+              if (videoUrl) {
+                form.setValue("introVideo", videoUrl);
+                setVideoPreview(videoUrl);
+              }
               setShowVideoLibrary(false);
             }}
           />

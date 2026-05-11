@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useGetCourseList, useGetSkills, useGetTags } from "@/queries/useCourse";
 import { formatPrice, formatCourseLevel, createCourseSlug } from "@/lib/course";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 const LEVELS = [
   { value: "ALL_LEVELS", label: "Tất cả cấp độ" },
@@ -43,6 +44,15 @@ const LANGUAGES = [
   { value: "JA", label: "日本語" },
 ];
 
+const COURSE_SELECT_TRIGGER_CLASS =
+  "h-12 border-border bg-background text-foreground shadow-sm data-[placeholder]:text-muted-foreground hover:bg-muted focus:ring-ring";
+const FILTER_SELECT_TRIGGER_CLASS =
+  "h-11 border-border bg-background text-foreground shadow-sm data-[placeholder]:text-muted-foreground hover:bg-muted focus:ring-ring";
+const COURSE_SELECT_CONTENT_CLASS =
+  "border-border bg-popover text-popover-foreground shadow-lg";
+const COURSE_SELECT_ITEM_CLASS =
+  "text-popover-foreground focus:bg-accent focus:text-accent-foreground";
+
 interface CoursesClientProps {
   initialCourses: any[];
   initialSkills: any[];
@@ -57,15 +67,26 @@ export default function CoursesClient({
   initialPagination,
 }: CoursesClientProps) {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
+  const searchParams = useSearchParams();
+  const initialSearchQuery = searchParams.get("search") ?? "";
+  const initialSelectedSkills = searchParams
+    .getAll("skillIds")
+    .flatMap((value) => value.split(","))
+    .filter(Boolean);
+  const hasInitialFilters =
+    initialSearchQuery.length > 0 || initialSelectedSkills.length > 0;
+
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedLevel, setSelectedLevel] = useState<string>("ALL");
   const [selectedLanguage, setSelectedLanguage] = useState<string>("ALL");
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(
+    initialSelectedSkills
+  );
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000000]);
   const [page, setPage] = useState(0);
   const [size] = useState(12);
-  const [isClientFiltering, setIsClientFiltering] = useState(false);
+  const [isClientFiltering, setIsClientFiltering] = useState(hasInitialFilters);
 
   // Fetch skills and tags (use initial data if available)
   const { data: skillsData } = useGetSkills();
@@ -197,13 +218,19 @@ export default function CoursesClient({
               {/* Categories Dropdown */}
               <div className="w-full md:w-44">
                 <Select value={selectedLevel} onValueChange={handleLevelChange}>
-                  <SelectTrigger className="h-12 border-gray-200 bg-gray-50">
+                  <SelectTrigger className={COURSE_SELECT_TRIGGER_CLASS}>
                     <SelectValue placeholder="Categories" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Tất cả</SelectItem>
+                  <SelectContent className={COURSE_SELECT_CONTENT_CLASS}>
+                    <SelectItem value="ALL" className={COURSE_SELECT_ITEM_CLASS}>
+                      Tất cả
+                    </SelectItem>
                     {LEVELS.map((level) => (
-                      <SelectItem key={level.value} value={level.value}>
+                      <SelectItem
+                        key={level.value}
+                        value={level.value}
+                        className={COURSE_SELECT_ITEM_CLASS}
+                      >
                         {level.label}
                       </SelectItem>
                     ))}
@@ -214,13 +241,19 @@ export default function CoursesClient({
               {/* Topic Dropdown */}
               <div className="w-full md:w-44">
                 <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
-                  <SelectTrigger className="h-12 border-gray-200 bg-gray-50">
+                  <SelectTrigger className={COURSE_SELECT_TRIGGER_CLASS}>
                     <SelectValue placeholder="Topic" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Tất cả</SelectItem>
+                  <SelectContent className={COURSE_SELECT_CONTENT_CLASS}>
+                    <SelectItem value="ALL" className={COURSE_SELECT_ITEM_CLASS}>
+                      Tất cả
+                    </SelectItem>
                     {LANGUAGES.map((lang) => (
-                      <SelectItem key={lang.value} value={lang.value}>
+                      <SelectItem
+                        key={lang.value}
+                        value={lang.value}
+                        className={COURSE_SELECT_ITEM_CLASS}
+                      >
                         {lang.label}
                       </SelectItem>
                     ))}
@@ -272,7 +305,7 @@ export default function CoursesClient({
                 )}
               </Button>
             </SheetTrigger>
-            <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+            <SheetContent className="w-full overflow-y-auto bg-background text-foreground sm:max-w-md">
               <SheetHeader>
                 <SheetTitle>Bộ lọc khóa học</SheetTitle>
                 <SheetDescription>Tùy chỉnh tiêu chí tìm kiếm của bạn</SheetDescription>
@@ -281,15 +314,21 @@ export default function CoursesClient({
               <div className="mt-6 space-y-6">
                 {/* Level Filter */}
                 <div>
-                  <label className="mb-2 block text-sm font-medium">Cấp độ</label>
+                  <label className="mb-2 block text-sm font-medium text-foreground">Cấp độ</label>
                   <Select value={selectedLevel} onValueChange={handleLevelChange}>
-                    <SelectTrigger>
+                    <SelectTrigger className={FILTER_SELECT_TRIGGER_CLASS}>
                       <SelectValue placeholder="Chọn cấp độ" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">Tất cả</SelectItem>
+                    <SelectContent className={COURSE_SELECT_CONTENT_CLASS}>
+                      <SelectItem value="ALL" className={COURSE_SELECT_ITEM_CLASS}>
+                        Tất cả
+                      </SelectItem>
                       {LEVELS.map((level) => (
-                        <SelectItem key={level.value} value={level.value}>
+                        <SelectItem
+                          key={level.value}
+                          value={level.value}
+                          className={COURSE_SELECT_ITEM_CLASS}
+                        >
                           {level.label}
                         </SelectItem>
                       ))}
@@ -299,15 +338,21 @@ export default function CoursesClient({
 
                 {/* Language Filter */}
                 <div>
-                  <label className="mb-2 block text-sm font-medium">Ngôn ngữ</label>
+                  <label className="mb-2 block text-sm font-medium text-foreground">Ngôn ngữ</label>
                   <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
-                    <SelectTrigger>
+                    <SelectTrigger className={FILTER_SELECT_TRIGGER_CLASS}>
                       <SelectValue placeholder="Chọn ngôn ngữ" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">Tất cả</SelectItem>
+                    <SelectContent className={COURSE_SELECT_CONTENT_CLASS}>
+                      <SelectItem value="ALL" className={COURSE_SELECT_ITEM_CLASS}>
+                        Tất cả
+                      </SelectItem>
                       {LANGUAGES.map((lang) => (
-                        <SelectItem key={lang.value} value={lang.value}>
+                        <SelectItem
+                          key={lang.value}
+                          value={lang.value}
+                          className={COURSE_SELECT_ITEM_CLASS}
+                        >
                           {lang.label}
                         </SelectItem>
                       ))}
@@ -480,6 +525,9 @@ export default function CoursesClient({
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {courses.map((course: any) => {
               const slug = createCourseSlug(course.title, course.id);
+              const thumbnailUrl = normalizePersistedMediaUrl(
+                course.thumbnail?.secureUrl || course.thumbnail?.url
+              );
               return (
                 <Card
                   key={course.id}
@@ -488,9 +536,9 @@ export default function CoursesClient({
                 >
                   {/* Thumbnail */}
                   <div className="relative aspect-video overflow-hidden bg-muted">
-                    {course.thumbnail?.url ? (
+                    {thumbnailUrl ? (
                       <img
-                        src={course.thumbnail.url}
+                        src={thumbnailUrl}
                         alt={course.title}
                         className="h-full w-full object-cover transition-transform group-hover:scale-105"
                       />

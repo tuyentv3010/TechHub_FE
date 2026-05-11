@@ -285,6 +285,34 @@
     "free": "Free",
     "startLearning": "Start Learning"
   },
+  "CourseComments": {
+    "count": "{count} Comments",
+    "sortNewest": "Newest",
+    "sortOldest": "Oldest",
+    "commentPlaceholder": "Share your thoughts...",
+    "insertEmoji": "Insert emoji",
+    "submitComment": "Comment",
+    "empty": "Be the first to share your thoughts.",
+    "reply": "Reply",
+    "replyPlaceholder": "Write a reply...",
+    "cancel": "Cancel",
+    "submitReply": "Send reply",
+    "replyCount": "{count} replies",
+    "emptyCommentTitle": "Please enter a comment",
+    "emptyReplyTitle": "Please enter a reply",
+    "newCourseCommentTitle": "New comment",
+    "newCourseCommentDescription": "Someone just commented in this course!",
+    "newLessonCommentDescription": "Someone just commented in this lesson!",
+    "submitCommentErrorTitle": "Could not send comment",
+    "submitReplyErrorTitle": "Could not send reply",
+    "submitCommentSuccessTitle": "Comment sent",
+    "submitReplySuccessTitle": "Reply sent",
+    "tryAgainDescription": "Please try again.",
+    "loginAndRetryDescription": "Please sign in and try again.",
+    "lessonDiscussionTitle": "Q&A - {title}",
+    "openDiscussion": "Open Q&A",
+    "userAvatarAlt": "User"
+  },
   "Footer": {
     "title": "TechHub",
     "description": "Leading online learning platform",
@@ -292,11 +320,189 @@
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service",
     "ConditionService": "Terms of Service",
-    "AboutWe": "About Us"
+    "AboutWe": "About Us",
+    "logoAlt": "TechHub Logo",
+    "brandDescription": "TechHub is a leading online technology learning platform. Discover high-quality courses, personalized learning paths, and an active learner community.",
+    "skillsTitle": "Skills",
+    "noSkillsAvailable": "No skills available.",
+    "quickLinksTitle": "Quick links",
+    "quickLinks": {
+      "about": "About us",
+      "contact": "Contact",
+      "courses": "Courses",
+      "learningPaths": "Learning paths",
+      "blog": "Blog & News"
+    },
+    "latestPostsTitle": "Latest posts",
+    "noLatestPosts": "No latest posts yet.",
+    "blogImageAlt": "Blog image",
+    "copyrightPrefix": "Copyright © {year}"
   },
   "PrivacyPolicy": {
     "title": "Privacy Policy",
     "lastUpdated": "Last updated"
+  },
+  "Legal": {
+    "backButton": {
+      "label": "Back",
+      "ariaLabel": "Go back to the previous page or homepage"
+    },
+    "finePrint": {
+      "prefix": "By continuing, you agree to our",
+      "termsOfService": "Terms of Service",
+      "and": "and",
+      "privacyPolicy": "Privacy Policy"
+    },
+    "terms": {
+      "metadataTitle": "Terms of Service | TechHub",
+      "metadataDescription": "Terms for using the TechHub learning platform.",
+      "eyebrow": "TechHub legal",
+      "title": "Terms of Service",
+      "description": "These terms describe how you may use TechHub, including your rights and responsibilities when learning, paying, interacting with content, and using learning support features.",
+      "lastUpdatedLabel": "Last updated",
+      "lastUpdated": "May 11, 2026",
+      "sections": [
+        {
+          "title": "Accounts and access",
+          "paragraphs": [
+            "You must provide accurate information when registering and are responsible for protecting your account, password, sessions, and all activity that occurs under your account."
+          ],
+          "bullets": [
+            "Do not share your account with others if the learning package or course does not allow it.",
+            "Notify TechHub if you discover unauthorized access or suspect that your account has been compromised."
+          ]
+        },
+        {
+          "title": "Course content",
+          "paragraphs": [
+            "Materials, videos, assignments, questions, learning paths, and content provided by instructors or TechHub are for personal learning use within the platform."
+          ],
+          "bullets": [
+            "Do not copy, redistribute, resell, or publicly publish course content without permission.",
+            "You may keep your own notes and submissions as long as they do not violate third-party intellectual property rights."
+          ]
+        },
+        {
+          "title": "Payment and enrollment",
+          "paragraphs": [
+            "Prices, benefits, and access conditions for each course are shown before payment. Transactions may be processed by a payment gateway or service partner integrated with TechHub."
+          ],
+          "bullets": [
+            "Course access may depend on payment status, refunds, or the policy of each program.",
+            "If a transaction fails or you were charged without enrollment, contact support so the payment can be reconciled."
+          ]
+        },
+        {
+          "title": "Acceptable use",
+          "paragraphs": [
+            "You agree to use TechHub in a way that respects other learners, instructors, and the platform's operation."
+          ],
+          "bullets": [
+            "Do not post spam, scams, harassment, unlawful content, or content that violates another person's privacy.",
+            "Do not attack, scan, exploit vulnerabilities, automate abnormal activity, or disrupt the service."
+          ]
+        },
+        {
+          "title": "AI features",
+          "paragraphs": [
+            "Some areas of TechHub may use AI to recommend courses, explain content, support learning, or create drafts. AI output is supportive and may need review."
+          ],
+          "bullets": [
+            "Do not rely on AI output as the only professional advice for important decisions.",
+            "Do not enter sensitive, confidential, or other people's data unless you have the right to process it."
+          ]
+        },
+        {
+          "title": "Suspension or termination",
+          "paragraphs": [
+            "TechHub may suspend or limit access when it detects a terms violation, security risk, payment fraud, or behavior that affects other users."
+          ]
+        },
+        {
+          "title": "Changes and contact",
+          "paragraphs": [
+            "TechHub may update these terms to reflect product, operational, or legal changes. When important changes occur, the platform will try to notify users through an appropriate channel.",
+            "If you need support about the Terms of Service, please contact TechHub through the Contact page."
+          ]
+        }
+      ]
+    },
+    "privacy": {
+      "metadataTitle": "Privacy Policy | TechHub",
+      "metadataDescription": "How TechHub collects, uses, and protects user data.",
+      "eyebrow": "TechHub privacy",
+      "title": "Privacy Policy",
+      "description": "This policy explains what data TechHub collects, why it is used, when it may be shared, and what choices you have while using the learning platform.",
+      "lastUpdatedLabel": "Last updated",
+      "lastUpdated": "May 11, 2026",
+      "sections": [
+        {
+          "title": "Information we collect",
+          "paragraphs": [
+            "TechHub collects information needed to create accounts, operate courses, support payments, personalize learning experiences, and protect the system."
+          ],
+          "bullets": [
+            "Account information such as email, username, role, verification status, and profile image if you provide one.",
+            "Learning data such as enrolled courses, progress, submissions, quiz results, learning paths, and platform interactions.",
+            "Technical data such as device, browser, IP address, login session logs, and security events.",
+            "Transaction information at the level needed to confirm payments, reconcile transactions, and support users."
+          ]
+        },
+        {
+          "title": "How we use information",
+          "bullets": [
+            "Provide, maintain, and improve TechHub's learning features.",
+            "Process login, verification, course enrollment, payment, and customer support.",
+            "Personalize course recommendations, learning paths, notifications, and content experiences.",
+            "Detect fraud, abuse, technical errors, and security risks."
+          ]
+        },
+        {
+          "title": "Information sharing",
+          "paragraphs": [
+            "TechHub does not sell your personal data. We only share information where necessary to operate the platform or when there is a valid request."
+          ],
+          "bullets": [
+            "Infrastructure, hosting, analytics, email, payment, or operational support providers.",
+            "Instructors or administrators when needed to handle courses, learning progress, submissions, or support requests.",
+            "Competent authorities when required by law or to protect the legitimate rights of TechHub and users."
+          ]
+        },
+        {
+          "title": "Cookies and similar technologies",
+          "paragraphs": [
+            "TechHub may use cookies or browser storage to maintain login sessions, remember interface and language preferences, and improve performance."
+          ]
+        },
+        {
+          "title": "Retention and data protection",
+          "paragraphs": [
+            "We retain data for as long as needed for operational, legal, security, and user support purposes. TechHub applies reasonable technical and organizational measures to reduce the risk of unauthorized access, loss, or misuse."
+          ]
+        },
+        {
+          "title": "Your choices",
+          "bullets": [
+            "You can update some account information from your profile or settings page.",
+            "You can request support for accessing, correcting, or deleting data within system and regulatory limits.",
+            "You can sign out and clear session data from your browser when you are not using a personal device."
+          ]
+        },
+        {
+          "title": "AI features and learning data",
+          "paragraphs": [
+            "When you use AI features, TechHub may process the content you enter and related learning context to generate responses or recommendations. You should not enter sensitive, confidential, or another person's personal data unless you have permission."
+          ]
+        },
+        {
+          "title": "Policy updates and contact",
+          "paragraphs": [
+            "This policy may be updated when TechHub changes its product, data processing, or compliance requirements. If important changes occur, we will try to notify you through an appropriate channel.",
+            "If you have questions about privacy or personal data, please contact TechHub through the Contact page."
+          ]
+        }
+      ]
+    }
   },
   "Login": {
     "title": "Welcome back",

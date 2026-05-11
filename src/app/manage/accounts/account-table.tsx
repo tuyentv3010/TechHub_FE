@@ -38,6 +38,7 @@ import AddEmployee from "@/app/manage/accounts/add-employee";
 import EditEmployee from "@/app/manage/accounts/edit-employee";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createContext, useContext, useEffect, useState } from "react";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -192,7 +193,7 @@ export default function AccountTable() {
       accessorKey: "avatar",
       header: t("Avatar"),
       cell: ({ row }) => {
-        const avatarUrl = row.getValue("avatar") as string | null;
+        const avatarUrl = normalizePersistedMediaUrl(row.getValue("avatar"));
         return (
           <div>
             <Avatar className="aspect-square w-[100px] h-[100px] rounded-md object-cover">

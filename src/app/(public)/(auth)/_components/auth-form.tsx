@@ -23,7 +23,7 @@ import {
   persistAuthSession,
   removeTokenFromLocalStorage,
 } from "@/lib/utils";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type AuthMode = "login" | "register";
@@ -93,15 +93,41 @@ export default function AuthForm({
 
   // ── Image Carousel ──
   const [currentImage, setCurrentImage] = useState(0);
+  const [loadedImages, setLoadedImages] = useState<Record<number, boolean>>({});
+
+  const markImageLoaded = useCallback((index: number) => {
+    setLoadedImages((previous) =>
+      previous[index] ? previous : { ...previous, [index]: true }
+    );
+  }, []);
+
+  useEffect(() => {
+    CAROUSEL_IMAGES.forEach((src, index) => {
+      const preloadedImage = new window.Image();
+      preloadedImage.decoding = "async";
+      preloadedImage.src = src;
+      if (preloadedImage.complete) {
+        markImageLoaded(index);
+      } else {
+        preloadedImage.onload = () => markImageLoaded(index);
+      }
+    });
+  }, [markImageLoaded]);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentImage((prev) =>
-        prev === CAROUSEL_IMAGES.length - 1 ? 0 : prev + 1
-      );
+      setCurrentImage((prev) => {
+        for (let step = 1; step <= CAROUSEL_IMAGES.length; step += 1) {
+          const nextImage = (prev + step) % CAROUSEL_IMAGES.length;
+          if (loadedImages[nextImage]) {
+            return nextImage;
+          }
+        }
+        return prev;
+      });
     }, CAROUSEL_INTERVAL);
     return () => clearInterval(timer);
-  }, []);
+  }, [loadedImages]);
 
   const isLogin = mode === "login";
   const t = isLogin ? tLogin : tRegister;
@@ -202,13 +228,11 @@ export default function AuthForm({
           `Welcome ${result.payload.data.user.username}!`,
       });
 
-      if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
-        router.push("/manage/accounts");
-      } else if (redirectUrl) {
-        router.push(redirectUrl);
-      } else {
-        router.push("/");
-      }
+      const destination =
+        userRole === "ADMIN" || userRole === "SUPER_ADMIN"
+          ? "/manage/accounts"
+          : redirectUrl || "/";
+      router.replace(destination);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -252,7 +276,12 @@ export default function AuthForm({
 
         {/* Image Carousel */}
         <div className="flex-1 flex items-center justify-center px-10 py-6">
-          <div className="relative aspect-[3/2] w-full max-w-[620px] overflow-hidden rounded-xl border border-white/10 shadow-sm">
+          <div className="relative aspect-[3/2] w-full max-w-[620px] overflow-hidden rounded-xl border border-white/10 bg-slate-950/20 shadow-sm">
+            <div
+              className={`absolute inset-0 bg-white/10 transition-opacity duration-300 ${
+                loadedImages[currentImage] ? "opacity-0" : "opacity-100"
+              }`}
+            />
             <AnimatePresence initial={false}>
               <motion.div
                 key={currentImage}
@@ -267,10 +296,13 @@ export default function AuthForm({
                   src={CAROUSEL_IMAGES[currentImage]}
                   alt={`TechHub learning ${currentImage + 1}`}
                   fill
-                  className="object-cover object-center dark:brightness-75 dark:saturate-75"
+                  className={`object-cover object-center transition-opacity duration-300 dark:brightness-75 dark:saturate-75 ${
+                    loadedImages[currentImage] ? "opacity-100" : "opacity-0"
+                  }`}
                   sizes="(min-width: 1024px) 620px, 100vw"
                   quality={95}
                   priority={currentImage === 0}
+                  onLoad={() => markImageLoaded(currentImage)}
                 />
               </motion.div>
             </AnimatePresence>
@@ -765,21 +797,23 @@ function OAuthSection() {
 }
 
 function FinePrint() {
+  const t = useTranslations("Legal.finePrint");
+
   return (
     <p className="text-center text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
-      By continuing, you agree to our{" "}
+      {t("prefix")}{" "}
       <Link
         href="/terms"
         className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150"
       >
-        Terms of Service
+        {t("termsOfService")}
       </Link>{" "}
-      and{" "}
+      {t("and")}{" "}
       <Link
         href="/privacy"
         className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150"
       >
-        Privacy Policy
+        {t("privacyPolicy")}
       </Link>
       .
     </p>

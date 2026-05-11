@@ -45,6 +45,7 @@ import ExerciseDisplay from "./ExerciseDisplay";
 import ExercisePlayer from "./ExercisePlayer";
 import VideoPlayer from "./VideoPlayer";
 import envConfig from "@/config";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 interface CourseLearningLayoutProps {
   course: any;
@@ -60,6 +61,7 @@ export default function CourseLearningLayout({
   onStartTour,
 }: CourseLearningLayoutProps) {
   const t = useTranslations("ManageCourse");
+  const commentT = useTranslations("CourseComments");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -68,7 +70,7 @@ export default function CourseLearningLayout({
   
   // Fetch user profile for avatar
   const { data: profileData } = useAccountProfile();
-  const userAvatar = profileData?.payload?.data?.avatar || undefined;
+  const userAvatar = normalizePersistedMediaUrl(profileData?.payload?.data?.avatar) || undefined;
   
   const courseSummary = course.summary;
   const chapters = course.chapters || [];
@@ -88,6 +90,7 @@ export default function CourseLearningLayout({
   });
 
   const currentLesson = allLessons[currentLessonIndex];
+  const currentLessonVideoUrl = normalizePersistedMediaUrl(currentLesson?.videoUrl);
   console.log("dasasdasdas asd asd as", currentLesson);
   // Fetch exercises for current lesson
   const { data: exercisesResponse } = useGetExercises(
@@ -190,8 +193,8 @@ export default function CourseLearningLayout({
             });
             
             toast({
-              title: "Bình luận mới",
-              description: "Có người vừa bình luận trong bài học này!",
+              title: commentT("newCourseCommentTitle"),
+              description: commentT("newLessonCommentDescription"),
             });
           } catch (e) {
             console.error("[WebSocket] Error parsing message:", e);
@@ -212,7 +215,7 @@ export default function CourseLearningLayout({
       console.log("[WebSocket] Cleaning up connection...");
       client.deactivate();
     };
-  }, [currentLesson?.id, courseSummary?.id, queryClient, toast]);
+  }, [commentT, currentLesson?.id, courseSummary?.id, queryClient, toast]);
 
   // Check if a lesson is completed (only from API/database)
   const isLessonCompleted = (lessonId: string) => {
@@ -326,8 +329,8 @@ export default function CourseLearningLayout({
   const handleSubmitComment = (content: string) => {
     if (!courseSummary?.id || !currentLesson?.id) {
       toast({
-        title: "Không thể gửi bình luận",
-        description: "Vui lòng thử lại.",
+        title: commentT("submitCommentErrorTitle"),
+        description: commentT("tryAgainDescription"),
         variant: "destructive",
       });
       return;
@@ -345,13 +348,13 @@ export default function CourseLearningLayout({
       {
         onSuccess: () => {
           toast({
-            title: "Đã gửi bình luận",
+            title: commentT("submitCommentSuccessTitle"),
           });
         },
         onError: () => {
           toast({
-            title: "Không thể gửi bình luận",
-            description: "Vui lòng đăng nhập và thử lại.",
+            title: commentT("submitCommentErrorTitle"),
+            description: commentT("loginAndRetryDescription"),
             variant: "destructive",
           });
         },
@@ -362,8 +365,8 @@ export default function CourseLearningLayout({
   const handleSubmitReply = (parentId: string, content: string) => {
     if (!courseSummary?.id || !currentLesson?.id) {
       toast({
-        title: "Không thể gửi phản hồi",
-        description: "Vui lòng thử lại.",
+        title: commentT("submitReplyErrorTitle"),
+        description: commentT("tryAgainDescription"),
         variant: "destructive",
       });
       return;
@@ -381,13 +384,13 @@ export default function CourseLearningLayout({
       {
         onSuccess: () => {
           toast({
-            title: "Đã gửi phản hồi",
+            title: commentT("submitReplySuccessTitle"),
           });
         },
         onError: () => {
           toast({
-            title: "Không thể gửi phản hồi",
-            description: "Vui lòng đăng nhập và thử lại.",
+            title: commentT("submitReplyErrorTitle"),
+            description: commentT("loginAndRetryDescription"),
             variant: "destructive",
           });
         },
@@ -554,9 +557,9 @@ export default function CourseLearningLayout({
         <ScrollArea className="flex-1">
           {/* Video/Content Player */}
           <div className="bg-black flex items-center justify-center w-full" id="video-player-area">
-            {currentLesson?.videoUrl ? (
+            {currentLessonVideoUrl ? (
               <VideoPlayer
-                src={currentLesson.videoUrl}
+                src={currentLessonVideoUrl}
                 title={currentLesson?.title}
                 subtitle={courseSummary?.instructorName}
                 onEnded={() => {
@@ -642,6 +645,8 @@ export default function CourseLearningLayout({
             
             {exercises.length > 0 && (
               <ExercisePlayer
+                courseId={courseSummary?.id}
+                lessonId={currentLesson?.id}
                 exercises={exercises.map((exercise: any) => ({
                   id: exercise.id,
                   type: exercise.type,
@@ -689,7 +694,7 @@ export default function CourseLearningLayout({
               <h3 className="font-semibold mb-3">Tài liệu & Link</h3>
               <div className="space-y-2">
                 {currentLesson.assets.map((asset: any) => {
-                  const assetUrl = asset.externalUrl || asset.url;
+                  const assetUrl = normalizePersistedMediaUrl(asset.externalUrl || asset.url);
                   const isDocument = asset.assetType === 'DOCUMENT';
                   
                   // DEBUG: Log asset data
@@ -728,7 +733,7 @@ export default function CourseLearningLayout({
                         </Button>
                       )}
                       {/* External link for non-document types */}
-                      {!isDocument && (
+                      {!isDocument && assetUrl && (
                         <a
                           href={assetUrl}
                           target="_blank"
@@ -793,6 +798,7 @@ export default function CourseLearningLayout({
                   size="icon"
                   className="h-9 w-9 rounded-full bg-orange-500 hover:bg-orange-600 shadow-md"
                   id="qa-button"
+                  title={commentT("openDiscussion")}
                 >
                   <MessageSquare className="h-4 w-4" />
                 </Button>
@@ -1019,7 +1025,7 @@ export default function CourseLearningLayout({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              Hỏi đáp - {currentLesson?.title}
+              {commentT("lessonDiscussionTitle", { title: currentLesson?.title ?? "" })}
             </DialogTitle>
           </DialogHeader>
           

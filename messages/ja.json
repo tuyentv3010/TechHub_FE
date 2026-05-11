@@ -180,6 +180,34 @@
     "free": "無料",
     "startLearning": "学習開始"
   },
+  "CourseComments": {
+    "count": "{count} 件のコメント",
+    "sortNewest": "新しい順",
+    "sortOldest": "古い順",
+    "commentPlaceholder": "感想を共有してください...",
+    "insertEmoji": "絵文字を挿入",
+    "submitComment": "コメント",
+    "empty": "最初に感想を共有しましょう。",
+    "reply": "返信",
+    "replyPlaceholder": "返信を書く...",
+    "cancel": "キャンセル",
+    "submitReply": "返信",
+    "replyCount": "{count} 件の返信",
+    "emptyCommentTitle": "コメント内容を入力してください",
+    "emptyReplyTitle": "返信内容を入力してください",
+    "newCourseCommentTitle": "新しいコメント",
+    "newCourseCommentDescription": "このコースに新しいコメントが投稿されました。",
+    "newLessonCommentDescription": "このレッスンに新しいコメントが投稿されました。",
+    "submitCommentErrorTitle": "コメントを送信できません",
+    "submitReplyErrorTitle": "返信を送信できません",
+    "submitCommentSuccessTitle": "コメントを送信しました",
+    "submitReplySuccessTitle": "返信を送信しました",
+    "tryAgainDescription": "もう一度お試しください。",
+    "loginAndRetryDescription": "ログインしてもう一度お試しください。",
+    "lessonDiscussionTitle": "Q&A - {title}",
+    "openDiscussion": "Q&A を開く",
+    "userAvatarAlt": "ユーザー"
+  },
   "NavItem": {
     "home": "ホーム",
     "courses": "コース",
@@ -298,11 +326,27 @@
   "Footer": {
     "title": "TechHub",
     "description": "トップのオンライン学習プラットフォーム",
-    "allRightsReserved": "All rights reserved",
+    "allRightsReserved": "すべての権利を保有します",
     "privacyPolicy": "プライバシーポリシー",
     "termsOfService": "利用規約",
     "ConditionService": "利用規約",
-    "AboutWe": "私たちについて"
+    "AboutWe": "私たちについて",
+    "logoAlt": "TechHub ロゴ",
+    "brandDescription": "TechHub は、テクノロジーを学ぶためのオンライン学習プラットフォームです。質の高いコース、個別最適化された学習パス、活発な学習コミュニティを提供します。",
+    "skillsTitle": "スキル",
+    "noSkillsAvailable": "スキルはまだありません。",
+    "quickLinksTitle": "クイックリンク",
+    "quickLinks": {
+      "about": "私たちについて",
+      "contact": "お問い合わせ",
+      "courses": "コース",
+      "learningPaths": "学習パス",
+      "blog": "ブログ・ニュース"
+    },
+    "latestPostsTitle": "最新記事",
+    "noLatestPosts": "最新記事はまだありません。",
+    "blogImageAlt": "ブログ画像",
+    "copyrightPrefix": "Copyright © {year}"
   },
   "HomePage": {
     "title": "TechHub - プログラミング学習プラットフォーム",
@@ -401,6 +445,168 @@
   "PrivacyPolicy": {
     "title": "プライバシーポリシー",
     "lastUpdated": "最終更新"
+  },
+  "Legal": {
+    "backButton": {
+      "label": "戻る",
+      "ariaLabel": "前のページまたはホームページに戻る"
+    },
+    "finePrint": {
+      "prefix": "続行すると、次の内容に同意したものとみなされます:",
+      "termsOfService": "利用規約",
+      "and": "および",
+      "privacyPolicy": "プライバシーポリシー"
+    },
+    "terms": {
+      "metadataTitle": "利用規約 | TechHub",
+      "metadataDescription": "TechHub 学習プラットフォームの利用条件です。",
+      "eyebrow": "TechHub 法務",
+      "title": "利用規約",
+      "description": "この規約は、TechHub の利用方法、学習、支払い、コンテンツ利用、学習支援機能の利用に関する権利と責任を説明します。",
+      "lastUpdatedLabel": "最終更新",
+      "lastUpdated": "2026年5月11日",
+      "sections": [
+        {
+          "title": "アカウントとアクセス",
+          "paragraphs": [
+            "登録時には正確な情報を提供し、アカウント、パスワード、ログインセッション、およびアカウントで発生するすべての操作を適切に管理する必要があります。"
+          ],
+          "bullets": [
+            "学習プランまたはコースで許可されていない場合、アカウントを他人と共有しないでください。",
+            "不正アクセスやアカウント漏えいの疑いがある場合は TechHub に通知してください。"
+          ]
+        },
+        {
+          "title": "コースコンテンツ",
+          "paragraphs": [
+            "講師または TechHub が提供する教材、動画、課題、質問、学習パス、その他のコンテンツは、プラットフォーム内での個人学習を目的として提供されます。"
+          ],
+          "bullets": [
+            "許可なくコースコンテンツを複製、再配布、再販売、公開しないでください。",
+            "第三者の知的財産権を侵害しない範囲で、自分のメモや提出物を保持できます。"
+          ]
+        },
+        {
+          "title": "支払いと登録",
+          "paragraphs": [
+            "各コースの価格、特典、アクセス条件は支払い前に表示されます。取引は TechHub と連携する決済ゲートウェイまたはサービスパートナーによって処理される場合があります。"
+          ],
+          "bullets": [
+            "コースへのアクセスは、支払い状況、返金、または各プログラムのポリシーに依存する場合があります。",
+            "取引エラーや、請求済みで登録されていない場合は、確認のためサポートに連絡してください。"
+          ]
+        },
+        {
+          "title": "利用上のルール",
+          "paragraphs": [
+            "他の学習者、講師、プラットフォームの運用を尊重して TechHub を利用することに同意します。"
+          ],
+          "bullets": [
+            "スパム、詐欺、嫌がらせ、違法コンテンツ、他者のプライバシーを侵害する内容を投稿しないでください。",
+            "攻撃、スキャン、脆弱性の悪用、異常な自動化、サービス妨害を行わないでください。"
+          ]
+        },
+        {
+          "title": "AI 機能",
+          "paragraphs": [
+            "TechHub の一部機能では、コース推薦、内容説明、学習支援、下書き作成のために AI を使用する場合があります。AI の出力は補助的なものであり、確認が必要な場合があります。"
+          ],
+          "bullets": [
+            "重要な判断において、AI の出力を唯一の専門的助言として利用しないでください。",
+            "処理する権限がない機密情報、秘密情報、または他者のデータを入力しないでください。"
+          ]
+        },
+        {
+          "title": "停止または終了",
+          "paragraphs": [
+            "TechHub は、規約違反、セキュリティリスク、支払い不正、または他のユーザーに影響する行為を検出した場合、アクセスを一時停止または制限することがあります。"
+          ]
+        },
+        {
+          "title": "変更とお問い合わせ",
+          "paragraphs": [
+            "TechHub は、製品、運用、法的要件の変更を反映するために本規約を更新する場合があります。重要な変更がある場合、適切な方法で通知するよう努めます。",
+            "利用規約についてサポートが必要な場合は、TechHub のお問い合わせページからご連絡ください。"
+          ]
+        }
+      ]
+    },
+    "privacy": {
+      "metadataTitle": "プライバシーポリシー | TechHub",
+      "metadataDescription": "TechHub がユーザーデータを収集、利用、保護する方法です。",
+      "eyebrow": "TechHub プライバシー",
+      "title": "プライバシーポリシー",
+      "description": "このポリシーは、TechHub が収集するデータ、利用目的、共有される場合、および学習プラットフォーム利用時の選択肢を説明します。",
+      "lastUpdatedLabel": "最終更新",
+      "lastUpdated": "2026年5月11日",
+      "sections": [
+        {
+          "title": "収集する情報",
+          "paragraphs": [
+            "TechHub は、アカウント作成、コース運営、支払いサポート、学習体験のパーソナライズ、システム保護に必要な情報を収集します。"
+          ],
+          "bullets": [
+            "メール、ユーザー名、ロール、認証状態、提供されたプロフィール画像などのアカウント情報。",
+            "登録コース、進捗、提出物、テスト結果、学習パス、プラットフォーム内の操作などの学習データ。",
+            "端末、ブラウザ、IP アドレス、ログインセッションログ、セキュリティイベントなどの技術データ。",
+            "支払い確認、照合、ユーザーサポートに必要な範囲の取引情報。"
+          ]
+        },
+        {
+          "title": "情報の利用方法",
+          "bullets": [
+            "TechHub の学習機能を提供、維持、改善するため。",
+            "ログイン、認証、コース登録、支払い、カスタマーサポートを処理するため。",
+            "コース推薦、学習パス、通知、コンテンツ体験をパーソナライズするため。",
+            "不正、悪用、技術的エラー、セキュリティリスクを検出するため。"
+          ]
+        },
+        {
+          "title": "情報の共有",
+          "paragraphs": [
+            "TechHub は個人データを販売しません。プラットフォーム運営に必要な場合、または有効な要求がある場合に限り情報を共有します。"
+          ],
+          "bullets": [
+            "インフラ、ホスティング、分析、メール、決済、運用支援の提供者。",
+            "コース、学習進捗、提出物、サポート依頼を処理するために必要な講師または管理者。",
+            "法律で求められる場合、または TechHub とユーザーの正当な権利を保護するための権限ある機関。"
+          ]
+        },
+        {
+          "title": "Cookie と類似技術",
+          "paragraphs": [
+            "TechHub は、ログインセッションの維持、表示や言語設定の保存、パフォーマンス改善のために Cookie またはブラウザストレージを使用する場合があります。"
+          ]
+        },
+        {
+          "title": "保存とデータ保護",
+          "paragraphs": [
+            "当社は、運用、法務、セキュリティ、ユーザーサポートに必要な期間データを保持します。TechHub は、不正アクセス、紛失、悪用のリスクを減らすため、合理的な技術的および組織的対策を講じます。"
+          ]
+        },
+        {
+          "title": "ユーザーの選択肢",
+          "bullets": [
+            "プロフィールまたは設定ページで一部のアカウント情報を更新できます。",
+            "システムおよび規制の範囲内で、データへのアクセス、修正、削除に関するサポートを依頼できます。",
+            "個人端末でない場合は、ログアウトしてブラウザのセッションデータを削除できます。"
+          ]
+        },
+        {
+          "title": "AI 機能と学習データ",
+          "paragraphs": [
+            "AI 機能を使用する場合、TechHub は入力内容と関連する学習コンテキストを処理し、回答または推薦を生成することがあります。権限がない限り、機密情報、秘密情報、または他者の個人データを入力しないでください。"
+          ]
+        },
+        {
+          "title": "ポリシーの更新とお問い合わせ",
+          "paragraphs": [
+            "このポリシーは、TechHub の製品、データ処理、またはコンプライアンス要件の変更に応じて更新される場合があります。重要な変更がある場合、適切な方法で通知するよう努めます。",
+            "プライバシーまたは個人データについて質問がある場合は、TechHub のお問い合わせページからご連絡ください。"
+          ]
+        }
+      ]
+    }
   },
   "ManageAccount": {
     "PageEyebrow": "Admin / アカウント",
@@ -1568,7 +1774,35 @@
     "supportedFilesHint": "Supported: PDF, Word, PowerPoint, Excel, CSV/text/code files, and images with readable text.",
     "attachmentOpenFailed": "Could not open this file. Please try again later.",
     "instructionsSavedTitle": "Instructions saved",
-    "instructionsSavedDesc": "They will apply to the next AI responses."
+    "instructionsSavedDesc": "They will apply to the next AI responses.",
+    "sidebar": {
+      "expand": "サイドバーを展開",
+      "collapse": "サイドバーを折りたたむ",
+      "dragResize": "ドラッグしてサイズ変更",
+      "autoRoutingTitle": "自動ルーティング",
+      "autoRoutingDesc": "AI が質問に適した分析ルートを自動で選択します。",
+      "instructionsLabel": "指示",
+      "instructionsPlaceholder": "例: 日本語で簡潔に回答し、データ分析では前提を明記してください。",
+      "instructionsHelp": "この指示は、この会話内の以降の AI 応答に適用されます。",
+      "saveInstructions": "保存",
+      "resetInstructions": "リセット",
+      "instructionsUnsaved": "未保存の変更があります",
+      "instructionsSaved": "保存済み",
+      "instructionsNotSaved": "未保存",
+      "hideConversations": "会話を非表示",
+      "showConversations": "会話を表示",
+      "savedAnalyses": "保存済み分析",
+      "hideSavedAnalyses": "保存済み分析を非表示",
+      "showSavedAnalyses": "保存済み分析を表示",
+      "learner": "学習者",
+      "instructor": "講師",
+      "analyst": "データアナリスト",
+      "answerRole": "回答ロール",
+      "responseDepth": "回答の詳しさ",
+      "concise": "簡潔",
+      "balanced": "標準",
+      "detailed": "詳しく"
+    }
   },
   "AiDashboard": {
     "emptyValue": "-",

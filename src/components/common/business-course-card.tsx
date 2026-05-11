@@ -34,7 +34,7 @@ export function BusinessCourseCard({ course, className }: BusinessCourseCardProp
     <Link
       href={course.href}
       className={cn(
-        "group block overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-card",
+        "group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-card",
         className
       )}
     >
@@ -56,7 +56,7 @@ export function BusinessCourseCard({ course, className }: BusinessCourseCardProp
         ) : null}
       </div>
 
-      <div className="space-y-4 p-4">
+      <div className="flex flex-1 flex-col gap-4 p-4">
         <div className="space-y-2">
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <Star className="h-4 w-4 fill-[hsl(var(--warning))] text-[hsl(var(--warning))]" />
@@ -89,7 +89,7 @@ export function BusinessCourseCard({ course, className }: BusinessCourseCardProp
           ) : null}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-4">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-foreground">
               {course.instructor || "TechHub"}

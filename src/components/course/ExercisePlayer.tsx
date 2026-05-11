@@ -12,16 +12,23 @@ import {
   Maximize2,
   HelpCircle,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Lightbulb,
+  BookOpenCheck,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import ExerciseLeaderboard from "./ExerciseLeaderboard";
+import courseApiRequest from "@/apiRequests/course";
 
 // Types
 interface Choice {
+  id?: string;
   text: string;
-  isCorrect: boolean;
+  isCorrect?: boolean;
+  correct?: boolean;
+  explanation?: string;
 }
 
 interface Exercise {
@@ -33,6 +40,8 @@ interface Exercise {
 }
 
 interface ExercisePlayerProps {
+  courseId?: string;
+  lessonId?: string;
   exercises: Exercise[];
   lessonTitle?: string;
   lessonSlug?: string;
@@ -47,6 +56,28 @@ interface ExerciseResult {
   isCorrect: boolean;
   selectedAnswers: string[];
   timeSpent: number;
+  feedback?: QuizFeedback | null;
+  grade?: number | null;
+  status?: string;
+}
+
+interface QuizReviewSuggestion {
+  lessonId?: string | null;
+  title: string;
+  reason: string;
+  action: string;
+}
+
+interface QuizFeedback {
+  correct: boolean;
+  summary: string;
+  explanation: string;
+  selectedAnswers?: string[];
+  correctAnswers?: string[];
+  weakConcepts?: string[];
+  reviewSuggestions?: QuizReviewSuggestion[];
+  nextAction?: string;
+  source?: string;
 }
 
 // Parse choices from exercise options
@@ -54,7 +85,12 @@ const parseChoices = (options: string | undefined): Choice[] => {
   if (!options) return [];
   try {
     const parsed = typeof options === 'string' ? JSON.parse(options) : options;
-    return parsed.choices || [];
+    const rawChoices = parsed.choices || [];
+    return rawChoices.map((choice: Choice, index: number) => ({
+      ...choice,
+      id: choice.id ?? String(index),
+      isCorrect: choice.isCorrect === true || choice.correct === true,
+    }));
   } catch {
     return [];
   }
@@ -169,7 +205,7 @@ const ANSWER_COLORS = [
 ];
 
 const TIME_LIMIT = 10; // 10 seconds per question
-const SHOW_ANSWER_DURATION = 5; // 5 seconds to show answer
+const SHOW_ANSWER_DURATION = 8; // Leave room for feedback after grading.
 
 // Question Screen Component
 function QuestionScreen({
@@ -192,6 +228,8 @@ function QuestionScreen({
   showAnswerCountdown,
   userAvatar,
   lessonTitle,
+  feedback,
+  feedbackLoading,
 }: {
   exercise: Exercise;
   questionNumber: number;
@@ -212,6 +250,8 @@ function QuestionScreen({
   showAnswerCountdown: number;
   userAvatar?: string;
   lessonTitle?: string;
+  feedback?: QuizFeedback | null;
+  feedbackLoading?: boolean;
 }) {
   const choices = parseChoices(exercise.options);
   const correctCount = choices.filter(c => c.isCorrect).length;
@@ -497,6 +537,45 @@ function QuestionScreen({
                 Đáp án đúng: {choices.filter(c => c.isCorrect).map(c => c.text).join(", ")}
               </p>
             )}
+            {feedbackLoading && !feedback && (
+              <div className="mt-3 flex items-center justify-center gap-2 rounded-lg bg-white/20 px-3 py-2 text-sm text-white">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Đang tạo giải thích...
+              </div>
+            )}
+            {feedback && (
+              <div className="mt-4 rounded-xl bg-white p-4 text-left text-gray-800 shadow-sm">
+                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-700">
+                  <Lightbulb className="h-4 w-4" />
+                  Phản hồi học tập
+                </div>
+                <p className="text-sm font-medium">{feedback.summary}</p>
+                <p className="mt-2 text-sm leading-relaxed text-gray-700">{feedback.explanation}</p>
+                {feedback.weakConcepts && feedback.weakConcepts.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {feedback.weakConcepts.map((concept) => (
+                      <span key={concept} className="rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                        {concept}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {feedback.reviewSuggestions && feedback.reviewSuggestions.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {feedback.reviewSuggestions.slice(0, 2).map((suggestion, index) => (
+                      <div key={`${suggestion.title}-${index}`} className="rounded-lg bg-gray-50 p-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                          <BookOpenCheck className="h-4 w-4 text-green-600" />
+                          {suggestion.title}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-600">{suggestion.reason}</p>
+                        <p className="mt-1 text-xs font-medium text-gray-800">{suggestion.action}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <p className="text-xs text-white mt-2">
               Tự động chuyển sau {showAnswerCountdown}s...
             </p>
@@ -651,6 +730,8 @@ function ResultScreen({
 
 // Main ExercisePlayer Component
 export default function ExercisePlayer({
+  courseId,
+  lessonId,
   exercises,
   lessonTitle,
   lessonSlug,
@@ -676,6 +757,19 @@ export default function ExercisePlayer({
   const [countdown, setCountdown] = useState(TIME_LIMIT);
   const [showAnswerCountdown, setShowAnswerCountdown] = useState(SHOW_ANSWER_DURATION);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [currentFeedback, setCurrentFeedback] = useState<QuizFeedback | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [submissionMeta, setSubmissionMeta] = useState<{ grade?: number | null; status?: string }>({});
+  const feedbackRef = useRef<QuizFeedback | null>(null);
+  const submissionMetaRef = useRef<{ grade?: number | null; status?: string }>({});
+
+  useEffect(() => {
+    feedbackRef.current = currentFeedback;
+  }, [currentFeedback]);
+
+  useEffect(() => {
+    submissionMetaRef.current = submissionMeta;
+  }, [submissionMeta]);
 
   // Listen for fullscreen change
   useEffect(() => {
@@ -758,6 +852,9 @@ export default function ExercisePlayer({
           isCorrect,
           selectedAnswers,
           timeSpent,
+          feedback: feedbackRef.current,
+          grade: submissionMetaRef.current.grade,
+          status: submissionMetaRef.current.status,
         };
         
         setResults(prev => [...prev, result]);
@@ -779,6 +876,9 @@ export default function ExercisePlayer({
           setIsCorrect(false);
           setTimeSpent(0);
           setCountdown(TIME_LIMIT);
+          setCurrentFeedback(null);
+          setSubmissionMeta({});
+          setFeedbackLoading(false);
         }
         
         clearInterval(interval);
@@ -797,6 +897,9 @@ export default function ExercisePlayer({
     setSelectedAnswers([]);
     setIsCorrect(false);
     setSubmitted(true);
+    setCurrentFeedback(null);
+    setSubmissionMeta({});
+    setFeedbackLoading(false);
   }, [submitted]);
 
   // Start game
@@ -810,11 +913,50 @@ export default function ExercisePlayer({
     setSelectedAnswers([]);
     setCountdown(TIME_LIMIT);
     setShowAnswerCountdown(SHOW_ANSWER_DURATION);
+    setCurrentFeedback(null);
+    setSubmissionMeta({});
+    setFeedbackLoading(false);
   };
+
+  const submitCurrentAnswer = useCallback(async (
+    exercise: Exercise,
+    answers: string[],
+    correct: boolean
+  ) => {
+    if (!courseId || !lessonId || !exercise?.id) return;
+
+    setFeedbackLoading(true);
+    setCurrentFeedback(null);
+    setSubmissionMeta({});
+
+    try {
+      const response: any = await courseApiRequest.submitExercise(courseId, lessonId, {
+        exerciseId: exercise.id,
+        answer: JSON.stringify(answers),
+        submissionData: {
+          selectedAnswers: answers,
+          clientCorrect: correct,
+          timeSpent,
+        },
+      });
+      const submission = response?.payload?.data;
+      setCurrentFeedback(submission?.feedback ?? null);
+      setSubmissionMeta({
+        grade: submission?.grade ?? null,
+        status: submission?.status,
+      });
+    } catch (error) {
+      console.error('[ExercisePlayer] Failed to submit exercise answer:', error);
+      setCurrentFeedback(null);
+      setSubmissionMeta({});
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }, [courseId, lessonId, timeSpent]);
 
   // Handle answer - auto submit on click
   const handleAnswer = useCallback((answers: string[]) => {
-    if (submitted) return;
+    if (submitted || !currentExercise) return;
     
     const choices = parseChoices(currentExercise.options);
     const correctCount = choices.filter(c => c.isCorrect).length;
@@ -836,6 +978,7 @@ export default function ExercisePlayer({
     setIsCorrect(correct);
     setSubmitted(true);
     setShowAnswerCountdown(SHOW_ANSWER_DURATION);
+    void submitCurrentAnswer(currentExercise, answers, correct);
 
     // Trigger confetti for correct answer
     if (correct) {
@@ -845,7 +988,7 @@ export default function ExercisePlayer({
         origin: { y: 0.7 }
       });
     }
-  }, [submitted, currentExercise]);
+  }, [submitted, currentExercise, submitCurrentAnswer]);
 
   // Go to next question
   const handleNextQuestion = useCallback(() => {
@@ -855,6 +998,9 @@ export default function ExercisePlayer({
       isCorrect,
       selectedAnswers,
       timeSpent,
+      feedback: feedbackRef.current,
+      grade: submissionMetaRef.current.grade,
+      status: submissionMetaRef.current.status,
     };
     setResults(prev => [...prev, result]);
 
@@ -867,6 +1013,9 @@ export default function ExercisePlayer({
       setTimeSpent(0);
       setCountdown(TIME_LIMIT);
       setShowAnswerCountdown(SHOW_ANSWER_DURATION);
+      setCurrentFeedback(null);
+      setSubmissionMeta({});
+      setFeedbackLoading(false);
     } else {
       setGameState('result');
       onComplete?.([...results, result]);
@@ -903,6 +1052,9 @@ export default function ExercisePlayer({
     setSelectedAnswers([]);
     setCountdown(TIME_LIMIT);
     setShowAnswerCountdown(SHOW_ANSWER_DURATION);
+    setCurrentFeedback(null);
+    setSubmissionMeta({});
+    setFeedbackLoading(false);
     setGameState('start');
   };
 
@@ -960,6 +1112,8 @@ export default function ExercisePlayer({
             showAnswerCountdown={showAnswerCountdown}
             userAvatar={userAvatar}
             lessonTitle={lessonTitle}
+            feedback={currentFeedback}
+            feedbackLoading={feedbackLoading}
           />
           <HelpModal
             isOpen={showHelp}

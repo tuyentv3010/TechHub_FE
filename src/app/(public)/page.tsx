@@ -14,6 +14,7 @@ import { CommunitySection } from "@/components/organisms/CommunitySectionNew";
 import { InstructorsSection } from "@/components/organisms/InstructorsSection";
 import { BlogSection } from "@/components/organisms/BlogSection";
 import Footer from "@/components/footer";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 export default function Home() {
   const t = useTranslations("HomePage");
@@ -23,6 +24,7 @@ export default function Home() {
     page: 0,
     size: 6,
     status: "PUBLISHED", // Only show published courses
+    redirectOnUnauthorized: false,
   });
 
   // Fetch instructors from public API (limit to 4)
@@ -33,7 +35,7 @@ export default function Home() {
     id: course.id, // Add course ID for creating slug
     title: course.title,
     instructorId: course.instructorId, // Keep ID for fetching
-    image: course.thumbnail?.secureUrl || course.thumbnail?.url || "/courses/default.png",
+    image: normalizePersistedMediaUrl(course.thumbnail?.secureUrl || course.thumbnail?.url) || "/courses/default.png",
     rating: course.averageRating || 0,
     reviews: course.ratingCount || 0,
     price: course.discountPrice || course.price || 0,
@@ -66,7 +68,7 @@ export default function Home() {
       {/* Categories Section */}
       <CategoriesSection
         title={t("categories.title")}
-        variant="grid"
+        variant="orbit"
       />
 
       {/* Courses Section */}
