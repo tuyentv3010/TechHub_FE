@@ -41,13 +41,38 @@ export const usePayoutRequests = () => {
   });
 };
 
-export const usePayoutBatches = () => {
+export const usePayoutBatches = (enabled = true) => {
   return useQuery({
     queryKey: ["payout-batches"],
     queryFn: async () => {
       const response = await paymentApiRequest.listPayoutBatches();
       return response.payload?.data || [];
     },
+    enabled,
+  });
+};
+
+export const usePayoutInvoices = (instructorId?: string) => {
+  return useQuery({
+    queryKey: ["payout-invoices", instructorId || "me"],
+    queryFn: async () => {
+      const response = await paymentApiRequest.listPayoutInvoices(instructorId);
+      return response.payload?.data || [];
+    },
+  });
+};
+
+export const usePayoutInvoiceDetail = (invoiceId?: string) => {
+  return useQuery({
+    queryKey: ["payout-invoice-detail", invoiceId],
+    queryFn: async () => {
+      if (!invoiceId) {
+        return null;
+      }
+      const response = await paymentApiRequest.getPayoutInvoice(invoiceId);
+      return response.payload?.data || null;
+    },
+    enabled: !!invoiceId,
   });
 };
 
@@ -58,6 +83,7 @@ export const useCreatePayoutRequest = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
       queryClient.invalidateQueries({ queryKey: ["payout-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-invoices"] });
     },
   });
 };
@@ -84,6 +110,20 @@ export const useApprovePayoutRequest = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
       queryClient.invalidateQueries({ queryKey: ["payout-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-invoices"] });
+    },
+  });
+};
+
+export const useSettleApprovedPayoutRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, payload }: { requestId: string; payload?: ReviewPayoutRequestPayload }) =>
+      paymentApiRequest.settleApprovedPayoutRequest(requestId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-invoices"] });
     },
   });
 };
@@ -96,6 +136,7 @@ export const useRejectPayoutRequest = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
       queryClient.invalidateQueries({ queryKey: ["payout-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-invoices"] });
     },
   });
 };
@@ -108,6 +149,7 @@ export const useMarkPayoutRequestPaid = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
       queryClient.invalidateQueries({ queryKey: ["payout-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-invoices"] });
     },
   });
 };

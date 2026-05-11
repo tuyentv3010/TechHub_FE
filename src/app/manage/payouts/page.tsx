@@ -10,6 +10,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   Copy,
+  Download,
   Eye,
   FileText,
   Landmark,
@@ -48,11 +49,19 @@ import {
   useMarkPayoutRequestPaid,
   usePayoutBalance,
   usePayoutBatches,
+  usePayoutInvoiceDetail,
+  usePayoutInvoices,
   usePayoutRequestDetail,
   usePayoutRequests,
+  useSettleApprovedPayoutRequest,
   useRejectPayoutRequest,
 } from "@/queries/usePayment";
-import type { PayoutBatchResponse, PayoutRequestResponse } from "@/apiRequests/payment";
+import type {
+  PayoutBatchResponse,
+  PayoutInvoiceResponse,
+  PayoutRequestResponse,
+} from "@/apiRequests/payment";
+import paymentApiRequest from "@/apiRequests/payment";
 
 const statusTone: Record<string, string> = {
   REQUESTED: "border-blue-400/30 bg-blue-500/15 text-blue-200",
@@ -77,6 +86,8 @@ type NormalizedPayoutRequest = {
   id: string;
   instructorId: string;
   batchId?: string | null;
+  invoiceId?: string | null;
+  invoiceNumber?: string | null;
   amount: number;
   status: string;
   note?: string | null;
@@ -98,6 +109,19 @@ type NormalizedPayoutBatch = {
   totalRequests: number;
   totalAmount: number;
   created?: string | null;
+};
+
+type NormalizedPayoutInvoice = {
+  id: string;
+  invoiceNumber: string;
+  payoutRequestId: string;
+  instructorId: string;
+  amount: number;
+  transferReference?: string | null;
+  status: string;
+  emailSent: boolean;
+  created?: string | null;
+  updated?: string | null;
 };
 
 type LedgerRow = {
@@ -137,6 +161,8 @@ const normalizeRequest = (item: PayoutRequestResponse): NormalizedPayoutRequest 
   id: String(item.id || ""),
   instructorId: String(item.instructorId || ""),
   batchId: item.batchId || null,
+  invoiceId: item.invoiceId || null,
+  invoiceNumber: item.invoiceNumber || null,
   amount: toNumber(item.amount),
   status: String(item.status || "REQUESTED").toUpperCase(),
   note: item.note || null,
@@ -144,6 +170,19 @@ const normalizeRequest = (item: PayoutRequestResponse): NormalizedPayoutRequest 
   paymentReference: item.paymentReference || null,
   approvedAt: item.approvedAt || null,
   markedPaidAt: item.markedPaidAt || null,
+  created: item.created || null,
+  updated: item.updated || null,
+});
+
+const normalizeInvoice = (item: PayoutInvoiceResponse): NormalizedPayoutInvoice => ({
+  id: String(item.id || ""),
+  invoiceNumber: String(item.invoiceNumber || "N/A"),
+  payoutRequestId: String(item.payoutRequestId || ""),
+  instructorId: String(item.instructorId || ""),
+  amount: toNumber(item.amount),
+  transferReference: item.transferReference || null,
+  status: String(item.status || "GENERATED").toUpperCase(),
+  emailSent: Boolean(item.emailSent),
   created: item.created || null,
   updated: item.updated || null,
 });
@@ -166,6 +205,7 @@ export default function PayoutManagementPage() {
   const locale = useLocale();
   const t = useTranslations("ManagePayout");
   const notAvailable = t("NotAvailable");
+  const issueAndTransferLabel = t("IssueInvoiceAndTransfer");
   const dashboardRole: "ADMIN" | "INSTRUCTOR" | null =
     role === "ADMIN" || role === "SUPER_ADMIN" ? "ADMIN" : role === "INSTRUCTOR" ? "INSTRUCTOR" : null;
 
@@ -175,13 +215,16 @@ export default function PayoutManagementPage() {
   const [batchSheetOpen, setBatchSheetOpen] = useState(false);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState("");
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [requestAmount, setRequestAmount] = useState("");
   const [requestNote, setRequestNote] = useState("");
+  const [requestCurrency, setRequestCurrency] = useState<"VND" | "USD">("VND");
   const [paymentReference, setPaymentReference] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [manualBatchName, setManualBatchName] = useState("");
   const [manualBatchFromDate, setManualBatchFromDate] = useState("");
   const [manualBatchToDate, setManualBatchToDate] = useState("");
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState("");
 
   const formatDateTimeValue = (value?: string | null) => {
     if (!value) return notAvailable;
@@ -233,18 +276,24 @@ export default function PayoutManagementPage() {
 
   const balanceQueryInstructorId = dashboardRole === "ADMIN" ? selectedInstructorId.trim() : currentUserId;
   const balanceQueryEnabled = !!balanceQueryInstructorId;
+  const isAdminView = dashboardRole === "ADMIN";
 
   const { data: balance, isFetching: isBalanceFetching, refetch: refetchBalance } = usePayoutBalance(
     balanceQueryEnabled ? balanceQueryInstructorId : undefined
   );
   const { data: requests = [], isFetching: isRequestsFetching, refetch: refetchRequests } = usePayoutRequests();
-  const { data: batches = [], isFetching: isBatchesFetching, refetch: refetchBatches } = usePayoutBatches();
+  const { data: batches = [], isFetching: isBatchesFetching, refetch: refetchBatches } = usePayoutBatches(isAdminView);
+  const { data: invoices = [], isFetching: isInvoicesFetching, refetch: refetchInvoices } = usePayoutInvoices(
+    isAdminView ? selectedInstructorId.trim() || undefined : undefined
+  );
   const { data: requestDetail, isFetching: isDetailFetching, refetch: refetchDetail } = usePayoutRequestDetail(
     selectedRequestId || undefined
   );
+  const { data: invoiceDetail } = usePayoutInvoiceDetail(selectedInvoiceId || undefined);
 
   const createRequestMutation = useCreatePayoutRequest();
   const approveRequestMutation = useApprovePayoutRequest();
+  const settleApprovedRequestMutation = useSettleApprovedPayoutRequest();
   const rejectRequestMutation = useRejectPayoutRequest();
   const markPaidMutation = useMarkPayoutRequestPaid();
   const createMonthlyBatchMutation = useCreateMonthlyPayoutBatch();
@@ -258,12 +307,21 @@ export default function PayoutManagementPage() {
     () => (batches as PayoutBatchResponse[]).map(normalizeBatch),
     [batches]
   );
+  const normalizedInvoices = useMemo(
+    () => (invoices as PayoutInvoiceResponse[]).map(normalizeInvoice),
+    [invoices]
+  );
 
   const activeRequest = useMemo(
     () => normalizedRequests.find((request) => request.id === selectedRequestId) || null,
     [normalizedRequests, selectedRequestId]
   );
   const detail = requestDetail ? normalizeRequest(requestDetail) : activeRequest;
+  const activeInvoice = useMemo(
+    () => normalizedInvoices.find((invoice) => invoice.id === selectedInvoiceId) || null,
+    [normalizedInvoices, selectedInvoiceId]
+  );
+  const detailInvoice = invoiceDetail ? normalizeInvoice(invoiceDetail) : activeInvoice;
 
   const visibleRequests = useMemo(() => {
     const source =
@@ -282,10 +340,17 @@ export default function PayoutManagementPage() {
     return batchIndex >= 0 ? `#${batchIndex + 1}` : t("Unassigned");
   };
 
+  const isReviewableRequest = (status: string) => status === "REQUESTED";
+  const canIssueInvoiceAndTransfer = (status: string) => ["REQUESTED", "APPROVED"].includes(status);
+
   const summary = useMemo(() => {
     const totalEarned = toNumber(balance?.totalEarned);
     const pendingAmount = toNumber(balance?.pendingAmount);
     const availableAmount = toNumber(balance?.availableAmount);
+    const totalEarnedUsd = toNumber((balance as any)?.totalEarnedUsd);
+    const pendingAmountUsd = toNumber((balance as any)?.pendingAmountUsd);
+    const availableAmountUsd = toNumber((balance as any)?.availableAmountUsd);
+    const usdRate = toNumber((balance as any)?.usdRate);
     const totalRequested = visibleRequests.reduce((acc, request) => acc + request.amount, 0);
     const pendingRequests = visibleRequests.filter((request) => ["REQUESTED", "PENDING"].includes(request.status)).length;
     const approvedRequests = visibleRequests.filter((request) => request.status === "APPROVED").length;
@@ -293,6 +358,10 @@ export default function PayoutManagementPage() {
       totalEarned,
       pendingAmount,
       availableAmount,
+      totalEarnedUsd,
+      pendingAmountUsd,
+      availableAmountUsd,
+      usdRate,
       totalRequested,
       pendingRequests,
       approvedRequests,
@@ -357,8 +426,9 @@ export default function PayoutManagementPage() {
       }));
   }, [normalizedBatches, normalizedRequests, t]);
 
-  const openRequestDetail = (requestId: string) => {
+  const openRequestDetail = (requestId: string, invoiceId?: string | null) => {
     setSelectedRequestId(requestId);
+    setSelectedInvoiceId(invoiceId || "");
     setDetailSheetOpen(true);
     setReviewNote("");
     setPaymentReference("");
@@ -366,7 +436,13 @@ export default function PayoutManagementPage() {
 
   const refreshAll = async () => {
     try {
-      await Promise.all([refetchBalance(), refetchRequests(), refetchBatches(), refetchDetail()]);
+      await Promise.all([
+        refetchBalance(),
+        refetchRequests(),
+        refetchInvoices(),
+        ...(isAdminView ? [refetchBatches()] : []),
+        refetchDetail(),
+      ]);
     } catch (error: any) {
       toast({
         title: t("RefreshErrorTitle"),
@@ -387,7 +463,11 @@ export default function PayoutManagementPage() {
       return;
     }
 
-    if (summary.availableAmount > 0 && amount > summary.availableAmount) {
+    // Quy đổi sang VND để so sánh với available (canonical là VND).
+    const amountVnd = requestCurrency === "USD" && summary.usdRate > 0
+      ? amount / summary.usdRate
+      : amount;
+    if (summary.availableAmount > 0 && amountVnd > summary.availableAmount) {
       toast({
         title: t("ExceedAvailableTitle"),
         description: t("ExceedAvailableDescription"),
@@ -397,7 +477,7 @@ export default function PayoutManagementPage() {
     }
 
     try {
-      await createRequestMutation.mutateAsync({ amount, note: requestNote.trim() || undefined });
+      await createRequestMutation.mutateAsync({ amount, note: requestNote.trim() || undefined, currency: requestCurrency } as any);
       toast({
         title: t("CreateRequestSuccessTitle"),
         description: t("CreateRequestSuccessDescription"),
@@ -414,13 +494,18 @@ export default function PayoutManagementPage() {
     }
   };
 
-  const handleApprove = async () => {
-    if (!selectedRequestId) return;
+  const handleIssueInvoiceAndTransfer = async (
+    requestId = selectedRequestId,
+    requestStatus = detail?.status || "REQUESTED"
+  ) => {
+    if (!requestId) return;
     try {
-      await approveRequestMutation.mutateAsync({
-        requestId: selectedRequestId,
-        payload: { note: reviewNote.trim() || undefined },
-      });
+      const payload = { note: reviewNote.trim() || undefined };
+      if (requestStatus === "APPROVED") {
+        await settleApprovedRequestMutation.mutateAsync({ requestId, payload });
+      } else {
+        await approveRequestMutation.mutateAsync({ requestId, payload });
+      }
       toast({ title: t("ApproveSuccessTitle") });
       await refreshAll();
       setDetailSheetOpen(false);
@@ -433,11 +518,11 @@ export default function PayoutManagementPage() {
     }
   };
 
-  const handleReject = async () => {
-    if (!selectedRequestId) return;
+  const handleReject = async (requestId = selectedRequestId) => {
+    if (!requestId) return;
     try {
       await rejectRequestMutation.mutateAsync({
-        requestId: selectedRequestId,
+        requestId,
         payload: { note: reviewNote.trim() || undefined },
       });
       toast({ title: t("RejectSuccessTitle") });
@@ -535,6 +620,32 @@ export default function PayoutManagementPage() {
     toast({ title: t("CopyRequestIdSuccess") });
   };
 
+  const handleDownloadInvoicePdf = async (invoice: NormalizedPayoutInvoice) => {
+    if (!invoice.id) return;
+    try {
+      setDownloadingInvoiceId(invoice.id);
+      const blob = await paymentApiRequest.downloadPayoutInvoicePdf(invoice.id);
+      const fileName = `${invoice.invoiceNumber || invoice.id}.pdf`;
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      toast({ title: t("DownloadInvoiceSuccessTitle") });
+    } catch (error: any) {
+      toast({
+        title: t("DownloadInvoiceErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingInvoiceId("");
+    }
+  };
+
   if (!isAuth || !dashboardRole) {
     return (
       <main className="manage-finance-root manage-payout-root min-h-screen bg-background p-4 text-foreground sm:px-6 sm:py-4 md:p-8">
@@ -573,23 +684,25 @@ export default function PayoutManagementPage() {
                 year: "numeric",
               }).format(new Date())}
             </div>
-            <Button
-              onClick={() => setBatchSheetOpen(true)}
-              className="manage-finance-primary px-6 font-semibold sm:w-auto"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              {t("CreateBatch")}
-            </Button>
+            {isAdminView && (
+              <Button
+                onClick={() => setBatchSheetOpen(true)}
+                className="manage-finance-primary px-6 font-semibold sm:w-auto"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                {t("CreateBatch")}
+              </Button>
+            )}
           </div>
         </div>
       </section>
 
       <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
-          { title: t("SummaryTotalEarned"), value: formatCurrency(summary.totalEarned), icon: CircleDollarSign, accent: "text-[#adc6ff]" },
-          { title: t("SummaryPendingPayout"), value: formatCurrency(summary.pendingAmount), icon: WalletCards, accent: "text-[#ffddb8]" },
-          { title: t("SummaryAvailableBalance"), value: formatCurrency(summary.availableAmount), icon: CheckCircle2, accent: "text-[#4edea3]" },
-          { title: t("SummaryOpenRequests"), value: String(summary.pendingRequests), icon: Layers3, accent: "text-white/70" },
+          { title: t("SummaryTotalEarned"), value: formatCurrency(summary.totalEarned), sub: summary.totalEarnedUsd > 0 ? `≈ $${summary.totalEarnedUsd.toFixed(2)} USD` : "", icon: CircleDollarSign, accent: "text-[#adc6ff]" },
+          { title: t("SummaryPendingPayout"), value: formatCurrency(summary.pendingAmount), sub: summary.pendingAmountUsd > 0 ? `≈ $${summary.pendingAmountUsd.toFixed(2)} USD` : "", icon: WalletCards, accent: "text-[#ffddb8]" },
+          { title: t("SummaryAvailableBalance"), value: formatCurrency(summary.availableAmount), sub: summary.availableAmountUsd > 0 ? `≈ $${summary.availableAmountUsd.toFixed(2)} USD` : "", icon: CheckCircle2, accent: "text-[#4edea3]" },
+          { title: t("SummaryOpenRequests"), value: String(summary.pendingRequests), sub: "", icon: Layers3, accent: "text-white/70" },
         ].map((card) => {
           const Icon = card.icon;
           return (
@@ -603,6 +716,7 @@ export default function PayoutManagementPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">{card.value}</div>
+                {card.sub && <div className="mt-1 text-xs text-white/55">{card.sub}</div>}
                 <div className="mt-2 text-[11px] text-white/45">{t("UpdatedProjection")}</div>
               </CardContent>
             </Card>
@@ -649,16 +763,25 @@ export default function PayoutManagementPage() {
             <div className="rounded-2xl border border-border bg-white/5 p-4">
               <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("LifetimeEarned")}</div>
               <div className="mt-2 text-2xl font-bold text-foreground">{formatCurrency(summary.totalEarned)}</div>
+              {summary.totalEarnedUsd > 0 && (
+                <div className="text-xs text-white/50">≈ ${summary.totalEarnedUsd.toFixed(2)} USD</div>
+              )}
             </div>
             <div className="rounded-2xl border border-border bg-white/5 p-4">
               <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("CurrentPending")}</div>
               <div className="mt-2 text-2xl font-bold text-[#ffddb8]">{formatCurrency(summary.pendingAmount)}</div>
+              {summary.pendingAmountUsd > 0 && (
+                <div className="text-xs text-white/50">≈ ${summary.pendingAmountUsd.toFixed(2)} USD</div>
+              )}
             </div>
             <div className="rounded-2xl border border-border bg-white/5 p-4">
               <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-300">
                 {t("Available")} <span className="h-2 w-2 rounded-full bg-emerald-400" />
               </div>
               <div className="mt-2 text-2xl font-extrabold text-foreground">{formatCurrency(summary.availableAmount)}</div>
+              {summary.availableAmountUsd > 0 && (
+                <div className="text-xs text-emerald-200/70">≈ ${summary.availableAmountUsd.toFixed(2)} USD</div>
+              )}
             </div>
           </div>
 
@@ -686,14 +809,22 @@ export default function PayoutManagementPage() {
         </div>
 
         {dashboardRole === "INSTRUCTOR" && (
-          <div className="mt-5 grid gap-3 xl:grid-cols-[1.1fr_1fr_auto]">
+          <div className="mt-5 grid gap-3 xl:grid-cols-[1.1fr_auto_1fr_auto]">
             <Input
               value={requestAmount}
               onChange={(event) => setRequestAmount(event.target.value)}
-              placeholder={t("AmountPlaceholder")}
+              placeholder={requestCurrency === "USD" ? "49.99" : t("AmountPlaceholder")}
               inputMode="decimal"
               className="manage-finance-input h-12"
             />
+            <select
+              value={requestCurrency}
+              onChange={(e) => setRequestCurrency(e.target.value as "VND" | "USD")}
+              className="manage-finance-input h-12 rounded-md border border-white/10 bg-white/5 px-3 text-sm text-white"
+            >
+              <option value="VND">VNĐ</option>
+              <option value="USD">USD</option>
+            </select>
             <Input
               value={requestNote}
               onChange={(event) => setRequestNote(event.target.value)}
@@ -713,6 +844,7 @@ export default function PayoutManagementPage() {
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-12">
+        {isAdminView && (
         <Card className="xl:col-span-4 border border-border bg-card shadow-sm">
           <CardHeader className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -796,8 +928,9 @@ export default function PayoutManagementPage() {
             </div>
           </CardContent>
         </Card>
+        )}
 
-        <Card className="xl:col-span-8 border border-border bg-card shadow-sm">
+        <Card className={`${isAdminView ? "xl:col-span-8" : "xl:col-span-12"} border border-border bg-card shadow-sm`}>
           <CardHeader className="flex flex-col gap-4 border-b border-border md:flex-row md:items-center md:justify-between">
             <div>
               <CardTitle className="text-foreground">{t("QueueTitle")}</CardTitle>
@@ -870,6 +1003,10 @@ export default function PayoutManagementPage() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-3">
+                        <span className="text-white/50">Invoice</span>
+                        <span className="text-right text-white/75">{request.invoiceNumber || notAvailable}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
                         <span className="text-white/50">Date</span>
                         <span className="text-right text-white/75">{formatDateShortValue(request.created || request.updated)}</span>
                       </div>
@@ -880,7 +1017,7 @@ export default function PayoutManagementPage() {
                         size="sm"
                         variant="ghost"
                         className="manage-finance-secondary flex-1 justify-center"
-                        onClick={() => openRequestDetail(request.id)}
+                        onClick={() => openRequestDetail(request.id, request.invoiceId)}
                       >
                         <Eye className="mr-2 h-4 w-4" />
                         {t("DetailTitle")}
@@ -895,6 +1032,30 @@ export default function PayoutManagementPage() {
                         ID
                       </Button>
                     </div>
+
+                    {dashboardRole === "ADMIN" && isReviewableRequest(request.status) && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="manage-finance-secondary justify-center"
+                          onClick={() => handleReject(request.id)}
+                          disabled={rejectRequestMutation.isPending}
+                        >
+                          <XCircle className="mr-2 h-4 w-4" />
+                          {t("Reject")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="manage-finance-primary justify-center"
+                          onClick={() => handleIssueInvoiceAndTransfer(request.id, request.status)}
+                          disabled={approveRequestMutation.isPending || settleApprovedRequestMutation.isPending}
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          {issueAndTransferLabel}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
             </div>
@@ -905,6 +1066,7 @@ export default function PayoutManagementPage() {
                   <tr>
                     <th className="px-4 py-4 font-semibold">Instructor</th>
                     <th className="px-4 py-4 font-semibold">Requested</th>
+                    <th className="px-4 py-4 font-semibold">Invoice</th>
                     <th className="px-4 py-4 font-semibold">Batch</th>
                     <th className="px-4 py-4 font-semibold">Date</th>
                     <th className="px-4 py-4 font-semibold">Status</th>
@@ -915,7 +1077,7 @@ export default function PayoutManagementPage() {
                   {isRequestsFetching &&
                     Array.from({ length: 4 }).map((_, index) => (
                       <tr key={index}>
-                        <td colSpan={6} className="px-4 py-4">
+                        <td colSpan={7} className="px-4 py-4">
                           <Skeleton className="h-7 rounded-full bg-white/5" />
                         </td>
                       </tr>
@@ -923,7 +1085,7 @@ export default function PayoutManagementPage() {
 
                   {!isRequestsFetching && visibleRequests.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-white/45">
+                      <td colSpan={7} className="px-4 py-10 text-center text-white/45">
                         {t("NoRequests")}
                       </td>
                     </tr>
@@ -944,6 +1106,7 @@ export default function PayoutManagementPage() {
                           </div>
                         </td>
                         <td className="px-4 py-4 font-semibold text-foreground">{formatCurrency(request.amount)}</td>
+                        <td className="px-4 py-4 text-white/50">{request.invoiceNumber || notAvailable}</td>
                         <td className="px-4 py-4 text-white/50">{getBatchDisplayId(request.batchId)}</td>
                         <td className="px-4 py-4 text-white/50">{formatDateShortValue(request.created || request.updated)}</td>
                         <td className="px-4 py-4">
@@ -953,11 +1116,34 @@ export default function PayoutManagementPage() {
                         </td>
                         <td className="px-4 py-4 text-right">
                           <div className="flex justify-end gap-2 opacity-90 transition group-hover:opacity-100">
+                            {dashboardRole === "ADMIN" && canIssueInvoiceAndTransfer(request.status) && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 rounded-full border-white/10 px-3 text-xs text-white/75 hover:bg-white/5 hover:text-white"
+                                  onClick={() => handleReject(request.id)}
+                                  disabled={rejectRequestMutation.isPending}
+                                >
+                                  <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                                  {t("Reject")}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="h-8 rounded-full bg-[#3f67f7] px-3 text-xs text-white hover:bg-[#3558d8]"
+                                  onClick={() => handleIssueInvoiceAndTransfer(request.id, request.status)}
+                                  disabled={approveRequestMutation.isPending || settleApprovedRequestMutation.isPending}
+                                >
+                                  <FileText className="mr-1.5 h-3.5 w-3.5" />
+                                  {issueAndTransferLabel}
+                                </Button>
+                              </>
+                            )}
                             <Button
                               size="icon"
                               variant="ghost"
                               className="h-8 w-8 rounded-full text-white/55 hover:bg-white/5 hover:text-white"
-                              onClick={() => openRequestDetail(request.id)}
+                              onClick={() => openRequestDetail(request.id, request.invoiceId)}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -985,6 +1171,128 @@ export default function PayoutManagementPage() {
           <CardHeader className="flex flex-col gap-3 border-b border-border md:flex-row md:items-center md:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2 text-foreground">
+                <FileText className="h-4 w-4 text-[#adc6ff]" />
+                {t("InvoiceListTitle")}
+              </CardTitle>
+              <CardDescription className="text-white/50">{t("InvoiceListDescription")}</CardDescription>
+            </div>
+            <div className="text-xs text-white/50">{normalizedInvoices.length} invoice(s)</div>
+          </CardHeader>
+          <CardContent className="pt-5">
+            <div className="space-y-3 md:hidden">
+              {isInvoicesFetching &&
+                Array.from({ length: 2 }).map((_, index) => (
+                  <div key={`invoice-card-${index}`} className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+                    <Skeleton className="h-20 rounded-2xl bg-white/5" />
+                  </div>
+                ))}
+
+              {!isInvoicesFetching && normalizedInvoices.length === 0 && (
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 text-center text-sm text-white/45">
+                  {t("NoInvoices")}
+                </div>
+              )}
+
+              {!isInvoicesFetching &&
+                normalizedInvoices.map((invoice) => (
+                  <div key={`invoice-mobile-${invoice.id}`} className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-xs text-white/50">{invoice.invoiceNumber}</p>
+                        <p className="mt-1 text-sm font-semibold text-[#f0f4ff]">{formatCurrency(invoice.amount)}</p>
+                      </div>
+                      <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[invoice.status] || statusTone.DRAFT}`}>
+                        {invoice.status}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 text-xs text-white/60">
+                      {t("PaymentReferenceLabel")}: {invoice.transferReference || notAvailable}
+                    </div>
+                    <div className="mt-1 text-xs text-white/50">{formatDateTimeValue(invoice.created || invoice.updated)}</div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="manage-finance-secondary mt-3 w-full"
+                      onClick={() => handleDownloadInvoicePdf(invoice)}
+                      disabled={downloadingInvoiceId === invoice.id}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      {downloadingInvoiceId === invoice.id ? t("DownloadingInvoice") : t("DownloadInvoicePdf")}
+                    </Button>
+                  </div>
+                ))}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-2xl border border-white/8 md:block">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-white/[0.04] text-[10px] uppercase tracking-[0.22em] text-white/40">
+                  <tr>
+                    <th className="px-4 py-4 font-semibold">Invoice</th>
+                    <th className="px-4 py-4 font-semibold">Instructor</th>
+                    <th className="px-4 py-4 font-semibold">Amount</th>
+                    <th className="px-4 py-4 font-semibold">Transfer Ref</th>
+                    <th className="px-4 py-4 font-semibold">Status</th>
+                    <th className="px-4 py-4 font-semibold">Created</th>
+                    <th className="px-4 py-4 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/8 text-white/75">
+                  {isInvoicesFetching &&
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <tr key={`invoice-row-${index}`}>
+                        <td colSpan={7} className="px-4 py-4">
+                          <Skeleton className="h-7 rounded-full bg-white/5" />
+                        </td>
+                      </tr>
+                    ))}
+
+                  {!isInvoicesFetching && normalizedInvoices.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-10 text-center text-white/45">
+                        {t("NoInvoices")}
+                      </td>
+                    </tr>
+                  )}
+
+                  {!isInvoicesFetching &&
+                    normalizedInvoices.map((invoice) => (
+                      <tr key={invoice.id} className="hover:bg-white/[0.03]">
+                        <td className="px-4 py-4 font-mono text-xs text-[#adc6ff]">{invoice.invoiceNumber}</td>
+                        <td className="px-4 py-4">{shortIdValue(invoice.instructorId)}</td>
+                        <td className="px-4 py-4 font-semibold text-[#f0f4ff]">{formatCurrency(invoice.amount)}</td>
+                        <td className="px-4 py-4 font-mono text-xs text-white/60">{invoice.transferReference || notAvailable}</td>
+                        <td className="px-4 py-4">
+                          <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[invoice.status] || statusTone.DRAFT}`}>
+                            {invoice.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-4 text-white/55">{formatDateTimeValue(invoice.created || invoice.updated)}</td>
+                        <td className="px-4 py-4 text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="manage-finance-secondary"
+                            onClick={() => handleDownloadInvoicePdf(invoice)}
+                            disabled={downloadingInvoiceId === invoice.id}
+                          >
+                            <Download className="mr-2 h-3.5 w-3.5" />
+                            {downloadingInvoiceId === invoice.id ? t("DownloadingInvoice") : t("DownloadInvoicePdf")}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-6 grid gap-6 xl:grid-cols-12">
+        <Card className="xl:col-span-12 border border-white/8 bg-[#1b1f2c] shadow-[0_12px_40px_rgba(0,0,0,0.22)]">
+          <CardHeader className="flex flex-col gap-3 border-b border-white/8 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-[#f0f4ff]">
                 <FileText className="h-4 w-4 text-[#adc6ff]" />
                 {t("LedgerTitle")}
               </CardTitle>
@@ -1082,8 +1390,9 @@ export default function PayoutManagementPage() {
         </Card>
       </section>
 
+      {isAdminView && (
       <Sheet open={batchSheetOpen} onOpenChange={setBatchSheetOpen}>
-        <SheetContent side="right" className="w-full border-l border-border bg-background text-foreground sm:max-w-2xl">
+        <SheetContent side="right" className="w-full max-h-screen overflow-y-auto border-l border-border bg-background text-foreground sm:max-w-2xl">
           <SheetHeader className="space-y-3 border-b border-border pb-4 text-left">
             <SheetTitle className="text-foreground">{t("BatchBuilderTitle")}</SheetTitle>
             <SheetDescription className="text-white/55">
@@ -1091,7 +1400,7 @@ export default function PayoutManagementPage() {
             </SheetDescription>
           </SheetHeader>
 
-          <div className="mt-6 space-y-5">
+          <div className="mt-6 space-y-5 pb-6">
             <Card className="border border-border bg-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm text-foreground">{t("MonthlyBatchTitle")}</CardTitle>
@@ -1151,6 +1460,7 @@ export default function PayoutManagementPage() {
           </div>
         </SheetContent>
       </Sheet>
+      )}
 
       <Sheet
         open={detailSheetOpen}
@@ -1158,12 +1468,13 @@ export default function PayoutManagementPage() {
           setDetailSheetOpen(open);
           if (!open) {
             setSelectedRequestId("");
+            setSelectedInvoiceId("");
             setReviewNote("");
             setPaymentReference("");
           }
         }}
       >
-        <SheetContent side="right" className="w-full border-l border-border bg-background text-foreground sm:max-w-xl">
+        <SheetContent side="right" className="w-full max-h-screen overflow-y-auto border-l border-border bg-background text-foreground sm:max-w-xl">
           <SheetHeader className="space-y-3 border-b border-border pb-4 text-left">
             <div className="flex flex-wrap items-center gap-2">
               <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[detail?.status || "REQUESTED"] || statusTone.REQUESTED}`}>
@@ -1183,7 +1494,7 @@ export default function PayoutManagementPage() {
             </SheetDescription>
           </SheetHeader>
 
-          <div className="mt-6 space-y-6">
+          <div className="mt-6 space-y-6 pb-6">
             <Card className="border border-border bg-card">
               <CardContent className="space-y-4 p-5">
                 <div className="grid gap-3 text-center text-xs sm:grid-cols-3">
@@ -1205,11 +1516,11 @@ export default function PayoutManagementPage() {
                   <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("MethodLabel")}</div>
-                      <div className="mt-1 flex items-center gap-2 text-foreground"><Landmark className="h-4 w-4 text-[#4edea3]" />{t("SandboxWire")}</div>
+                      <div className="mt-1 flex items-center gap-2 text-foreground"><Landmark className="h-4 w-4 text-[#4edea3]" />{t("AutoTransferMode")}</div>
                     </div>
                     <div className="text-left sm:text-right">
                       <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("TypeLabel")}</div>
-                      <div className="mt-1 text-foreground">{t("ManualSettlement")}</div>
+                      <div className="mt-1 text-foreground">{t("InvoiceDrivenSettlement")}</div>
                     </div>
                   </div>
                   <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
@@ -1224,6 +1535,14 @@ export default function PayoutManagementPage() {
                     <div className="flex items-center justify-between text-white/60">
                       <span>{t("PaymentReferenceLabel")}</span>
                       <span className="max-w-[70%] text-right font-mono text-white/75">{detail?.paymentReference || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-white/60">
+                      <span>{t("InvoiceLabel")}</span>
+                      <span className="max-w-[70%] text-right font-mono text-white/75">{detail?.invoiceNumber || detailInvoice?.invoiceNumber || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-white/60">
+                      <span>{t("InvoiceStatusLabel")}</span>
+                      <span className="max-w-[70%] text-right text-white/75">{detailInvoice?.status || "—"}</span>
                     </div>
                   </div>
                 </div>
@@ -1259,25 +1578,28 @@ export default function PayoutManagementPage() {
             <Button
               variant="outline"
               className="manage-finance-secondary"
-              onClick={handleReject}
+              onClick={() => handleReject()}
               disabled={rejectRequestMutation.isPending}
+              hidden={dashboardRole !== "ADMIN" || !detail || !isReviewableRequest(detail.status)}
             >
               <XCircle className="mr-2 h-4 w-4" />
               {t("Reject")}
             </Button>
-            <Button
-              variant="outline"
-              className="manage-finance-secondary"
-              onClick={handleApprove}
-              disabled={approveRequestMutation.isPending}
-            >
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              {t("Approve")}
+              <Button
+                variant="outline"
+                className="manage-finance-secondary"
+                onClick={() => handleIssueInvoiceAndTransfer()}
+                disabled={approveRequestMutation.isPending || settleApprovedRequestMutation.isPending}
+                hidden={dashboardRole !== "ADMIN" || !detail || !canIssueInvoiceAndTransfer(detail.status)}
+              >
+              <FileText className="mr-2 h-4 w-4" />
+              {issueAndTransferLabel}
             </Button>
             <Button
               className="manage-finance-primary"
               onClick={handleMarkPaid}
               disabled={markPaidMutation.isPending}
+              hidden={dashboardRole !== "ADMIN" || !detail || detail.status !== "APPROVED"}
             >
               <ShieldCheck className="mr-2 h-4 w-4" />
               {t("MarkPaid")}

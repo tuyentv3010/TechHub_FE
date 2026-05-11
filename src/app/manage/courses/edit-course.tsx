@@ -91,6 +91,7 @@ export default function EditCourse({
       title: "",
       description: "",
       price: 0,
+      currency: "VND",
       level: "BEGINNER",
       language: "VI",
       status: "DRAFT",
@@ -126,6 +127,7 @@ export default function EditCourse({
         title: course.title,
         description: course.description || "",
         price: course.price,
+        currency: (course.currency as "VND" | "USD") || "VND",
         discountPrice: course.discountPrice || undefined,
         level: course.level,
         language: course.language,
@@ -376,7 +378,9 @@ export default function EditCourse({
                     id="price"
                     placeholder="49 000"
                     value={field.value}
+                    currency={(form.watch("currency") as "VND" | "USD") || "VND"}
                     onChange={(numericValue) => field.onChange(numericValue)}
+                    onCurrencyChange={(c) => form.setValue("currency", c)}
                   />
                 )}
               />
@@ -392,7 +396,9 @@ export default function EditCourse({
                     id="discountPrice"
                     placeholder="29 000"
                     value={field.value}
+                    currency={(form.watch("currency") as "VND" | "USD") || "VND"}
                     onChange={(numericValue) => field.onChange(numericValue)}
+                    onCurrencyChange={(c) => form.setValue("currency", c)}
                   />
                 )}
               />

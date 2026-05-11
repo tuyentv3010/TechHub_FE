@@ -380,6 +380,18 @@ export function formatPriceVND(price: number): string {
  * @param currency - The currency type ('VND' or 'USD')
  * @returns Formatted string
  */
+/**
+ * Format giá theo currency của course (BE-driven). Nếu currency null/undefined mặc định VND.
+ */
+export function formatPrice(value: number | null | undefined, currency?: string | null): string {
+  const amount = value ?? 0;
+  const code = (currency || "VND").toUpperCase();
+  if (code === "USD") {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+  }
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(amount);
+}
+
 export function formatCurrencyByType(value: number, currency: 'VND' | 'USD'): string {
   if (currency === 'USD') {
     return value.toFixed(2);

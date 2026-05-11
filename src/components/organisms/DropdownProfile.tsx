@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
-import { BookOpen, Menu, User, LogOut, Settings, BookText, BarChart3 } from "lucide-react";
+import { BookOpen, Menu, User, LogOut, Settings, BookText, BarChart3, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/components/app-provider";
 import { NotificationBell } from "@/components/organisms/NotificationBell";
@@ -250,6 +250,17 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
                     <Link href="/manage/courses" className="cursor-pointer">
                       <BookOpen className="mr-2 h-4 w-4" />
                       {t("manageCourses") || "Manage Courses"}
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {/* Chỉ LEARNER chưa có role INSTRUCTOR mới thấy nút này */}
+                {(userInfo?.roles || account?.roles)?.includes("LEARNER") &&
+                  !(userInfo?.roles || account?.roles)?.includes("INSTRUCTOR") &&
+                  !(userInfo?.roles || account?.roles)?.includes("ADMIN") && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/account/instructor-application" className="cursor-pointer text-purple-600 dark:text-purple-400 font-medium">
+                      <GraduationCap className="mr-2 h-4 w-4" />
+                      Trở thành Giảng viên
                     </Link>
                   </DropdownMenuItem>
                 )}

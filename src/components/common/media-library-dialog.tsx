@@ -126,9 +126,11 @@ export default function MediaLibraryDialog({
     ? getTotalPagesFromResponse(folderFilesData)
     : getTotalPagesFromResponse(allFilesData);
 
+  // Reset fallback state khi danh sách file thực sự đổi (so theo IDs ổn định).
+  const allFilesKey = allFiles.map((f) => f.id).join("|");
   useEffect(() => {
     setPreviewFallbackState({});
-  }, [allFiles]);
+  }, [allFilesKey]);
 
   useEffect(() => {
     if (currentPage > totalPages - 1) {

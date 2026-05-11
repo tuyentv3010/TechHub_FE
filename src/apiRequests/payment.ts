@@ -1,4 +1,18 @@
 import http from "@/lib/http";
+import envConfig from "@/config";
+
+export type FxRateResponse = {
+  from: string;
+  to: string;
+  rate: number;
+};
+
+export const fxApi = {
+  getRate: (from: string, to: string) =>
+    http.get<{ payload: { data: FxRateResponse } }>(
+      `/app/api/proxy/payments/fx/rate?from=${from}&to=${to}`
+    ),
+};
 
 export interface VNPayPaymentRequest {
   amount: number;
@@ -81,12 +95,25 @@ export type PayoutBalanceResponse = {
   totalEarned: number;
   pendingAmount: number;
   availableAmount: number;
+  totalEarnedUsd?: number;
+  pendingAmountUsd?: number;
+  availableAmountUsd?: number;
+  usdRate?: number;
+  currency?: string;
+};
+
+export type CreatePayoutRequestPayload = {
+  amount: number;
+  note?: string;
+  currency?: "VND" | "USD";
 };
 
 export type PayoutRequestResponse = {
   id: string;
   instructorId: string;
   batchId?: string | null;
+  invoiceId?: string | null;
+  invoiceNumber?: string | null;
   amount: number;
   status: string;
   note?: string | null;
@@ -94,6 +121,21 @@ export type PayoutRequestResponse = {
   paymentReference?: string | null;
   approvedAt?: string | null;
   markedPaidAt?: string | null;
+  created?: string | null;
+  updated?: string | null;
+};
+
+export type PayoutInvoiceResponse = {
+  id: string;
+  invoiceNumber: string;
+  payoutRequestId: string;
+  instructorId: string;
+  amount: number;
+  transferReference?: string | null;
+  status: string;
+  emailSent?: boolean | null;
+  uiVisible?: boolean | null;
+  pdfUrl?: string | null;
   created?: string | null;
   updated?: string | null;
 };
@@ -108,11 +150,6 @@ export type PayoutBatchResponse = {
   totalRequests: number;
   totalAmount: number;
   created?: string | null;
-};
-
-export type CreatePayoutRequestPayload = {
-  amount: number;
-  note?: string;
 };
 
 export type ReviewPayoutRequestPayload = {
@@ -187,6 +224,12 @@ const paymentApiRequest = {
       payload
     ),
 
+  settleApprovedPayoutRequest: (requestId: string, payload: ReviewPayoutRequestPayload = {}) =>
+    http.put<GlobalResponse<PayoutRequestResponse>>(
+      `/app/api/proxy/payments/payouts/requests/${requestId}/settle`,
+      payload
+    ),
+
   rejectPayoutRequest: (requestId: string, payload: ReviewPayoutRequestPayload = {}) =>
     http.put<GlobalResponse<PayoutRequestResponse>>(
       `/app/api/proxy/payments/payouts/requests/${requestId}/reject`,
@@ -201,6 +244,35 @@ const paymentApiRequest = {
 
   listPayoutBatches: () =>
     http.get<GlobalResponse<PayoutBatchResponse[]>>("/app/api/proxy/payments/payouts/batches"),
+
+  listPayoutInvoices: (instructorId?: string) =>
+    http.get<GlobalResponse<PayoutInvoiceResponse[]>>("/app/api/proxy/payments/payouts/invoices", {
+      params: instructorId ? { instructorId } : undefined,
+    }),
+
+  getPayoutInvoice: (invoiceId: string) =>
+    http.get<GlobalResponse<PayoutInvoiceResponse>>(`/app/api/proxy/payments/payouts/invoices/${invoiceId}`),
+
+  downloadPayoutInvoicePdf: async (invoiceId: string) => {
+    const accessToken = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const res = await fetch(
+      `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/app/api/proxy/payments/payouts/invoices/${invoiceId}/pdf`,
+      {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          Accept: "application/pdf",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error("Could not download invoice PDF");
+    }
+
+    return res.blob();
+  },
 
   createMonthlyPayoutBatch: (period?: string) =>
     http.post<GlobalResponse<PayoutBatchResponse>>("/app/api/proxy/payments/payouts/batches/monthly", null, {
