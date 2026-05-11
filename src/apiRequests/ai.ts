@@ -1,5 +1,6 @@
 import http from "@/lib/http";
 import envConfig from "@/config";
+import { getAccessTokenFromLocalStorage } from "@/lib/utils";
 import { EventSourceParserStream } from "eventsource-parser/stream";
 import {
   AiExerciseGenerateRequestType,
@@ -102,8 +103,8 @@ const aiApiRequest = {
     console.log("🚀 [FE Streaming] Body:", JSON.stringify(body, null, 2));
 
     try {
-      // Get JWT token from localStorage (same as http.ts does)
-      const accessToken = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      const accessToken =
+        typeof window !== "undefined" ? getAccessTokenFromLocalStorage() : null;
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
         Accept: "text/event-stream",

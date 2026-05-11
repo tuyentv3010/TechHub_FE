@@ -1,9 +1,10 @@
 import CourseCard from "@/components/molecules/CourseCard";
 import CourseCardWithInstructor from "@/components/molecules/CourseCardWithInstructor";
-import { PrimaryButton } from "@/components/atoms/PrimaryButton";
 import { useGetCourses } from "@/queries/useCourse";
 import { Course, transformApiCourse } from "@/types/course";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { EmptyState, PageHeader } from "@/components/common";
 
 interface CourseWithInstructorId extends Omit<Course, 'instructor' | 'instructorAvatar' | 'id'> {
   id: string;
@@ -54,26 +55,22 @@ export function CoursesGridSection({
 
   if (useApi && isLoading) {
     return (
-      <section className="py-16 bg-gray-50 dark:bg-gray-800">
+      <section className="bg-background py-16">
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
-              {title}
-            </h2>
-            <Link href="/courses" className="text-blue-600 dark:text-blue-400 font-medium">
-              {viewAllText}
-            </Link>
-     
-          </div>
+          <PageHeader
+            className="mb-10"
+            title={title}
+            actions={<Button asChild variant="outline"><Link href="/courses">{viewAllText}</Link></Button>}
+          />
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, index) => (
-              <div key={index} className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700 animate-pulse">
-                <div className="h-48 bg-gray-200 dark:bg-gray-700"></div>
+              <div key={index} className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                <div className="h-48 animate-pulse bg-muted"></div>
                 <div className="p-6 space-y-4">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  <div className="h-4 animate-pulse rounded bg-muted"></div>
+                  <div className="h-4 w-3/4 animate-pulse rounded bg-muted"></div>
+                  <div className="h-4 w-1/2 animate-pulse rounded bg-muted"></div>
                 </div>
               </div>
             ))}
@@ -85,30 +82,25 @@ export function CoursesGridSection({
 
   if (useApi && error) {
     return (
-      <section className="py-16 bg-gray-50 dark:bg-gray-800">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            {title}
-          </h2>
-          <p className="text-red-500">Error loading courses. Please try again later.</p>
+      <section className="bg-background py-16">
+        <div className="container mx-auto px-4">
+          <EmptyState
+            title={title}
+            description="Error loading courses. Please try again later."
+          />
         </div>
       </section>
     );
   }
 
   return (
-    <section className="py-16 bg-gray-50 dark:bg-gray-800">
+    <section className="bg-background py-16">
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
-            {title}
-          </h2>
-            <Link href="/courses" className="text-blue-600 dark:text-blue-400 font-medium">    
-            <PrimaryButton variant="outline">
-            {viewAllText}
-          </PrimaryButton>
-          </Link>
-        </div>
+        <PageHeader
+          className="mb-10"
+          title={title}
+          actions={<Button asChild variant="outline"><Link href="/courses">{viewAllText}</Link></Button>}
+        />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {displayCoursesWithInstructors.length > 0 ? (
             displayCoursesWithInstructors.map((course, index) => (
@@ -119,9 +111,11 @@ export function CoursesGridSection({
               <CourseCard key={course.id || index} course={course} />
             ))
           ) : (
-            <div className="col-span-full text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400">No courses available</p>
-            </div>
+            <EmptyState
+              className="col-span-full"
+              title="No courses available"
+              description="Published courses will appear here when they are ready."
+            />
           )}
         </div>
       </div>

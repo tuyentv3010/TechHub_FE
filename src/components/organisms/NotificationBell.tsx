@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Check, CheckCheck, ExternalLink } from "lucide-react";
+import { Bell, CheckCheck, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { vi, enUS } from "date-fns/locale";
@@ -81,8 +81,8 @@ export function NotificationBell({ className }: NotificationBellProps) {
         };
       case "PROGRESS":
         return {
-          bgColor: "bg-purple-100 dark:bg-purple-900/30",
-          textColor: "text-purple-600 dark:text-purple-400",
+          bgColor: "bg-primary/10",
+          textColor: "text-primary",
           icon: "📊",
         };
       case "COMMENT":
@@ -143,14 +143,14 @@ export function NotificationBell({ className }: NotificationBellProps) {
         <Button
           variant="ghost"
           size="icon"
-          className={cn("relative", className)}
+          className={cn("app-control app-control-icon relative", className)}
           aria-label={t("notifications") || "Notifications"}
         >
           <Bell className="h-5 w-5" />
           {!isLoadingCount && totalUnread > 0 && (
             <Badge
               variant="destructive"
-              className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-xs flex items-center justify-center"
+              className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center px-1 text-xs"
             >
               {totalUnread > 99 ? "99+" : totalUnread}
             </Badge>
@@ -158,7 +158,13 @@ export function NotificationBell({ className }: NotificationBellProps) {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-80" align="end" forceMount>
+      <DropdownMenuContent
+        className="app-control-menu w-[calc(100vw-2rem)] max-w-80 sm:w-80"
+        align="end"
+        sideOffset={8}
+        collisionPadding={16}
+        forceMount
+      >
         {/* Header */}
         <DropdownMenuLabel className="flex items-center justify-between">
           <span className="font-semibold">
@@ -168,7 +174,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
+              className="h-8 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
               onClick={handleMarkAllAsRead}
               disabled={markAllAsReadMutation.isPending}
             >
@@ -261,7 +267,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full justify-center text-sm"
+                className="h-9 w-full justify-center rounded-lg text-sm"
                 onClick={handleViewAll}
               >
                 {t("viewAll") || "View all notifications"}

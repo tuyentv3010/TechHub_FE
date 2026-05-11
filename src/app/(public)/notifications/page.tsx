@@ -97,8 +97,8 @@ export default function NotificationsPage() {
         };
       case "PROGRESS":
         return {
-          bgColor: "bg-purple-100 dark:bg-purple-900/30",
-          textColor: "text-purple-600 dark:text-purple-400",
+          bgColor: "bg-primary/10",
+          textColor: "text-primary",
           icon: "📊",
           label: t("typeProgress") || "Progress",
         };

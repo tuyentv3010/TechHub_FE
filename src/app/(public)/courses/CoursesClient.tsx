@@ -170,16 +170,16 @@ export default function CoursesClient({
 
         {/* Content */}
         <div className="relative z-10 flex min-h-[400px] flex-col items-center justify-center px-4 text-center md:min-h-[500px]">
-          <h1 className="mb-4 text-3xl font-bold italic text-white md:text-4xl lg:text-5xl">
-            Learn something new everyday.
+          <h1 className="mb-4 text-3xl font-semibold text-white md:text-4xl lg:text-5xl">
+            Build job-ready technology skills.
           </h1>
           <p className="mb-12 text-base text-white/90 md:text-lg">
             Become professionals and ready to join the world.
           </p>
 
           {/* Search Box */}
-          <div className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-left text-lg font-semibold text-gray-800">
+          <div className="w-full max-w-4xl rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="mb-4 text-left text-lg font-semibold text-foreground">
               What do you want to learn?
             </h3>
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -190,7 +190,7 @@ export default function CoursesClient({
                   placeholder="Find courses, skills, software, etc"
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="h-12 border-gray-200 bg-gray-50 text-base text-gray-700 placeholder:text-gray-400"
+                  className="h-12 border-border bg-background text-base text-foreground placeholder:text-muted-foreground"
                 />
               </div>
 
@@ -483,11 +483,11 @@ export default function CoursesClient({
               return (
                 <Card
                   key={course.id}
-                  className="group cursor-pointer overflow-hidden transition-all hover:shadow-lg"
+                  className="group cursor-pointer overflow-hidden border-border transition-colors hover:border-primary/40"
                   onClick={() => router.push(`/courses/${slug}`)}
                 >
                   {/* Thumbnail */}
-                  <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900 dark:to-blue-900">
+                  <div className="relative aspect-video overflow-hidden bg-muted">
                     {course.thumbnail?.url ? (
                       <img
                         src={course.thumbnail.url}
@@ -502,7 +502,7 @@ export default function CoursesClient({
                   </div>
 
                   <CardContent className="p-4">
-                    <h3 className="mb-2 line-clamp-2 font-semibold group-hover:text-purple-600">
+                    <h3 className="mb-2 line-clamp-2 font-semibold group-hover:text-primary">
                       {course.title}
                     </h3>
                     <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">
@@ -520,7 +520,7 @@ export default function CoursesClient({
                     <div className="flex items-center justify-between">
                       {course.discountPrice ? (
                         <div>
-                          <span className="text-lg font-bold text-purple-600">
+                          <span className="text-lg font-bold text-primary">
                             {formatPrice(course.discountPrice)}
                           </span>
                           <span className="ml-2 text-sm text-muted-foreground line-through">
@@ -528,7 +528,7 @@ export default function CoursesClient({
                           </span>
                         </div>
                       ) : (
-                        <span className="text-lg font-bold text-purple-600">
+                        <span className="text-lg font-bold text-primary">
                           {formatPrice(course.price)}
                         </span>
                       )}

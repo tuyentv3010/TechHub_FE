@@ -429,6 +429,7 @@ export const ChatSession = z.object({
   userId: z.string().uuid(),
   startedAt: z.string(),
   endedAt: z.string().optional().nullable(),
+  title: z.string().optional().nullable(),
   context: z.any().optional().nullable(),
 });
 

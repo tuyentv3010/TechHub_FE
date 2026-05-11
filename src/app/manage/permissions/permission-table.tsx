@@ -13,7 +13,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import TableSkeleton from "@/components/Skeleton";
@@ -74,6 +75,7 @@ import {
   METHOD_BADGE_TONE,
   summarizePermissionActions,
 } from "@/lib/access-control";
+import { getManageTableColumnClass } from "@/lib/manage-table";
 import {
   PermissionSchemaType,
   HTTP_METHODS,
@@ -84,6 +86,31 @@ import AddPermission from "./add-permission";
 import EditPermission from "./edit-permission";
 
 type PermissionItem = PermissionSchemaType;
+
+const normalizeSearchText = (value: unknown) =>
+  String(value ?? "").toLowerCase().trim();
+
+const matchesPermissionSearch = (
+  permission: PermissionItem,
+  query: string,
+  locale: string
+) => {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  const resourceMeta = getResourceMeta(permission.resource, locale);
+  return [
+    permission.name,
+    permission.description,
+    permission.method,
+    permission.url,
+    permission.resource,
+    resourceMeta.label,
+    resourceMeta.description,
+  ].some((value) => normalizeSearchText(value).includes(normalizedQuery));
+};
 
 const PermissionTableContext = createContext<{
   setPermissionIdEdit: (value: string | undefined) => void;
@@ -154,21 +181,48 @@ function DeletePermissionDialog({
 
 function BusinessPermissionView({
   permissions,
+  searchQuery,
   onEdit,
   onDelete,
 }: {
   permissions: PermissionItem[];
+  searchQuery: string;
   onEdit: (permissionId: string) => void;
   onDelete: (permission: PermissionItem) => void;
 }) {
   const t = useTranslations("ManagePermission");
   const locale = useLocale();
   const accessCopy = getAccessCopy(locale);
-  const permissionGroups = groupPermissionsByResource(permissions);
+  const permissionGroups = useMemo(
+    () => groupPermissionsByResource(permissions),
+    [permissions]
+  );
+  const permissionGroupKey = permissionGroups.map((group) => group.resource).join("|");
+  const [expandedResources, setExpandedResources] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      setExpandedResources(new Set(permissionGroups.map((group) => group.resource)));
+      return;
+    }
+    setExpandedResources(new Set());
+  }, [permissionGroupKey, permissionGroups, searchQuery]);
+
+  const toggleResource = (resource: string) => {
+    setExpandedResources((current) => {
+      const next = new Set(current);
+      if (next.has(resource)) {
+        next.delete(resource);
+      } else {
+        next.add(resource);
+      }
+      return next;
+    });
+  };
 
   if (permissionGroups.length === 0) {
     return (
-      <div className="manage-subsurface rounded-3xl p-6 text-center text-sm text-muted-foreground">
+      <div className="manage-subsurface rounded-xl p-6 text-center text-sm text-muted-foreground">
         {t("NoResults")}
       </div>
     );
@@ -189,18 +243,36 @@ function BusinessPermissionView({
         {permissionGroups.map((group) => {
           const resourceMeta = getResourceMeta(group.resource, locale);
           const actionBadges = summarizePermissionActions(group.permissions, locale);
+          const isExpanded = expandedResources.has(group.resource);
 
           return (
             <Card key={group.resource} className="manage-surface border-border/50">
               <CardHeader className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <CardTitle className="text-base">{resourceMeta.label}</CardTitle>
                     <CardDescription>{resourceMeta.description}</CardDescription>
                   </div>
-                  <Badge variant="outline">
-                    {group.permissions.length} {accessCopy.permissionView.permissionsLabel}
-                  </Badge>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Badge variant="outline">
+                      {group.permissions.length} {accessCopy.permissionView.permissionsLabel}
+                    </Badge>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-sm"
+                      aria-expanded={isExpanded}
+                      title={isExpanded ? t("CollapseGroup") : t("ExpandGroup")}
+                      onClick={() => toggleResource(group.resource)}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
@@ -219,52 +291,54 @@ function BusinessPermissionView({
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {group.permissions.map((permission) => (
-                  <div
-                    key={permission.id}
-                    className="rounded-2xl border border-border/50 bg-background/60 p-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{permission.name}</div>
-                        <div className="mt-1 text-sm text-muted-foreground">
-                          {permission.description || resourceMeta.description}
+              {isExpanded ? (
+                <CardContent className="space-y-3">
+                  {group.permissions.map((permission) => (
+                    <div
+                      key={permission.id}
+                      className="rounded-2xl border border-border/50 bg-background/60 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{permission.name}</div>
+                          <div className="mt-1 text-sm text-muted-foreground">
+                            {permission.description || resourceMeta.description}
+                          </div>
+                        </div>
+                        <Badge
+                          variant="secondary"
+                          className={METHOD_BADGE_TONE[permission.method]}
+                        >
+                          {accessCopy.methodLabels[permission.method]}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <code className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
+                          {permission.url}
+                        </code>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="manage-secondary-button"
+                            onClick={() => onEdit(permission.id)}
+                          >
+                            {t("Edit")}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="manage-secondary-button"
+                            onClick={() => onDelete(permission)}
+                          >
+                            {t("Delete")}
+                          </Button>
                         </div>
                       </div>
-                      <Badge
-                        variant="secondary"
-                        className={METHOD_BADGE_TONE[permission.method]}
-                      >
-                        {accessCopy.methodLabels[permission.method]}
-                      </Badge>
                     </div>
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                      <code className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
-                        {permission.url}
-                      </code>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="manage-secondary-button"
-                          onClick={() => onEdit(permission.id)}
-                        >
-                          {t("Edit")}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="manage-secondary-button"
-                          onClick={() => onDelete(permission)}
-                        >
-                          {t("Delete")}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
+                  ))}
+                </CardContent>
+              ) : null}
             </Card>
           );
         })}
@@ -281,13 +355,21 @@ export default function PermissionTable() {
   const [permissionIdEdit, setPermissionIdEdit] = useState<string | undefined>();
   const [permissionDelete, setPermissionDelete] = useState<PermissionItem | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [permissionSearch, setPermissionSearch] = useState("");
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
 
   const { data, isLoading, error } = useGetPermissions();
-  const permissions = data?.payload?.data ?? [];
+  const permissions: PermissionItem[] = data?.payload?.data ?? [];
+  const filteredPermissions = useMemo(
+    () =>
+      permissions.filter((permission) =>
+        matchesPermissionSearch(permission, permissionSearch, locale)
+      ),
+    [locale, permissionSearch, permissions]
+  );
   const resourceOptions = groupPermissionsByResource(permissions).map((group) => group.resource);
 
   const columns: ColumnDef<PermissionItem>[] = [
@@ -384,8 +466,14 @@ export default function PermissionTable() {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
 
+  useEffect(() => {
+    setPagination((current) =>
+      current.pageIndex === 0 ? current : { ...current, pageIndex: 0 }
+    );
+  }, [columnFilters, permissionSearch]);
+
   const table = useReactTable({
-    data: permissions,
+    data: filteredPermissions,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -441,10 +529,18 @@ export default function PermissionTable() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Tabs defaultValue="overview" className="space-y-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <TabsList className="manage-glass h-auto rounded-2xl border border-border/50 p-1">
-                    <TabsTrigger value="overview">{accessCopy.tabs.overview}</TabsTrigger>
-                    <TabsTrigger value="advanced">{accessCopy.tabs.advanced}</TabsTrigger>
-                  </TabsList>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <TabsList className="manage-glass h-auto rounded-2xl border border-border/50 p-1">
+                      <TabsTrigger value="overview">{accessCopy.tabs.overview}</TabsTrigger>
+                      <TabsTrigger value="advanced">{accessCopy.tabs.advanced}</TabsTrigger>
+                    </TabsList>
+                    <Input
+                      placeholder={t("SearchPlaceholder")}
+                      value={permissionSearch}
+                      onChange={(event) => setPermissionSearch(event.target.value)}
+                      className="manage-field w-full sm:w-[320px]"
+                    />
+                  </div>
 
                   <Button
                     size="sm"
@@ -458,7 +554,8 @@ export default function PermissionTable() {
 
                 <TabsContent value="overview" className="space-y-4">
                   <BusinessPermissionView
-                    permissions={permissions}
+                    permissions={filteredPermissions}
+                    searchQuery={permissionSearch}
                     onEdit={setPermissionIdEdit}
                     onDelete={setPermissionDelete}
                   />
@@ -472,15 +569,6 @@ export default function PermissionTable() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="manage-toolbar py-2">
-                        <Input
-                          placeholder={t("SearchPlaceholder")}
-                          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-                          onChange={(event) =>
-                            table.getColumn("name")?.setFilterValue(event.target.value)
-                          }
-                          className="manage-field max-w-sm"
-                        />
-
                         <Select
                           value={(table.getColumn("method")?.getFilterValue() as string) ?? "all"}
                           onValueChange={(value) =>
@@ -530,7 +618,10 @@ export default function PermissionTable() {
                             {table.getHeaderGroups().map((headerGroup) => (
                               <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => (
-                                  <TableHead key={header.id}>
+                                  <TableHead
+                                    key={header.id}
+                                    className={getManageTableColumnClass(header.column.id)}
+                                  >
                                     {header.isPlaceholder
                                       ? null
                                       : flexRender(
@@ -547,7 +638,10 @@ export default function PermissionTable() {
                               table.getRowModel().rows.map((row) => (
                                 <TableRow key={row.id}>
                                   {row.getVisibleCells().map((cell) => (
-                                    <TableCell key={cell.id}>
+                                    <TableCell
+                                      key={cell.id}
+                                      className={getManageTableColumnClass(cell.column.id)}
+                                    >
                                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                     </TableCell>
                                   ))}

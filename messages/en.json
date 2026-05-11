@@ -71,6 +71,7 @@
     "executiveConsole": "Executive Console",
     "architecturalCurator": "Architectural Curator",
     "commandDeck": "Command Deck",
+    "backToHomepage": "Back to homepage",
     "session": "Session",
     "loadingNavigation": "Loading navigation..."
   },
@@ -492,7 +493,7 @@
     "PermissionCountColumn": "Permissions",
     "PermissionCount": "{count} permissions",
     "ActionsColumn": "Actions",
-    "SearchPlaceholder": "Search by role name...",
+    "SearchPlaceholder": "Search roles, descriptions, or permissions...",
     "AddRole": "Add Role",
     "EditRole": "Edit Role",
     "AddRoleDescription": "Create a new role and assign permissions.",
@@ -534,7 +535,9 @@
     "UrlColumn": "URL",
     "ResourceColumn": "Resource",
     "ActionsColumn": "Actions",
-    "SearchPlaceholder": "Search by permission name...",
+    "SearchPlaceholder": "Search permissions, URLs, methods, or resources...",
+    "ExpandGroup": "Expand group",
+    "CollapseGroup": "Collapse group",
     "FilterMethod": "Filter method",
     "FilterResource": "Filter resource",
     "AllOption": "All",
@@ -1255,8 +1258,8 @@
       "content": "Hello {userName}! I'm TechHub's AI assistant. Let me show you how to use this AI chat page. Let's get started!"
     },
     "step2": {
-      "title": "Chat Mode 🎯",
-      "content": "This is where you select the chat mode. There are 2 modes: \"General Q&A\" to ask anything, and \"Learning Advisor\" to get AI suggestions for learning paths and courses that suit you!"
+      "title": "Workspace tools",
+      "content": "This area contains the guide and response settings. Open the settings panel when you need to add personal instructions for the AI."
     },
     "step3": {
       "title": "Message Input 💬",
@@ -1598,6 +1601,19 @@
     "filesAttachedTitle": "Files attached",
     "filesAttachedDesc": "{count} file(s) are ready for AI analysis.",
     "attachFailed": "Failed to attach one or more files for AI analysis.",
+    "attachFailedAuth": "Your login session is expired or missing a token. Please sign in again, then attach the file.",
+    "attachFailedPermission": "Your account does not have permission to upload files for AI analysis.",
+    "attachFailedTooLarge": "The file exceeds the system upload limit.",
+    "attachFailedFileServiceUnavailable": "The file service is temporarily unavailable. Please try again later or ask an administrator to check file-service.",
+    "attachFailedNetwork": "Could not connect to the file upload server. Please try again later.",
+    "attachFailedWithReason": "Could not attach the file: {reason}",
+    "unsupportedFilesTitle": "Some files were not attached",
+    "attachmentRejectedUnsupported": "{name} is not a supported AI attachment.",
+    "attachmentRejectedTooLarge": "{name} is {size}; the limit is {limit}.",
+    "supportedFilesHint": "Supported: PDF, Word, PowerPoint, Excel, CSV/text/code files, and images with readable text.",
+    "attachmentOpenFailed": "Could not open this file. Please try again later.",
+    "instructionsSavedTitle": "Instructions saved",
+    "instructionsSavedDesc": "They will apply to the next AI responses.",
     "streamingFailed": "Streaming failed",
     "feedbackThanksTitle": "Thanks for the feedback!",
     "feedbackThanksDesc": "Glad this was helpful.",
@@ -1640,6 +1656,11 @@
       "instructionsLabel": "Instructions",
       "instructionsPlaceholder": "e.g. Answer in English, keep it concise, state assumptions when analysing data.",
       "instructionsHelp": "These instructions apply to subsequent AI responses in this conversation.",
+      "saveInstructions": "Save",
+      "resetInstructions": "Reset",
+      "instructionsUnsaved": "Unsaved changes",
+      "instructionsSaved": "Saved",
+      "instructionsNotSaved": "Not saved yet",
       "hideConversations": "Hide conversations",
       "showConversations": "Show conversations",
       "savedAnalyses": "Saved analyses",
@@ -1702,7 +1723,7 @@
       "closeTitle": "Close preview",
       "truncated": "Preview truncated. The assistant receives the capped text context for analysis.",
       "unavailableTitle": "Preview unavailable",
-      "unavailableDesc": "This file has no inline text preview. Use Open if a source URL is available."
+      "unavailableDesc": "This file type cannot be previewed directly in the browser yet. Use Open to view or download the original file."
     },
     "runtime": {
       "thinking": "Thinking",
@@ -1817,6 +1838,7 @@
       "fallbackTitle": "Analysis",
       "dataPreview": "Data Preview",
       "sqlQuery": "SQL Query",
+      "advanced": "Advanced",
       "chart": "Chart",
       "sources": "Sources",
       "saved": "Saved",

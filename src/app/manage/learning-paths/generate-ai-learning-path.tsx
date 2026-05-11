@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { useTranslations } from "next-intl";
 import { useAiLearningPath } from "@/contexts/AiLearningPathContext";
 import { useAccountProfile } from "@/queries/useAccount";
+import { getUserInfoFromStorage } from "@/lib/utils";
 
 interface GenerateAiLearningPathProps {
   onSuccess?: () => void;
@@ -62,7 +63,7 @@ export default function GenerateAiLearningPath({
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const storedUserInfo = localStorage.getItem("userInfo");
+      const storedUserInfo = getUserInfoFromStorage();
       if (storedUserInfo) {
         try {
           const parsed = JSON.parse(storedUserInfo);
@@ -183,7 +184,7 @@ export default function GenerateAiLearningPath({
       <DialogContent className="manage-dialog-panel max-h-[90vh] overflow-y-auto rounded-[1.35rem] border-border/50 sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-500" />
+            <Sparkles className="h-5 w-5 text-primary" />
             {t("title")}
           </DialogTitle>
           <DialogDescription>

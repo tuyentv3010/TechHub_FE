@@ -31,7 +31,7 @@ export default function VNPayReturnPage() {
       <div className="container mx-auto max-w-2xl px-4">
         <Card>
           <CardContent className="flex flex-col items-center justify-center p-12">
-            <Loader2 className="h-16 w-16 animate-spin text-purple-600" />
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
             <p className="mt-4 text-lg text-muted-foreground">
               Đang xử lý kết quả thanh toán...
             </p>

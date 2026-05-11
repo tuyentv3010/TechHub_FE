@@ -31,6 +31,7 @@ import { useAppContext } from "@/components/app-provider";
 import { useAccountProfile } from "@/queries/useAccount";
 import courseApiRequest from "@/apiRequests/course";
 import { useRouter } from "next/navigation";
+import { getUserInfoFromStorage } from "@/lib/utils";
 
 interface Recommendation {
   title: string;
@@ -62,7 +63,7 @@ export default function RecommendationsPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined" && isAuth) {
-      const storedUserInfo = localStorage.getItem("userInfo");
+      const storedUserInfo = getUserInfoFromStorage();
       if (storedUserInfo) {
         try {
           const parsed = JSON.parse(storedUserInfo);
@@ -191,7 +192,7 @@ export default function RecommendationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Sparkles className="h-8 w-8 text-purple-500" />
+            <Sparkles className="h-8 w-8 text-primary" />
             {t("title")}
           </h1>
           <p className="text-muted-foreground mt-2">

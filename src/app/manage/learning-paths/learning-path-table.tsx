@@ -18,6 +18,7 @@ import { useTranslations } from "next-intl";
 import { ChevronDown, Edit, Loader2, MoreHorizontal, Route, Sparkles, Trash } from "lucide-react";
 
 import { formatDateTimeToLocaleString } from "@/lib/utils";
+import { getManageTableColumnClass } from "@/lib/manage-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -221,12 +222,12 @@ export default function LearningPathTable() {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="manage-ghost-button h-8 w-8 p-0">
+              <Button variant="ghost" className="app-control app-control-sm">
                 <span className="sr-only">Open menu</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="app-control-menu">
               <DropdownMenuLabel>{t("Actions")}</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => router.push(`/manage/learning-paths/${path.id}/designer`)}>
                 <Route className="mr-2 h-4 w-4" />
@@ -321,7 +322,10 @@ export default function LearningPathTable() {
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    className={getManageTableColumnClass(header.column.id)}
+                  >
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
@@ -339,7 +343,10 @@ export default function LearningPathTable() {
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      className={getManageTableColumnClass(cell.column.id)}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}

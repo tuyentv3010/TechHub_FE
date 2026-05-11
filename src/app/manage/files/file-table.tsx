@@ -62,7 +62,7 @@ import {
   resolveFileSourceUrl,
 } from '@/lib/file-media';
 import { usePermissions } from '@/hooks/usePermissions';
-import { cn } from '@/lib/utils';
+import { cn, getAccessTokenFromLocalStorage } from '@/lib/utils';
 
 import FolderTreeDialog from './folder-tree-dialog';
 import UploadFileDialog from './upload-file-dialog';
@@ -111,7 +111,7 @@ const VISIBLE_PROCESSING_STATUSES = new Set(['PENDING', 'PROCESSING']);
 const getFileSourceUrl = (file: FileType) => resolveFileSourceUrl(file) || '';
 
 const getAccessToken = () =>
-  typeof window === 'undefined' ? null : window.localStorage.getItem('accessToken');
+  typeof window === 'undefined' ? null : getAccessTokenFromLocalStorage();
 
 const buildFileMediaUrl = (
   fileId: string,
@@ -498,12 +498,25 @@ export default function FileTable() {
     const previewUrl = getActivePreviewUrl(file);
     const sourceUrl = getActiveSourceUrl(file);
 
-    if (file.fileType === 'IMAGE' || previewUrl) {
+    if (file.fileType === 'IMAGE') {
       return (
         <FileMediaPreview
           file={file}
           userId={userId}
           variant={mediaVariant}
+          directUrls={getFilePreviewCandidates(file)}
+          iconSizeClass={iconSizeClass}
+          mediaFitClass={mediaFitClass}
+        />
+      );
+    }
+
+    if (file.fileType === 'VIDEO' && previewUrl) {
+      return (
+        <FileMediaPreview
+          file={file}
+          userId={userId}
+          variant="thumbnail"
           directUrls={getFilePreviewCandidates(file)}
           iconSizeClass={iconSizeClass}
           mediaFitClass={mediaFitClass}
@@ -539,7 +552,7 @@ export default function FileTable() {
             { label: t('TotalFiles'), value: statistics.totalFiles, icon: File, tone: 'text-muted-foreground' },
             { label: t('TotalSize'), value: formatFileSize(statistics.totalSize), icon: Upload, tone: 'text-muted-foreground' },
             { label: t('Images'), value: statistics.byType.IMAGE?.count || 0, icon: ImageIcon, tone: 'text-blue-500' },
-            { label: t('Videos'), value: statistics.byType.VIDEO?.count || 0, icon: Video, tone: 'text-purple-500' },
+            { label: t('Videos'), value: statistics.byType.VIDEO?.count || 0, icon: Video, tone: 'text-primary' },
           ].map((item) => (
             <div key={item.label} className="manage-kpi-card">
               <div className="flex items-center justify-between">
@@ -592,10 +605,10 @@ export default function FileTable() {
               <TableHead className="w-[80px]">{t('PreviewColumn')}</TableHead>
               <TableHead>{t('FileNameColumn')}</TableHead>
               <TableHead>{t('TypeColumn')}</TableHead>
-              <TableHead>{t('SizeColumn')}</TableHead>
+              <TableHead className="manage-table-number-cell">{t('SizeColumn')}</TableHead>
               <TableHead>{t('FolderColumn')}</TableHead>
               <TableHead>{t('CreatedAtColumn')}</TableHead>
-              <TableHead className="w-[104px]" />
+              <TableHead className="manage-table-actions-cell w-[104px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -635,7 +648,7 @@ export default function FileTable() {
                       <span className="ml-1">{getFileTypeLabel(file.fileType)}</span>
                     </Badge>
                   </TableCell>
-                  <TableCell>{formatFileSize(file.fileSize)}</TableCell>
+                  <TableCell className="manage-table-number-cell">{formatFileSize(file.fileSize)}</TableCell>
                   <TableCell>
                     {file.folderName ? (
                       <Badge variant="secondary" className="bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-100">
@@ -648,8 +661,8 @@ export default function FileTable() {
                   <TableCell>
                     {formatDistanceToNow(new Date(file.created), { addSuffix: true, locale: getDateLocale(locale) })}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
+                  <TableCell className="manage-table-actions-cell">
+                    <div className="manage-table-actions">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -766,7 +779,7 @@ export default function FileTable() {
               )}
               {(previewFile.fileType === 'DOCUMENT' || previewFile.fileType === 'OTHER') && (
                 <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200/80 bg-slate-100 px-6 py-8 text-center dark:border-white/10 dark:bg-slate-900/80">
-                  <div className={cn('flex h-20 w-20 items-center justify-center rounded-3xl', FILE_TYPE_COLORS[previewFile.fileType])}>
+                  <div className={cn('flex h-20 w-20 items-center justify-center rounded-xl', FILE_TYPE_COLORS[previewFile.fileType])}>
                     <FileTypeIcon type={previewFile.fileType} className="h-10 w-10" />
                   </div>
                   <div className="space-y-1">

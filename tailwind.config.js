@@ -51,6 +51,17 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        app: {
+          background: "hsl(var(--app-bg))",
+          surface: "hsl(var(--app-surface))",
+          subtle: "hsl(var(--app-surface-subtle))",
+          border: "hsl(var(--app-border))",
+        },
+        learning: {
+          DEFAULT: "hsl(var(--learning-accent))",
+          foreground: "hsl(var(--learning-accent-foreground))",
+        },
+        warning: "hsl(var(--warning))",
         // Custom theme colors
         blue: {
           50: "#eff6ff",
@@ -112,20 +123,6 @@ module.exports = {
           800: "#9d174d",
           900: "#831843",
         },
-        // Reading Room — editorial tokens for /ai-chat (via .ai-chat-theme)
-        paper: "hsl(var(--paper))",
-        surface: "hsl(var(--surface))",
-        ink: {
-          1: "hsl(var(--ink-1))",
-          2: "hsl(var(--ink-2))",
-          3: "hsl(var(--ink-3))",
-          DEFAULT: "hsl(var(--ink-1))",
-        },
-        rule: "hsl(var(--rule))",
-        ochre: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
         data: {
           pos: "hsl(var(--data-pos))",
           neg: "hsl(var(--data-neg))",
@@ -133,12 +130,11 @@ module.exports = {
         },
       },
       fontFamily: {
-        editorial: ["var(--font-editorial)", "Georgia", "serif"],
         ui: ["var(--font-ui)", "ui-sans-serif", "system-ui"],
         mono: ["var(--font-mono)", "ui-monospace", "Menlo"],
       },
       fontSize: {
-        // Editorial scale: 12 / 14 / 16 / 18 / 22 / 30 / 44
+        // Workspace text scale: 12 / 14 / 16 / 18 / 22 / 30 / 44
         "ed-xs": ["0.75rem", { lineHeight: "1.1rem" }],
         "ed-sm": ["0.875rem", { lineHeight: "1.35rem" }],
         "ed-base": ["1rem", { lineHeight: "1.6rem" }],
@@ -148,9 +144,7 @@ module.exports = {
         "ed-2xl": ["2.75rem", { lineHeight: "3rem", letterSpacing: "-0.02em" }],
       },
       boxShadow: {
-        "paper": "0 1px 0 hsl(var(--rule))",
         "card": "0 1px 2px rgb(0 0 0 / 0.04)",
-        "drawer": "-12px 0 32px -16px rgb(0 0 0 / 0.08)",
       },
       borderRadius: {
         lg: "var(--radius)",

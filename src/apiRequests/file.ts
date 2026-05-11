@@ -18,11 +18,15 @@ const fileApiRequest = {
 
   // Upload file (multipart form-data)
   uploadFile: (formData: FormData) =>
-    http.post<FileResponseType>(`/app/api/proxy/files/upload`, formData),
+    http.post<FileResponseType>(`/api/proxy/files/upload`, formData, {
+      baseUrl: "",
+    }),
 
   // Upload multiple files (multipart form-data)
   uploadMultipleFiles: (formData: FormData) =>
-    http.post<FileListResponseType>(`/app/api/proxy/files/upload/multiple`, formData),
+    http.post<FileListResponseType>(`/api/proxy/files/upload/multiple`, formData, {
+      baseUrl: "",
+    }),
 
   // Get all files by user (GET /api/files?userId={userId}&page={page}&size={size})
   getFilesByUser: (userId: string, page: number = 0, size: number = 20) =>

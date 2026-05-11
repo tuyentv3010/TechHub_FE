@@ -150,7 +150,7 @@ function ExerciseStartScreen({
           {/* Central Play Button */}
           <button
             onClick={onStart}
-            className="w-20 h-20 bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/40 transition-all hover:scale-110 group"
+            className="group flex h-20 w-20 items-center justify-center rounded-full bg-white/30 transition-colors hover:bg-white/40"
           >
             <Play className="w-10 h-10 text-white fill-white ml-1 group-hover:scale-110 transition-transform" />
           </button>
@@ -379,7 +379,7 @@ function QuestionScreen({
 
       {/* Question Card */}
       <div className="relative z-10 pt-6 px-4 md:px-8">
-        <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 max-w-3xl mx-auto">
+        <div className="mx-auto mb-6 max-w-3xl rounded-xl bg-gray-900/80 p-4 md:p-6">
           {/* Question Text */}
           <h2 className="text-lg md:text-2xl font-bold text-white text-center">
             {exercise.question}
@@ -429,7 +429,7 @@ function QuestionScreen({
                   "relative min-h-[140px] md:min-h-[180px] rounded-lg flex flex-col items-center justify-center p-4 transition-all duration-300",
                   colorScheme.bg,
                   !submitted && colorScheme.hover,
-                  !submitted && "cursor-pointer hover:scale-105 hover:shadow-xl active:scale-95",
+                  !submitted && "cursor-pointer hover:shadow-lg active:scale-95",
                   submitted && "cursor-default",
                   extraClasses
                 )}
@@ -552,7 +552,7 @@ function HelpModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/30"
         onClick={onClose}
       />
       

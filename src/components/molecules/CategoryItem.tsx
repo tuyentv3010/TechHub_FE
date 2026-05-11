@@ -13,7 +13,7 @@ export function CategoryItem({ title, icon, bgColor }: CategoryItemProps) {
         icon={icon} 
         className={`${bgColor} group-hover:scale-110 transition-transform`} 
       />
-      <h3 className="mt-3 text-sm font-medium text-center text-gray-700 dark:text-gray-300 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+      <h3 className="mt-3 text-center text-sm font-medium text-foreground transition-colors group-hover:text-primary">
         {title}
       </h3>
     </div>

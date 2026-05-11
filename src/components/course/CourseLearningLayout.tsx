@@ -807,7 +807,7 @@ export default function CourseLearningLayout({
                   }}
                   variant="default"
                   size="icon"
-                  className="h-9 w-9 rounded-full bg-purple-500 hover:bg-purple-600 shadow-md"
+                  className="h-9 w-9 rounded-lg bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
                   title="Bài tập"
                 >
                   <BookOpenCheck className="h-4 w-4" />
@@ -818,7 +818,7 @@ export default function CourseLearningLayout({
               <Button
                 disabled={currentLessonIndex >= allLessons.length - 1}
                 onClick={() => onLessonChange(currentLessonIndex + 1)}
-                className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 flex-shrink-0"
+                className="flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 BÀI TIẾP THEO
                 <ChevronRight className="h-4 w-4 ml-2" />
@@ -856,7 +856,7 @@ export default function CourseLearningLayout({
               </div>
               <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-500"
+                  className="h-full bg-primary transition-all duration-500"
                   style={{ width: `${progressPercentage}%` }}
                 />
               </div>

@@ -1,13 +1,15 @@
 "use client";
 
+import { format } from "date-fns";
+import { ArrowRight, Clock, FileText } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { PrimaryButton } from "@/components/atoms/PrimaryButton";
-import { Clock, FileText, MapPin } from "lucide-react";
-import { useBlogs } from "@/queries/useBlog";
-import { format } from "date-fns";
-import { getExcerptFromContent, estimateReadingTime, createBlogSlug } from "@/lib/blog";
+
+import { AppSurface, PageHeader } from "@/components/common";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getExcerptFromContent, estimateReadingTime, createBlogSlug } from "@/lib/blog";
+import { useBlogs } from "@/queries/useBlog";
 import type { Blog } from "@/types/blog.types";
 
 interface BlogSectionProps {
@@ -16,7 +18,6 @@ interface BlogSectionProps {
 }
 
 export function BlogSection({ title, subtitle }: BlogSectionProps) {
-  // Fetch 6 bài blog mới nhất từ API
   const { data: blogResponse, isLoading } = useBlogs({
     page: 1,
     size: 6,
@@ -26,26 +27,19 @@ export function BlogSection({ title, subtitle }: BlogSectionProps) {
 
   if (isLoading) {
     return (
-      <section className="py-16 bg-gray-50 dark:bg-gray-800">
+      <section className="bg-background py-16">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">{title}</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300">{subtitle}</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          <PageHeader title={title} description={subtitle} className="mb-10" />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden">
-                <Skeleton className="h-48 w-full" />
-                <div className="p-6 space-y-3">
-                  <Skeleton className="h-6 w-3/4" />
+              <AppSurface key={index} padding="none" className="overflow-hidden">
+                <Skeleton className="h-48 w-full rounded-none" />
+                <div className="space-y-3 p-5">
+                  <Skeleton className="h-5 w-3/4" />
                   <Skeleton className="h-4 w-full" />
                   <Skeleton className="h-4 w-5/6" />
-                  <div className="flex justify-between pt-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-20" />
-                  </div>
                 </div>
-              </div>
+              </AppSurface>
             ))}
           </div>
         </div>
@@ -53,81 +47,77 @@ export function BlogSection({ title, subtitle }: BlogSectionProps) {
     );
   }
 
+  if (blogs.length === 0) return null;
+
   return (
-    <section className="py-16 bg-gray-50 dark:bg-gray-800">
+    <section className="bg-background py-16">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">{title}</h2>
-          <p className="text-lg text-gray-600 dark:text-gray-300">{subtitle}</p>
-        </div>
-        
-        {/* Blog Grid - 2 rows, 3 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <PageHeader
+          eyebrow="Resources"
+          title={title}
+          description={subtitle}
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/blog">
+                View all
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          }
+          className="mb-10"
+        />
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {blogs.map((blog: Blog) => {
             const excerpt = getExcerptFromContent(blog.content, 120);
             const readingTime = estimateReadingTime(blog.content);
             const createdDate = new Date(blog.created);
             const dateNum = format(createdDate, "dd");
-            const monthName = format(createdDate, "MMMM");
+            const monthName = format(createdDate, "MMM");
             const coverImage = blog.thumbnail || "/blogs/default.jpg";
             const blogSlug = createBlogSlug(blog.title, blog.id);
-            
+
             return (
-              <Link href={`/blog/${blogSlug}`} key={blog.id}>
-                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer h-full">
-                  {/* Blog Image */}
-                  <div className="relative h-48 overflow-hidden bg-gray-200 dark:bg-gray-700">
+              <Link href={`/blog/${blogSlug}`} key={blog.id} className="group block">
+                <AppSurface padding="none" className="h-full overflow-hidden">
+                  <div className="relative h-48 overflow-hidden bg-muted">
                     <Image
                       src={coverImage}
                       alt={blog.title}
                       fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                     />
-                    
-                    {/* Date Badge */}
-                    <div className="absolute top-4 left-4">
-                      <div className="bg-yellow-400 dark:bg-yellow-500 text-gray-900 px-3 py-2 rounded-lg shadow-lg">
-                        <div className="text-xl font-bold leading-none">{dateNum}</div>
-                        <div className="text-xs font-medium uppercase">{monthName}</div>
-                      </div>
+                    <div className="absolute left-4 top-4 rounded-lg border border-border bg-card px-3 py-2 text-center shadow-sm">
+                      <div className="text-lg font-semibold leading-none text-foreground">{dateNum}</div>
+                      <div className="mt-1 text-xs font-medium uppercase text-muted-foreground">{monthName}</div>
                     </div>
                   </div>
-                  
-                  {/* Content */}
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white line-clamp-2 leading-tight group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+
+                  <div className="p-5">
+                    <h3 className="mb-3 line-clamp-2 text-lg font-semibold leading-snug text-foreground group-hover:text-primary">
                       {blog.title}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm leading-relaxed line-clamp-3">
+                    <p className="mb-4 line-clamp-3 text-sm leading-6 text-muted-foreground">
                       {excerpt}
                     </p>
-                    
-                    {/* Meta Info */}
-                    <div className="flex items-center justify-between text-sm text-teal-600 dark:text-teal-400">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span className="font-medium">{readingTime} phút đọc</span>
+
+                    <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-4 w-4 text-primary" />
+                        <span>{readingTime} min</span>
                       </div>
-                      {blog.tags && blog.tags.length > 0 && (
-                        <div className="flex items-center gap-1">
-                          <FileText className="h-4 w-4" />
-                          <span className="font-medium capitalize">{blog.tags[0]}</span>
+                      {blog.tags && blog.tags.length > 0 ? (
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <FileText className="h-4 w-4 text-[hsl(var(--learning-accent))]" />
+                          <span className="truncate capitalize">{blog.tags[0]}</span>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
-                </div>
+                </AppSurface>
               </Link>
             );
           })}
-        </div>
-        
-        <div className="text-center">
-          <Link href="/blog">
-            <PrimaryButton size="lg" variant="outline">
-              View All Posts
-            </PrimaryButton>
-          </Link>
         </div>
       </div>
     </section>

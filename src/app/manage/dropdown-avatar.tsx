@@ -16,7 +16,8 @@ import { toast } from "@/components/ui/use-toast";
 import { useTranslations } from "next-intl";
 import { useAppContext } from "@/components/app-provider";
 import { useAccountProfile } from "@/queries/useAccount";
-import { User, LogOut, Settings, BookText, BarChart3 } from "lucide-react";
+import { getUserInfoFromStorage, removeTokenFromLocalStorage } from "@/lib/utils";
+import { User, LogOut, BookText, BarChart3 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface UserInfo {
@@ -41,7 +42,7 @@ export default function DropdownAvatar() {
   // Load user info from localStorage on mount
   useEffect(() => {
     if (isAuth) {
-      const storedUserInfo = localStorage.getItem("userInfo");
+      const storedUserInfo = getUserInfoFromStorage();
       if (storedUserInfo) {
         try {
           setUserInfo(JSON.parse(storedUserInfo));
@@ -75,9 +76,7 @@ export default function DropdownAvatar() {
       await logoutMutation.mutateAsync();
       
       // Clear all auth data
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("userInfo");
+      removeTokenFromLocalStorage();
       
       // Update context
       setIsAuth(false);
@@ -91,13 +90,11 @@ export default function DropdownAvatar() {
       });
       
       router.push("/");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Logout error:", error);
       
       // Even if API fails, clear local data
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("userInfo");
+      removeTokenFromLocalStorage();
       setIsAuth(false);
       setRole(null);
       setPermissions(null);
@@ -116,9 +113,10 @@ export default function DropdownAvatar() {
     return (
       <Button
         variant="ghost"
-        className="manage-ghost-button relative h-10 w-10 rounded-full border-0 shadow-none"
+        size="icon"
+        className="app-control app-control-icon relative"
       >
-        <Avatar className="h-8 w-8">
+        <Avatar className="app-control-avatar">
           <AvatarFallback>...</AvatarFallback>
         </Avatar>
       </Button>
@@ -130,9 +128,10 @@ export default function DropdownAvatar() {
     return (
       <Button
         variant="ghost"
-        className="manage-ghost-button relative h-10 w-10 rounded-full border-0 shadow-none"
+        size="icon"
+        className="app-control app-control-icon relative"
       >
-        <Avatar className="h-8 w-8">
+        <Avatar className="app-control-avatar">
           <AvatarFallback>??</AvatarFallback>
         </Avatar>
       </Button>
@@ -144,9 +143,10 @@ export default function DropdownAvatar() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="manage-ghost-button relative h-10 w-10 rounded-full border-0 shadow-none"
+          size="icon"
+          className="app-control app-control-icon relative"
         >
-          <Avatar className="h-8 w-8 rounded-xl">
+          <Avatar className="app-control-avatar">
             <AvatarImage 
               src={userInfo?.avatar || account?.avatar || "/placeholder-avatar.jpg"} 
               alt={userInfo?.username || account?.username || "User"}
@@ -162,7 +162,7 @@ export default function DropdownAvatar() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="manage-dialog-panel w-64 rounded-2xl border-border/50 p-2"
+        className="app-control-menu w-64 p-2"
         align="end"
         forceMount
       >
@@ -176,7 +176,7 @@ export default function DropdownAvatar() {
             </p>
             {(userInfo?.roles || account?.roles) && (userInfo?.roles || account?.roles).length > 0 && (
               <p className="text-xs leading-none text-muted-foreground mt-1">
-                <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+                <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                   {(userInfo?.roles || account?.roles)?.[0]}
                 </span>
               </p>
@@ -202,12 +202,6 @@ export default function DropdownAvatar() {
           <Link href="/my-learning" className="cursor-pointer">
             <BookText className="mr-2 h-4 w-4" />
             {t("myLearning") || "My Learning"}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/setting" className="cursor-pointer">
-            <Settings className="mr-2 h-4 w-4" />
-            {t("settings") || "Settings"}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

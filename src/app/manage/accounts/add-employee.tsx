@@ -216,7 +216,7 @@ export default function AddEmployee() {
       open={open}
     >
       <DialogTrigger asChild>
-        <Button size="sm" className="h-9 gap-2 rounded-xl bg-gradient-to-br from-primary to-blue-500 px-4 text-primary-foreground shadow-lg shadow-primary/20">
+        <Button size="sm" className="h-9 gap-2 rounded-lg bg-primary px-4 text-primary-foreground shadow-sm hover:bg-primary/90">
           <PlusCircle className="h-3.5 w-3.5" />
           <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
             {t("CreateAccount")}

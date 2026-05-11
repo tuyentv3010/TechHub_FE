@@ -18,13 +18,12 @@ export default function UnauthorizedAccess({
   showHomeButton = true,
 }: UnauthorizedAccessProps) {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center bg-gradient-to-br from-red-50/50 via-orange-50/50 to-yellow-50/50 dark:from-gray-900/50 dark:via-gray-800/50 dark:to-gray-900/50 rounded-lg">
+    <div className="flex min-h-[60vh] items-center justify-center rounded-lg bg-background">
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         {/* Icon */}
         <div className="mb-8 flex justify-center">
           <div className="relative">
-            <div className="absolute inset-0 bg-red-500/20 blur-3xl rounded-full"></div>
-            <div className="relative bg-white dark:bg-gray-800 rounded-full p-6 shadow-2xl">
+            <div className="relative rounded-lg border border-border bg-card p-6 shadow-sm">
               <ShieldX className="w-24 h-24 text-red-500" strokeWidth={1.5} />
             </div>
           </div>
@@ -33,7 +32,7 @@ export default function UnauthorizedAccess({
         {/* Error Code */}
         <div className="mb-6">
           <h1 className="text-8xl font-bold text-red-500 mb-2">403</h1>
-          <div className="h-1 w-32 bg-gradient-to-r from-red-500 to-orange-500 mx-auto rounded-full"></div>
+          <div className="mx-auto h-1 w-32 rounded-full bg-destructive"></div>
         </div>
 
         {/* Title */}
@@ -47,7 +46,7 @@ export default function UnauthorizedAccess({
         </p>
 
         {/* Additional Info */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-8 shadow-lg border border-gray-200 dark:border-gray-700">
+        <div className="mb-8 rounded-lg border border-border bg-card p-6 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
             Có thể do các lý do sau:
           </h3>
@@ -73,7 +72,7 @@ export default function UnauthorizedAccess({
             <Button
               asChild
               size="lg"
-              className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg"
+              className="bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90"
             >
               <Link href="/">
                 <Home className="w-5 h-5 mr-2" />

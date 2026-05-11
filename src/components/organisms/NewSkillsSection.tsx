@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight, BadgeCheck, MonitorPlay } from "lucide-react";
+
+import { AppSurface, PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
 
 interface SkillsSectionProps {
   title?: string;
@@ -16,119 +18,102 @@ interface SkillsSectionProps {
   feature2Description?: string;
 }
 
-export function SkillsSection({ 
-  title = "Nâng cao kỹ năng của bạn với TechHub", 
-  subtitle = "Về chúng tôi", 
-  description = "TechHub là nền tảng học trực tuyến hàng đầu, cung cấp các khóa học chất lượng cao về công nghệ, lập trình và phát triển phần mềm. Chúng tôi cam kết mang đến trải nghiệm học tập tốt nhất cho học viên.", 
-  buttonText = "Tìm hiểu thêm", 
-  yearsText = "5+", 
-  experienceText = "Năm kinh nghiệm",
-  feature1Title = "Giảng viên chuyên nghiệp",
-  feature1Description = "Đội ngũ giảng viên giàu kinh nghiệm thực tế, đến từ các công ty công nghệ hàng đầu, sẵn sàng chia sẻ kiến thức và hướng dẫn bạn.",
-  feature2Title = "Học mọi lúc, mọi nơi",
-  feature2Description = "Truy cập khóa học 24/7 trên mọi thiết bị. Học theo tiến độ riêng của bạn với nội dung được cập nhật liên tục."
+export function SkillsSection({
+  title = "Advance your skills with TechHub",
+  subtitle = "About TechHub",
+  description = "TechHub helps learners and teams build practical technology skills through structured courses, hands-on content, and instructor guidance.",
+  buttonText = "Learn more",
+  yearsText = "5+",
+  experienceText = "Years of learning delivery",
+  feature1Title = "Expert-led courses",
+  feature1Description = "Learn from instructors with practical industry experience and a clear path from concept to real work.",
+  feature2Title = "Flexible learning",
+  feature2Description = "Access courses across devices, learn at your own pace, and keep progress visible throughout the journey.",
 }: SkillsSectionProps) {
-  return (
-    <section className="py-20 bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
-      {/* Background decorative element */}
-      <div className="absolute top-10 right-10 text-purple-200 dark:text-purple-800">
-        <svg width="100" height="100" viewBox="0 0 100 100" fill="currentColor">
-          <path d="M50 10L60 40L90 40L68 58L78 88L50 70L22 88L32 58L10 40L40 40Z"/>
-        </svg>
-      </div>
+  const features = [
+    {
+      title: feature1Title,
+      description: feature1Description,
+      icon: BadgeCheck,
+    },
+    {
+      title: feature2Title,
+      description: feature2Description,
+      icon: MonitorPlay,
+    },
+  ];
 
+  return (
+    <section className="bg-background py-16">
       <div className="container mx-auto px-4">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
-          {/* Left content - Images */}
+        <div className="grid gap-12 lg:grid-cols-[1fr_0.9fr] lg:items-center">
           <div className="relative">
-            <div className="grid grid-cols-2 gap-4 relative">
-              {/* Top left image */}
-              <div className="relative h-48 rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="relative h-48 overflow-hidden rounded-xl border border-border bg-card">
                 <Image
                   src="/skills/instructor-office.png"
-                  alt="Giảng viên TechHub"
+                  alt="TechHub instructor"
                   fill
                   className="object-cover"
                 />
               </div>
-              
-              {/* Top right image */}
-              <div className="relative h-48 rounded-2xl overflow-hidden">
+
+              <div className="relative h-48 overflow-hidden rounded-xl border border-border bg-card">
                 <Image
                   src="/skills/building-exterior.png"
-                  alt="Văn phòng TechHub"
+                  alt="TechHub workspace"
                   fill
                   className="object-cover"
                 />
               </div>
-              
-              {/* Bottom image spanning both columns */}
-              <div className="col-span-2 relative h-56 rounded-2xl overflow-hidden">
+
+              <div className="relative col-span-2 h-56 overflow-hidden rounded-xl border border-border bg-card">
                 <Image
                   src="/skills/team-meeting.png"
-                  alt="Đội ngũ TechHub"
+                  alt="TechHub learning team"
                   fill
                   className="object-cover"
                 />
               </div>
             </div>
 
-            {/* Center floating badge */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-              <div className="bg-orange-400 dark:bg-orange-500 text-white p-6 rounded-full shadow-2xl text-center min-w-[140px]">
-                <div className="text-3xl font-bold mb-1">{yearsText}</div>
-                <div className="text-sm font-medium leading-tight">{experienceText}</div>
+            <AppSurface className="absolute left-1/2 top-1/2 min-w-[150px] -translate-x-1/2 -translate-y-1/2 text-center shadow-md">
+              <div className="text-3xl font-semibold text-primary">{yearsText}</div>
+              <div className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                {experienceText}
               </div>
-            </div>
+            </AppSurface>
           </div>
-          
-          {/* Right content */}
+
           <div className="space-y-8">
-            {/* Header */}
-            <div>
-              <p className="text-purple-600 dark:text-purple-400 font-medium mb-3 uppercase tracking-wider text-sm">
-                {subtitle}
-              </p>
-              <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900 dark:text-white leading-tight">
-                {title}
-              </h2>
-              <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
-                {description}
-              </p>
+            <PageHeader eyebrow={subtitle} title={title} description={description} />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {features.map((feature) => {
+                const Icon = feature.icon;
+
+                return (
+                  <AppSurface key={feature.title} padding="md">
+                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="mb-2 text-base font-semibold text-foreground">
+                      {feature.title}
+                    </h3>
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      {feature.description}
+                    </p>
+                  </AppSurface>
+                );
+              })}
             </div>
 
-            {/* Features grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-3 text-lg">
-                  {feature1Title}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                  {feature1Description}
-                </p>
-              </div>
-              
-              <div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-3 text-lg">
-                  {feature2Title}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                  {feature2Description}
-                </p>
-              </div>
-            </div>
-
-            {/* CTA Button */}
-            <div>
+            <Button asChild size="lg">
               <Link href="/about">
-                <Button 
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-full font-medium text-lg shadow-lg transition-all duration-300 hover:shadow-xl"
-                >
-                  {buttonText}
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
+                {buttonText}
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
-            </div>
+            </Button>
           </div>
         </div>
       </div>

@@ -56,6 +56,7 @@ import {
 } from "@/queries/useAccount";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
+import { getManageTableColumnClass } from "@/lib/manage-table";
 import TableSkeleton from "@/components/Skeleton";
 import {
   Select,
@@ -172,16 +173,20 @@ export default function AccountTable() {
 
   const columns: ColumnDef<AccountType>[] = [
     {
-      accessorKey: "id",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
+      id: "rowNumber",
+      header: () => (
+        <div>
           {t("ID")}
-          <CaretSortIcon className="ml-2 h-4 w-4" />
-        </Button>
+        </div>
       ),
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row, table }) => {
+        const visibleIndex = table.getRowModel().rows.findIndex((visibleRow) => visibleRow.id === row.id);
+        const rowNumber = pageIndex * pageSize + (visibleIndex >= 0 ? visibleIndex : row.index) + 1;
+
+        return <div className="font-medium text-muted-foreground">{rowNumber}</div>;
+      },
     },
     {
       accessorKey: "avatar",
@@ -406,7 +411,10 @@ export default function AccountTable() {
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
+                        <TableHead
+                          key={header.id}
+                          className={getManageTableColumnClass(header.column.id)}
+                        >
                           {header.isPlaceholder
                             ? null
                             : flexRender(
@@ -426,7 +434,10 @@ export default function AccountTable() {
                         data-state={row.getIsSelected() && "selected"}
                       >
                         {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
+                          <TableCell
+                            key={cell.id}
+                            className={getManageTableColumnClass(cell.column.id)}
+                          >
                             {flexRender(
                               cell.column.columnDef.cell,
                               cell.getContext()

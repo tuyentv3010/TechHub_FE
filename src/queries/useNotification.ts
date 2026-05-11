@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import notificationApiRequest from "@/apiRequests/notification";
+import { getAccessTokenFromLocalStorage } from "@/lib/utils";
 
 const hasAccessToken = () =>
-  typeof window !== "undefined" && !!localStorage.getItem("accessToken");
+  typeof window !== "undefined" && !!getAccessTokenFromLocalStorage();
 
 // Query key constants
 const NOTIFICATION_BASE_KEY = ["notifications"] as const;

@@ -114,7 +114,7 @@ export default function MyLearningPage() {
                 <Card key={enrollment.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   <CardContent className="p-0">
                     {/* Course Thumbnail */}
-                    <div className="relative h-48 bg-gradient-to-br from-purple-500 to-blue-600">
+                    <div className="relative h-48 bg-primary/10">
                       {enrollment.thumbnail ? (
                         <Image
                           src={enrollment.thumbnail}

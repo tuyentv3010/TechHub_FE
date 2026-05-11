@@ -79,7 +79,7 @@ export default function LearningPathList() {
 
         {/* Content */}
         <div className="relative z-10 flex min-h-[400px] flex-col items-center justify-center px-4 text-center md:min-h-[500px]">
-          <h1 className="mb-4 text-3xl font-bold italic text-white md:text-4xl lg:text-5xl">
+          <h1 className="mb-4 text-3xl font-semibold text-white md:text-4xl lg:text-5xl">
             {t("heroTitle")}
           </h1>
           <p className="mb-12 text-base text-white/90 md:text-lg max-w-3xl">
@@ -87,8 +87,8 @@ export default function LearningPathList() {
           </p>
 
           {/* Search Box */}
-          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-left text-lg font-semibold text-gray-800">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="mb-4 text-left text-lg font-semibold text-foreground">
               {t("searchTitle") || "What learning path are you looking for?"}
             </h3>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">

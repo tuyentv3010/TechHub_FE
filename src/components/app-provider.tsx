@@ -1,7 +1,11 @@
 "use client";
 import { createContext, useContext, useState, useEffect } from "react";
 import { RoleType, Permission } from "@/types/jwt.types";
-import { getAccessTokenFromLocalStorage, decodeToken } from "@/lib/utils";
+import {
+  decodeToken,
+  getAccessTokenFromLocalStorage,
+  setUserInfoToAuthStorage,
+} from "@/lib/utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import RefreshToken from "@/components/refresh-token";
@@ -47,7 +51,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (isMounted) {
             setRole(primaryRole as RoleType | null);
             if (profile) {
-              localStorage.setItem("userInfo", JSON.stringify(profile));
+              setUserInfoToAuthStorage(profile);
             }
           }
         } catch (error) {

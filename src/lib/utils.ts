@@ -79,51 +79,119 @@ export const handleErrorApi = ({
   }
 };
 const isBrowser = typeof window !== "undefined";
+const ACCESS_TOKEN_KEY = "accessToken";
+const REFRESH_TOKEN_KEY = "refreshToken";
+const USER_INFO_KEY = "userInfo";
+const AUTH_STORAGE_MODE_KEY = "authStorageMode";
+type AuthStorageMode = "local" | "session";
+
+const getAuthStorageMode = (): AuthStorageMode => {
+  if (!isBrowser) return "local";
+  if (sessionStorage.getItem(AUTH_STORAGE_MODE_KEY) === "session") {
+    return "session";
+  }
+  if (localStorage.getItem(AUTH_STORAGE_MODE_KEY) === "local") {
+    return "local";
+  }
+  if (sessionStorage.getItem(ACCESS_TOKEN_KEY)) {
+    return "session";
+  }
+  return "local";
+};
+
+const getAuthStorage = (mode = getAuthStorageMode()) =>
+  mode === "session" ? sessionStorage : localStorage;
+
+const getAuthStorageItem = (key: string) => {
+  if (!isBrowser) return null;
+  return sessionStorage.getItem(key) ?? localStorage.getItem(key);
+};
+
+const removeAuthStorageItems = (storage: Storage) => {
+  storage.removeItem(ACCESS_TOKEN_KEY);
+  storage.removeItem(REFRESH_TOKEN_KEY);
+  storage.removeItem(USER_INFO_KEY);
+  storage.removeItem(AUTH_STORAGE_MODE_KEY);
+};
+
+const setAuthCookie = (key: string, value: string, maxAge?: number) => {
+  if (!isBrowser) return;
+  const isSecure = window.location.protocol === "https:";
+  const cookieOptions = [
+    `${key}=${value}`,
+    "path=/",
+    ...(maxAge ? [`max-age=${maxAge}`] : []),
+    "sameSite=Lax",
+    ...(isSecure ? ["secure"] : []),
+  ].join("; ");
+  document.cookie = cookieOptions;
+};
 
 export const getAccessTokenFromLocalStorage = () => {
-  return isBrowser ? localStorage.getItem("accessToken") : null;
+  return getAuthStorageItem(ACCESS_TOKEN_KEY);
 };
 export const getRefreshTokenFromLocalStorage = () => {
-  return isBrowser ? localStorage.getItem("refreshToken") : null;
+  return getAuthStorageItem(REFRESH_TOKEN_KEY);
+};
+
+export const getUserInfoFromStorage = () => {
+  return getAuthStorageItem(USER_INFO_KEY);
+};
+
+export const persistAuthSession = ({
+  accessToken,
+  refreshToken,
+  userInfo,
+  remember,
+}: {
+  accessToken: string;
+  refreshToken: string;
+  userInfo?: unknown;
+  remember: boolean;
+}) => {
+  if (!isBrowser) return;
+  const mode: AuthStorageMode = remember ? "local" : "session";
+  const storage = getAuthStorage(mode);
+  const otherStorage = mode === "local" ? sessionStorage : localStorage;
+
+  removeAuthStorageItems(otherStorage);
+  storage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  storage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  storage.setItem(AUTH_STORAGE_MODE_KEY, mode);
+  if (userInfo !== undefined) {
+    storage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+  }
+
+  const accessTokenMaxAge = remember ? 24 * 60 * 60 : undefined;
+  const refreshTokenMaxAge = remember ? 7 * 24 * 60 * 60 : undefined;
+  setAuthCookie(ACCESS_TOKEN_KEY, accessToken, accessTokenMaxAge);
+  setAuthCookie(REFRESH_TOKEN_KEY, refreshToken, refreshTokenMaxAge);
+  setAuthCookie(AUTH_STORAGE_MODE_KEY, mode, refreshTokenMaxAge);
+};
+
+export const setUserInfoToAuthStorage = (userInfo: unknown) => {
+  if (!isBrowser) return;
+  getAuthStorage().setItem(USER_INFO_KEY, JSON.stringify(userInfo));
 };
 
 export const setAccessTokenToLocalStorage = (value: string) => {
   if (!isBrowser) return;
-  localStorage.setItem("accessToken", value);
-  // Also set in cookies for middleware
-  // Use secure and sameSite flags for better security
-  const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
-  const cookieOptions = [
-    `accessToken=${value}`,
-    "path=/",
-    `max-age=${24 * 60 * 60}`, // 24 hours
-    "sameSite=Lax",
-    ...(isSecure ? ["secure"] : []),
-  ].join("; ");
-  document.cookie = cookieOptions;
+  const mode = getAuthStorageMode();
+  getAuthStorage(mode).setItem(ACCESS_TOKEN_KEY, value);
+  setAuthCookie(ACCESS_TOKEN_KEY, value, mode === "local" ? 24 * 60 * 60 : undefined);
 };
 
 export const setRefreshTokenToLocalStorage = (value: string) => {
   if (!isBrowser) return;
-  localStorage.setItem("refreshToken", value);
-  // Also set in cookies for middleware
-  // Use secure and sameSite flags for better security
-  const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
-  const cookieOptions = [
-    `refreshToken=${value}`,
-    "path=/",
-    `max-age=${7 * 24 * 60 * 60}`, // 7 days
-    "sameSite=Lax",
-    ...(isSecure ? ["secure"] : []),
-  ].join("; ");
-  document.cookie = cookieOptions;
+  const mode = getAuthStorageMode();
+  getAuthStorage(mode).setItem(REFRESH_TOKEN_KEY, value);
+  setAuthCookie(REFRESH_TOKEN_KEY, value, mode === "local" ? 7 * 24 * 60 * 60 : undefined);
 };
 
 export const removeTokenFromLocalStorage = () => {
   if (!isBrowser) return;
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("userInfo"); // Also clear user info
+  removeAuthStorageItems(localStorage);
+  removeAuthStorageItems(sessionStorage);
   // Also remove from cookies - clear with all possible options
   const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
   const clearCookieOptions = [
@@ -135,6 +203,7 @@ export const removeTokenFromLocalStorage = () => {
   ].join("; ");
   document.cookie = `accessToken=; ${clearCookieOptions}`;
   document.cookie = `refreshToken=; ${clearCookieOptions}`;
+  document.cookie = `authStorageMode=; ${clearCookieOptions}`;
   
   // Dispatch custom event to notify app-provider
   window.dispatchEvent(new Event("auth-logout"));

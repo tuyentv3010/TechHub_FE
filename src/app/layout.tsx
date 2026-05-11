@@ -7,12 +7,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import NextTopLoader from "nextjs-toploader";
-import Footer from "@/components/footer";
 import { baseOpenGraph } from "@/shared-metadata";
 import GoogleTag from "@/components/google-tag";
 import { AppProvider } from "@/components/app-provider";
 import { ThemeProvider } from "@/components/theme-provider";
-import Image from "next/image";
+import { ColorThemeProvider } from "@/components/color-theme-provider";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -56,9 +55,10 @@ export default async function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              {children}
-              {/* <Footer /> */}
-              <Toaster />
+              <ColorThemeProvider>
+                {children}
+                <Toaster />
+              </ColorThemeProvider>
             </ThemeProvider>
           </AppProvider>
         </NextIntlClientProvider>

@@ -10,6 +10,7 @@ export async function POST(request: Request) {
   const isProduction = process.env.NODE_ENV === "production";
   const refreshToken = (await cookieStore).get("refreshToken")?.value;
   const accessToken = (await cookieStore).get("accessToken")?.value;
+  const persistentCookie = (await cookieStore).get("authStorageMode")?.value !== "session";
   
   console.log("🔄 [API /api/auth/refresh-token] Cookies:", {
     hasRefreshToken: !!refreshToken,
@@ -58,14 +59,21 @@ export async function POST(request: Request) {
       httpOnly: true,
       sameSite: "lax",
       secure: isProduction,
-      expires: decodedAccessToken.exp * 1000,
+      ...(persistentCookie ? { expires: decodedAccessToken.exp * 1000 } : {}),
     });
     (await cookieStore).set("refreshToken", payload.data.refreshToken, {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
       secure: isProduction,
-      expires: decodedRefreshToken.exp * 1000,
+      ...(persistentCookie ? { expires: decodedRefreshToken.exp * 1000 } : {}),
+    });
+    (await cookieStore).set("authStorageMode", persistentCookie ? "local" : "session", {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isProduction,
+      ...(persistentCookie ? { expires: decodedRefreshToken.exp * 1000 } : {}),
     });
     
     console.log("🔄 [API /api/auth/refresh-token] Cookies updated successfully!");

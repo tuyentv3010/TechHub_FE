@@ -40,7 +40,7 @@ export function LanguageSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-9 px-3">
+        <Button variant="ghost" size="sm" className="app-control px-3">
           <Globe className="h-4 w-4 mr-2" />
           <span className="hidden sm:inline-block mr-1">
             {getCurrentLanguage().flag}
@@ -50,7 +50,7 @@ export function LanguageSwitcher() {
           </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className="app-control-menu w-48">
         {languages.map((language) => (
           <DropdownMenuItem
             key={language.code}

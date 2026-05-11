@@ -9,6 +9,7 @@ export async function POST() {
   // Delete cookies first (so user is logged out on frontend regardless of backend response)
   (await cookieStore).delete("refreshToken");
   (await cookieStore).delete("accessToken");
+  (await cookieStore).delete("authStorageMode");
   
   if (!accessToken || !refreshToken) {
     return Response.json(

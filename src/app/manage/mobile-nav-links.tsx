@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Package2, PanelLeft } from "lucide-react";
+import Image from "next/image";
+import { ArrowLeft, PanelLeft } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -20,6 +21,7 @@ export default function MobileNavLinks() {
   const account = data?.payload?.data;
   const userRoles: string[] = account?.roles || [];
   const isCourseStudio = pathname.startsWith("/manage/courses");
+  const brandHref = "/";
 
   const accessibleMenuItems = menuItems.filter((item: MenuItem) => {
     if (item.roles?.length) {
@@ -47,32 +49,43 @@ export default function MobileNavLinks() {
         <Button
           size="icon"
           variant="ghost"
-          className="manage-ghost-button h-10 w-10 rounded-full lg:hidden"
+          className="app-control app-control-icon lg:hidden"
         >
           <PanelLeft className="h-5 w-5" />
           <span className="sr-only">Toggle Menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="manage-dialog-panel w-[20rem] p-0">
+      <SheetContent side="left" className="app-control-menu w-[20rem] p-0">
         <div className="manage-sidebar-scroll flex h-full min-h-0 flex-col gap-6 p-5">
-          <div className="manage-sidebar-brand rounded-3xl border border-white/10 bg-white/70 px-4 py-4 dark:bg-white/5">
+          <Link
+            href={brandHref}
+            className="manage-sidebar-brand group block rounded-xl border border-border bg-card px-4 py-4 transition-colors hover:bg-muted/60"
+          >
             <div className="flex items-center gap-3">
-              <div className="manage-sidebar-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-                <Package2 className="h-5 w-5" />
+              <div className="manage-sidebar-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-white shadow-sm">
+                <Image
+                  src="/brand-mark.png"
+                  alt=""
+                  width={36}
+                  height={36}
+                  className="h-9 w-9 object-contain"
+                  priority
+                />
               </div>
-              <div className="manage-sidebar-meta min-w-0">
-                <p className="manage-display truncate text-lg font-extrabold tracking-tight">
+              <div className="manage-sidebar-meta min-w-0 flex-1">
+                <p className="manage-display break-words text-base font-extrabold leading-tight">
                   {isCourseStudio ? t("curriculumStudio") : t("executiveConsole")}
                 </p>
-                <p className="manage-page-eyebrow truncate">
-                  {isCourseStudio ? t("architecturalCurator") : t("commandDeck")}
-                </p>
+                <span className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-medium leading-none tracking-normal text-muted-foreground transition-colors group-hover:border-primary/35 group-hover:text-primary">
+                  <ArrowLeft className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{t("backToHomepage")}</span>
+                </span>
               </div>
             </div>
-          </div>
+          </Link>
 
           {isProfileLoading || isPermissionsLoading ? (
-            <div className="rounded-2xl border border-border/50 bg-card/70 px-4 py-3 text-sm text-muted-foreground">
+            <div className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
               {t("loadingNavigation")}
             </div>
           ) : (
@@ -86,17 +99,17 @@ export default function MobileNavLinks() {
                     key={index}
                     href={item.href}
                     className={cn(
-                      "manage-sidebar-link flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition-all",
+                      "manage-sidebar-link flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
                       isActive
-                        ? "bg-slate-900 text-white shadow-lg shadow-blue-500/10 dark:bg-white/10 dark:text-white"
-                        : "text-slate-600 hover:bg-slate-900/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/6 dark:hover:text-white"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
                     <span
                       className={cn(
-                        "manage-sidebar-icon flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/70 dark:bg-white/5",
+                        "manage-sidebar-icon flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card",
                         isActive &&
-                          "border-blue-400/20 bg-white/20 text-white dark:border-white/10 dark:bg-white/10"
+                          "border-primary/20 bg-primary/15 text-primary-foreground"
                       )}
                     >
                       <item.Icon className="h-5 w-5" />

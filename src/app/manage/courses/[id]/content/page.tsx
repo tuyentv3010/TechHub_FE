@@ -116,7 +116,7 @@ const ContentTypeIcon = ({ type }: { type: string }) => {
   const icons = {
     VIDEO: <Video className="h-4 w-4 text-red-500" />,
     TEXT: <FileText className="h-4 w-4 text-blue-500" />,
-    QUIZ: <HelpCircle className="h-4 w-4 text-purple-500" />,
+    QUIZ: <HelpCircle className="h-4 w-4 text-primary" />,
     CODING: <Code className="h-4 w-4 text-green-500" />,
   };
   return icons[type as keyof typeof icons] || <FileText className="h-4 w-4" />;
@@ -126,7 +126,7 @@ const AssetTypeIcon = ({ type }: { type: string }) => {
   const icons = {
     VIDEO: <Video className="h-3 w-3 text-red-500" />,
     DOCUMENT: <File className="h-3 w-3 text-blue-500" />,
-    LINK: <LinkIcon className="h-3 w-3 text-purple-500" />,
+    LINK: <LinkIcon className="h-3 w-3 text-primary" />,
     IMAGE: <ImageIcon className="h-3 w-3 text-green-500" />,
     CODE: <Code className="h-3 w-3 text-orange-500" />,
   };
@@ -183,7 +183,7 @@ const ExerciseDisplay = ({
             <div key={exercise.id} className="p-3 bg-background rounded border space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 flex-1">
-                  <HelpCircle className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                  <HelpCircle className="h-4 w-4 flex-shrink-0 text-primary" />
                   <div className="flex-1">
                     <Badge variant="secondary" className="text-xs mb-2">
                       {exercise.type === "MULTIPLE_CHOICE" ? "Trắc nghiệm" : 
@@ -1357,7 +1357,7 @@ export default function CourseContentManagementPage() {
                                                         </Badge>
                                                       )}
                                                       {lesson.hasExercise && (
-                                                        <Badge variant="default" className="text-xs bg-purple-500">
+                                                        <Badge variant="default" className="bg-primary text-xs">
                                                           <HelpCircle className="h-3 w-3 mr-1" />
                                                           {t("Exercise")}
                                                         </Badge>

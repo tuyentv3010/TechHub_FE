@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import accountApiRequest from "@/apiRequests/account";
 import { useAppContext } from "@/components/app-provider";
+import { getAccessTokenFromLocalStorage } from "@/lib/utils";
 import {
   CreateEmployeeAccountBodyType,
   UpdateEmployeeAccountBodyType,
@@ -13,7 +14,7 @@ import {
 export const useAccountProfile = () => {
   const { isAuth } = useAppContext();
   const hasAccessToken =
-    typeof window !== "undefined" && !!localStorage.getItem("accessToken");
+    typeof window !== "undefined" && !!getAccessTokenFromLocalStorage();
 
   return useQuery({
     queryKey: ["account-profile"],

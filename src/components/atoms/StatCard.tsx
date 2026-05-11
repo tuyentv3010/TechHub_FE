@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { MetricCard } from "@/components/common/metric-card";
 
 interface StatCardProps {
   number: string;
@@ -8,12 +9,11 @@ interface StatCardProps {
 
 export function StatCard({ number, label, className }: StatCardProps) {
   return (
-    <div className={cn(
-      "text-center p-4 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg text-white",
-      className
-    )}>
-      <div className="text-2xl font-bold">{number}</div>
-      <div className="text-sm">{label}</div>
-    </div>
+    <MetricCard
+      label={label}
+      value={number}
+      tone="accent"
+      className={cn("text-left", className)}
+    />
   );
 }

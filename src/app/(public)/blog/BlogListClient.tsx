@@ -39,12 +39,12 @@ const HeroPostCard = ({ blog }: { blog: Blog }) => {
 
   return (
     <Link href={`/blog/${blogSlug}`}>
-      <Card className="group flex h-full flex-col overflow-hidden border-muted-foreground/10 transition hover:border-primary/40 hover:shadow-xl">
+      <Card className="group flex h-full flex-col overflow-hidden border-border transition-colors hover:border-primary/40">
         <CardHeader className="space-y-4 p-0">
           <div className="relative h-64 w-full overflow-hidden bg-muted">
             {coverImage ? (
               <div
-                className="h-full w-full bg-gradient-to-br from-primary/10 via-secondary/10 to-muted transition-transform duration-300 group-hover:scale-105"
+                className="h-full w-full bg-muted transition-transform duration-300 group-hover:scale-[1.03]"
                 style={{
                   backgroundImage: `url(${coverImage})`,
                   backgroundSize: "cover",
@@ -52,7 +52,7 @@ const HeroPostCard = ({ blog }: { blog: Blog }) => {
                 }}
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 via-secondary/10 to-muted">
+              <div className="flex h-full w-full items-center justify-center bg-muted">
                 <div className="text-center">
                   <FileText className="mx-auto h-16 w-16 text-muted-foreground/30" />
                   <p className="mt-2 text-sm text-muted-foreground/50">No thumbnail</p>
@@ -95,7 +95,7 @@ const SmallPostCard = ({ blog }: { blog: Blog }) => {
           <div className="relative h-40 w-full overflow-hidden bg-muted">
             {coverImage ? (
               <div
-                className="h-full w-full bg-gradient-to-br from-primary/10 via-secondary/10 to-muted transition-transform duration-300 group-hover:scale-105"
+                className="h-full w-full bg-muted transition-transform duration-300 group-hover:scale-[1.03]"
                 style={{
                   backgroundImage: `url(${coverImage})`,
                   backgroundSize: "cover",
@@ -103,7 +103,7 @@ const SmallPostCard = ({ blog }: { blog: Blog }) => {
                 }}
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 via-secondary/10 to-muted">
+              <div className="flex h-full w-full items-center justify-center bg-muted">
                 <FileText className="h-10 w-10 text-muted-foreground/30" />
               </div>
             )}
@@ -139,7 +139,7 @@ const BlogCardItem = ({ blog }: { blog: Blog }) => {
         <div className="relative h-48 w-full overflow-hidden bg-muted">
           {coverImage ? (
             <div
-              className="h-full w-full bg-gradient-to-br from-primary/10 via-secondary/10 to-muted transition group-hover:scale-105"
+              className="h-full w-full bg-muted transition group-hover:scale-[1.03]"
               style={{
                 backgroundImage: `url(${coverImage})`,
                 backgroundSize: "cover",
@@ -147,7 +147,7 @@ const BlogCardItem = ({ blog }: { blog: Blog }) => {
               }}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 via-secondary/10 to-muted">
+            <div className="flex h-full w-full items-center justify-center bg-muted">
               <FileText className="h-12 w-12 text-muted-foreground/30" />
             </div>
           )}

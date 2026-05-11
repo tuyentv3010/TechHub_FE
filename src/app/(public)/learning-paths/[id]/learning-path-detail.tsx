@@ -119,7 +119,7 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
       case "INTERMEDIATE":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
       case "ADVANCED":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
+        return "bg-primary/10 text-primary";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
     }
@@ -259,7 +259,7 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
                                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                                 />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
+                                <div className="flex h-full w-full items-center justify-center bg-muted">
                                   <BookOpen className="h-8 w-8 text-muted-foreground" />
                                 </div>
                               )}

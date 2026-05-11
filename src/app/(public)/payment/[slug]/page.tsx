@@ -272,7 +272,7 @@ export default function PaymentPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-purple-600" />
+                  <CreditCard className="h-5 w-5 text-primary" />
                   Chọn phương thức thanh toán
                 </CardTitle>
               </CardHeader>
@@ -280,9 +280,9 @@ export default function PaymentPage() {
                 {/* VNPay Option */}
                 <button
                   onClick={() => setSelectedMethod("vnpay")}
-                  className={`w-full rounded-lg border-2 p-6 text-left transition-all hover:border-purple-500 hover:shadow-md ${
+                  className={`w-full rounded-lg border-2 p-6 text-left transition-all hover:border-primary/60 hover:shadow-sm ${
                     selectedMethod === "vnpay"
-                      ? "border-purple-600 bg-purple-50 dark:bg-purple-950/30"
+                      ? "border-primary bg-primary/10"
                       : "border-border"
                   }`}
                 >
@@ -299,7 +299,7 @@ export default function PaymentPage() {
                       </div>
                     </div>
                     {selectedMethod === "vnpay" && (
-                      <CheckCircle className="h-6 w-6 text-purple-600" />
+                      <CheckCircle className="h-6 w-6 text-primary" />
                     )}
                   </div>
                 </button>
@@ -307,9 +307,9 @@ export default function PaymentPage() {
                 {/* PayPal Option */}
                 <button
                   onClick={() => setSelectedMethod("paypal")}
-                  className={`w-full rounded-lg border-2 p-6 text-left transition-all hover:border-purple-500 hover:shadow-md ${
+                  className={`w-full rounded-lg border-2 p-6 text-left transition-all hover:border-primary/60 hover:shadow-sm ${
                     selectedMethod === "paypal"
-                      ? "border-purple-600 bg-purple-50 dark:bg-purple-950/30"
+                      ? "border-primary bg-primary/10"
                       : "border-border"
                   }`}
                 >
@@ -326,7 +326,7 @@ export default function PaymentPage() {
                       </div>
                     </div>
                     {selectedMethod === "paypal" && (
-                      <CheckCircle className="h-6 w-6 text-purple-600" />
+                      <CheckCircle className="h-6 w-6 text-primary" />
                     )}
                   </div>
                 </button>
@@ -353,7 +353,7 @@ export default function PaymentPage() {
             <Button
               onClick={handlePayment}
               disabled={!selectedMethod || isProcessing}
-              className="w-full bg-purple-600 py-6 text-lg font-semibold hover:bg-purple-700"
+              className="w-full bg-primary py-6 text-lg font-semibold text-primary-foreground hover:bg-primary/90"
             >
               {isProcessing
                 ? "Đang xử lý..."
@@ -435,7 +435,7 @@ export default function PaymentPage() {
 
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">Tổng thanh toán</span>
-                        <span className="text-2xl font-bold text-purple-600">
+                        <span className="text-2xl font-bold text-primary">
                           {formatPrice(courseSummary.discountPrice)}
                         </span>
                       </div>

@@ -276,6 +276,12 @@ export default function PayoutManagementPage() {
     return source;
   }, [currentUserId, dashboardRole, normalizedRequests, queueFilter]);
 
+  const getBatchDisplayId = (batchId?: string | null) => {
+    if (!batchId) return t("Unassigned");
+    const batchIndex = normalizedBatches.findIndex((batch) => batch.id === batchId);
+    return batchIndex >= 0 ? `#${batchIndex + 1}` : t("Unassigned");
+  };
+
   const summary = useMemo(() => {
     const totalEarned = toNumber(balance?.totalEarned);
     const pendingAmount = toNumber(balance?.pendingAmount);
@@ -294,12 +300,12 @@ export default function PayoutManagementPage() {
   }, [balance, visibleRequests]);
 
   const ledgerRows = useMemo<LedgerRow[]>(() => {
-    const requestRows: LedgerRow[] = normalizedRequests.flatMap((request) => {
+    const requestRows: LedgerRow[] = normalizedRequests.flatMap((request, requestIndex) => {
       const rows: LedgerRow[] = [
         {
-          ref: shortIdValue(request.id),
+          ref: "REQUEST",
           type: "REQUEST",
-          description: request.note || t("RequestForInstructor", { id: shortIdValue(request.instructorId) }),
+          description: request.note || t("RequestForInstructor", { id: String(requestIndex + 1) }),
           amount: request.amount,
           status: request.status,
           timestamp: request.created || request.updated || "",
@@ -308,7 +314,7 @@ export default function PayoutManagementPage() {
 
       if (request.approvedAt) {
         rows.push({
-          ref: shortIdValue(`${request.id}-approved`),
+          ref: "APPROVAL",
           type: "APPROVAL",
           description: request.reviewNote || t("ApprovedDescription"),
           amount: request.amount,
@@ -319,7 +325,7 @@ export default function PayoutManagementPage() {
 
       if (request.markedPaidAt) {
         rows.push({
-          ref: shortIdValue(`${request.id}-paid`),
+          ref: "PAID",
           type: "PAID",
           description: request.paymentReference
             ? t("PaidVia", { reference: request.paymentReference })
@@ -334,7 +340,7 @@ export default function PayoutManagementPage() {
     });
 
     const batchRows: LedgerRow[] = normalizedBatches.map((batch) => ({
-      ref: shortIdValue(batch.id),
+      ref: "BATCH",
       type: "BATCH",
       description: `${batch.batchName} • ${batch.totalRequests} request(s)`,
       amount: batch.totalAmount,
@@ -344,7 +350,11 @@ export default function PayoutManagementPage() {
 
     return [...batchRows, ...requestRows]
       .sort((left, right) => new Date(right.timestamp || 0).getTime() - new Date(left.timestamp || 0).getTime())
-      .slice(0, 12);
+      .slice(0, 12)
+      .map((row, index) => ({
+        ...row,
+        ref: `${row.type}-${index + 1}`,
+      }));
   }, [normalizedBatches, normalizedRequests, t]);
 
   const openRequestDetail = (requestId: string) => {
@@ -527,8 +537,8 @@ export default function PayoutManagementPage() {
 
   if (!isAuth || !dashboardRole) {
     return (
-      <main className="manage-finance-root manage-payout-root min-h-screen bg-[#0f131f] p-4 text-[#dfe2f3] sm:px-6 sm:py-4 md:p-8">
-        <Card className="border border-white/10 bg-[#1b1f2c]">
+      <main className="manage-finance-root manage-payout-root min-h-screen bg-background p-4 text-foreground sm:px-6 sm:py-4 md:p-8">
+        <Card className="border border-border bg-card">
           <CardContent className="p-6 text-sm text-white/70">
             {t("Unauthenticated")}
           </CardContent>
@@ -538,7 +548,7 @@ export default function PayoutManagementPage() {
   }
 
   return (
-    <main className="manage-page manage-finance-root manage-payout-root space-y-6 text-[#dfe2f3]">
+    <main className="manage-page manage-finance-root manage-payout-root space-y-6 text-foreground">
       <section className="manage-finance-surface relative overflow-hidden">
         <div className="relative flex flex-col gap-6 p-5 sm:p-6 md:flex-row md:items-center md:justify-between md:p-8">
           <div className="space-y-3">
@@ -547,7 +557,7 @@ export default function PayoutManagementPage() {
               {t("PageEyebrow")}
             </div>
             <div className="space-y-1">
-              <h1 className="text-3xl font-extrabold tracking-tight text-[#f0f4ff] md:text-4xl">{t("Title")}</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">{t("Title")}</h1>
               <p className="max-w-2xl text-sm text-white/65 md:text-base">
                 {t("Description")}
               </p>
@@ -583,7 +593,7 @@ export default function PayoutManagementPage() {
         ].map((card) => {
           const Icon = card.icon;
           return (
-            <Card key={card.title} className="relative overflow-hidden border border-white/8 bg-[#1b1f2c] shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
+            <Card key={card.title} className="relative overflow-hidden border border-border bg-card shadow-sm">
               <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-[#adc6ff]/8 blur-2xl" />
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
                 <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">{card.title}</CardTitle>
@@ -592,7 +602,7 @@ export default function PayoutManagementPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-[#f0f4ff]">{card.value}</div>
+                <div className="text-2xl font-bold text-foreground">{card.value}</div>
                 <div className="mt-2 text-[11px] text-white/45">{t("UpdatedProjection")}</div>
               </CardContent>
             </Card>
@@ -600,7 +610,7 @@ export default function PayoutManagementPage() {
         })}
       </section>
 
-      <section className="mt-6 rounded-[28px] border border-white/8 bg-[#1b1f2c] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.22)] md:p-6">
+      <section className="mt-6 rounded-xl border border-border bg-card p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
             <div className="relative">
@@ -613,7 +623,7 @@ export default function PayoutManagementPage() {
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="min-w-0 text-2xl font-bold text-[#f0f4ff]">
+                <h2 className="min-w-0 text-2xl font-bold text-foreground">
                   {dashboardRole === "ADMIN"
                     ? t("BalanceTitleAdmin", { id: shortIdValue(balanceQueryInstructorId) })
                     : t("BalanceTitleInstructor")}
@@ -636,19 +646,19 @@ export default function PayoutManagementPage() {
           </div>
 
           <div className="grid w-full gap-3 sm:grid-cols-3 xl:w-auto 2xl:w-[48rem]">
-            <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
+            <div className="rounded-2xl border border-border bg-white/5 p-4">
               <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("LifetimeEarned")}</div>
-              <div className="mt-2 text-2xl font-bold text-[#f0f4ff]">{formatCurrency(summary.totalEarned)}</div>
+              <div className="mt-2 text-2xl font-bold text-foreground">{formatCurrency(summary.totalEarned)}</div>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
+            <div className="rounded-2xl border border-border bg-white/5 p-4">
               <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("CurrentPending")}</div>
               <div className="mt-2 text-2xl font-bold text-[#ffddb8]">{formatCurrency(summary.pendingAmount)}</div>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
+            <div className="rounded-2xl border border-border bg-white/5 p-4">
               <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-300">
                 {t("Available")} <span className="h-2 w-2 rounded-full bg-emerald-400" />
               </div>
-              <div className="mt-2 text-2xl font-extrabold text-[#f0f4ff]">{formatCurrency(summary.availableAmount)}</div>
+              <div className="mt-2 text-2xl font-extrabold text-foreground">{formatCurrency(summary.availableAmount)}</div>
             </div>
           </div>
 
@@ -703,10 +713,10 @@ export default function PayoutManagementPage() {
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-12">
-        <Card className="xl:col-span-4 border border-white/8 bg-[#1b1f2c] shadow-[0_12px_40px_rgba(0,0,0,0.22)]">
-          <CardHeader className="flex flex-col gap-3 border-b border-white/8 pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <Card className="xl:col-span-4 border border-border bg-card shadow-sm">
+          <CardHeader className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <CardTitle className="text-[#f0f4ff]">{t("BatchManagementTitle")}</CardTitle>
+              <CardTitle className="text-foreground">{t("BatchManagementTitle")}</CardTitle>
               <CardDescription className="text-white/50">{t("BatchManagementDescription")}</CardDescription>
             </div>
             <Button
@@ -725,10 +735,10 @@ export default function PayoutManagementPage() {
               ))}
 
             {!isBatchesFetching &&
-              normalizedBatches.map((batch) => (
+              normalizedBatches.map((batch, index) => (
                 <button
                   key={batch.id}
-                  className="w-full rounded-2xl border border-white/8 bg-white/4 p-4 text-left transition hover:border-[#adc6ff]/25 hover:bg-white/6"
+                  className="w-full rounded-2xl border border-border bg-white/4 p-4 text-left transition hover:border-[#adc6ff]/25 hover:bg-white/6"
                   onClick={() => {
                     setBatchSheetOpen(true);
                     toast({
@@ -739,8 +749,8 @@ export default function PayoutManagementPage() {
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <div className="text-sm font-semibold text-[#f0f4ff]">{batch.batchName}</div>
-                      <div className="mt-1 text-[11px] text-white/45">ID: {shortIdValue(batch.id)}</div>
+                      <div className="text-sm font-semibold text-foreground">{batch.batchName}</div>
+                      <div className="mt-1 text-[11px] text-white/45">ID: {index + 1}</div>
                     </div>
                     <Badge className={`w-fit border px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${statusTone[batch.status] || statusTone.DRAFT}`}>
                       {batch.status}
@@ -762,7 +772,7 @@ export default function PayoutManagementPage() {
               ))}
 
             {!isBatchesFetching && normalizedBatches.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-white/4 p-5 text-sm text-white/45">
+              <div className="rounded-2xl border border-dashed border-border bg-white/4 p-5 text-sm text-white/45">
                 Chưa có payout batch nào.
               </div>
             )}
@@ -787,10 +797,10 @@ export default function PayoutManagementPage() {
           </CardContent>
         </Card>
 
-        <Card className="xl:col-span-8 border border-white/8 bg-[#1b1f2c] shadow-[0_12px_40px_rgba(0,0,0,0.22)]">
-          <CardHeader className="flex flex-col gap-4 border-b border-white/8 md:flex-row md:items-center md:justify-between">
+        <Card className="xl:col-span-8 border border-border bg-card shadow-sm">
+          <CardHeader className="flex flex-col gap-4 border-b border-border md:flex-row md:items-center md:justify-between">
             <div>
-              <CardTitle className="text-[#f0f4ff]">{t("QueueTitle")}</CardTitle>
+              <CardTitle className="text-foreground">{t("QueueTitle")}</CardTitle>
               <CardDescription className="text-white/50">{t("QueueDescription")}</CardDescription>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
@@ -822,24 +832,24 @@ export default function PayoutManagementPage() {
             <div className="space-y-3 md:hidden">
               {isRequestsFetching &&
                 Array.from({ length: 3 }).map((_, index) => (
-                  <div key={`request-card-${index}`} className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+                  <div key={`request-card-${index}`} className="rounded-2xl border border-border bg-white/[0.04] p-4">
                     <Skeleton className="h-24 rounded-2xl bg-white/5" />
                   </div>
                 ))}
 
               {!isRequestsFetching && visibleRequests.length === 0 && (
-                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 text-center text-sm text-white/45">
+                <div className="rounded-2xl border border-border bg-white/[0.04] p-4 text-center text-sm text-white/45">
                   {t("NoRequests")}
                 </div>
               )}
 
               {!isRequestsFetching &&
-                visibleRequests.map((request) => (
-                  <div key={`mobile-${request.id}`} className="space-y-3 rounded-2xl border border-white/8 bg-white/[0.04] p-4">
+                visibleRequests.map((request, index) => (
+                  <div key={`mobile-${request.id}`} className="space-y-3 rounded-2xl border border-border bg-white/[0.04] p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <div className="font-semibold text-[#f0f4ff]">
-                          {t("BalanceTitleAdmin", { id: shortIdValue(request.instructorId) })}
+                        <div className="font-semibold text-foreground">
+                          {t("BalanceTitleAdmin", { id: String(index + 1) })}
                         </div>
                         <div className="mt-1 text-xs text-white/45">{request.note || t("NoNoteProvided")}</div>
                       </div>
@@ -851,12 +861,12 @@ export default function PayoutManagementPage() {
                     <div className="grid gap-2 rounded-2xl bg-white/[0.03] p-3 text-sm">
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-white/50">Requested</span>
-                        <span className="font-semibold text-[#f0f4ff]">{formatCurrency(request.amount)}</span>
+                        <span className="font-semibold text-foreground">{formatCurrency(request.amount)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-white/50">Batch</span>
                         <span className="text-right text-white/75">
-                          {request.batchId ? shortIdValue(request.batchId) : t("Unassigned")}
+                          {getBatchDisplayId(request.batchId)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-3">
@@ -889,7 +899,7 @@ export default function PayoutManagementPage() {
                 ))}
             </div>
 
-            <div className="hidden overflow-x-auto rounded-2xl border border-white/8 md:block">
+            <div className="hidden overflow-x-auto rounded-2xl border border-border md:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/[0.04] text-[10px] uppercase tracking-[0.22em] text-white/40">
                   <tr>
@@ -920,21 +930,21 @@ export default function PayoutManagementPage() {
                   )}
 
                   {!isRequestsFetching &&
-                    visibleRequests.map((request) => (
+                    visibleRequests.map((request, index) => (
                       <tr key={request.id} className="group hover:bg-white/[0.03]">
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/8 bg-white/5 text-xs font-bold text-[#adc6ff]">
-                              {shortIdValue(request.instructorId).slice(0, 2).toUpperCase()}
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-white/5 text-xs font-bold text-[#adc6ff]">
+                              {String(index + 1).padStart(2, "0")}
                             </div>
                             <div>
-                              <div className="font-semibold text-[#f0f4ff]">{t("BalanceTitleAdmin", { id: shortIdValue(request.instructorId) })}</div>
+                              <div className="font-semibold text-foreground">{t("BalanceTitleAdmin", { id: String(index + 1) })}</div>
                               <div className="text-[11px] text-white/45">{request.note || t("NoNoteProvided")}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-4 font-semibold text-[#f0f4ff]">{formatCurrency(request.amount)}</td>
-                        <td className="px-4 py-4 text-white/50">{request.batchId ? shortIdValue(request.batchId) : t("Unassigned")}</td>
+                        <td className="px-4 py-4 font-semibold text-foreground">{formatCurrency(request.amount)}</td>
+                        <td className="px-4 py-4 text-white/50">{getBatchDisplayId(request.batchId)}</td>
                         <td className="px-4 py-4 text-white/50">{formatDateShortValue(request.created || request.updated)}</td>
                         <td className="px-4 py-4">
                           <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[request.status] || statusTone.REQUESTED}`}>
@@ -971,10 +981,10 @@ export default function PayoutManagementPage() {
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-12">
-        <Card className="xl:col-span-12 border border-white/8 bg-[#1b1f2c] shadow-[0_12px_40px_rgba(0,0,0,0.22)]">
-          <CardHeader className="flex flex-col gap-3 border-b border-white/8 md:flex-row md:items-center md:justify-between">
+        <Card className="xl:col-span-12 border border-border bg-card shadow-sm">
+          <CardHeader className="flex flex-col gap-3 border-b border-border md:flex-row md:items-center md:justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-[#f0f4ff]">
+              <CardTitle className="flex items-center gap-2 text-foreground">
                 <FileText className="h-4 w-4 text-[#adc6ff]" />
                 {t("LedgerTitle")}
               </CardTitle>
@@ -994,7 +1004,7 @@ export default function PayoutManagementPage() {
               {ledgerRows.map((row) => (
                 <div
                   key={`mobile-ledger-${row.type}-${row.ref}-${row.timestamp}`}
-                  className="space-y-3 rounded-2xl border border-white/8 bg-white/[0.04] p-4"
+                  className="space-y-3 rounded-2xl border border-border bg-white/[0.04] p-4"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
@@ -1009,7 +1019,7 @@ export default function PayoutManagementPage() {
                   <div className="grid gap-2 rounded-2xl bg-white/[0.03] p-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-white/50">{t("AmountColumn")}</span>
-                      <span className="font-semibold text-[#f0f4ff]">{formatCurrency(row.amount)}</span>
+                      <span className="font-semibold text-foreground">{formatCurrency(row.amount)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-white/50">Status</span>
@@ -1024,13 +1034,13 @@ export default function PayoutManagementPage() {
               ))}
 
               {ledgerRows.length === 0 && (
-                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 text-center text-sm text-white/45">
+                <div className="rounded-2xl border border-border bg-white/[0.04] p-4 text-center text-sm text-white/45">
                   {t("NoLedgerRows")}
                 </div>
               )}
             </div>
 
-            <div className="hidden overflow-x-auto rounded-2xl border border-white/8 md:block">
+            <div className="hidden overflow-x-auto rounded-2xl border border-border md:block">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-white/[0.04] text-[10px] uppercase tracking-[0.22em] text-white/40">
                   <tr>
@@ -1052,7 +1062,7 @@ export default function PayoutManagementPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-4 text-white/75">{row.description}</td>
-                      <td className="px-4 py-4 font-semibold text-[#f0f4ff]">{formatCurrency(row.amount)}</td>
+                      <td className="px-4 py-4 font-semibold text-foreground">{formatCurrency(row.amount)}</td>
                       <td className="px-4 py-4 text-[11px] uppercase tracking-[0.2em] text-white/45">{row.status}</td>
                       <td className="px-4 py-4 text-right font-mono text-xs text-white/50">{formatDateTimeValue(row.timestamp)}</td>
                     </tr>
@@ -1073,23 +1083,23 @@ export default function PayoutManagementPage() {
       </section>
 
       <Sheet open={batchSheetOpen} onOpenChange={setBatchSheetOpen}>
-        <SheetContent side="right" className="w-full border-l border-white/10 bg-[#0f131f] text-[#dfe2f3] sm:max-w-2xl">
-          <SheetHeader className="space-y-3 border-b border-white/10 pb-4 text-left">
-            <SheetTitle className="text-[#f0f4ff]">{t("BatchBuilderTitle")}</SheetTitle>
+        <SheetContent side="right" className="w-full border-l border-border bg-background text-foreground sm:max-w-2xl">
+          <SheetHeader className="space-y-3 border-b border-border pb-4 text-left">
+            <SheetTitle className="text-foreground">{t("BatchBuilderTitle")}</SheetTitle>
             <SheetDescription className="text-white/55">
               {t("BatchBuilderDescription")}
             </SheetDescription>
           </SheetHeader>
 
           <div className="mt-6 space-y-5">
-            <Card className="border border-white/8 bg-[#1b1f2c]">
+            <Card className="border border-border bg-card">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-[#f0f4ff]">{t("MonthlyBatchTitle")}</CardTitle>
+                <CardTitle className="text-sm text-foreground">{t("MonthlyBatchTitle")}</CardTitle>
                 <CardDescription className="text-white/50">{t("MonthlyBatchDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="rounded-2xl border border-white/8 bg-white/4 p-4 text-sm text-white/70">
-                  {t("PeriodLabel")}: <span className="font-semibold text-[#f0f4ff]">{format(new Date(), "yyyy-MM")}</span>
+                <div className="rounded-2xl border border-border bg-white/4 p-4 text-sm text-white/70">
+                  {t("PeriodLabel")}: <span className="font-semibold text-foreground">{format(new Date(), "yyyy-MM")}</span>
                 </div>
                 <Button
                   className="manage-finance-primary w-full"
@@ -1102,9 +1112,9 @@ export default function PayoutManagementPage() {
               </CardContent>
             </Card>
 
-            <Card className="border border-white/8 bg-[#1b1f2c]">
+            <Card className="border border-border bg-card">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-[#f0f4ff]">{t("ManualBatchTitle")}</CardTitle>
+                <CardTitle className="text-sm text-foreground">{t("ManualBatchTitle")}</CardTitle>
                 <CardDescription className="text-white/50">{t("ManualBatchDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -1153,59 +1163,59 @@ export default function PayoutManagementPage() {
           }
         }}
       >
-        <SheetContent side="right" className="w-full border-l border-white/10 bg-[#0f131f] text-[#dfe2f3] sm:max-w-xl">
-          <SheetHeader className="space-y-3 border-b border-white/10 pb-4 text-left">
+        <SheetContent side="right" className="w-full border-l border-border bg-background text-foreground sm:max-w-xl">
+          <SheetHeader className="space-y-3 border-b border-border pb-4 text-left">
             <div className="flex flex-wrap items-center gap-2">
               <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[detail?.status || "REQUESTED"] || statusTone.REQUESTED}`}>
                 {(detail?.status || "REQUESTED").replaceAll("_", " ")}
               </Badge>
               <button
-                className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-white/55 hover:bg-white/5 hover:text-white"
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-white/55 hover:bg-white/5 hover:text-white"
                 onClick={() => handleCopyRequestId(detail?.id)}
               >
                 {shortIdValue(detail?.id)}
                 <Copy className="h-3.5 w-3.5" />
               </button>
             </div>
-            <SheetTitle className="text-[#f0f4ff]">{t("DetailTitle")}</SheetTitle>
+            <SheetTitle className="text-foreground">{t("DetailTitle")}</SheetTitle>
             <SheetDescription className="text-white/55">
               {t("DetailDescription")}
             </SheetDescription>
           </SheetHeader>
 
           <div className="mt-6 space-y-6">
-            <Card className="border border-white/8 bg-[#1b1f2c]">
+            <Card className="border border-border bg-card">
               <CardContent className="space-y-4 p-5">
                 <div className="grid gap-3 text-center text-xs sm:grid-cols-3">
-                  <div className="rounded-2xl border border-white/8 bg-white/4 p-3">
+                  <div className="rounded-2xl border border-border bg-white/4 p-3">
                     <div className="text-white/45">{t("CreatedLabel")}</div>
-                    <div className="mt-1 font-semibold text-[#f0f4ff]">{formatDateTimeValue(detail?.created)}</div>
+                    <div className="mt-1 font-semibold text-foreground">{formatDateTimeValue(detail?.created)}</div>
                   </div>
-                  <div className="rounded-2xl border border-white/8 bg-white/4 p-3">
+                  <div className="rounded-2xl border border-border bg-white/4 p-3">
                     <div className="text-white/45">{t("ApprovedLabel")}</div>
-                    <div className="mt-1 font-semibold text-[#f0f4ff]">{formatDateTimeValue(detail?.approvedAt)}</div>
+                    <div className="mt-1 font-semibold text-foreground">{formatDateTimeValue(detail?.approvedAt)}</div>
                   </div>
-                  <div className="rounded-2xl border border-white/8 bg-white/4 p-3">
+                  <div className="rounded-2xl border border-border bg-white/4 p-3">
                     <div className="text-white/45">{t("PaidLabel")}</div>
-                    <div className="mt-1 font-semibold text-[#f0f4ff]">{formatDateTimeValue(detail?.markedPaidAt)}</div>
+                    <div className="mt-1 font-semibold text-foreground">{formatDateTimeValue(detail?.markedPaidAt)}</div>
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-4">
+                <div className="rounded-xl border border-border bg-white/4 p-4">
                   <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("MethodLabel")}</div>
-                      <div className="mt-1 flex items-center gap-2 text-[#f0f4ff]"><Landmark className="h-4 w-4 text-[#4edea3]" />{t("SandboxWire")}</div>
+                      <div className="mt-1 flex items-center gap-2 text-foreground"><Landmark className="h-4 w-4 text-[#4edea3]" />{t("SandboxWire")}</div>
                     </div>
                     <div className="text-left sm:text-right">
                       <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("TypeLabel")}</div>
-                      <div className="mt-1 text-[#f0f4ff]">{t("ManualSettlement")}</div>
+                      <div className="mt-1 text-foreground">{t("ManualSettlement")}</div>
                     </div>
                   </div>
-                  <div className="mt-4 space-y-2 border-t border-white/8 pt-4 text-sm">
+                  <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
                     <div className="flex flex-col gap-1 text-white/60 sm:flex-row sm:items-center sm:justify-between">
                       <span>{t("RequestedAmountLabel")}</span>
-                      <span className="font-semibold text-[#f0f4ff]">{formatCurrency(detail?.amount || 0)}</span>
+                      <span className="font-semibold text-foreground">{formatCurrency(detail?.amount || 0)}</span>
                     </div>
                     <div className="flex items-center justify-between text-white/60">
                       <span>{t("ReviewNoteLabel")}</span>
@@ -1220,13 +1230,13 @@ export default function PayoutManagementPage() {
               </CardContent>
             </Card>
 
-            <Card className="border border-white/8 bg-[#1b1f2c]">
+            <Card className="border border-border bg-card">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-[#f0f4ff]">{t("RequestNotesTitle")}</CardTitle>
+                <CardTitle className="text-sm text-foreground">{t("RequestNotesTitle")}</CardTitle>
                 <CardDescription className="text-white/50">{t("RequestNotesDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="rounded-2xl border border-white/8 bg-white/4 p-4 text-sm text-white/75">
+                <div className="rounded-2xl border border-border bg-white/4 p-4 text-sm text-white/75">
                   {detail?.note || t("NoRequestNote")}
                 </div>
                 <Input
@@ -1245,7 +1255,7 @@ export default function PayoutManagementPage() {
             </Card>
           </div>
 
-          <SheetFooter className="mt-6 grid grid-cols-1 gap-3 border-t border-white/10 pt-4 sm:grid-cols-3 sm:justify-stretch">
+          <SheetFooter className="mt-6 grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-3 sm:justify-stretch">
             <Button
               variant="outline"
               className="manage-finance-secondary"
@@ -1277,10 +1287,10 @@ export default function PayoutManagementPage() {
       </Sheet>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-12">
-        <Card className="xl:col-span-12 border border-white/8 bg-[#1b1f2c] shadow-[0_12px_40px_rgba(0,0,0,0.22)]">
-          <CardHeader className="flex flex-col gap-3 border-b border-white/8 md:flex-row md:items-center md:justify-between">
+        <Card className="xl:col-span-12 border border-border bg-card shadow-sm">
+          <CardHeader className="flex flex-col gap-3 border-b border-border md:flex-row md:items-center md:justify-between">
             <div>
-              <CardTitle className="text-[#f0f4ff]">{t("OverviewStatsTitle")}</CardTitle>
+              <CardTitle className="text-foreground">{t("OverviewStatsTitle")}</CardTitle>
               <CardDescription className="text-white/50">{t("OverviewStatsDescription")}</CardDescription>
             </div>
             <div className="flex items-center gap-2 text-xs text-white/50">
@@ -1289,23 +1299,23 @@ export default function PayoutManagementPage() {
             </div>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+            <div className="rounded-2xl border border-border bg-white/4 p-4">
               <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("RequestedSum")}</div>
-              <div className="mt-2 text-2xl font-bold text-[#f0f4ff]">{formatCurrency(summary.totalRequested)}</div>
+              <div className="mt-2 text-2xl font-bold text-foreground">{formatCurrency(summary.totalRequested)}</div>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+            <div className="rounded-2xl border border-border bg-white/4 p-4">
               <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("LoadedRequests")}</div>
-              <div className="mt-2 text-2xl font-bold text-[#f0f4ff]">{visibleRequests.length}</div>
+              <div className="mt-2 text-2xl font-bold text-foreground">{visibleRequests.length}</div>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
+            <div className="rounded-2xl border border-border bg-white/4 p-4">
               <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("BatchCount")}</div>
-              <div className="mt-2 text-2xl font-bold text-[#f0f4ff]">{normalizedBatches.length}</div>
+              <div className="mt-2 text-2xl font-bold text-foreground">{normalizedBatches.length}</div>
             </div>
           </CardContent>
         </Card>
       </section>
 
-      <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-white/8 bg-[#1b1f2c] px-4 py-3 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <ChevronRight className="h-4 w-4 text-[#adc6ff]" />
           {t("FooterBanner")}

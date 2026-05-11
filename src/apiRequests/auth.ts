@@ -53,7 +53,7 @@ const authApiRequest = {
     http.post<ChangePasswordResType>("/app/api/proxy/users/change-password", body),
 
   // Set token to cookie (for OAuth flow)
-  setTokenToCookie: (body: { accessToken: string; refreshToken: string }) =>
+  setTokenToCookie: (body: { accessToken: string; refreshToken: string; remember?: boolean }) =>
     http.post("/api/auth/token", body, {
       baseUrl: "",
     }),

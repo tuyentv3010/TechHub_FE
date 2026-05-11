@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useState, createContext, useContext } from "react";
+import { useEffect, useMemo, useState, createContext, useContext } from "react";
 import { PlusCircle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -69,6 +69,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { getAccessCopy, summarizeRoleCoverage } from "@/lib/access-control";
+import { getManageTableColumnClass } from "@/lib/manage-table";
 import { useGetPermissions } from "@/queries/usePermission";
 import { PermissionSchemaType } from "@/schemaValidations/permission.schema";
 import { RoleSchemaType } from "@/schemaValidations/role.schema";
@@ -77,6 +78,37 @@ import { useDeleteRoleMutation, useGetRoles } from "@/queries/useRole";
 import RoleModal from "./role-modal";
 
 type RoleItem = RoleSchemaType;
+
+const normalizeSearchText = (value: unknown) =>
+  String(value ?? "").toLowerCase().trim();
+
+const matchesRoleSearch = (
+  role: RoleItem,
+  query: string,
+  permissionById: Map<string, PermissionSchemaType>
+) => {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  const assignedPermissions = (role.permissionIds ?? [])
+    .map((permissionId) => permissionById.get(permissionId))
+    .filter((permission): permission is PermissionSchemaType => Boolean(permission));
+
+  return [
+    role.name,
+    role.description,
+    role.isActive ? "active" : "inactive",
+    ...assignedPermissions.flatMap((permission) => [
+      permission.name,
+      permission.description,
+      permission.method,
+      permission.resource,
+      permission.url,
+    ]),
+  ].some((value) => normalizeSearchText(value).includes(normalizedQuery));
+};
 
 const RoleTableContext = createContext<{
   setRoleIdEdit: (value: string | undefined) => void;
@@ -168,7 +200,7 @@ function BusinessRoleView({
 
   if (roles.length === 0) {
     return (
-      <div className="manage-subsurface rounded-3xl p-6 text-center text-sm text-muted-foreground">
+      <div className="manage-subsurface rounded-xl p-6 text-center text-sm text-muted-foreground">
         {t("NoResults")}
       </div>
     );
@@ -289,6 +321,7 @@ export default function RoleTable() {
   const [roleIdEdit, setRoleIdEdit] = useState<string | undefined>();
   const [roleDelete, setRoleDelete] = useState<RoleItem | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [roleSearch, setRoleSearch] = useState("");
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
@@ -296,8 +329,18 @@ export default function RoleTable() {
 
   const { data, isLoading, error } = useGetRoles();
   const { data: permissionsData, isLoading: permissionsLoading } = useGetPermissions();
-  const roles = data?.payload?.data ?? [];
-  const permissions = permissionsData?.payload?.data ?? [];
+  const roles: RoleItem[] = data?.payload?.data ?? [];
+  const permissions: PermissionSchemaType[] = permissionsData?.payload?.data ?? [];
+  const permissionById = useMemo(
+    () => new Map<string, PermissionSchemaType>(
+      permissions.map((permission) => [permission.id, permission])
+    ),
+    [permissions]
+  );
+  const filteredRoles = useMemo(
+    () => roles.filter((role) => matchesRoleSearch(role, roleSearch, permissionById)),
+    [permissionById, roleSearch, roles]
+  );
 
   const columns: ColumnDef<RoleItem>[] = [
     {
@@ -382,8 +425,14 @@ export default function RoleTable() {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
 
+  useEffect(() => {
+    setPagination((current) =>
+      current.pageIndex === 0 ? current : { ...current, pageIndex: 0 }
+    );
+  }, [roleSearch]);
+
   const table = useReactTable({
-    data: roles,
+    data: filteredRoles,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -436,10 +485,18 @@ export default function RoleTable() {
           <>
             <Tabs defaultValue="overview" className="space-y-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <TabsList className="manage-glass h-auto rounded-2xl border border-border/50 p-1">
-                  <TabsTrigger value="overview">{accessCopy.tabs.overview}</TabsTrigger>
-                  <TabsTrigger value="advanced">{accessCopy.tabs.advanced}</TabsTrigger>
-                </TabsList>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <TabsList className="manage-glass h-auto rounded-2xl border border-border/50 p-1">
+                    <TabsTrigger value="overview">{accessCopy.tabs.overview}</TabsTrigger>
+                    <TabsTrigger value="advanced">{accessCopy.tabs.advanced}</TabsTrigger>
+                  </TabsList>
+                  <Input
+                    placeholder={t("SearchPlaceholder")}
+                    value={roleSearch}
+                    onChange={(event) => setRoleSearch(event.target.value)}
+                    className="manage-field w-full sm:w-[320px]"
+                  />
+                </div>
 
                 <Button
                   size="sm"
@@ -453,7 +510,7 @@ export default function RoleTable() {
 
               <TabsContent value="overview" className="space-y-4">
                 <BusinessRoleView
-                  roles={roles}
+                  roles={filteredRoles}
                   permissions={permissions}
                   permissionsLoading={permissionsLoading}
                   onEdit={setRoleIdEdit}
@@ -468,17 +525,6 @@ export default function RoleTable() {
                     <CardDescription>{accessCopy.shared.technicalHint}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="manage-toolbar py-2">
-                      <Input
-                        placeholder={t("SearchPlaceholder")}
-                        value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-                        onChange={(event) =>
-                          table.getColumn("name")?.setFilterValue(event.target.value)
-                        }
-                        className="manage-field w-full max-w-sm"
-                      />
-                    </div>
-
                     <div className="space-y-3 md:hidden">
                       {table.getRowModel().rows?.length ? (
                         table.getRowModel().rows.map((row) => {
@@ -547,7 +593,10 @@ export default function RoleTable() {
                           {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                               {headerGroup.headers.map((header) => (
-                                <TableHead key={header.id}>
+                                <TableHead
+                                  key={header.id}
+                                  className={getManageTableColumnClass(header.column.id)}
+                                >
                                   {header.isPlaceholder
                                     ? null
                                     : flexRender(header.column.columnDef.header, header.getContext())}
@@ -561,7 +610,10 @@ export default function RoleTable() {
                             table.getRowModel().rows.map((row) => (
                               <TableRow key={row.id}>
                                 {row.getVisibleCells().map((cell) => (
-                                  <TableCell key={cell.id}>
+                                  <TableCell
+                                    key={cell.id}
+                                    className={getManageTableColumnClass(cell.column.id)}
+                                  >
                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                   </TableCell>
                                 ))}

@@ -3,16 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
-import DarkModeToggle from "@/components/dark-mode-toggle";
+import { ThemeToggle } from "@/components/theme-toggle";
 import NavLinks from "@/app/manage/nav-links";
 import MobileNavLinks from "@/app/manage/mobile-nav-links";
 import { SwitchLanguage } from "@/components/switch-language";
 import DropdownAvatar from "./dropdown-avatar";
 import NotificationBell from "@/components/organisms/NotificationBell";
 import { AiLearningPathProvider } from "@/contexts/AiLearningPathContext";
+import { DashboardShell } from "@/components/layout";
 
 export default function Layout({
   children,
@@ -74,14 +74,12 @@ export default function Layout({
 
   return (
     <AiLearningPathProvider>
-      <div className="manage-shell flex min-h-screen w-full">
-        <NavLinks collapsed={sidebarCollapsed} />
-        <div
-          className={cn(
-            "min-w-0 flex-1 transition-[padding] duration-300",
-            sidebarCollapsed ? "lg:pl-[5.25rem]" : "lg:pl-[17rem]"
-          )}
-        >
+      <DashboardShell
+        sidebar={
+          <NavLinks collapsed={sidebarCollapsed} />
+        }
+        sidebarCollapsed={sidebarCollapsed}
+        header={
           <header className="manage-glass sticky top-0 z-30 flex h-16 items-center gap-4 border-b px-4 sm:px-6">
             <div className="flex items-center gap-3">
               <MobileNavLinks />
@@ -89,7 +87,7 @@ export default function Layout({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="manage-ghost-button hidden h-10 w-10 rounded-full lg:inline-flex"
+                className="app-control app-control-icon hidden lg:inline-flex"
                 onClick={() => setSidebarCollapsed((current) => !current)}
               >
                 {sidebarCollapsed ? (
@@ -107,15 +105,16 @@ export default function Layout({
               </div>
             </div>
             <div className="ml-auto flex items-center gap-2 sm:gap-3">
-              <SwitchLanguage className="manage-field h-10 rounded-full border-0 bg-transparent shadow-none" />
-              <DarkModeToggle className="manage-ghost-button border-0 shadow-none" />
-              <NotificationBell className="manage-ghost-button rounded-full border-0 shadow-none" />
+              <SwitchLanguage compactOnMobile />
+              <ThemeToggle />
+              <NotificationBell />
               <DropdownAvatar />
             </div>
           </header>
-          <div className="pb-10">{children}</div>
-        </div>
-      </div>
+        }
+      >
+        {children}
+      </DashboardShell>
     </AiLearningPathProvider>
   );
 }

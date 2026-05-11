@@ -437,7 +437,7 @@ export default function CourseDetailPage() {
 
             {/* Right - Payment Card */}
             <div className="lg:col-span-1">
-              <Card className="overflow-hidden shadow-xl">
+              <Card className="overflow-hidden border-border shadow-sm">
                 <CardContent className="p-0">
                   {/* Video/Image Preview */}
                   {courseSummary.introVideo?.url ? (
@@ -463,7 +463,7 @@ export default function CourseDetailPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex aspect-video items-center justify-center bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900 dark:to-blue-900">
+                    <div className="flex aspect-video items-center justify-center bg-muted">
                       <PlayCircle className="h-16 w-16 text-muted-foreground" />
                     </div>
                   )}
@@ -581,7 +581,7 @@ export default function CourseDetailPage() {
               <Card>
                 <CardContent className="p-6">
                   <h2 className="mb-4 flex items-center gap-2 text-2xl font-bold">
-                    <Award className="h-6 w-6 text-purple-600" />
+                    <Award className="h-6 w-6 text-primary" />
                     {t("whatYouWillLearn")}
                   </h2>
                   <ul className="grid gap-3 md:grid-cols-2">
@@ -600,7 +600,7 @@ export default function CourseDetailPage() {
             <Card>
               <CardContent className="p-6">
                 <h2 className="mb-4 flex items-center gap-2 text-2xl font-bold">
-                  <BookOpen className="h-6 w-6 text-purple-600" />
+                  <BookOpen className="h-6 w-6 text-primary" />
                   {t("courseContent")}
                 </h2>
                 <div className="space-y-2">
@@ -616,7 +616,7 @@ export default function CourseDetailPage() {
                           className="flex w-full items-center justify-between bg-muted/50 p-4 text-left hover:bg-muted"
                         >
                           <div className="flex items-center gap-3">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-600 dark:bg-purple-900">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
                               {index + 1}
                             </span>
                             <div>
@@ -678,13 +678,13 @@ export default function CourseDetailPage() {
               <Card>
                 <CardContent className="p-6">
                   <h2 className="mb-4 flex items-center gap-2 text-2xl font-bold">
-                    <CheckCircle className="h-6 w-6 text-purple-600" />
+                    <CheckCircle className="h-6 w-6 text-primary" />
                     {t("requirements")}
                   </h2>
                   <ul className="space-y-2">
                     {courseSummary.requirements.map((requirement: string, index: number) => (
                       <li key={index} className="flex items-start gap-2">
-                        <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-purple-600" />
+                        <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
                         <span className="text-sm">{requirement}</span>
                       </li>
                     ))}
@@ -698,7 +698,7 @@ export default function CourseDetailPage() {
               <Card>
                 <CardContent className="p-6">
                   <h2 className="mb-4 flex items-center gap-2 text-2xl font-bold">
-                    <FileText className="h-6 w-6 text-purple-600" />
+                    <FileText className="h-6 w-6 text-primary" />
                     {t("description")}
                   </h2>
                   <div className="prose prose-sm max-w-none dark:prose-invert">

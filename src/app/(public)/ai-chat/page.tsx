@@ -70,7 +70,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import {
+  cn,
+  getAccessTokenFromLocalStorage,
+  getUserInfoFromStorage,
+} from "@/lib/utils";
 import {
   ResponsiveContainer,
   CartesianGrid,
@@ -153,7 +157,10 @@ interface AttachedFileContext {
   size?: number;
   secureUrl?: string | null;
   publicUrl?: string | null;
+  cloudinaryUrl?: string | null;
   cloudinarySecureUrl?: string | null;
+  objectKey?: string | null;
+  thumbnailObjectKey?: string | null;
   thumbnailUrl?: string | null;
   previewUrl?: string | null;
   content?: string | null;
@@ -175,6 +182,9 @@ interface SavedAnalysis {
 const SAVED_ANALYSES_STORAGE_KEY = "ai_chat_saved_analyses_v1";
 const SAVED_ANALYSES_LIMIT = 30;
 const DRAFT_SESSION_ID = "__draft__";
+const CUSTOM_INSTRUCTIONS_STORAGE_KEY = "ai_chat_custom_instructions";
+const CUSTOM_INSTRUCTIONS_SAVED_AT_KEY = "ai_chat_custom_instructions_saved_at";
+const MAX_AI_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 const MAX_INLINE_ATTACHMENT_BYTES = 1_000_000;
 const MAX_INLINE_ATTACHMENT_CHARS = 20_000;
 const ATTACHMENT_PREVIEW_CHARS = 120_000;
@@ -217,6 +227,25 @@ const TEXT_ATTACHMENT_EXTENSIONS = new Set([
   "gradle",
   "pom",
 ]);
+const DOCUMENT_ATTACHMENT_EXTENSIONS = new Set([
+  "pdf",
+  "doc",
+  "docx",
+  "ppt",
+  "pptx",
+  "xls",
+  "xlsx",
+]);
+const IMAGE_ATTACHMENT_EXTENSIONS = new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "webp",
+  "tiff",
+  "tif",
+  "bmp",
+  "gif",
+]);
 const TEXT_ATTACHMENT_MIME_TYPES = new Set([
   "application/json",
   "application/xml",
@@ -226,11 +255,72 @@ const TEXT_ATTACHMENT_MIME_TYPES = new Set([
   "text/csv",
   "text/markdown",
 ]);
+const DOCUMENT_ATTACHMENT_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]);
+const IMAGE_ATTACHMENT_MIME_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/webp",
+  "image/tiff",
+  "image/bmp",
+  "image/gif",
+]);
+const AI_ATTACHMENT_ACCEPT = [
+  ...TEXT_ATTACHMENT_EXTENSIONS,
+  ...DOCUMENT_ATTACHMENT_EXTENSIONS,
+  ...IMAGE_ATTACHMENT_EXTENSIONS,
+].map((extension) => `.${extension}`).join(",");
 
 const getAttachmentExtension = (name: string) => {
   const normalized = name.toLowerCase();
   const index = normalized.lastIndexOf(".");
   return index >= 0 ? normalized.slice(index + 1) : "";
+};
+
+const isSupportedAiAttachmentFile = (file: File) => {
+  const mimeType = file.type.toLowerCase();
+  const extension = getAttachmentExtension(file.name);
+  return (
+    mimeType.startsWith("text/") ||
+    TEXT_ATTACHMENT_MIME_TYPES.has(mimeType) ||
+    DOCUMENT_ATTACHMENT_MIME_TYPES.has(mimeType) ||
+    IMAGE_ATTACHMENT_MIME_TYPES.has(mimeType) ||
+    TEXT_ATTACHMENT_EXTENSIONS.has(extension) ||
+    DOCUMENT_ATTACHMENT_EXTENSIONS.has(extension) ||
+    IMAGE_ATTACHMENT_EXTENSIONS.has(extension)
+  );
+};
+
+const getAiAttachmentValidationError = (
+  file: File,
+  t: (key: any, values?: any) => string
+) => {
+  if (file.size > MAX_AI_ATTACHMENT_BYTES) {
+    return t("attachmentRejectedTooLarge", {
+      name: file.name,
+      size: formatAttachmentSize(file.size),
+      limit: formatAttachmentSize(MAX_AI_ATTACHMENT_BYTES),
+    });
+  }
+  if (!isSupportedAiAttachmentFile(file)) {
+    return t("attachmentRejectedUnsupported", { name: file.name });
+  }
+  return null;
+};
+
+const formatAttachmentSize = (bytes: number) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 };
 
 const isTextAttachmentFile = (file: File) => {
@@ -256,21 +346,165 @@ const readInlineAttachmentText = async (file: File): Promise<string | null> => {
   }
 };
 
+const extractErrorMessage = (error: unknown): string | null => {
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+
+  const payload = (error as { payload?: unknown }).payload;
+  const candidates: unknown[] = [];
+  if (payload && typeof payload === "object") {
+    const payloadObject = payload as {
+      message?: unknown;
+      error?: unknown;
+      data?: { message?: unknown; error?: unknown };
+    };
+    candidates.push(
+      payloadObject.message,
+      payloadObject.error,
+      payloadObject.data?.message,
+      payloadObject.data?.error
+    );
+  } else if (typeof payload === "string") {
+    try {
+      const parsed = JSON.parse(payload) as {
+        message?: unknown;
+        error?: unknown;
+      };
+      candidates.push(parsed.message, parsed.error);
+    } catch {
+      candidates.push(payload);
+    }
+  }
+
+  if (error instanceof Error) {
+    candidates.push(error.message);
+  }
+
+  const message = candidates.find(
+    (candidate): candidate is string =>
+      typeof candidate === "string" && candidate.trim().length > 0
+  );
+
+  return message?.trim() ?? null;
+};
+
+const getAttachmentUploadErrorDescription = (
+  error: unknown,
+  t: (key: any, values?: any) => string
+) => {
+  const status =
+    error && typeof error === "object" && "status" in error
+      ? Number((error as { status?: unknown }).status)
+      : null;
+  const rawMessage = extractErrorMessage(error);
+  const normalized = rawMessage?.toLowerCase() ?? "";
+
+  if (
+    status === 401 ||
+    normalized.includes("jwt token") ||
+    normalized.includes("unauthorized") ||
+    normalized.includes("invalid or expired")
+  ) {
+    return t("attachFailedAuth");
+  }
+
+  if (
+    status === 403 ||
+    normalized.includes("access denied") ||
+    normalized.includes("permission")
+  ) {
+    return t("attachFailedPermission");
+  }
+
+  if (
+    status === 413 ||
+    normalized.includes("too large") ||
+    normalized.includes("maximum upload size")
+  ) {
+    return t("attachFailedTooLarge");
+  }
+
+  if (
+    status === 503 ||
+    normalized.includes("upstream service is unavailable") ||
+    normalized.includes("service_unavailable")
+  ) {
+    return t("attachFailedFileServiceUnavailable");
+  }
+
+  if (
+    normalized.includes("failed to fetch") ||
+    normalized.includes("networkerror") ||
+    normalized.includes("load failed")
+  ) {
+    return t("attachFailedNetwork");
+  }
+
+  if (rawMessage) {
+    return t("attachFailedWithReason", { reason: rawMessage });
+  }
+
+  return t("attachFailed");
+};
+
 const getAttachmentPreviewUrl = (file: AttachedFileContext) =>
   file.previewUrl ||
   file.thumbnailUrl ||
   file.secureUrl ||
   file.publicUrl ||
   file.cloudinarySecureUrl ||
+  file.cloudinaryUrl ||
   null;
 
 const getAttachmentSourceUrl = (file: AttachedFileContext) =>
   file.secureUrl ||
   file.publicUrl ||
   file.cloudinarySecureUrl ||
+  file.cloudinaryUrl ||
   file.previewUrl ||
   file.thumbnailUrl ||
   null;
+
+const normalizeDirectAttachmentUrl = (url: string | null) => {
+  if (!url?.trim()) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:" && parsed.protocol !== "blob:") {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+};
+
+const isCurrentPageAttachmentUrl = (url: string) => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.origin === window.location.origin &&
+      parsed.pathname === window.location.pathname
+    );
+  } catch {
+    return false;
+  }
+};
+
+const getSafeDirectAttachmentUrl = (url: string | null) => {
+  const normalized = normalizeDirectAttachmentUrl(url);
+  if (!normalized || isCurrentPageAttachmentUrl(normalized)) {
+    return null;
+  }
+  return normalized;
+};
 
 const isImageAttachment = (file: AttachedFileContext) =>
   file.mimeType?.startsWith("image/") || file.fileType === "IMAGE";
@@ -280,6 +514,122 @@ const isVideoAttachment = (file: AttachedFileContext) =>
 
 const isAudioAttachment = (file: AttachedFileContext) =>
   file.mimeType?.startsWith("audio/") || file.fileType === "AUDIO";
+
+const isPdfAttachment = (file: AttachedFileContext) =>
+  file.mimeType?.toLowerCase() === "application/pdf" ||
+  getAttachmentExtension(file.name) === "pdf";
+
+const getAccessToken = () =>
+  typeof window === "undefined" ? null : getAccessTokenFromLocalStorage();
+
+const buildAttachmentMediaUrl = (
+  fileId: string,
+  userId: string,
+  variant: "content" | "thumbnail"
+) =>
+  `/api/proxy/files/${fileId}/${variant}?userId=${encodeURIComponent(userId)}`;
+
+const fetchAttachmentBlob = async (
+  file: AttachedFileContext,
+  userId: string,
+  variant: "content" | "thumbnail"
+) => {
+  if (!file.id || !userId) {
+    throw new Error("Missing attachment id or user id");
+  }
+  const headers = new Headers();
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+  const response = await fetch(buildAttachmentMediaUrl(file.id, userId, variant), {
+    headers,
+    credentials: "include",
+  });
+  const contentType = response.headers.get("content-type") || "";
+  if (!response.ok || contentType.toLowerCase().includes("text/html")) {
+    throw new Error(`Attachment media request failed: ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  const expectedType = file.mimeType?.trim();
+  if (
+    expectedType &&
+    (!blob.type || blob.type === "application/octet-stream")
+  ) {
+    return blob.slice(0, blob.size, expectedType);
+  }
+  return blob;
+};
+
+const openPendingAttachmentTab = (fileName: string) => {
+  const openedWindow = window.open("", "_blank");
+
+  if (openedWindow) {
+    openedWindow.document.title = fileName;
+    openedWindow.document.body.innerHTML =
+      '<div style="font-family: system-ui, sans-serif; padding: 24px; color: #334155;">Loading file...</div>';
+  }
+
+  return openedWindow;
+};
+
+const openBlobUrlInNewTab = (blob: Blob, targetWindow?: Window | null) => {
+  const objectUrl = window.URL.createObjectURL(blob);
+
+  if (targetWindow && !targetWindow.closed) {
+    targetWindow.location.href = objectUrl;
+    targetWindow.opener = null;
+  } else {
+    const openedWindow = window.open(objectUrl, "_blank", "noopener,noreferrer");
+
+    if (openedWindow) {
+      openedWindow.opener = null;
+    } else {
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+  }
+
+  window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 120_000);
+};
+
+const openExternalUrlInNewTab = (url: string, targetWindow?: Window | null) => {
+  if (targetWindow && !targetWindow.closed) {
+    targetWindow.location.href = url;
+    targetWindow.opener = null;
+    return;
+  }
+
+  const openedWindow = window.open(url, "_blank", "noopener,noreferrer");
+  if (openedWindow) {
+    openedWindow.opener = null;
+    return;
+  }
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
+const closePendingAttachmentTab = (targetWindow?: Window | null) => {
+  try {
+    if (targetWindow && !targetWindow.closed) {
+      targetWindow.close();
+    }
+  } catch {
+    // Ignore browser restrictions around closing a tab after failed navigation.
+  }
+};
 
 export default function AiChatPage() {
   const { toast } = useToast();
@@ -298,6 +648,8 @@ export default function AiChatPage() {
   const [sessions, setSessions] = useState<{ id: string; label: string; startedAt: string }[]>([]);
   const [showSettings, setShowSettings] = useState<boolean>(true);
   const [customInstructions, setCustomInstructions] = useState<string>("");
+  const [customInstructionsDraft, setCustomInstructionsDraft] = useState<string>("");
+  const [instructionsSavedAt, setInstructionsSavedAt] = useState<string | null>(null);
   const [isDraftSession, setIsDraftSession] = useState<boolean>(false);
   const [draftStartedAt, setDraftStartedAt] = useState<string>(new Date().toISOString());
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
@@ -415,7 +767,10 @@ export default function AiChatPage() {
         size: typeof item.size === "number" ? item.size : undefined,
         secureUrl: item.secureUrl ? String(item.secureUrl) : null,
         publicUrl: item.publicUrl ? String(item.publicUrl) : null,
+        cloudinaryUrl: item.cloudinaryUrl ? String(item.cloudinaryUrl) : null,
         cloudinarySecureUrl: item.cloudinarySecureUrl ? String(item.cloudinarySecureUrl) : null,
+        objectKey: item.objectKey ? String(item.objectKey) : null,
+        thumbnailObjectKey: item.thumbnailObjectKey ? String(item.thumbnailObjectKey) : null,
         thumbnailUrl: item.thumbnailUrl ? String(item.thumbnailUrl) : null,
         previewUrl: item.previewUrl ? String(item.previewUrl) : null,
         content: item.content ? String(item.content) : null,
@@ -532,10 +887,10 @@ export default function AiChatPage() {
     if (localStorage.getItem("ai_chat_analysis_open") === "0") {
       setAnalysisPanelOpen(false);
     }
-    const savedInstructions = localStorage.getItem("ai_chat_custom_instructions");
-    if (savedInstructions) {
-      setCustomInstructions(savedInstructions);
-    }
+    const savedInstructions = localStorage.getItem(CUSTOM_INSTRUCTIONS_STORAGE_KEY) || "";
+    setCustomInstructions(savedInstructions);
+    setCustomInstructionsDraft(savedInstructions);
+    setInstructionsSavedAt(localStorage.getItem(CUSTOM_INSTRUCTIONS_SAVED_AT_KEY));
   }, []);
 
   // Viewport tracking so we can clamp sidebar/workspace widths responsively.
@@ -590,6 +945,8 @@ export default function AiChatPage() {
     !isDesktopViewport
     || viewportWidth - effectiveSidebarWidth - MIN_WORKSPACE >= CHAT_MIN_WIDTH;
   const workspaceRendered = analysisPanelOpen && workspaceCanFit;
+  const mobileWorkspaceOpen =
+    workspaceRendered && !isDesktopViewport && !workspaceExpanded;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -615,11 +972,6 @@ export default function AiChatPage() {
     if (typeof window === "undefined") return;
     localStorage.setItem("ai_chat_analysis_open", analysisPanelOpen ? "1" : "0");
   }, [analysisPanelOpen]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem("ai_chat_custom_instructions", customInstructions);
-  }, [customInstructions]);
 
   // Load + persist saved analyses. Stored per-browser in localStorage so users
   // can revisit a past analysis even after the chat session is cleared.
@@ -674,7 +1026,7 @@ export default function AiChatPage() {
   // doesn't scroll and keyboard users can dismiss the view quickly.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const isOpen = workspaceExpanded || !!viewedSavedAnalysisId;
+    const isOpen = workspaceExpanded || !!viewedSavedAnalysisId || mobileWorkspaceOpen;
     if (!isOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -685,6 +1037,8 @@ export default function AiChatPage() {
           setViewedSavedAnalysisId(null);
         } else if (workspaceExpanded) {
           setWorkspaceExpanded(false);
+        } else if (mobileWorkspaceOpen) {
+          setAnalysisPanelOpen(false);
         }
       }
     };
@@ -693,7 +1047,7 @@ export default function AiChatPage() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKey);
     };
-  }, [workspaceExpanded, viewedSavedAnalysisId]);
+  }, [workspaceExpanded, viewedSavedAnalysisId, mobileWorkspaceOpen]);
 
   // If no message is selected or no workspace content is available, collapse
   // the expanded overlay automatically so it doesn't stay on top of a chat
@@ -915,9 +1269,14 @@ export default function AiChatPage() {
         if (pendingLabel) {
           setSessions((prev) => {
             const existing = prev.find((session) => session.id === nextSessionId);
-            if (existing) return prev;
+            if (existing) {
+              return prev.map((session) => (
+                session.id === nextSessionId ? { ...session, label: pendingLabel } : session
+              ));
+            }
             return [{ id: nextSessionId, label: pendingLabel, startedAt: draftStartedAt }, ...prev];
           });
+          sessionLabelsCache.current.set(nextSessionId, pendingLabel);
         }
       }
       const activeStreamingId = streamingAssistantIdRef.current;
@@ -994,7 +1353,7 @@ export default function AiChatPage() {
   // Load userId from localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const storedUserInfo = localStorage.getItem("userInfo");
+      const storedUserInfo = getUserInfoFromStorage();
       if (!storedUserInfo) {
         setUserId("");
         return;
@@ -1030,7 +1389,11 @@ export default function AiChatPage() {
       const hasSeenTour = localStorage.getItem(tourKey);
       if (!hasSeenTour) {
         // Delay tour start to ensure UI is rendered
-        setTimeout(() => setShowTour(true), 500);
+        setTimeout(() => {
+          setSidebarCollapsed(false);
+          setRecentsOpen(true);
+          setShowTour(true);
+        }, 500);
       }
     }
   }, [userId]);
@@ -1052,7 +1415,10 @@ export default function AiChatPage() {
   };
 
   const handleStartTour = () => {
-    setShowTour(true);
+    setSidebarCollapsed(false);
+    setRecentsOpen(true);
+    setShowTour(false);
+    window.setTimeout(() => setShowTour(true), 120);
   };
 
   // Cache for session labels to avoid refetching
@@ -1063,11 +1429,19 @@ export default function AiChatPage() {
     if (sessionsData?.payload?.data) {
       const dbSessions = sessionsData.payload.data;
 
-      const sessionsWithLabels = dbSessions.map((s: { id: string; userId: string; startedAt: string }, idx: number) => ({
-        id: s.id,
-        label: sessionLabelsCache.current.get(s.id) || `${t("session")} ${dbSessions.length - idx}`,
-        startedAt: s.startedAt,
-      }));
+      const sessionsWithLabels = dbSessions.map((s: { id: string; userId: string; startedAt: string; title?: string | null }, idx: number) => {
+        const serverLabel = typeof s.title === "string" && s.title.trim() ? s.title.trim() : null;
+        const cachedLabel = sessionLabelsCache.current.get(s.id);
+        const label = cachedLabel || serverLabel || `${t("session")} ${dbSessions.length - idx}`;
+        if (serverLabel && !cachedLabel) {
+          sessionLabelsCache.current.set(s.id, serverLabel);
+        }
+        return {
+          id: s.id,
+          label,
+          startedAt: s.startedAt,
+        };
+      });
 
       setSessions(sessionsWithLabels);
 
@@ -1102,11 +1476,16 @@ export default function AiChatPage() {
           metadata: m.metadata,
           attachments: m.sender === "USER" ? hydrateAttachmentsFromMetadata(m.metadata) : undefined,
         }));
-      // Defensive: don't wipe local messages with a staler/empty DB snapshot.
-      // This happens when BE fails to persist (e.g. metadata column missing)
-      // and returns an empty list after the stream added local messages.
-      setMessages((prev) => (hydratedMessages.length >= prev.length ? hydratedMessages : prev));
       if (sessionId) {
+        const isSelectedSessionLoad = loadingSessionId === sessionId;
+        // When switching sessions, replace the old conversation even if the
+        // newly loaded session has fewer messages. The length guard only
+        // protects the currently active streaming session from stale DB data.
+        setMessages((prev) => (
+          isSelectedSessionLoad || hydratedMessages.length >= prev.length
+            ? hydratedMessages
+            : prev
+        ));
         sessionMessagesCache.current.set(sessionId, hydratedMessages);
         const firstUserMessage = hydratedMessages.find((m: Message) => m.role === "user" && (m.content.trim() || (m.attachments?.length ?? 0) > 0));
         if (firstUserMessage) {
@@ -1126,7 +1505,7 @@ export default function AiChatPage() {
       setMessages((prev) => (prev.length === 0 ? [] : prev));
       setLoadingSessionId((current) => (current === sessionId ? null : current));
     }
-  }, [formatSessionLabel, hydrateAttachmentsFromMetadata, isSessionMessagesFetching, isSessionMessagesLoading, isStreaming, messagesData, sessionId]);
+  }, [formatSessionLabel, hydrateAttachmentsFromMetadata, isSessionMessagesFetching, isSessionMessagesLoading, isStreaming, loadingSessionId, messagesData, sessionId]);
 
   // Scroll to bottom when new messages are added (streaming or sent)
   useEffect(() => {
@@ -1237,8 +1616,12 @@ export default function AiChatPage() {
         size: file.size,
         secureUrl: file.secureUrl,
         publicUrl: file.publicUrl,
+        cloudinaryUrl: file.cloudinaryUrl,
         cloudinarySecureUrl: file.cloudinarySecureUrl,
+        objectKey: file.objectKey,
+        thumbnailObjectKey: file.thumbnailObjectKey,
         thumbnailUrl: file.thumbnailUrl,
+        previewUrl: file.previewUrl,
         content: file.content,
         excerpt: file.excerpt,
         description: file.description,
@@ -1249,6 +1632,33 @@ export default function AiChatPage() {
     }
     return Object.keys(context).length > 0 ? context : undefined;
   }, [activeAnalysisSnapshot, attachedFiles, customInstructions]);
+
+  const instructionsDirty = customInstructionsDraft !== customInstructions;
+
+  const handleSaveCustomInstructions = useCallback(() => {
+    const nextInstructions = customInstructionsDraft.trim();
+    setCustomInstructions(nextInstructions);
+
+    if (typeof window !== "undefined") {
+      if (nextInstructions) {
+        localStorage.setItem(CUSTOM_INSTRUCTIONS_STORAGE_KEY, nextInstructions);
+      } else {
+        localStorage.removeItem(CUSTOM_INSTRUCTIONS_STORAGE_KEY);
+      }
+      const savedAt = new Date().toISOString();
+      localStorage.setItem(CUSTOM_INSTRUCTIONS_SAVED_AT_KEY, savedAt);
+      setInstructionsSavedAt(savedAt);
+    }
+
+    toast({
+      title: t("instructionsSavedTitle"),
+      description: t("instructionsSavedDesc"),
+    });
+  }, [customInstructionsDraft, toast, t]);
+
+  const handleResetCustomInstructions = useCallback(() => {
+    setCustomInstructionsDraft(customInstructions);
+  }, [customInstructions]);
 
   const handleAttachFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files || []);
@@ -1265,9 +1675,32 @@ export default function AiChatPage() {
       return;
     }
 
+    const validation = selectedFiles.map((file) => ({
+      file,
+      error: getAiAttachmentValidationError(file, t),
+    }));
+    const rejected = validation.filter((item) => item.error);
+    const acceptedFiles = validation.filter((item) => !item.error).map((item) => item.file);
+
+    if (rejected.length > 0) {
+      toast({
+        title: t("unsupportedFilesTitle"),
+        description: `${rejected
+          .slice(0, 3)
+          .map((item) => item.error)
+          .join(" ")} ${t("supportedFilesHint")}`,
+        variant: "destructive",
+      });
+    }
+
+    if (acceptedFiles.length === 0) {
+      event.target.value = "";
+      return;
+    }
+
     const uploaded: AttachedFileContext[] = [];
     try {
-      for (const file of selectedFiles) {
+      for (const file of acceptedFiles) {
         const inlineText = await readInlineAttachmentText(file);
         const formData = new FormData();
         formData.append("file", file);
@@ -1296,7 +1729,10 @@ export default function AiChatPage() {
             size: payload.fileSize ?? file.size,
             secureUrl: payload.secureUrl ?? payload.cloudinarySecureUrl ?? null,
             publicUrl: payload.publicUrl ?? payload.cloudinaryUrl ?? null,
+            cloudinaryUrl: payload.cloudinaryUrl ?? null,
             cloudinarySecureUrl: payload.cloudinarySecureUrl ?? null,
+            objectKey: payload.objectKey ?? null,
+            thumbnailObjectKey: payload.thumbnailObjectKey ?? null,
             thumbnailUrl: payload.thumbnailUrl ?? null,
             previewUrl:
               payload.thumbnailUrl ??
@@ -1326,7 +1762,7 @@ export default function AiChatPage() {
       console.error("Failed to upload AI chat attachments:", error);
       toast({
         title: tCommon("error"),
-        description: t("attachFailed"),
+        description: getAttachmentUploadErrorDescription(error, t),
         variant: "destructive",
       });
     } finally {
@@ -1337,6 +1773,41 @@ export default function AiChatPage() {
   const removeAttachedFile = (fileId: string) => {
     setAttachedFiles((prev) => prev.filter((file) => file.id !== fileId));
   };
+
+  const handleOpenAttachment = useCallback(
+    async (file: AttachedFileContext) => {
+      const pendingWindow = openPendingAttachmentTab(file.name);
+
+      if (!userId) {
+        closePendingAttachmentTab(pendingWindow);
+        toast({
+          title: tCommon("error"),
+          description: t("loginBeforeAttach"),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        const blob = await fetchAttachmentBlob(file, userId, "content");
+        openBlobUrlInNewTab(blob, pendingWindow);
+      } catch (error) {
+        console.error("Failed to open attachment via authenticated proxy:", error);
+        const fallbackUrl = getSafeDirectAttachmentUrl(getAttachmentSourceUrl(file));
+        if (fallbackUrl) {
+          openExternalUrlInNewTab(fallbackUrl, pendingWindow);
+          return;
+        }
+        closePendingAttachmentTab(pendingWindow);
+        toast({
+          title: tCommon("error"),
+          description: t("attachmentOpenFailed"),
+          variant: "destructive",
+        });
+      }
+    },
+    [t, tCommon, toast, userId]
+  );
 
   const dispatchChatMessage = useCallback(
     async (
@@ -2012,6 +2483,7 @@ export default function AiChatPage() {
       setLoadingSessionId(id);
       return;
     }
+    setMessages([]);
     setLoadingSessionId(id);
   };
 
@@ -2260,7 +2732,7 @@ export default function AiChatPage() {
                 <Link
                   key={`link-${index}-${match.index}`}
                   href={match[2]}
-                  className="text-ink-1 underline decoration-rule decoration-1 underline-offset-2 hover:decoration-ochre hover:text-ochre transition-colors"
+                  className="text-foreground underline decoration-border decoration-1 underline-offset-2 hover:decoration-primary hover:text-primary transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -2350,17 +2822,17 @@ export default function AiChatPage() {
 
     return (
       <div className="mt-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-ink-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
           {metadata.resolvedMode && (
             <span title={t("messageLabels.routeTitle")}>
-              <span className="text-ink-3">{t("messageLabels.route")}</span>{" "}
-              <span className="text-ink-2">{humanizeMode(metadata.resolvedMode, t)}</span>
+              <span className="text-muted-foreground">{t("messageLabels.route")}</span>{" "}
+              <span className="text-muted-foreground">{humanizeMode(metadata.resolvedMode, t)}</span>
             </span>
           )}
           {metadata.intent && (
             <span title={t("messageLabels.intentTitle")}>
-              <span className="text-ink-3">{t("messageLabels.intent")}</span>{" "}
-              <span className="text-ink-2">{humanizeIntent(metadata.intent, t)}</span>
+              <span className="text-muted-foreground">{t("messageLabels.intent")}</span>{" "}
+              <span className="text-muted-foreground">{humanizeIntent(metadata.intent, t)}</span>
             </span>
           )}
           {(metadata as any)?.tokensUsed ? (
@@ -2385,30 +2857,30 @@ export default function AiChatPage() {
             className={cn(
               "flex w-full items-center justify-between rounded-sm border-l-2 pl-4 pr-3 py-2.5 text-left transition-colors duration-150",
               options?.isSelected
-                ? "border-ochre bg-surface"
-                : "border-rule bg-paper hover:border-ink-2 hover:bg-surface"
+                ? "border-primary bg-card"
+                : "border-border bg-background hover:border-primary/40 hover:bg-muted"
             )}
           >
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-ed-xs font-medium text-ink-1">
+              <div className="flex items-center gap-2 text-ed-xs font-medium text-foreground">
                 {t("analysisWorkspace.title")}
                 {options?.isSelected ? (
-                  <span className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0 text-[10px] font-normal text-ochre tabular-nums">
+                  <span className="inline-flex items-center rounded-sm border border-border bg-background px-1.5 py-0 text-[10px] font-normal text-primary tabular-nums">
                     {t("messageLabels.workspaceActive")}
                   </span>
                 ) : null}
               </div>
-              <p className="mt-0.5 text-[11px] text-ink-3">
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
                 {t("messageLabels.analysisWorkspaceDesc")}
               </p>
             </div>
-            <ChevronRight className="h-4 w-4 flex-shrink-0 text-ink-3" />
+            <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
           </button>
         ) : null}
 
         {citations.length > 0 && (
-          <div className="border-l border-rule pl-3 py-1">
-            <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+          <div className="border-l border-border pl-3 py-1">
+            <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
               {t("analysisWorkspace.sources")}
             </div>
             <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
@@ -2422,7 +2894,7 @@ export default function AiChatPage() {
                       href={`/courses/${courseId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-baseline gap-1 text-[11px] text-ink-2 underline decoration-rule decoration-1 underline-offset-[5px] hover:text-ochre hover:decoration-ochre transition-colors"
+                      className="inline-flex items-baseline gap-1 text-[11px] text-muted-foreground underline decoration-border decoration-1 underline-offset-[5px] hover:text-primary hover:decoration-primary transition-colors"
                     >
                       {label}
                       <ExternalLink className="h-2.5 w-2.5 self-center" />
@@ -2430,7 +2902,7 @@ export default function AiChatPage() {
                   );
                 }
                 return (
-                  <span key={`${label}-${index}`} className="inline-flex items-center text-[11px] text-ink-2 font-mono">
+                  <span key={`${label}-${index}`} className="inline-flex items-center text-[11px] text-muted-foreground font-mono">
                     {label}
                   </span>
                 );
@@ -2588,7 +3060,7 @@ export default function AiChatPage() {
   const isSessionTransitioning = Boolean(sessionId && loadingSessionId === sessionId && (isSessionMessagesLoading || isSessionMessagesFetching));
 
   return (
-    <div className="ai-chat-theme font-ui flex h-[calc(100vh-64px)] bg-paper text-ink-1 relative">
+    <div className="ai-chat-theme font-ui flex h-[calc(100vh-64px)] bg-background text-foreground relative">
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -2603,21 +3075,21 @@ export default function AiChatPage() {
         className={`
           fixed lg:relative inset-y-0 left-0 z-50
           w-[300px] max-w-[85vw] lg:max-w-none lg:w-[var(--sidebar-w)]
-          bg-paper
-          border-r border-rule
+          bg-background
+          border-r border-border
           flex flex-col
           transform transition-transform duration-200 ease-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           lg:transform-none lg:transition-[width] lg:duration-150
         `}>
         {/* Sidebar Header: brand + collapse toggle */}
-        <div className="flex items-center justify-between px-3 h-12 border-b border-rule">
+        <div className="flex items-center justify-between px-3 h-12 border-b border-border">
           {!sidebarCollapsed && (
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-7 w-7 rounded-sm bg-ink-1 flex items-center justify-center flex-shrink-0 font-editorial text-[14px] leading-none text-paper">
+              <div className="h-7 w-7 rounded-sm bg-primary flex items-center justify-center flex-shrink-0 font-sans text-[14px] leading-none text-primary-foreground">
                 T
               </div>
-              <span className="text-ed-sm font-medium text-ink-1 truncate tracking-tight">
+              <span className="text-ed-sm font-medium text-foreground truncate tracking-tight">
                 {t("headerTitle") || "Techhub AI"}
               </span>
             </div>
@@ -2625,7 +3097,7 @@ export default function AiChatPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hidden lg:inline-flex text-ink-3 hover:text-ink-1 hover:bg-transparent"
+            className="h-8 w-8 hidden lg:inline-flex text-muted-foreground hover:text-foreground hover:bg-transparent"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             title={sidebarCollapsed ? t("sidebar.expand") : t("sidebar.collapse")}
           >
@@ -2643,7 +3115,7 @@ export default function AiChatPage() {
             disabled={!userId}
             title={t("newSession") || "New chat"}
             id="ai-new-chat-button"
-            className={`w-full h-9 gap-2 rounded-sm bg-surface hover:bg-surface/90 text-ink-1 border border-rule shadow-none hover:border-ink-3 transition-colors ${sidebarCollapsed ? 'justify-center px-0' : 'justify-start'}`}
+            className={`w-full h-9 gap-2 rounded-sm bg-card hover:bg-muted/90 text-foreground border border-border shadow-none hover:border-primary/40 transition-colors ${sidebarCollapsed ? 'justify-center px-0' : 'justify-start'}`}
           >
             <Plus className="h-3.5 w-3.5 flex-shrink-0" />
             {!sidebarCollapsed && <span className="text-ed-sm">{t("newSession") || "New chat"}</span>}
@@ -2653,12 +3125,12 @@ export default function AiChatPage() {
         {!sidebarCollapsed && (
           <>
             {/* Settings & Guide */}
-            <div className="px-2 pt-2">
+            <div className="px-2 pt-2" id="ai-mode-selector">
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="flex-1 justify-start h-8 px-2 text-ink-2 hover:text-ink-1 hover:bg-transparent text-ed-xs"
+                  className="flex-1 justify-start h-8 px-2 text-muted-foreground hover:text-foreground hover:bg-transparent text-ed-xs"
                   onClick={() => setShowSettings(!showSettings)}
                 >
                   <Settings className="h-3.5 w-3.5 mr-2" />
@@ -2667,7 +3139,7 @@ export default function AiChatPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-ink-3 hover:text-ink-1 hover:bg-transparent"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-transparent"
                   onClick={handleStartTour}
                   title={t("guide")}
                 >
@@ -2676,28 +3148,57 @@ export default function AiChatPage() {
               </div>
 
               {showSettings && (
-                <div className="mt-2 rounded-sm border border-rule bg-surface p-3 space-y-3" id="ai-mode-selector">
-                  <div className="border-l-2 border-ochre bg-paper p-2.5">
+                <div className="mt-2 rounded-sm border border-border bg-card p-3 space-y-3">
+                  <div className="border-l-2 border-primary bg-background p-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-editorial italic text-ed-sm leading-none text-ink-1">{t("sidebar.autoRoutingTitle")}</span>
+                      <span className="font-sans italic text-ed-sm leading-none text-foreground">{t("sidebar.autoRoutingTitle")}</span>
                     </div>
-                    <p className="mt-1 text-[11px] leading-snug text-ink-2">
+                    <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
                       {t("sidebar.autoRoutingDesc")}
                     </p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="custom-instructions" className="text-[11px] font-medium text-ink-2 uppercase tracking-[0.12em]">
+                    <Label htmlFor="custom-instructions" className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.12em]">
                       {t("sidebar.instructionsLabel")}
                     </Label>
                     <Textarea
                       id="custom-instructions"
-                      value={customInstructions}
-                      onChange={(event) => setCustomInstructions(event.target.value)}
+                      value={customInstructionsDraft}
+                      onChange={(event) => setCustomInstructionsDraft(event.target.value)}
                       placeholder={t("sidebar.instructionsPlaceholder")}
                       rows={4}
-                      className="min-h-[92px] rounded-sm border-rule bg-paper text-ed-xs leading-6 focus-visible:border-ink-2 focus-visible:ring-0"
+                      className="min-h-[92px] rounded-sm border-border bg-background text-ed-xs leading-6 focus-visible:border-primary/40 focus-visible:ring-0"
                     />
-                    <p className="text-[11px] leading-snug text-ink-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-7 rounded-sm bg-primary px-2.5 text-[11px] text-primary-foreground hover:bg-primary hover:text-primary-foreground"
+                        onClick={handleSaveCustomInstructions}
+                        disabled={!instructionsDirty}
+                      >
+                        <CheckCircle className="mr-1.5 h-3 w-3" />
+                        {t("sidebar.saveInstructions")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 rounded-sm px-2.5 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                        onClick={handleResetCustomInstructions}
+                        disabled={!instructionsDirty}
+                      >
+                        {t("sidebar.resetInstructions")}
+                      </Button>
+                      <span className={cn("text-[11px]", instructionsDirty ? "text-primary" : "text-muted-foreground")}>
+                        {instructionsDirty
+                          ? t("sidebar.instructionsUnsaved")
+                          : instructionsSavedAt
+                            ? t("sidebar.instructionsSaved")
+                            : t("sidebar.instructionsNotSaved")}
+                      </span>
+                    </div>
+                    <p className="text-[11px] leading-snug text-muted-foreground">
                       {t("sidebar.instructionsHelp")}
                     </p>
                   </div>
@@ -2769,7 +3270,7 @@ export default function AiChatPage() {
               <button
                 type="button"
                 onClick={() => setRecentsOpen((o) => !o)}
-                className="flex-1 flex items-center gap-1.5 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-ink-3 hover:text-ink-1 font-medium transition-colors"
+                className="flex-1 flex items-center gap-1.5 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground font-medium transition-colors"
                 title={recentsOpen ? t("sidebar.hideConversations") : t("sidebar.showConversations")}
               >
                 {recentsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
@@ -2779,7 +3280,7 @@ export default function AiChatPage() {
                 <Button
                   variant="link"
                   size="sm"
-                  className="text-[11px] text-ink-3 hover:text-ochre p-0 h-auto pr-2 underline decoration-rule underline-offset-4 hover:decoration-ochre"
+                  className="text-[11px] text-muted-foreground hover:text-primary p-0 h-auto pr-2 underline decoration-border underline-offset-4 hover:decoration-primary"
                   onClick={handleClearAll}
                 >
                   {t("clearAll") || "Clear all"}
@@ -2793,7 +3294,7 @@ export default function AiChatPage() {
               <div className="space-y-0.5 pb-2">
                 {groupedSessions.today.length > 0 && (
                   <>
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3 px-3 py-1.5 font-medium">{t("today") || "Today"}</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground px-3 py-1.5 font-medium">{t("today") || "Today"}</p>
                     {groupedSessions.today.map((session) => (
                       <SessionItem
                         key={session.id}
@@ -2811,7 +3312,7 @@ export default function AiChatPage() {
 
                 {groupedSessions.lastWeek.length > 0 && (
                   <>
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3 px-3 py-1.5 mt-3 font-medium">{t("lastDays") || "Last 7 Days"}</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground px-3 py-1.5 mt-3 font-medium">{t("lastDays") || "Last 7 Days"}</p>
                     {groupedSessions.lastWeek.map((session) => (
                       <SessionItem
                         key={session.id}
@@ -2829,7 +3330,7 @@ export default function AiChatPage() {
 
                 {groupedSessions.older.length > 0 && (
                   <>
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3 px-3 py-1.5 mt-3 font-medium">{t("older") || "Older"}</p>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground px-3 py-1.5 mt-3 font-medium">{t("older") || "Older"}</p>
                     {groupedSessions.older.map((session) => (
                       <SessionItem
                         key={session.id}
@@ -2874,7 +3375,7 @@ export default function AiChatPage() {
                   <button
                     type="button"
                     onClick={() => setSavedSectionOpen((o) => !o)}
-                    className="flex-1 flex items-center gap-1.5 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-ink-3 hover:text-ink-1 font-medium transition-colors"
+                    className="flex-1 flex items-center gap-1.5 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground font-medium transition-colors"
                     title={savedSectionOpen ? t("sidebar.hideSavedAnalyses") : t("sidebar.showSavedAnalyses")}
                   >
                     {savedSectionOpen ? (
@@ -2883,7 +3384,7 @@ export default function AiChatPage() {
                       <ChevronRight className="h-3 w-3" />
                     )}
                     <span className="flex-1 text-left">{t("sidebar.savedAnalyses")}</span>
-                    <span className="text-[10px] px-1.5 py-0 tabular-nums text-ink-3 border border-rule rounded-sm normal-case tracking-normal">
+                    <span className="text-[10px] px-1.5 py-0 tabular-nums text-muted-foreground border border-border rounded-sm normal-case tracking-normal">
                       {savedAnalyses.length}
                     </span>
                   </button>
@@ -2913,14 +3414,14 @@ export default function AiChatPage() {
         {sidebarCollapsed && <div className="flex-1" />}
 
         {/* User Profile (display only, no navigation) */}
-        <div className="border-t border-rule p-2">
+        <div className="border-t border-border p-2">
           <div className={`flex items-center gap-2 p-2 rounded-sm ${sidebarCollapsed ? 'justify-center' : ''}`}>
             <Avatar className="h-7 w-7 flex-shrink-0 rounded-sm">
               <AvatarImage
                 src={userProfile?.avatar || "/avatars/default.png"}
                 alt={userProfile?.fullName || userProfile?.username || "User"}
               />
-              <AvatarFallback className="rounded-sm bg-ink-1 text-paper text-[11px] font-medium tabular-nums">
+              <AvatarFallback className="rounded-sm bg-primary text-primary-foreground text-[11px] font-medium tabular-nums">
                 {(userProfile?.fullName || userProfile?.username || "U")
                   .substring(0, 2)
                   .toUpperCase()}
@@ -2928,10 +3429,10 @@ export default function AiChatPage() {
             </Avatar>
             {!sidebarCollapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-ed-xs font-medium text-ink-1 truncate">
+                <p className="text-ed-xs font-medium text-foreground truncate">
                   {userProfile?.fullName || userProfile?.username || t("guest") || "Guest"}
                 </p>
-                <p className="text-[11px] text-ink-3 truncate">
+                <p className="text-[11px] text-muted-foreground truncate">
                   {userProfile?.email || ""}
                 </p>
               </div>
@@ -2946,15 +3447,15 @@ export default function AiChatPage() {
             className="hidden lg:block absolute top-0 right-0 h-full w-1.5 cursor-col-resize group z-10"
             title={t("sidebar.dragResize")}
           >
-            <div className="h-full w-px mx-auto bg-transparent group-hover:bg-ochre transition-colors" />
+            <div className="h-full w-px mx-auto bg-transparent group-hover:bg-primary transition-colors" />
           </div>
         )}
       </aside>
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col bg-paper min-w-0">
+      <main className="flex-1 flex flex-col bg-background min-w-0">
         {/* Top Header */}
-        <header className="flex items-center justify-between px-3 sm:px-4 h-12 border-b border-rule bg-paper">
+        <header className="flex items-center justify-between px-3 sm:px-4 h-12 border-b border-border bg-background">
           <div className="flex items-center gap-2 min-w-0">
             {/* Mobile sidebar open */}
             <Button
@@ -2977,7 +3478,7 @@ export default function AiChatPage() {
                 <PanelLeft className="h-4 w-4" />
               </Button>
             )}
-            <h1 className="text-ed-sm font-medium text-ink-1 truncate tracking-tight">
+            <h1 className="text-ed-sm font-medium text-foreground truncate tracking-tight">
               {t("headerTitle") || "Techhub AI"}
             </h1>
           </div>
@@ -2986,7 +3487,7 @@ export default function AiChatPage() {
               variant="ghost"
               size="sm"
               className={cn(
-                "h-8 rounded-sm px-2 text-ed-xs text-ink-2 hover:bg-surface hover:text-ink-1 sm:px-3 border border-transparent hover:border-rule transition-colors",
+                "h-8 rounded-sm px-2 text-ed-xs text-muted-foreground hover:bg-muted hover:text-foreground sm:px-3 border border-transparent hover:border-border transition-colors",
                 !workspaceCanFit ? "opacity-50 cursor-not-allowed" : ""
               )}
               onClick={toggleAnalysisWorkspace}
@@ -3013,7 +3514,7 @@ export default function AiChatPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 lg:hidden text-ink-2 hover:text-ink-1"
+              className="h-8 w-8 lg:hidden text-muted-foreground hover:text-foreground"
               onClick={handleNewSession}
               disabled={!userId}
               title={t("newSession") || "New chat"}
@@ -3025,14 +3526,14 @@ export default function AiChatPage() {
 
         {/* Auth Check Banner */}
         {!userId && (
-          <div className="border-b border-rule bg-surface px-4 sm:px-6 py-2.5">
+          <div className="border-b border-border bg-card px-4 sm:px-6 py-2.5">
             <div className="flex items-center gap-3">
-              <MessageCircle className="h-4 w-4 text-ochre flex-shrink-0" />
+              <MessageCircle className="h-4 w-4 text-primary flex-shrink-0" />
               <div className="min-w-0">
-                <p className="font-medium text-ink-1 text-ed-xs">
+                <p className="font-medium text-foreground text-ed-xs">
                   {t("authRequired") || "Login required"}
                 </p>
-                <p className="text-[11px] text-ink-2 hidden sm:block">
+                <p className="text-[11px] text-muted-foreground hidden sm:block">
                   {t("authRequiredDesc") || "Please log in to use the AI workspace and save your history."}
                 </p>
               </div>
@@ -3042,7 +3543,7 @@ export default function AiChatPage() {
 
         <div className="flex flex-1 min-h-0">
         <section className={cn(
-          "flex min-h-0 min-w-0 flex-1 flex-col border-b border-rule bg-paper lg:min-w-[360px] lg:border-b-0",
+          "flex min-h-0 min-w-0 flex-1 flex-col border-b border-border bg-background lg:min-w-[360px] lg:border-b-0",
         )}>
         {/* Chat Messages Area */}
         <ScrollArea className="flex-1 px-4 py-6 sm:px-6" ref={scrollAreaRef}>
@@ -3079,18 +3580,18 @@ export default function AiChatPage() {
             ) : messages.length === 0 ? (
               <div className="flex min-h-[60vh] flex-col items-start justify-center px-4 sm:px-8" id="ai-chat-welcome">
                 <div className="mx-auto w-full max-w-2xl">
-                  <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-ink-3">
+                  <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                     {t("welcomePanel.eyebrow", { brand: t("headerTitle") })}
                   </div>
-                  <h2 className="font-editorial mt-6 text-[clamp(2.25rem,4.5vw,3.25rem)] font-normal leading-[1.05] text-ink-1">
+                  <h2 className="font-sans mt-6 text-[clamp(2.25rem,4.5vw,3.25rem)] font-normal leading-[1.05] text-foreground">
                     {t("welcomeTitle") || "Ask your data a question."}
                   </h2>
-                  <p className="mt-5 max-w-xl text-ed-base text-ink-2">
+                  <p className="mt-5 max-w-xl text-ed-base text-muted-foreground">
                     {t("welcomePanel.description")}
                   </p>
 
-                  <div className="mt-10 border-t border-rule pt-6">
-                    <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-ink-3">
+                  <div className="mt-10 border-t border-border pt-6">
+                    <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                       {t("welcomePanel.tryStartingPoint")}
                     </div>
                     <ul className="mt-4 space-y-3">
@@ -3104,9 +3605,9 @@ export default function AiChatPage() {
                           <button
                             type="button"
                             onClick={() => handlePresetPrompt(suggestion)}
-                            className="group inline-flex items-baseline gap-3 text-left text-ed-base text-ink-1 underline decoration-rule decoration-1 underline-offset-[6px] transition-colors hover:decoration-ochre hover:text-ochre"
+                            className="group inline-flex items-baseline gap-3 text-left text-ed-base text-foreground underline decoration-border decoration-1 underline-offset-[6px] transition-colors hover:decoration-primary hover:text-primary"
                           >
-                            <span aria-hidden className="text-ink-3 font-mono text-ed-xs tabular-nums">
+                            <span aria-hidden className="text-muted-foreground font-mono text-ed-xs tabular-nums">
                               →
                             </span>
                             <span>{suggestion}</span>
@@ -3128,10 +3629,10 @@ export default function AiChatPage() {
                   {message.role === "user" && (
                     <div className="flex justify-end">
                       <div className="max-w-[88%] sm:max-w-[72%]">
-                        <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-ink-3 text-right mb-1.5">
+                        <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground text-right mb-1.5">
                           {t("messageLabels.you")}
                         </div>
-                        <div className="rounded-md border-l-2 border-ochre bg-surface px-4 py-3 text-ed-base leading-relaxed text-ink-1 shadow-card">
+                        <div className="rounded-md border-l-2 border-primary bg-card px-4 py-3 text-ed-base leading-relaxed text-foreground shadow-card">
                           {message.attachments && message.attachments.length > 0 ? (
                             <div className="mb-3 flex flex-wrap justify-end gap-2">
                               {message.attachments.map((file) => (
@@ -3139,19 +3640,19 @@ export default function AiChatPage() {
                                   type="button"
                                   key={`${message.id}-${file.id}`}
                                   onClick={() => setPreviewAttachment(file)}
-                                  className="inline-flex max-w-[240px] items-center gap-2 rounded-sm border border-rule bg-paper px-2.5 py-1.5 text-left transition-colors hover:border-ink-2 hover:bg-surface"
+                                  className="inline-flex max-w-[240px] items-center gap-2 rounded-sm border border-border bg-background px-2.5 py-1.5 text-left transition-colors hover:border-primary/40 hover:bg-muted"
                                   title={t("composer.previewAttachment")}
                                 >
-                                  <FileText className="h-3.5 w-3.5 flex-shrink-0 text-ink-3" />
+                                  <FileText className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
                                   <div className="min-w-0">
-                                    <div className="truncate text-ed-xs font-medium text-ink-1">
+                                    <div className="truncate text-ed-xs font-medium text-foreground">
                                       {file.name}
                                     </div>
-                                    <div className="truncate text-[10px] text-ink-3">
+                                    <div className="truncate text-[10px] text-muted-foreground">
                                       {file.mimeType || file.fileType || t("attachedFile")}
                                     </div>
                                   </div>
-                                  <Maximize2 className="h-3 w-3 flex-shrink-0 text-ink-3" />
+                                  <Maximize2 className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
                                 </button>
                               ))}
                             </div>
@@ -3167,23 +3668,23 @@ export default function AiChatPage() {
                   {/* Assistant Message */}
                   {message.role === "assistant" && (
                     <div className="group flex items-start gap-4">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-sm bg-ink-1 font-editorial text-[15px] leading-none text-paper">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-sm bg-primary font-sans text-[15px] leading-none text-primary-foreground">
                         T
                       </div>
                       <div
                         className={cn(
                           "min-w-0 flex-1 border-l transition-colors duration-150",
                           isSelectedInsight
-                            ? "border-ochre pl-5"
+                            ? "border-primary pl-5"
                             : "border-transparent pl-5"
                         )}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div className="flex items-baseline gap-3 text-ed-xs">
-                            <span className="font-medium text-ink-1">
+                            <span className="font-medium text-foreground">
                               {t("headerTitle") || "Techhub AI"}
                             </span>
-                            <span className="text-ink-3">
+                            <span className="text-muted-foreground">
                               {canSelectWorkspace ? t("messageLabels.analysis") : t("messageLabels.response")}
                             </span>
                           </div>
@@ -3195,22 +3696,22 @@ export default function AiChatPage() {
                               <button
                                 type="button"
                                 onClick={() => setSelectedInsightMessageId(message.id)}
-                                className="text-ed-xs text-ink-2 underline decoration-rule decoration-1 underline-offset-4 transition-colors hover:text-ochre hover:decoration-ochre"
+                                className="text-ed-xs text-muted-foreground underline decoration-border decoration-1 underline-offset-4 transition-colors hover:text-primary hover:decoration-primary"
                               >
                                 {isSelectedInsight ? t("messageLabels.workspaceActive") : t("messageLabels.openInWorkspace")}
                               </button>
                             ) : null}
                           </div>
                         </div>
-                        <div className="mt-3 text-ed-base leading-[1.75] text-ink-1 max-w-[68ch]">
+                        <div className="mt-3 text-ed-base leading-[1.75] text-foreground max-w-[68ch]">
                           {renderMessageAgentSteps(message, {
                             isStreaming: message.id === streamingAssistantId,
                           })}
                           {message.content === "..." ? (
                             <div className="flex gap-1 py-1">
-                              <div className="w-1 h-1 bg-ink-3 rounded-full animate-bounce" />
-                              <div className="w-1 h-1 bg-ink-3 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
-                              <div className="w-1 h-1 bg-ink-3 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+                              <div className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce" />
+                              <div className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                              <div className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
                             </div>
                           ) : message.id === streamingAssistantId ? (
                             message.content === "▌" || message.content === "" ? (
@@ -3218,7 +3719,7 @@ export default function AiChatPage() {
                             ) : (
                               <div>
                                 <MarkdownRenderer content={message.content.replace(/▌+$/, "")} />
-                                <span className="animate-pulse text-ochre ml-0.5">▌</span>
+                                <span className="animate-pulse text-primary ml-0.5">▌</span>
                               </div>
                             )
                           ) : (
@@ -3240,7 +3741,7 @@ export default function AiChatPage() {
                                 key={idx}
                                 variant="ghost"
                                 size="sm"
-                                className="rounded-sm border border-rule bg-paper px-3 h-8 text-ed-xs text-ink-1 hover:border-ochre hover:text-ochre hover:bg-surface transition-colors"
+                                className="rounded-sm border border-border bg-background px-3 h-8 text-ed-xs text-foreground hover:border-primary hover:text-primary hover:bg-muted transition-colors"
                                 onClick={() => handleHitlQuickReply(message.id, option)}
                                 disabled={isStreaming}
                               >
@@ -3251,7 +3752,7 @@ export default function AiChatPage() {
                         )}
                         {message.metadata?.hitlClarifyActive &&
                           hitlRepliedMessageIds.has(message.id) && (
-                          <div className="mt-3 text-ed-xs text-ink-3 italic font-editorial">
+                          <div className="mt-3 text-ed-xs text-muted-foreground italic font-sans">
                             {t("messageLabels.clarificationSelected")}
                           </div>
                         )}
@@ -3260,7 +3761,7 @@ export default function AiChatPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className={`h-7 w-7 rounded-sm p-0 ${feedbackState[message.id] === "up" ? "text-data-pos" : "text-ink-3 hover:text-ink-1 hover:bg-transparent"}`}
+                              className={`h-7 w-7 rounded-sm p-0 ${feedbackState[message.id] === "up" ? "text-data-pos" : "text-muted-foreground hover:text-foreground hover:bg-transparent"}`}
                               onClick={() => handleFeedback(message.id, "up")}
                               disabled={!!feedbackState[message.id]}
                             >
@@ -3269,7 +3770,7 @@ export default function AiChatPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className={`h-7 w-7 rounded-sm p-0 ${feedbackState[message.id] === "down" ? "text-[hsl(var(--data-neg))]" : "text-ink-3 hover:text-ink-1 hover:bg-transparent"}`}
+                              className={`h-7 w-7 rounded-sm p-0 ${feedbackState[message.id] === "down" ? "text-[hsl(var(--data-neg))]" : "text-muted-foreground hover:text-foreground hover:bg-transparent"}`}
                               onClick={() => handleFeedback(message.id, "down")}
                               disabled={!!feedbackState[message.id]}
                             >
@@ -3278,7 +3779,7 @@ export default function AiChatPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 w-7 rounded-sm p-0 text-ink-3 hover:text-ink-1 hover:bg-transparent"
+                              className="h-7 w-7 rounded-sm p-0 text-muted-foreground hover:text-foreground hover:bg-transparent"
                               onClick={() => handleCopyMessage(message.id, message.content)}
                             >
                               {copiedMessageId === message.id ? (
@@ -3290,7 +3791,7 @@ export default function AiChatPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 rounded-sm px-2 text-[11px] text-ink-3 hover:text-ink-1 hover:bg-transparent"
+                              className="h-7 rounded-sm px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-transparent"
                               onClick={() => handleRegenerate(message.id)}
                               disabled={isStreaming}
                             >
@@ -3311,83 +3812,12 @@ export default function AiChatPage() {
         </ScrollArea>
 
         {/* Input Area */}
-        <div className="border-t border-rule bg-paper px-4 pb-4 pt-3 sm:px-6">
+        <div className="border-t border-border bg-background px-4 pb-4 pt-3 sm:px-6">
           <div className="mx-auto w-full max-w-4xl">
-            {attachedFiles.length > 0 && (
-              <div className="hidden">
-                <div className="flex flex-wrap gap-2">
-                  {attachedFiles.map((file) => (
-                    <Badge key={file.id} variant="outline" className="gap-2 px-3 py-1 bg-slate-50 dark:bg-neutral-900">
-                      <FileText className="h-3.5 w-3.5" />
-                      <span className="max-w-[180px] truncate">{file.name}</span>
-                      <button type="button" onClick={() => removeAttachedFile(file.id)} className="hover:text-red-500">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {attachedFiles.map((file) => {
-                    const previewUrl = getAttachmentPreviewUrl(file);
-                    const isImage = isImageAttachment(file);
-                    const isVideo = isVideoAttachment(file);
-                    return (
-                      <div
-                        key={`${file.id}-preview`}
-                        className="rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/80"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
-                              {file.name}
-                            </div>
-                            <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                              {file.mimeType || file.fileType || t("unknownFile")}
-                            </div>
-                            {file.processingStatus && (
-                              <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                                {t("composer.status")}: {file.processingStatus}
-                              </div>
-                            )}
-                          </div>
-                          {previewUrl && (
-                            <a
-                              href={previewUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-[11px] text-ink-2 underline decoration-rule decoration-1 underline-offset-4 hover:text-ochre hover:decoration-ochre"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              {t("attachmentPreview.open")}
-                            </a>
-                          )}
-                        </div>
-                        {previewUrl && isImage && (
-                          <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 dark:border-neutral-800">
-                            <img src={previewUrl} alt={file.name} className="h-32 w-full object-cover" />
-                          </div>
-                        )}
-                        {previewUrl && isVideo && (
-                          <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 dark:border-neutral-800">
-                            <video src={previewUrl} controls className="h-32 w-full object-cover" />
-                          </div>
-                        )}
-                        {!isImage && !isVideo && (
-                          <div className="mt-3 rounded-sm border border-rule bg-paper px-3 py-2 text-[11px] text-ink-2 italic font-editorial leading-relaxed">
-                            {t("composer.attachedHelp")}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
             {attachedFiles.length > 0 && (
               <div className="mb-3 overflow-x-auto pb-1">
                 <div className="flex min-w-max gap-2 pr-1">
                   {attachedFiles.map((file) => {
-                    const previewUrl = getAttachmentPreviewUrl(file);
                     const isImage = isImageAttachment(file);
                     const isVideo = isVideoAttachment(file);
                     return (
@@ -3401,10 +3831,22 @@ export default function AiChatPage() {
                           className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-left dark:border-neutral-800 dark:bg-neutral-800"
                           title={t("composer.previewAttachment")}
                         >
-                          {previewUrl && isImage ? (
-                            <img src={previewUrl} alt={file.name} className="h-full w-full object-cover" />
-                          ) : previewUrl && isVideo ? (
-                            <video src={previewUrl} className="h-full w-full object-cover" />
+                          {isImage ? (
+                            <AttachmentMediaPreview
+                              file={file}
+                              userId={userId}
+                              variant="content"
+                              renderAs="image"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : isVideo ? (
+                            <AttachmentMediaPreview
+                              file={file}
+                              userId={userId}
+                              variant="thumbnail"
+                              renderAs="image"
+                              className="h-full w-full object-cover"
+                            />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-slate-500 dark:text-slate-300">
                               <FileText className="h-4 w-4" />
@@ -3415,7 +3857,7 @@ export default function AiChatPage() {
                           <button
                             type="button"
                             onClick={() => setPreviewAttachment(file)}
-                            className="block w-full truncate text-left text-sm font-medium text-slate-800 hover:text-ochre dark:text-slate-100"
+                            className="block w-full truncate text-left text-sm font-medium text-slate-800 hover:text-primary dark:text-slate-100"
                             title={t("composer.previewAttachment")}
                           >
                             {file.name}
@@ -3428,28 +3870,25 @@ export default function AiChatPage() {
                             <button
                               type="button"
                               onClick={() => setPreviewAttachment(file)}
-                              className="inline-flex items-center gap-1 text-[11px] text-ink-2 underline decoration-rule decoration-1 underline-offset-4 hover:text-ochre hover:decoration-ochre"
+                              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground underline decoration-border decoration-1 underline-offset-4 hover:text-primary hover:decoration-primary"
                             >
                               <Maximize2 className="h-3 w-3" />
                               {t("composer.previewAttachment")}
                             </button>
-                            {previewUrl ? (
-                              <a
-                                href={previewUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] text-ink-2 underline decoration-rule decoration-1 underline-offset-4 hover:text-ochre hover:decoration-ochre"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                                {t("attachmentPreview.open")}
-                              </a>
-                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAttachment(file)}
+                              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground underline decoration-border decoration-1 underline-offset-4 hover:text-primary hover:decoration-primary"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              {t("attachmentPreview.open")}
+                            </button>
                           </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => removeAttachedFile(file.id)}
-                          className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-sm border border-rule bg-paper text-ink-3 transition-colors hover:text-[hsl(var(--data-neg))] hover:border-[hsl(var(--data-neg))]"
+                          className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-sm border border-border bg-background text-muted-foreground transition-colors hover:text-[hsl(var(--data-neg))] hover:border-[hsl(var(--data-neg))]"
                           title={t("composer.removeFile")}
                         >
                           <X className="h-3.5 w-3.5" />
@@ -3464,39 +3903,40 @@ export default function AiChatPage() {
               ref={fileInputRef}
               type="file"
               multiple
+              accept={AI_ATTACHMENT_ACCEPT}
               className="hidden"
               onChange={handleAttachFiles}
             />
             {activeAnalysisSnapshot ? (
-              <div className="mb-2 flex flex-wrap items-center gap-2 border-l-2 border-ochre bg-surface px-3 py-2 text-ed-xs">
-                <span className="inline-flex items-center gap-1.5 font-medium text-ink-1">
-                  <span className="font-editorial italic text-ed-sm leading-none">{t("composer.refining")}</span>
+              <div className="mb-2 flex flex-wrap items-center gap-2 border-l-2 border-primary bg-card px-3 py-2 text-ed-xs">
+                <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                  <span className="font-sans italic text-ed-sm leading-none">{t("composer.refining")}</span>
                 </span>
                 <span
-                  className="max-w-[260px] truncate text-ink-2"
+                  className="max-w-[260px] truncate text-muted-foreground"
                   title={activeAnalysisSnapshot.title}
                 >
                   {activeAnalysisSnapshot.title}
                 </span>
                 {activeAnalysisSnapshot.scopeLabel ? (
-                  <span className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0 text-[10px] text-ink-2 tabular-nums">
+                  <span className="inline-flex items-center rounded-sm border border-border bg-background px-1.5 py-0 text-[10px] text-muted-foreground tabular-nums">
                     {activeAnalysisSnapshot.scopeLabel}
                   </span>
                 ) : null}
                 {activeAnalysisSnapshot.chartType ? (
-                  <span className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0 text-[10px] text-ink-2 tabular-nums">
+                  <span className="inline-flex items-center rounded-sm border border-border bg-background px-1.5 py-0 text-[10px] text-muted-foreground tabular-nums">
                     {activeAnalysisSnapshot.chartType}
                   </span>
                 ) : null}
                 <span className="ml-auto flex items-center gap-2">
-                  <span className="hidden text-[11px] text-ink-3 sm:inline">
+                  <span className="hidden text-[11px] text-muted-foreground sm:inline">
                     {t("composer.refineHelp")}
                   </span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 rounded-sm text-ink-3 hover:bg-paper hover:text-ink-1"
+                    className="h-6 w-6 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
                     onClick={handleDismissActiveAnalysis}
                     title={t("composer.startNewTopic")}
                   >
@@ -3506,7 +3946,7 @@ export default function AiChatPage() {
               </div>
             ) : null}
             <div
-              className="relative overflow-hidden rounded-sm border border-rule bg-surface px-3 py-2 transition-colors duration-150 focus-within:border-ink-2"
+              className="relative overflow-hidden rounded-sm border border-border bg-card px-3 py-2 transition-colors duration-150 focus-within:border-primary/40"
               id="ai-chat-input"
             >
               <div className="flex items-center gap-2">
@@ -3514,7 +3954,7 @@ export default function AiChatPage() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 flex-shrink-0 rounded-sm text-ink-3 hover:bg-paper hover:text-ink-1"
+                  className="h-10 w-10 flex-shrink-0 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={!userId || uploadFileMutation.isPending || isStreaming}
                   title={t("composer.attachFiles")}
@@ -3527,7 +3967,7 @@ export default function AiChatPage() {
                 </Button>
                 <div className="min-w-0 flex-1">
                   {attachedFiles.length > 0 ? (
-                    <div className="mb-1.5 text-[11px] text-ink-3">
+                    <div className="mb-1.5 text-[11px] text-muted-foreground">
                       {attachedFiles.length === 1
                         ? t("composer.fileReady", { count: attachedFiles.length })
                         : t("composer.filesReady", { count: attachedFiles.length })}
@@ -3544,7 +3984,7 @@ export default function AiChatPage() {
                       }
                     }}
                     rows={1}
-                    className="min-h-[44px] max-h-40 resize-none border-none bg-transparent px-0 py-2 text-ed-base leading-6 text-ink-1 shadow-none focus-visible:ring-0 placeholder:text-ink-3"
+                    className="min-h-[44px] max-h-40 resize-none border-none bg-transparent px-0 py-2 text-ed-base leading-6 text-foreground shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
                   />
                 </div>
                 <Button
@@ -3557,7 +3997,7 @@ export default function AiChatPage() {
                     uploadFileMutation.isPending
                   }
                   size="icon"
-                  className="h-10 w-10 flex-shrink-0 rounded-sm bg-ink-1 text-paper hover:bg-ochre hover:text-ochre-foreground disabled:bg-rule disabled:text-ink-3 transition-colors"
+                  className="h-10 w-10 flex-shrink-0 rounded-sm bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground disabled:bg-muted disabled:text-muted-foreground transition-colors"
                 >
                   {chatMutation.isPending || isStreaming ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -3567,24 +4007,24 @@ export default function AiChatPage() {
                 </Button>
               </div>
             </div>
-            <p className="text-[11px] text-ink-3 text-center mt-2 hidden sm:block">
+            <p className="text-[11px] text-muted-foreground text-center mt-2 hidden sm:block">
               {t("enterToSend") || "Press Enter to send, Shift + Enter for new line"}
             </p>
           </div>
         </div>
         </section>
-        {workspaceRendered && (
+        {workspaceRendered && isDesktopViewport && (
         <>
         <div
           onMouseDown={startAnalysisResize}
           className="relative hidden w-2 cursor-col-resize bg-transparent lg:block"
           title={t("sidebar.dragResize")}
         >
-          <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-rule transition-colors hover:bg-ochre" />
+          <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border transition-colors hover:bg-primary" />
         </div>
         <aside
           style={{ ['--analysis-w' as any]: `${effectiveAnalysisWidth}px` }}
-          className="flex min-h-[34vh] w-full min-w-0 flex-col border-t border-rule bg-surface lg:min-h-0 lg:w-[var(--analysis-w)] lg:min-w-[420px] lg:max-w-[960px] lg:border-l lg:border-l-rule lg:border-t-0"
+          className="flex min-h-[34vh] w-full min-w-0 flex-col border-t border-border bg-card lg:min-h-0 lg:w-[var(--analysis-w)] lg:min-w-[420px] lg:max-w-[960px] lg:border-l lg:border-l-border lg:border-t-0"
         >
           <AnalysisWorkspacePanel
             message={selectedInsightMessage}
@@ -3639,6 +4079,64 @@ export default function AiChatPage() {
         </div>
       </main>
 
+      {/* Mobile analysis workspace overlay */}
+      {mobileWorkspaceOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("analysisWorkspace.aria")}
+          className="ai-chat-theme font-ui fixed inset-0 z-[60] flex flex-col bg-background lg:hidden"
+        >
+          <AnalysisWorkspacePanel
+            message={selectedInsightMessage}
+            prompt={selectedInsightPrompt}
+            activeTab={analysisTab}
+            onTabChange={setAnalysisTab}
+            onCopySql={handleCopyMessage}
+            isStreamingMessage={selectedInsightMessage?.id === streamingAssistantId}
+            onClose={closeAnalysisWorkspace}
+            chartTypeOverride={
+              selectedInsightMessage ? chartTypeOverrides[selectedInsightMessage.id] : undefined
+            }
+            followUpActions={
+              selectedInsightMessage
+                ? getFollowUpActionsForMessage(selectedInsightMessage)
+                : []
+            }
+            onFollowUpAction={handleFollowUpAction}
+            followUpFeedback={actionFeedback}
+            followUpDisabled={isStreaming}
+            onExpand={
+              selectedInsightMessage ? () => setWorkspaceExpanded(true) : undefined
+            }
+            onCopyTable={
+              selectedInsightMessage
+                ? (qr, format) => {
+                    void copyQueryResultAsTable(qr, format);
+                  }
+                : undefined
+            }
+            onExportCsv={
+              selectedInsightMessage
+                ? (qr, fallbackTitle) => {
+                    exportQueryResultAsCsv(qr, fallbackTitle);
+                  }
+                : undefined
+            }
+            onSave={
+              selectedInsightMessage
+                ? () => handleToggleSaveAnalysis(selectedInsightMessage)
+                : undefined
+            }
+            isSaved={
+              selectedInsightMessage
+                ? !!getLiveSavedEntryForMessage(selectedInsightMessage.id)
+                : false
+            }
+          />
+        </div>
+      ) : null}
+
       {/* Fullscreen analysis workspace overlay (live message) */}
       {workspaceExpanded && selectedInsightMessage ? (
         <FullscreenAnalysisView
@@ -3692,6 +4190,8 @@ export default function AiChatPage() {
       {previewAttachment ? (
         <AttachmentPreviewOverlay
           file={previewAttachment}
+          userId={userId}
+          onOpen={handleOpenAttachment}
           onClose={() => setPreviewAttachment(null)}
         />
       ) : null}
@@ -3708,15 +4208,141 @@ export default function AiChatPage() {
   );
 }
 
+function AttachmentMediaPreview({
+  file,
+  userId,
+  variant,
+  renderAs,
+  className,
+  fallbackClassName,
+  controls,
+}: {
+  file: AttachedFileContext;
+  userId: string;
+  variant: "content" | "thumbnail";
+  renderAs: "image" | "video" | "audio" | "pdf";
+  className?: string;
+  fallbackClassName?: string;
+  controls?: boolean;
+}) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [failedProxy, setFailedProxy] = useState(false);
+  const [directFailed, setDirectFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let nextObjectUrl: string | null = null;
+
+    setObjectUrl(null);
+    setFailedProxy(false);
+    setDirectFailed(false);
+
+    if (!userId || !file.id) {
+      setFailedProxy(true);
+      return;
+    }
+
+    fetchAttachmentBlob(file, userId, variant)
+      .then((blob) => {
+        if (cancelled) return;
+        nextObjectUrl = window.URL.createObjectURL(blob);
+        setObjectUrl(nextObjectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFailedProxy(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      if (nextObjectUrl) {
+        window.URL.revokeObjectURL(nextObjectUrl);
+      }
+    };
+  }, [file, userId, variant]);
+
+  const directUrl =
+    failedProxy && !directFailed
+      ? getSafeDirectAttachmentUrl(
+        renderAs === "image"
+          ? getAttachmentPreviewUrl(file)
+          : getAttachmentSourceUrl(file)
+      )
+      : null;
+  const src = objectUrl || directUrl;
+  const handleRenderError = () => {
+    if (objectUrl) {
+      setObjectUrl(null);
+      setFailedProxy(true);
+      return;
+    }
+    setDirectFailed(true);
+  };
+
+  if (src && renderAs === "image") {
+    return (
+      <img
+        src={src}
+        alt={file.name}
+        className={className}
+        onError={handleRenderError}
+      />
+    );
+  }
+
+  if (src && renderAs === "video") {
+    return (
+      <video
+        src={src}
+        controls={controls}
+        className={className}
+        onError={handleRenderError}
+      />
+    );
+  }
+
+  if (src && renderAs === "audio") {
+    return (
+      <audio
+        src={src}
+        controls={controls}
+        className={className}
+        onError={handleRenderError}
+      />
+    );
+  }
+
+  if (src && renderAs === "pdf") {
+    return (
+      <iframe
+        src={src}
+        title={file.name}
+        className={className}
+        onError={handleRenderError}
+      />
+    );
+  }
+
+  return (
+    <div className={cn("flex h-full w-full items-center justify-center text-slate-500 dark:text-slate-300", fallbackClassName)}>
+      {failedProxy ? <FileText className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
+    </div>
+  );
+}
+
 function AttachmentPreviewOverlay({
   file,
+  userId,
+  onOpen,
   onClose,
 }: {
   file: AttachedFileContext;
+  userId: string;
+  onOpen: (file: AttachedFileContext) => void;
   onClose: () => void;
 }) {
   const t = useTranslations("AiChat");
-  const previewUrl = getAttachmentPreviewUrl(file);
   const sourceUrl = getAttachmentSourceUrl(file);
   const textContent = (file.content || file.excerpt || "").trim();
   const displayText = textContent.slice(0, ATTACHMENT_PREVIEW_CHARS);
@@ -3724,13 +4350,14 @@ function AttachmentPreviewOverlay({
   const isImage = isImageAttachment(file);
   const isVideo = isVideoAttachment(file);
   const isAudio = isAudioAttachment(file);
+  const isPdf = isPdfAttachment(file);
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={t("attachmentPreview.aria")}
-      className="ai-chat-theme font-ui fixed inset-0 z-[70] flex flex-col bg-ink-1/60"
+      className="ai-chat-theme font-ui fixed inset-0 z-[70] flex flex-col bg-primary/60"
     >
       <button
         type="button"
@@ -3738,38 +4365,37 @@ function AttachmentPreviewOverlay({
         onClick={onClose}
         aria-label={t("attachmentPreview.closeAria")}
       />
-      <div className="relative m-0 flex h-full w-full flex-col overflow-hidden bg-paper sm:m-6 sm:h-[calc(100vh-3rem)] sm:rounded-sm sm:border sm:border-rule">
-        <div className="flex items-start justify-between gap-4 border-b border-rule bg-paper px-4 py-4 sm:px-6">
+      <div className="relative m-0 flex h-full w-full flex-col overflow-hidden bg-background sm:m-6 sm:h-[calc(100vh-3rem)] sm:rounded-sm sm:border sm:border-border">
+        <div className="flex items-start justify-between gap-4 border-b border-border bg-background px-4 py-4 sm:px-6">
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+            <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
               {t("attachmentPreview.title")}
             </div>
-            <div className="mt-2 truncate text-ed-lg font-medium text-ink-1">
+            <div className="mt-2 truncate text-ed-lg font-medium text-foreground">
               {file.name}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ink-3">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
               <span>{file.mimeType || file.fileType || t("attachmentPreview.file")}</span>
               {typeof file.size === "number" ? <span>{t("attachmentPreview.bytes", { count: file.size })}</span> : null}
               {file.processingStatus ? <span>{file.processingStatus}</span> : null}
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {sourceUrl ? (
-              <a
-                href={sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-rule px-2.5 text-ed-xs text-ink-2 transition-colors hover:border-ink-2 hover:text-ink-1"
+            {sourceUrl || file.id ? (
+              <button
+                type="button"
+                onClick={() => onOpen(file)}
+                className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-border px-2.5 text-ed-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
                 {t("attachmentPreview.open")}
-              </a>
+              </button>
             ) : null}
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-sm text-ink-3 hover:bg-surface hover:text-ink-1"
+              className="h-8 w-8 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={onClose}
               title={t("attachmentPreview.closeTitle")}
             >
@@ -3778,44 +4404,66 @@ function AttachmentPreviewOverlay({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto bg-surface p-4 sm:p-6">
+        <div className="min-h-0 flex-1 overflow-auto bg-card p-4 sm:p-6">
           {displayText ? (
-            <div className="mx-auto h-full max-w-6xl overflow-hidden rounded-sm border border-rule bg-paper">
-              <pre className="h-full overflow-auto p-4 text-[12px] leading-5 text-ink-1">
+            <div className="mx-auto h-full max-w-6xl overflow-hidden rounded-sm border border-border bg-background">
+              <pre className="h-full overflow-auto p-4 text-[12px] leading-5 text-foreground">
                 <code>{displayText}</code>
               </pre>
               {isTextTruncated ? (
-                <div className="border-t border-rule px-4 py-2 text-[11px] text-ink-3">
+                <div className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
                   {t("attachmentPreview.truncated")}
                 </div>
               ) : null}
             </div>
-          ) : isImage && previewUrl ? (
+          ) : isImage ? (
             <div className="flex h-full items-center justify-center">
-              <img
-                src={previewUrl}
-                alt={file.name}
-                className="max-h-full max-w-full rounded-sm border border-rule object-contain"
+              <AttachmentMediaPreview
+                file={file}
+                userId={userId}
+                variant="content"
+                renderAs="image"
+                className="max-h-full max-w-full rounded-sm border border-border object-contain"
               />
             </div>
-          ) : isVideo && sourceUrl ? (
+          ) : isVideo ? (
             <div className="flex h-full items-center justify-center">
-              <video
-                src={sourceUrl}
+              <AttachmentMediaPreview
+                file={file}
+                userId={userId}
+                variant="content"
+                renderAs="video"
                 controls
-                className="max-h-full max-w-full rounded-sm border border-rule bg-black"
+                className="max-h-full max-w-full rounded-sm border border-border bg-black"
               />
             </div>
-          ) : isAudio && sourceUrl ? (
-            <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-sm border border-rule bg-paper p-6">
-              <FileText className="h-8 w-8 text-ink-3" />
-              <audio src={sourceUrl} controls className="w-full" />
+          ) : isAudio ? (
+            <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-sm border border-border bg-background p-6">
+              <FileText className="h-8 w-8 text-muted-foreground" />
+              <AttachmentMediaPreview
+                file={file}
+                userId={userId}
+                variant="content"
+                renderAs="audio"
+                controls
+                className="w-full"
+              />
+            </div>
+          ) : isPdf ? (
+            <div className="mx-auto h-full max-w-6xl overflow-hidden rounded-sm border border-border bg-background">
+              <AttachmentMediaPreview
+                file={file}
+                userId={userId}
+                variant="content"
+                renderAs="pdf"
+                className="h-full w-full bg-background"
+              />
             </div>
           ) : (
-            <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-3 rounded-sm border border-rule bg-paper px-6 py-12 text-center">
-              <FileText className="h-10 w-10 text-ink-3" />
-              <div className="text-ed-base font-medium text-ink-1">{t("attachmentPreview.unavailableTitle")}</div>
-              <div className="max-w-md text-ed-sm text-ink-2">
+            <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-3 rounded-sm border border-border bg-background px-6 py-12 text-center">
+              <FileText className="h-10 w-10 text-muted-foreground" />
+              <div className="text-ed-base font-medium text-foreground">{t("attachmentPreview.unavailableTitle")}</div>
+              <div className="max-w-md text-ed-sm text-muted-foreground">
                 {t("attachmentPreview.unavailableDesc")}
               </div>
             </div>
@@ -3831,13 +4479,13 @@ function ThinkingIndicator() {
   const t = useTranslations("AiChat");
   return (
     <div className="inline-flex items-baseline gap-2 text-ed-sm">
-      <span className="font-editorial italic text-ink-2">
+      <span className="font-sans italic text-muted-foreground">
         {t("runtime.thinking")}
       </span>
       <span className="flex gap-0.5 items-center">
-        <span className="w-1 h-1 rounded-full bg-ink-3 animate-pulse" />
-        <span className="w-1 h-1 rounded-full bg-ink-3 animate-pulse" style={{ animationDelay: "0.2s" }} />
-        <span className="w-1 h-1 rounded-full bg-ink-3 animate-pulse" style={{ animationDelay: "0.4s" }} />
+        <span className="w-1 h-1 rounded-full bg-muted-foreground animate-pulse" />
+        <span className="w-1 h-1 rounded-full bg-muted-foreground animate-pulse" style={{ animationDelay: "0.2s" }} />
+        <span className="w-1 h-1 rounded-full bg-muted-foreground animate-pulse" style={{ animationDelay: "0.4s" }} />
       </span>
     </div>
   );
@@ -3864,7 +4512,7 @@ function DetailsPanel({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3 hover:text-ink-1 transition-colors"
+        className="w-full flex items-center justify-between py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground transition-colors"
       >
         <span className="flex items-center gap-1.5">
           {t("runtime.howBuilt")}
@@ -3872,16 +4520,16 @@ function DetailsPanel({
         {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
       </button>
       {open && (
-        <div className="pb-2 space-y-3 border-t border-rule pt-2.5">
+        <div className="pb-2 space-y-3 border-t border-border pt-2.5">
           {hasRuntime && (
             <div>
-              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 {t("runtime.howBuilt")}
               </div>
               {requestId && (
-                <div className="mt-1 text-[11px] text-ink-3">
+                <div className="mt-1 text-[11px] text-muted-foreground">
                   <span>{t("runtime.traceId")} </span>
-                  <span className="text-ink-2 font-mono tabular-nums break-all" title={t("runtime.traceIdTitle")}>{String(requestId)}</span>
+                  <span className="text-muted-foreground font-mono tabular-nums break-all" title={t("runtime.traceIdTitle")}>{String(requestId)}</span>
                 </div>
               )}
               {nodeTimings.length > 0 && (
@@ -3889,9 +4537,9 @@ function DetailsPanel({
                   {nodeTimings.map(([step, duration]) => (
                     <span
                       key={step}
-                      className="inline-flex items-baseline gap-1 text-[11px] text-ink-2"
+                      className="inline-flex items-baseline gap-1 text-[11px] text-muted-foreground"
                     >
-                      <span className="text-ink-3">{humanizeAgentStep(step, t)}</span>
+                      <span className="text-muted-foreground">{humanizeAgentStep(step, t)}</span>
                       <span className="font-mono tabular-nums">{Number(duration).toFixed(0)}ms</span>
                     </span>
                   ))}
@@ -3901,14 +4549,14 @@ function DetailsPanel({
           )}
           {hasTrace && (
             <div>
-              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 {t("runtime.reasoningSteps")}
               </div>
               <ol className="mt-1.5 space-y-0.5 list-none">
                 {trace.slice(0, 6).map((item, index) => (
-                  <li key={`${item.step || "step"}-${index}`} className="flex items-baseline gap-2 text-[11px] text-ink-2">
-                    <span className="font-mono text-ink-3 tabular-nums">{String(index + 1).padStart(2, "0")}</span>
-                    <span><span className="text-ink-1 font-medium">{humanizeAgentStep(item.step, t)}</span>{item.detail ? ` — ${item.detail}` : ""}</span>
+                  <li key={`${item.step || "step"}-${index}`} className="flex items-baseline gap-2 text-[11px] text-muted-foreground">
+                    <span className="font-mono text-muted-foreground tabular-nums">{String(index + 1).padStart(2, "0")}</span>
+                    <span><span className="text-foreground font-medium">{humanizeAgentStep(item.step, t)}</span>{item.detail ? ` — ${item.detail}` : ""}</span>
                   </li>
                 ))}
               </ol>
@@ -4054,7 +4702,7 @@ function ChartPreviewCard({
     emptyStateHint === "single_category" || (!emptyStateHint && labels.length === 1);
   const totalPoints = numericValues.length;
 
-  // Editorial palette: ochre (primary), navy, forest, wine, warm tan, muted lilac.
+  // Business workspace palette: primary blue, teal, neutral slate, warning amber.
   const DEFAULT_COLORS = ["#B4531A", "#3D5A80", "#2F6F3E", "#A23535", "#A68A64", "#6B5B95"];
   const COLORS =
     Array.isArray(beOptions?.colorPalette) && beOptions!.colorPalette!.length > 0
@@ -4070,17 +4718,17 @@ function ChartPreviewCard({
 
   if (!chartData.length || !datasets.length) {
     return (
-      <div className="border-l border-rule pl-4">
+      <div className="border-l border-border pl-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+            <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
               {t("chart.title")}
             </div>
-            <div className="font-editorial mt-1.5 text-[22px] leading-[1.15] text-ink-1">
+            <div className="font-sans mt-1.5 text-[22px] leading-[1.15] text-foreground">
               {chartTitle}
             </div>
             {chartSubtitle ? (
-              <p className="mt-2 max-w-[52ch] text-ed-sm leading-relaxed text-ink-2">
+              <p className="mt-2 max-w-[52ch] text-ed-sm leading-relaxed text-muted-foreground">
                 {chartSubtitle}
               </p>
             ) : null}
@@ -4089,18 +4737,18 @@ function ChartPreviewCard({
             <ScopeBadge queryResult={queryResult} tone="prominent" />
           ) : null}
         </div>
-        <div className="mt-5 border-t border-dashed border-rule py-10 text-center">
+        <div className="mt-5 border-t border-dashed border-border py-10 text-center">
           {isStreaming ? (
-            <div className="inline-flex items-center gap-2 text-ed-sm text-ink-3">
+            <div className="inline-flex items-center gap-2 text-ed-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               {t("chart.waiting")}
             </div>
           ) : (
             <>
-              <div className="font-editorial text-ed-md italic text-ink-2">
+              <div className="font-sans text-ed-md italic text-muted-foreground">
                 {t("chart.noData")}
               </div>
-              <p className="mt-2 text-ed-xs leading-relaxed text-ink-3 max-w-[46ch] mx-auto">
+              <p className="mt-2 text-ed-xs leading-relaxed text-muted-foreground max-w-[46ch] mx-auto">
                 {t("chart.noDataDesc")}
               </p>
             </>
@@ -4199,23 +4847,23 @@ function ChartPreviewCard({
   };
 
   return (
-    <div className="border-l border-rule pl-4">
+    <div className="border-l border-border pl-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+          <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
             Chart
-            <span className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0 text-[10px] tabular-nums normal-case tracking-normal text-ink-2">
+            <span className="inline-flex items-center rounded-sm border border-border bg-background px-1.5 py-0 text-[10px] tabular-nums normal-case tracking-normal text-muted-foreground">
               {selectedType}
             </span>
             {queryResult ? (
               <ScopeBadge queryResult={queryResult} tone="prominent" />
             ) : null}
           </div>
-          <div className="font-editorial mt-1.5 text-[22px] leading-[1.15] text-ink-1">
+          <div className="font-sans mt-1.5 text-[22px] leading-[1.15] text-foreground">
             {chartTitle}
           </div>
           {chartSubtitle ? (
-            <p className="mt-2 max-w-[52ch] text-ed-sm leading-relaxed text-ink-2">
+            <p className="mt-2 max-w-[52ch] text-ed-sm leading-relaxed text-muted-foreground">
               {chartSubtitle}
             </p>
           ) : null}
@@ -4229,8 +4877,8 @@ function ChartPreviewCard({
               className={cn(
                 "h-7 px-2.5 text-[11px] capitalize rounded-sm border transition-colors",
                 selectedType === type
-                  ? "border-ochre text-ink-1 bg-surface"
-                  : "border-rule text-ink-3 hover:text-ink-1 hover:border-ink-2 bg-paper"
+                  ? "border-primary text-foreground bg-card"
+                  : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40 bg-background"
               )}
               onClick={() => setSelectedType(type)}
             >
@@ -4241,7 +4889,7 @@ function ChartPreviewCard({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 rounded-sm px-2 text-[11px] text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1"
+            className="h-7 rounded-sm px-2 text-[11px] text-muted-foreground border border-border hover:border-primary/40 hover:bg-transparent hover:text-foreground"
             disabled={chartDownloading}
             onClick={handleDownloadChartAsPng}
             title={t("chart.downloadPng")}
@@ -4256,18 +4904,18 @@ function ChartPreviewCard({
         </div>
       </div>
 
-      <dl className="mt-5 grid gap-x-6 gap-y-1 sm:grid-cols-3 border-t border-rule pt-4">
+      <dl className="mt-5 grid gap-x-6 gap-y-1 sm:grid-cols-3 border-t border-border pt-4">
         <div>
-          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("chart.categories")}</dt>
-          <dd className="mt-1 text-ed-sm font-medium text-ink-1 tabular-nums">{labels.length}</dd>
+          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{t("chart.categories")}</dt>
+          <dd className="mt-1 text-ed-sm font-medium text-foreground tabular-nums">{labels.length}</dd>
         </div>
         <div>
-          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("chart.seriesLabel")}</dt>
-          <dd className="mt-1 text-ed-sm font-medium text-ink-1 tabular-nums">{seriesLabels.length}</dd>
+          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{t("chart.seriesLabel")}</dt>
+          <dd className="mt-1 text-ed-sm font-medium text-foreground tabular-nums">{seriesLabels.length}</dd>
         </div>
         <div>
-          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("chart.dataPoints")}</dt>
-          <dd className="mt-1 text-ed-sm font-medium text-ink-1 tabular-nums">{totalPoints}</dd>
+          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{t("chart.dataPoints")}</dt>
+          <dd className="mt-1 text-ed-sm font-medium text-foreground tabular-nums">{totalPoints}</dd>
         </div>
       </dl>
 
@@ -4275,7 +4923,7 @@ function ChartPreviewCard({
         {seriesLabels.map((seriesLabel, index) => (
           <span
             key={`${seriesLabel}-${index}`}
-            className="inline-flex items-center gap-2 text-[11px] text-ink-2 tabular-nums"
+            className="inline-flex items-center gap-2 text-[11px] text-muted-foreground tabular-nums"
           >
             <span
               className="inline-block h-2 w-2 rounded-sm"
@@ -4289,10 +4937,10 @@ function ChartPreviewCard({
       {stateMessage ? (
         <div
           className={cn(
-            "mt-4 border-l-2 px-4 py-2.5 text-ed-xs leading-relaxed italic font-editorial",
+            "mt-4 border-l-2 px-4 py-2.5 text-ed-xs leading-relaxed italic font-sans",
             stateTone === "warning"
-              ? "border-ochre text-ink-2 bg-surface"
-              : "border-[hsl(var(--data-info))] text-ink-2 bg-surface"
+              ? "border-primary text-muted-foreground bg-card"
+              : "border-[hsl(var(--data-info))] text-muted-foreground bg-card"
           )}
         >
           {stateMessage}
@@ -4301,13 +4949,13 @@ function ChartPreviewCard({
 
       <div
         ref={chartSvgContainerRef}
-        className="mt-5 border border-rule bg-surface px-2 py-3"
+        className="mt-5 border border-border bg-card px-2 py-3"
       >
         {renderChart()}
       </div>
 
       {chartNote ? (
-        <div className="mt-4 text-ed-sm leading-relaxed text-ink-2 italic font-editorial max-w-[68ch] border-l-2 border-rule pl-3">
+        <div className="mt-4 text-ed-sm leading-relaxed text-muted-foreground italic font-sans max-w-[68ch] border-l-2 border-border pl-3">
           {chartNote}
         </div>
       ) : null}
@@ -4478,20 +5126,20 @@ function QueryResultCard({
   const visibleRows = rows.slice(startIndex, endIndex);
 
   return (
-    <div className="border-l border-rule pl-4">
+    <div className="border-l border-border pl-4">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+          <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
             {t("queryResultPanel.title")}
             <ScopeBadge queryResult={queryResult} tone="inline" />
             {queryResult.metric ? (
-              <span className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0 text-[10px] tabular-nums normal-case tracking-normal text-ink-2">
+              <span className="inline-flex items-center rounded-sm border border-border bg-background px-1.5 py-0 text-[10px] tabular-nums normal-case tracking-normal text-muted-foreground">
                 {String(queryResult.metric)}
               </span>
             ) : null}
           </div>
           {queryResult.summary ? (
-            <p className="mt-2 text-ed-sm leading-relaxed text-ink-1 max-w-[68ch] font-editorial italic">
+            <p className="mt-2 text-ed-sm leading-relaxed text-foreground max-w-[68ch] font-sans italic">
               {String(queryResult.summary)}
             </p>
           ) : null}
@@ -4503,7 +5151,7 @@ function QueryResultCard({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 rounded-sm px-2.5 text-[11px] text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1"
+              className="h-7 rounded-sm px-2.5 text-[11px] text-muted-foreground border border-border hover:border-primary/40 hover:bg-transparent hover:text-foreground"
               onClick={() => onCopyTable("tsv")}
               title={t("queryResultPanel.copyTableTitle")}
             >
@@ -4516,7 +5164,7 @@ function QueryResultCard({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 rounded-sm px-2.5 text-[11px] text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1"
+              className="h-7 rounded-sm px-2.5 text-[11px] text-muted-foreground border border-border hover:border-primary/40 hover:bg-transparent hover:text-foreground"
               onClick={onExportCsv}
               title={t("queryResultPanel.downloadCsvTitle")}
             >
@@ -4527,25 +5175,25 @@ function QueryResultCard({
         </div>
       </div>
 
-      <dl className="mt-4 grid gap-x-6 gap-y-1 sm:grid-cols-3 border-t border-rule pt-4">
+      <dl className="mt-4 grid gap-x-6 gap-y-1 sm:grid-cols-3 border-t border-border pt-4">
         <div>
-          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("queryResultPanel.scope")}</dt>
-          <dd className="mt-1 text-ed-sm font-medium text-ink-1">{humanizeScope(queryResult.scopeLabel || queryResult.scope, t)}</dd>
+          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{t("queryResultPanel.scope")}</dt>
+          <dd className="mt-1 text-ed-sm font-medium text-foreground">{humanizeScope(queryResult.scopeLabel || queryResult.scope, t)}</dd>
         </div>
         <div>
-          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("queryResultPanel.rowsLoaded")}</dt>
-          <dd className="mt-1 text-ed-sm font-medium text-ink-1 tabular-nums">{rows.length} / {totalRows}</dd>
+          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{t("queryResultPanel.rowsLoaded")}</dt>
+          <dd className="mt-1 text-ed-sm font-medium text-foreground tabular-nums">{rows.length} / {totalRows}</dd>
         </div>
         <div>
-          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("queryResultPanel.columns")}</dt>
-          <dd className="mt-1 break-words text-ed-sm font-medium text-ink-1 font-mono">{columns.join(", ") || t("queryResultPanel.none")}</dd>
+          <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{t("queryResultPanel.columns")}</dt>
+          <dd className="mt-1 break-words text-ed-sm font-medium text-foreground font-mono">{columns.join(", ") || t("queryResultPanel.none")}</dd>
         </div>
       </dl>
 
       {rows.length > 0 && columns.length > 0 ? (
         <>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-[11px] text-ink-3 tabular-nums">
+            <div className="text-[11px] text-muted-foreground tabular-nums">
               {t("queryResultPanel.showingRows", {
                 start: startIndex + 1,
                 end: endIndex,
@@ -4554,7 +5202,7 @@ function QueryResultCard({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 text-[11px] text-ink-3">
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                 <span>{t("queryResultPanel.rowsPerPage")}</span>
                 <Select
                   value={String(pageSize)}
@@ -4566,7 +5214,7 @@ function QueryResultCard({
                     }
                   }}
                 >
-                  <SelectTrigger className="h-7 w-[72px] text-[11px] rounded-sm border-rule bg-paper focus:ring-0 focus:border-ink-2 tabular-nums">
+                  <SelectTrigger className="h-7 w-[72px] text-[11px] rounded-sm border-border bg-background focus:ring-0 focus:border-primary/40 tabular-nums">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -4584,21 +5232,21 @@ function QueryResultCard({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-[11px] rounded-sm text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1 disabled:opacity-40"
+                  className="h-7 px-2 text-[11px] rounded-sm text-muted-foreground border border-border hover:border-primary/40 hover:bg-transparent hover:text-foreground disabled:opacity-40"
                   disabled={page <= 1}
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                 >
                   <ChevronRight className="mr-1 h-3 w-3 rotate-180" />
                   {t("queryResultPanel.prev")}
                 </Button>
-                <span className="h-7 rounded-sm px-2 text-[10px] border border-rule bg-paper inline-flex items-center text-ink-2 tabular-nums font-mono">
+                <span className="h-7 rounded-sm px-2 text-[10px] border border-border bg-background inline-flex items-center text-muted-foreground tabular-nums font-mono">
                   {page} / {totalPages}
                 </span>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-[11px] rounded-sm text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1 disabled:opacity-40"
+                  className="h-7 px-2 text-[11px] rounded-sm text-muted-foreground border border-border hover:border-primary/40 hover:bg-transparent hover:text-foreground disabled:opacity-40"
                   disabled={page >= totalPages}
                   onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                 >
@@ -4609,15 +5257,15 @@ function QueryResultCard({
             </div>
           </div>
 
-          <div className="mt-3 border border-rule bg-surface">
+          <div className="mt-3 border border-border bg-card">
             <div className="max-h-[24rem] overflow-auto">
               <table className="min-w-full text-left text-[12.5px]">
-                <thead className="sticky top-0 z-10 bg-paper">
+                <thead className="sticky top-0 z-10 bg-background">
                   <tr>
                     {columns.map((column) => (
                       <th
                         key={column}
-                        className="whitespace-nowrap border-b border-rule px-3 py-2 font-medium uppercase tracking-[0.1em] text-[10px] text-ink-3"
+                        className="whitespace-nowrap border-b border-border px-3 py-2 font-medium uppercase tracking-[0.1em] text-[10px] text-muted-foreground"
                       >
                         {column}
                       </th>
@@ -4628,7 +5276,7 @@ function QueryResultCard({
                   {visibleRows.map((row, rowIndex) => (
                     <tr
                       key={`${page}-${rowIndex}`}
-                      className="border-b border-rule align-top last:border-0 hover:bg-paper/60"
+                      className="border-b border-border align-top last:border-0 hover:bg-muted/60"
                     >
                       {columns.map((column) => {
                         const formatted = formatQueryResultValue(
@@ -4643,7 +5291,7 @@ function QueryResultCard({
                           <td
                             key={`${page}-${rowIndex}-${column}`}
                             className={cn(
-                              "max-w-[280px] px-3 py-2 text-ink-1",
+                              "max-w-[280px] px-3 py-2 text-foreground",
                               isNumeric && "font-mono tabular-nums"
                             )}
                             title={formatted}
@@ -4660,16 +5308,16 @@ function QueryResultCard({
           </div>
 
           {tableNames.length > 0 ? (
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-ink-3">
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
               <span className="uppercase tracking-[0.18em] text-[10px]">{t("queryResultPanel.sources")}</span>
               {tableNames.map((tableName) => (
-                <span key={tableName} className="font-mono text-ink-2">{tableName}</span>
+                <span key={tableName} className="font-mono text-muted-foreground">{tableName}</span>
               ))}
             </div>
           ) : null}
         </>
       ) : (
-        <div className="mt-3 border-l-2 border-rule bg-surface px-3 py-3 text-ed-sm text-ink-2 italic font-editorial">
+        <div className="mt-3 border-l-2 border-border bg-card px-3 py-3 text-ed-sm text-muted-foreground italic font-sans">
           {t("queryResultPanel.noRows")}
         </div>
       )}
@@ -4838,31 +5486,31 @@ function AgentStepsPanel({
 
   if (steps.length === 0) {
     return isStreaming ? (
-      <div className="border-l border-rule pl-4 py-2">
-        <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+      <div className="border-l border-border pl-4 py-2">
+        <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
           {t("runtime.agentTrace")}
-          <Loader2 className="h-3 w-3 animate-spin text-ink-3" />
-          <span className="text-[10px] text-ochre normal-case tracking-normal italic font-editorial">{t("runtime.live")}</span>
+          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+          <span className="text-[10px] text-primary normal-case tracking-normal italic font-sans">{t("runtime.live")}</span>
         </div>
       </div>
     ) : null;
   }
 
   return (
-    <div className="border-l border-rule pl-4 py-2">
+    <div className="border-l border-border pl-4 py-2">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+        <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
           {t("runtime.agentTrace")}
           <span className="tabular-nums">({steps.length})</span>
           {isStreaming ? (
-            <span className="text-[10px] text-ochre normal-case tracking-normal italic font-editorial">{t("runtime.live")}</span>
+            <span className="text-[10px] text-primary normal-case tracking-normal italic font-sans">{t("runtime.live")}</span>
           ) : null}
         </div>
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className="h-6 rounded-sm px-1.5 text-[11px] text-ink-3 hover:text-ink-1 hover:bg-transparent"
+          className="h-6 rounded-sm px-1.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-transparent"
           onClick={() => {
             const next = !isExpanded;
             setIsExpanded(next);
@@ -4886,7 +5534,7 @@ function AgentStepsPanel({
             <li key={step.key} className="text-ed-xs">
               <button
                 type="button"
-                className="flex w-full items-baseline justify-between gap-2 text-left py-1 hover:text-ink-1 transition-colors group"
+                className="flex w-full items-baseline justify-between gap-2 text-left py-1 hover:text-foreground transition-colors group"
                 onClick={() =>
                   setOpenSteps((current) => ({
                     ...current,
@@ -4895,14 +5543,14 @@ function AgentStepsPanel({
                 }
               >
                 <div className="flex items-baseline gap-2 min-w-0">
-                  <span className="font-mono text-ink-3 tabular-nums">{String(idx + 1).padStart(2, "0")}</span>
-                  <span className={cn("flex-shrink-0 self-center", isWarning ? "text-ochre" : "text-data-pos")}>
+                  <span className="font-mono text-muted-foreground tabular-nums">{String(idx + 1).padStart(2, "0")}</span>
+                  <span className={cn("flex-shrink-0 self-center", isWarning ? "text-primary" : "text-data-pos")}>
                     {isWarning ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
                   </span>
-                  <span className="text-ink-2 group-hover:text-ink-1 truncate">{step.title}</span>
+                  <span className="text-muted-foreground group-hover:text-foreground truncate">{step.title}</span>
                 </div>
                 {typeof step.duration === "number" ? (
-                  <span className="font-mono text-[10px] text-ink-3 tabular-nums flex-shrink-0">
+                  <span className="font-mono text-[10px] text-muted-foreground tabular-nums flex-shrink-0">
                     {step.duration.toFixed(1)}ms
                   </span>
                 ) : null}
@@ -4913,7 +5561,7 @@ function AgentStepsPanel({
                   isOpen ? "max-h-40 pb-1.5 opacity-100" : "max-h-0 opacity-0"
                 )}
               >
-                <div className="text-[11px] leading-relaxed text-ink-3 italic font-editorial">
+                <div className="text-[11px] leading-relaxed text-muted-foreground italic font-sans">
                   {step.detail || t("runtime.completedStep")}
                 </div>
               </div>
@@ -4949,39 +5597,39 @@ function SqlPreviewPanel({
       : Array.isArray(queryResult?.rows)
         ? queryResult.rows.length
         : 0;
-  const [sqlOpen, setSqlOpen] = useState(true);
+  const [sqlOpen, setSqlOpen] = useState(false);
 
   if (!sql) {
     return (
-      <div className="border-l border-rule pl-4 py-6 text-ed-sm text-ink-3 italic font-editorial">
+      <div className="border-l border-border pl-4 py-6 text-ed-sm text-muted-foreground italic font-sans">
         {t("sqlPanel.noSql")}
       </div>
     );
   }
 
   return (
-    <div className="border-l border-rule pl-4">
-      <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-rule">
+    <div className="border-l border-border pl-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-border">
         <div>
-          <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+          <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
             {t("sqlPanel.eyebrow")}
           </div>
-          <div className="font-editorial mt-1.5 text-[22px] leading-[1.15] text-ink-1">
+          <div className="font-sans mt-1.5 text-[22px] leading-[1.15] text-foreground">
             {t("sqlPanel.title")}
           </div>
-          <p className="mt-2 text-ed-sm leading-relaxed text-ink-2 max-w-[52ch]">
+          <p className="mt-2 text-ed-sm leading-relaxed text-muted-foreground max-w-[52ch]">
             {t("sqlPanel.description")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {queryResult ? <ScopeBadge queryResult={queryResult} tone="prominent" /> : null}
-          <span className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0.5 text-[10px] tabular-nums text-ink-2">
+          <span className="inline-flex items-center rounded-sm border border-border bg-background px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
             {humanizeExecutionMode(executionMode, t)}
           </span>
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 rounded-sm px-2.5 text-ed-xs text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1"
+            className="h-7 rounded-sm px-2.5 text-ed-xs text-muted-foreground border border-border hover:border-primary/40 hover:bg-transparent hover:text-foreground"
             onClick={() => onCopySql(message.id, sql)}
           >
             <Copy className="mr-1.5 h-3.5 w-3.5" />
@@ -4993,25 +5641,25 @@ function SqlPreviewPanel({
       <div className="space-y-5 py-5">
         <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-3">
           <div>
-            <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("queryResultPanel.scope")}</dt>
-            <dd className="mt-1 text-ed-sm font-medium text-ink-1">{scopeLabel}</dd>
+            <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{t("queryResultPanel.scope")}</dt>
+            <dd className="mt-1 text-ed-sm font-medium text-foreground">{scopeLabel}</dd>
           </div>
           <div>
-            <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("sqlPanel.tables")}</dt>
-            <dd className="mt-1 text-ed-sm font-medium text-ink-1 tabular-nums">{tables.length}</dd>
+            <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{t("sqlPanel.tables")}</dt>
+            <dd className="mt-1 text-ed-sm font-medium text-foreground tabular-nums">{tables.length}</dd>
           </div>
           <div>
-            <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">{t("sqlPanel.rowsReturned")}</dt>
-            <dd className="mt-1 text-ed-sm font-medium text-ink-1 tabular-nums">{rowCount}</dd>
+            <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{t("sqlPanel.rowsReturned")}</dt>
+            <dd className="mt-1 text-ed-sm font-medium text-foreground tabular-nums">{rowCount}</dd>
           </div>
         </dl>
 
         {explanation ? (
           <div>
-            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
               {t("sqlPanel.queryExplanation")}
             </div>
-            <p className="mt-2 text-ed-sm leading-[1.75] text-ink-1 max-w-[68ch]">
+            <p className="mt-2 text-ed-sm leading-[1.75] text-foreground max-w-[68ch]">
               {explanation}
             </p>
           </div>
@@ -5019,12 +5667,12 @@ function SqlPreviewPanel({
 
         {logicSummary ? (
           <div>
-            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
               {t("sqlPanel.logicSummary")}
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {Object.entries(logicSummary).map(([key, value]) => (
-                <span key={key} className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0.5 text-[11px] text-ink-2 font-mono tabular-nums">
+                <span key={key} className="inline-flex items-center rounded-sm border border-border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground font-mono tabular-nums">
                   {key}: {String(value)}
                 </span>
               ))}
@@ -5034,12 +5682,12 @@ function SqlPreviewPanel({
 
         {tables.length > 0 ? (
           <div>
-            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
               {t("sqlPanel.tablesReferenced")}
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {tables.map((tableName) => (
-                <span key={tableName} className="inline-flex items-center rounded-sm border border-rule bg-paper px-1.5 py-0.5 text-[11px] text-ink-2 font-mono">
+                <span key={tableName} className="inline-flex items-center rounded-sm border border-border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground font-mono">
                   {tableName}
                 </span>
               ))}
@@ -5049,41 +5697,41 @@ function SqlPreviewPanel({
 
         {policy ? (
           <div>
-            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
               {t("sqlPanel.runtimePolicy")}
             </div>
             <dl className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-3">
               <div>
-                <dt className="text-[11px] text-ink-3">{t("sqlPanel.yourRole")}</dt>
-                <dd className="mt-0.5 text-ed-sm font-medium text-ink-1 capitalize">{policy.userRole ? String(policy.userRole).toLowerCase() : "—"}</dd>
+                <dt className="text-[11px] text-muted-foreground">{t("sqlPanel.yourRole")}</dt>
+                <dd className="mt-0.5 text-ed-sm font-medium text-foreground capitalize">{policy.userRole ? String(policy.userRole).toLowerCase() : "—"}</dd>
               </div>
               <div>
-                <dt className="text-[11px] text-ink-3">{t("sqlPanel.maxRows")}</dt>
-                <dd className="mt-0.5 text-ed-sm font-medium text-ink-1 tabular-nums">{policy.sqlMaxRows != null ? String(policy.sqlMaxRows) : "—"}</dd>
+                <dt className="text-[11px] text-muted-foreground">{t("sqlPanel.maxRows")}</dt>
+                <dd className="mt-0.5 text-ed-sm font-medium text-foreground tabular-nums">{policy.sqlMaxRows != null ? String(policy.sqlMaxRows) : "—"}</dd>
               </div>
               <div>
-                <dt className="text-[11px] text-ink-3">{t("sqlPanel.personalData")}</dt>
-                <dd className="mt-0.5 text-ed-sm font-medium text-ink-1">{policy.piiAccess ? t("sqlPanel.included") : t("sqlPanel.excluded")}</dd>
+                <dt className="text-[11px] text-muted-foreground">{t("sqlPanel.personalData")}</dt>
+                <dd className="mt-0.5 text-ed-sm font-medium text-foreground">{policy.piiAccess ? t("sqlPanel.included") : t("sqlPanel.excluded")}</dd>
               </div>
             </dl>
           </div>
         ) : null}
 
-        <div className="border-t border-rule pt-4">
+        <div className="border-t border-border pt-4">
           <button
             type="button"
             className="flex w-full items-center justify-between gap-3 text-left"
             onClick={() => setSqlOpen((current) => !current)}
           >
             <div>
-              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-3">
+              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 {t("sqlPanel.rawSql")}
               </div>
-              <div className="mt-0.5 text-ed-sm font-medium text-ink-1">
+              <div className="mt-0.5 text-ed-sm font-medium text-foreground">
                 {sqlOpen ? t("sqlPanel.collapseStatement") : t("sqlPanel.expandStatement")}
               </div>
             </div>
-            {sqlOpen ? <ChevronUp className="h-4 w-4 text-ink-3" /> : <ChevronDown className="h-4 w-4 text-ink-3" />}
+            {sqlOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
 
           <div
@@ -5092,7 +5740,7 @@ function SqlPreviewPanel({
               sqlOpen ? "max-h-[520px] mt-3" : "max-h-0"
             )}
           >
-            <pre className="font-mono min-w-full whitespace-pre-wrap break-words border border-rule bg-surface px-4 py-3.5 text-[12.5px] leading-[1.65] text-ink-1">
+            <pre className="font-mono min-w-full whitespace-pre-wrap break-words border border-border bg-card px-4 py-3.5 text-[12.5px] leading-[1.65] text-foreground">
               {sql}
             </pre>
           </div>
@@ -5137,14 +5785,14 @@ function ScopeBadge({
   const Icon = kind === "personal" ? UserRound : kind === "platform" ? Globe : Database;
   const toneClass =
     kind === "personal"
-      ? "border-ochre/40 text-ochre"
+      ? "border-primary/40 text-primary"
       : kind === "platform"
         ? "border-[hsl(var(--data-info))]/40 text-data-info"
-        : "border-rule text-ink-3";
+        : "border-border text-muted-foreground";
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-sm border bg-paper font-medium normal-case tracking-normal",
+        "inline-flex items-center gap-1.5 rounded-sm border bg-background font-medium normal-case tracking-normal",
         tone === "prominent" ? "px-2 py-0.5 text-[11px]" : "px-1.5 py-0 text-[10px]",
         toneClass
       )}
@@ -5404,7 +6052,7 @@ function FollowUpActions({
   if (variant === "inline") {
     return (
       <div className="flex items-center gap-3 overflow-hidden" data-follow-up-actions>
-        <span className="flex-shrink-0 text-[10px] font-medium uppercase tracking-[0.2em] text-ink-3">
+        <span className="flex-shrink-0 text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
           {t("followUps.next")}
         </span>
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
@@ -5425,14 +6073,14 @@ function FollowUpActions({
                 className={cn(
                   "group inline-flex flex-shrink-0 items-center gap-1.5 rounded-sm border px-2 py-1 text-[11px] transition-colors",
                   isPrimary
-                    ? "border-rule bg-paper text-ink-1 font-medium hover:border-ochre hover:text-ochre"
-                    : "border-rule bg-paper text-ink-2 hover:border-ink-2 hover:text-ink-1",
-                  disabled && "cursor-not-allowed opacity-50 hover:border-rule",
+                    ? "border-border bg-background text-foreground font-medium hover:border-primary hover:text-primary"
+                    : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                  disabled && "cursor-not-allowed opacity-50 hover:border-border",
                   isDone && "border-[hsl(var(--data-pos))]/40 text-data-pos"
                 )}
                 title={action.description || action.label}
               >
-                <span className={cn("flex h-3 w-3 flex-shrink-0 items-center justify-center", isDone ? "text-data-pos" : "text-ink-3")}>
+                <span className={cn("flex h-3 w-3 flex-shrink-0 items-center justify-center", isDone ? "text-data-pos" : "text-muted-foreground")}>
                   {isDone ? <CheckCircle className="h-3 w-3" /> : followUpIconFor(action)}
                 </span>
                 <span className="max-w-[180px] truncate">{action.label}</span>
@@ -5447,12 +6095,12 @@ function FollowUpActions({
   return (
     <div
       className={cn(
-        "border-l border-rule pl-4",
+        "border-l border-border pl-4",
         compact ? "py-2" : "py-3"
       )}
       data-follow-up-actions
     >
-      <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+      <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
         {t("followUps.nextSteps")}
       </div>
       <ul className={cn("flex flex-col", compact ? "mt-1.5 gap-0.5" : "mt-2 gap-1")}>
@@ -5472,15 +6120,15 @@ function FollowUpActions({
                 }}
                 className={cn(
                   "group inline-flex items-baseline gap-2.5 text-left text-ed-sm transition-colors py-0.5",
-                  isPrimary ? "text-ink-1 font-medium" : "text-ink-2",
-                  "underline decoration-rule decoration-1 underline-offset-[5px]",
-                  !disabled && "hover:text-ochre hover:decoration-ochre",
+                  isPrimary ? "text-foreground font-medium" : "text-muted-foreground",
+                  "underline decoration-border decoration-1 underline-offset-[5px]",
+                  !disabled && "hover:text-primary hover:decoration-primary",
                   disabled && "cursor-not-allowed opacity-50",
                   isDone && "text-data-pos no-underline"
                 )}
                 title={action.description || action.label}
               >
-                <span className={cn("flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center self-center", isDone ? "text-data-pos" : "text-ink-3")}>
+                <span className={cn("flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center self-center", isDone ? "text-data-pos" : "text-muted-foreground")}>
                   {isDone ? <CheckCircle className="h-3 w-3" /> : followUpIconFor(action)}
                 </span>
                 <span className="max-w-[280px] truncate">{action.label}</span>
@@ -5537,9 +6185,9 @@ function AnalysisWorkspacePanel({
   const citations = Array.isArray(metadata?.citations) ? metadata!.citations! : [];
   const availableTabs: Array<{ id: AnalysisTab; label: string; visible: boolean }> = [
     { id: "data", label: t("analysisWorkspace.dataPreview"), visible: !!queryResult },
-    { id: "sql", label: t("analysisWorkspace.sqlQuery"), visible: !!queryResult?.sql },
     { id: "chart", label: t("analysisWorkspace.chart"), visible: !!chartSpec },
     { id: "sources", label: t("analysisWorkspace.sources"), visible: citations.length > 0 },
+    { id: "sql", label: t("analysisWorkspace.advanced"), visible: !!queryResult?.sql },
   ];
   const visibleTabs = availableTabs.filter((tab) => tab.visible);
   const hasFollowUpActions = followUpActions.length > 0;
@@ -5552,15 +6200,25 @@ function AnalysisWorkspacePanel({
 
   if (!message || !metadata) {
     return (
-      <div className="flex h-full items-center justify-center px-6 py-8">
+      <div className="relative flex h-full items-center justify-center px-6 py-8">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute right-3 top-3 h-8 w-8 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          onClick={onClose}
+          title={t("analysisWorkspace.hide")}
+        >
+          <X className="h-4 w-4" />
+        </Button>
         <div className="max-w-sm text-left">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-ink-3 font-medium">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground font-medium">
             {t("analysisWorkspace.title")}
           </div>
-          <h3 className="font-editorial mt-4 text-[28px] leading-[1.1] text-ink-1">
+          <h3 className="font-sans mt-4 text-[28px] leading-[1.1] text-foreground">
             {t("analysisWorkspace.emptyTitle")}
           </h3>
-          <p className="mt-4 text-ed-sm leading-[1.7] text-ink-2">
+          <p className="mt-4 text-ed-sm leading-[1.7] text-muted-foreground">
             {t("analysisWorkspace.emptyDesc")}
           </p>
         </div>
@@ -5594,16 +6252,16 @@ function AnalysisWorkspacePanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-rule px-4 pt-3 pb-3 bg-paper sm:px-5">
+      <div className="shrink-0 border-b border-border px-4 pt-3 pb-3 bg-background sm:px-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+            <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
               {t("analysisWorkspace.title")}
               {queryResult ? (
                 <ScopeBadge queryResult={queryResult} tone="prominent" />
               ) : null}
             </div>
-            <div className="font-editorial mt-1.5 text-[20px] leading-[1.2] text-ink-1">
+            <div className="font-sans mt-1.5 text-[20px] leading-[1.2] text-foreground">
               {chartTitle}
             </div>
           </div>
@@ -5616,8 +6274,8 @@ function AnalysisWorkspacePanel({
                 className={cn(
                   "h-8 rounded-sm px-2.5 text-ed-xs border border-transparent transition-colors",
                   isSaved
-                    ? "text-data-pos border-rule"
-                    : "text-ink-2 hover:text-ink-1 hover:border-rule hover:bg-surface"
+                    ? "text-data-pos border-border"
+                    : "text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted"
                 )}
                 onClick={(event) => {
                   event.preventDefault();
@@ -5637,7 +6295,7 @@ function AnalysisWorkspacePanel({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-sm text-ink-3 hover:bg-surface hover:text-ink-1"
+                className="h-8 w-8 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
@@ -5652,7 +6310,7 @@ function AnalysisWorkspacePanel({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-sm text-ink-3 hover:bg-surface hover:text-ink-1"
+              className="h-8 w-8 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -5665,13 +6323,13 @@ function AnalysisWorkspacePanel({
           </div>
         </div>
         {prompt ? (
-          <div className="mt-3 border-l-2 border-rule bg-surface px-3 py-2 text-ed-sm italic text-ink-2 font-editorial leading-relaxed">
+          <div className="mt-3 border-l-2 border-border bg-card px-3 py-2 text-ed-sm italic text-muted-foreground font-sans leading-relaxed">
             &ldquo;{prompt}&rdquo;
           </div>
         ) : null}
       </div>
 
-      <div className="shrink-0 border-b border-rule bg-paper px-4 py-0 sm:px-5">
+      <div className="shrink-0 border-b border-border bg-background px-4 py-0 sm:px-5">
         <div className="flex flex-wrap items-center gap-0">
           {visibleTabs.map((tab) => (
             <button
@@ -5681,8 +6339,8 @@ function AnalysisWorkspacePanel({
               className={cn(
                 "px-3 py-2.5 text-ed-xs font-medium transition-colors border-b-2 -mb-px",
                 activeTab === tab.id
-                  ? "border-ochre text-ink-1"
-                  : "border-transparent text-ink-3 hover:text-ink-1"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
               {tab.label}
@@ -5693,7 +6351,7 @@ function AnalysisWorkspacePanel({
               <Button
                 variant="ghost"
                 size="sm"
-                className="my-1.5 h-7 rounded-sm px-2.5 text-ed-xs text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1"
+                className="my-1.5 h-7 rounded-sm px-2.5 text-ed-xs text-muted-foreground border border-border hover:border-primary/40 hover:bg-transparent hover:text-foreground"
                 onClick={onExpand}
                 title={t("analysisWorkspace.fullScreenTitle")}
               >
@@ -5705,7 +6363,7 @@ function AnalysisWorkspacePanel({
               <Button
                 variant="ghost"
                 size="sm"
-                className="my-1.5 h-7 rounded-sm px-2.5 text-ed-xs text-ink-2 border border-rule hover:border-ink-2 hover:bg-transparent hover:text-ink-1"
+                className="my-1.5 h-7 rounded-sm px-2.5 text-ed-xs text-muted-foreground border border-border hover:border-primary/40 hover:bg-transparent hover:text-foreground"
                 onClick={exportCsv}
               >
                 <Download className="mr-1.5 h-3.5 w-3.5" />
@@ -5716,7 +6374,7 @@ function AnalysisWorkspacePanel({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden bg-paper">
+      <div className="min-h-0 flex-1 overflow-hidden bg-background">
         <div className="h-full overflow-y-auto px-2 py-4 sm:px-3">
           <div className="space-y-4">
             {activeTab === "data" && queryResult ? (
@@ -5735,8 +6393,8 @@ function AnalysisWorkspacePanel({
               />
             ) : null}
             {activeTab === "sources" ? (
-              <div className="border-l border-rule pl-4">
-                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+              <div className="border-l border-border pl-4">
+                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                   {t("analysisWorkspace.sources")}
                 </div>
                 <ol className="mt-4 space-y-4 list-none">
@@ -5746,15 +6404,15 @@ function AnalysisWorkspacePanel({
                       const label = String(citation.title || citation.kind || `source-${index + 1}`);
                       return (
                         <li key={`${label}-${index}`} className="flex items-baseline gap-3 text-ed-sm leading-relaxed">
-                          <span className="font-mono text-ed-xs text-ink-3 tabular-nums min-w-[1.5em]">{String(index + 1).padStart(2, "0")}</span>
+                          <span className="font-mono text-ed-xs text-muted-foreground tabular-nums min-w-[1.5em]">{String(index + 1).padStart(2, "0")}</span>
                           <div className="flex-1">
-                            <div className="font-medium text-ink-1">{label}</div>
+                            <div className="font-medium text-foreground">{label}</div>
                             {courseId ? (
                               <a
                                 href={`/courses/${courseId}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="mt-1 inline-flex items-center gap-1 text-ed-xs text-ink-2 underline decoration-rule decoration-1 underline-offset-4 hover:text-ochre hover:decoration-ochre"
+                                className="mt-1 inline-flex items-center gap-1 text-ed-xs text-muted-foreground underline decoration-border decoration-1 underline-offset-4 hover:text-primary hover:decoration-primary"
                               >
                                 {t("analysisWorkspace.openSource")}
                                 <ExternalLink className="h-3 w-3" />
@@ -5765,7 +6423,7 @@ function AnalysisWorkspacePanel({
                       );
                     })
                   ) : (
-                    <div className="text-ed-sm text-ink-3 italic font-editorial">{t("analysisWorkspace.noSources")}</div>
+                    <div className="text-ed-sm text-muted-foreground italic font-sans">{t("analysisWorkspace.noSources")}</div>
                   )}
                 </ol>
               </div>
@@ -5775,7 +6433,7 @@ function AnalysisWorkspacePanel({
       </div>
 
       {hasFollowUpActions && message ? (
-        <div className="shrink-0 border-t border-rule bg-paper px-3 py-2 sm:px-4">
+        <div className="shrink-0 border-t border-border bg-background px-3 py-2 sm:px-4">
           <FollowUpActions
             message={message}
             actions={followUpActions}
@@ -5830,6 +6488,7 @@ function FullscreenAnalysisView({
   const citations = Array.isArray(metadata?.citations) ? metadata!.citations! : [];
   const title = String(chartSpec?.title || queryResult?.title || t("analysisWorkspace.fallbackTitle"));
   const answerContent = String(message.content || "").replace(/▌+$/, "").trim();
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const effectiveChartSpec = chartSpec
     ? chartTypeOverride
       ? { ...chartSpec, type: chartTypeOverride }
@@ -5841,41 +6500,41 @@ function FullscreenAnalysisView({
       role="dialog"
       aria-modal="true"
       aria-label={t("analysisWorkspace.aria")}
-      className="ai-chat-theme font-ui fixed inset-0 z-[60] flex flex-col bg-ink-1/60"
+      className="ai-chat-theme font-ui fixed inset-0 z-[60] flex flex-col bg-primary/60"
     >
       <div
         className="absolute inset-0"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="relative m-0 flex h-full w-full flex-col overflow-hidden bg-paper sm:m-4 sm:h-[calc(100vh-2rem)] sm:rounded-sm sm:border sm:border-rule">
-        <div className="flex items-start justify-between gap-3 border-b border-rule bg-paper px-4 py-4 sm:px-6">
+      <div className="relative m-0 flex h-full w-full flex-col overflow-hidden bg-background sm:m-4 sm:h-[calc(100vh-2rem)] sm:rounded-sm sm:border sm:border-border">
+        <div className="flex items-start justify-between gap-3 border-b border-border bg-background px-4 py-4 sm:px-6">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-ink-3">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
               {t("analysisWorkspace.title")}
               {readOnly ? (
-                <span className="inline-flex items-center rounded-sm border border-rule bg-surface px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-ink-2">
+                <span className="inline-flex items-center rounded-sm border border-border bg-card px-2 py-0.5 text-[10px] font-normal normal-case tracking-normal text-muted-foreground">
                   {t("analysisWorkspace.readOnlySaved")}
                 </span>
               ) : null}
               {queryResult ? <ScopeBadge queryResult={queryResult} tone="prominent" /> : null}
               {metadata?.intent ? (
-                <span className="inline-flex items-center rounded-sm border border-rule bg-surface px-1.5 py-0 text-[10px] font-normal normal-case tracking-normal text-ink-2">
+                <span className="inline-flex items-center rounded-sm border border-border bg-card px-1.5 py-0 text-[10px] font-normal normal-case tracking-normal text-muted-foreground">
                   {humanizeIntent(metadata.intent, t)}
                 </span>
               ) : null}
               {metadata?.resolvedMode ? (
-                <span className="inline-flex items-center rounded-sm border border-rule bg-surface px-1.5 py-0 text-[10px] font-normal normal-case tracking-normal text-ink-2">
+                <span className="inline-flex items-center rounded-sm border border-border bg-card px-1.5 py-0 text-[10px] font-normal normal-case tracking-normal text-muted-foreground">
                   {humanizeMode(metadata.resolvedMode, t)}
                 </span>
               ) : null}
             </div>
-            <div className="font-editorial mt-3 text-[clamp(1.75rem,3vw,2.5rem)] leading-[1.1] text-ink-1">
+            <div className="font-sans mt-3 text-[clamp(1.75rem,3vw,2.5rem)] leading-[1.1] text-foreground">
               {title}
             </div>
             {prompt ? (
-              <div className="mt-3 border-l-2 border-rule bg-surface px-3 py-2 text-ed-sm italic font-editorial text-ink-2 leading-relaxed">
-                <span className="mr-2 inline-flex items-center text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3 not-italic font-ui">
+              <div className="mt-3 border-l-2 border-border bg-card px-3 py-2 text-ed-sm italic font-sans text-muted-foreground leading-relaxed">
+                <span className="mr-2 inline-flex items-center text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground not-italic font-ui">
                   {t("analysisWorkspace.prompt")}
                 </span>
                 &ldquo;{prompt}&rdquo;
@@ -5891,10 +6550,10 @@ function FullscreenAnalysisView({
                 className={cn(
                   "h-8 rounded-sm px-2.5 text-ed-xs border border-transparent transition-colors",
                   readOnly
-                    ? "text-[hsl(var(--data-neg))] hover:border-rule hover:bg-surface"
+                    ? "text-[hsl(var(--data-neg))] hover:border-border hover:bg-muted"
                     : isSaved
-                      ? "text-data-pos border-rule"
-                      : "text-ink-2 hover:text-ink-1 hover:border-rule hover:bg-surface"
+                      ? "text-data-pos border-border"
+                      : "text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted"
                 )}
                 onClick={onSave}
                 title={
@@ -5919,7 +6578,7 @@ function FullscreenAnalysisView({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-sm text-ink-3 hover:bg-surface hover:text-ink-1"
+              className="h-8 w-8 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={onClose}
               title={t("analysisWorkspace.minimizeTitle")}
             >
@@ -5929,7 +6588,7 @@ function FullscreenAnalysisView({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-sm text-ink-3 hover:bg-surface hover:text-ink-1"
+              className="h-8 w-8 rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={onClose}
               title={t("analysisWorkspace.closeTitle")}
             >
@@ -5938,14 +6597,14 @@ function FullscreenAnalysisView({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto bg-paper px-4 py-6 sm:px-8">
+        <div className="min-h-0 flex-1 overflow-auto bg-background px-4 py-6 sm:px-8">
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
             {answerContent ? (
-              <section className="border-l border-rule pl-4">
-                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+              <section className="border-l border-border pl-4">
+                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                   {t("analysisWorkspace.answer")}
                 </div>
-                <div className="mt-3 text-ed-base leading-[1.75] text-ink-1 max-w-[68ch]">
+                <div className="mt-3 text-ed-base leading-[1.75] text-foreground max-w-[68ch]">
                   <MarkdownRenderer content={answerContent} />
                 </div>
               </section>
@@ -5975,19 +6634,38 @@ function FullscreenAnalysisView({
                 </section>
               ) : null}
               {queryResult?.sql ? (
-                <section className="xl:col-span-2">
-                  <SqlPreviewPanel
-                    message={message}
-                    queryResult={queryResult}
-                    onCopySql={onCopySql}
-                  />
+                <section className="xl:col-span-2 border-l border-border pl-4">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-3 border-b border-border pb-3 text-left"
+                    onClick={() => setAdvancedOpen((current) => !current)}
+                  >
+                    <div>
+                      <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                        {t("analysisWorkspace.advanced")}
+                      </div>
+                      <div className="mt-1 text-ed-sm text-muted-foreground">
+                        {advancedOpen ? t("runtime.hide") : t("runtime.show")}
+                      </div>
+                    </div>
+                    {advancedOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                  </button>
+                  {advancedOpen ? (
+                    <div className="pt-4">
+                      <SqlPreviewPanel
+                        message={message}
+                        queryResult={queryResult}
+                        onCopySql={onCopySql}
+                      />
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
             </div>
 
             {citations.length > 0 ? (
-              <section className="border-l border-rule pl-4">
-                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-3">
+              <section className="border-l border-border pl-4">
+                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                   {t("analysisWorkspace.sources")}
                 </div>
                 <ol className="mt-4 space-y-4 list-none">
@@ -5998,15 +6676,15 @@ function FullscreenAnalysisView({
                     );
                     return (
                       <li key={`${label}-${index}`} className="flex items-baseline gap-3 text-ed-sm">
-                        <span className="font-mono text-ed-xs text-ink-3 tabular-nums min-w-[1.5em]">{String(index + 1).padStart(2, "0")}</span>
+                        <span className="font-mono text-ed-xs text-muted-foreground tabular-nums min-w-[1.5em]">{String(index + 1).padStart(2, "0")}</span>
                         <div className="flex-1">
-                          <div className="font-medium text-ink-1">{label}</div>
+                          <div className="font-medium text-foreground">{label}</div>
                           {courseId ? (
                             <a
                               href={`/courses/${courseId}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="mt-1 inline-flex items-center gap-1 text-ed-xs text-ink-2 underline decoration-rule decoration-1 underline-offset-4 hover:text-ochre hover:decoration-ochre"
+                              className="mt-1 inline-flex items-center gap-1 text-ed-xs text-muted-foreground underline decoration-border decoration-1 underline-offset-4 hover:text-primary hover:decoration-primary"
                             >
                               {t("analysisWorkspace.openSource")}
                               <ExternalLink className="h-3 w-3" />
@@ -6063,15 +6741,15 @@ function SavedAnalysisItem({
       className={cn(
         "group flex items-start gap-2 pl-3 pr-2 py-1.5 rounded-sm cursor-pointer transition-colors border-l-2",
         isActive
-          ? "border-ochre bg-surface text-ink-1"
-          : "border-transparent text-ink-2 hover:text-ink-1 hover:border-rule"
+          ? "border-primary bg-card text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
       )}
       onClick={onSelect}
       title={saved.prompt || saved.title}
     >
       <div className="flex-1 min-w-0">
-        <div className="text-ed-xs font-medium truncate text-ink-1">{saved.title}</div>
-        <div className="mt-0.5 flex items-center gap-1 text-[10px] text-ink-3 tabular-nums">
+        <div className="text-ed-xs font-medium truncate text-foreground">{saved.title}</div>
+        <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground tabular-nums">
           {saved.scopeLabel ? (
             <span className="truncate">{saved.scopeLabel}</span>
           ) : null}
@@ -6082,7 +6760,7 @@ function SavedAnalysisItem({
       <Button
         variant="ghost"
         size="icon"
-        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-ink-3 hover:bg-transparent hover:text-[hsl(var(--data-neg))]"
+        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:bg-transparent hover:text-[hsl(var(--data-neg))]"
         onClick={(e) => {
           e.stopPropagation();
           onDelete();
@@ -6112,8 +6790,8 @@ function SessionItem({
     <div
       className={`group flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-sm cursor-pointer transition-colors border-l-2 ${
         isActive
-          ? "border-ochre bg-surface text-ink-1"
-          : "border-transparent text-ink-2 hover:text-ink-1 hover:border-rule"
+          ? "border-primary bg-card text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
       }`}
       onClick={onSelect}
     >
@@ -6121,7 +6799,7 @@ function SessionItem({
       <Button
         variant="ghost"
         size="icon"
-        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-ink-3 hover:bg-transparent hover:text-[hsl(var(--data-neg))]"
+        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:bg-transparent hover:text-[hsl(var(--data-neg))]"
         onClick={(e) => {
           e.stopPropagation();
           onDelete();

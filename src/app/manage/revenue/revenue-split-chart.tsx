@@ -46,15 +46,15 @@ export function RevenueSplitChart({
       ];
 
   return (
-    <div className="space-y-4 rounded-2xl bg-[#1b1f2c]/90 p-5 shadow-[0_8px_32px_0_rgba(173,198,255,0.04)] backdrop-blur-xl">
+    <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Revenue Split</p>
-          <h3 className="mt-1 text-lg font-bold tracking-tight text-slate-100">
+          <h3 className="mt-1 text-lg font-bold tracking-tight text-foreground">
             {dashboardRole === "ADMIN" ? "System Share" : "Commission"}
           </h3>
         </div>
-        <div className="rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300">
+        <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
           {systemPercent}%
         </div>
       </div>
@@ -94,7 +94,7 @@ export function RevenueSplitChart({
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-3xl font-bold tracking-tight text-slate-100">{systemPercent}%</p>
+          <p className="text-3xl font-bold tracking-tight text-foreground">{systemPercent}%</p>
           <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">
             {dashboardRole === "ADMIN" ? "System Share" : "Commission"}
           </p>
@@ -102,21 +102,21 @@ export function RevenueSplitChart({
       </div>
 
       <div className="grid gap-2">
-        <div className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2 text-sm text-slate-200 shadow-[0_0_0_1px_rgba(173,198,255,0.05)]">
+        <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2 text-sm text-foreground">
           <span className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[#adc6ff] shadow-[0_0_12px_rgba(173,198,255,0.6)]" />
             Instructor ({instructorPercent}%)
           </span>
           <span>{formatCurrency(instructor)}</span>
         </div>
-        <div className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2 text-sm text-slate-200 shadow-[0_0_0_1px_rgba(173,198,255,0.05)]">
+        <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2 text-sm text-foreground">
           <span className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[#ffb95f] shadow-[0_0_12px_rgba(255,185,95,0.5)]" />
             System ({systemPercent}%)
           </span>
           <span>{formatCurrency(admin)}</span>
         </div>
-        <div className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2 text-sm text-slate-200 shadow-[0_0_0_1px_rgba(173,198,255,0.05)]">
+        <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2 text-sm text-foreground">
           <span>Gross Revenue</span>
           <span>{formatCurrency(gross)}</span>
         </div>

@@ -40,7 +40,11 @@
 // }
 
 "use client";
-import { getAccessTokenFromLocalStorage, handleErrorApi } from "@/lib/utils";
+import {
+  getAccessTokenFromLocalStorage,
+  handleErrorApi,
+  removeTokenFromLocalStorage,
+} from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useLogoutMutation } from "@/queries/useAuth";
@@ -59,7 +63,7 @@ export default function Logout() {
     const performLogout = async () => {
       try {
         await logoutMutation.mutateAsync();
-        localStorage.removeItem("accessToken");
+        removeTokenFromLocalStorage();
         setIsAuth(false);
         setRole(null);
         router.push("/login");

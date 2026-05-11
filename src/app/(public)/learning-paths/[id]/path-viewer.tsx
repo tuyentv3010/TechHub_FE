@@ -96,7 +96,7 @@ const CourseNode = ({ data }: any) => {
               />
             </div>
           ) : (
-            <div className="w-full h-32 rounded-md bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+            <div className="flex h-32 w-full items-center justify-center rounded-md bg-muted">
               <BookOpen className="h-8 w-8 text-muted-foreground" />
             </div>
           )}
@@ -291,7 +291,7 @@ export default function PathViewer({ pathId }: PathViewerProps) {
         minZoom={0.5}
         maxZoom={1.5}
       >
-        <Panel position="top-left" className="bg-background/95 backdrop-blur p-3 rounded-lg shadow-md">
+        <Panel position="top-left" className="rounded-lg border border-border bg-background p-3 shadow-sm">
           <div className="space-y-1">
             <h3 className="font-bold text-sm">{pathData.payload.data.title}</h3>
             <div className="flex gap-2">
@@ -307,14 +307,14 @@ export default function PathViewer({ pathId }: PathViewerProps) {
 
         <Controls 
           showInteractive={false}
-          className="bg-background/95 backdrop-blur"
+          className="bg-background"
         />
         <MiniMap 
           nodeColor={(node) => {
             if (node.type === 'rootNode') return '#3b82f6';
             return '#94a3b8';
           }}
-          className="bg-background/95 backdrop-blur"
+          className="bg-background"
         />
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
       </ReactFlow>

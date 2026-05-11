@@ -23,7 +23,7 @@ function SkillIcon({ skill }: { skill: Skill }) {
     <Link href={`/skills/${skill.id}`} className="block">
       <div className="relative group cursor-pointer">
         {/* Skill Icon Circle */}
-        <div className="w-14 h-14 md:w-16 md:h-16 lg:w-[72px] lg:h-[72px] rounded-full bg-white dark:bg-gray-800 shadow-lg border-2 border-gray-100 dark:border-gray-700 flex items-center justify-center overflow-hidden hover:shadow-xl hover:border-purple-400 dark:hover:border-purple-500 hover:scale-110 transition-all duration-300">
+        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors hover:border-primary/40 md:h-16 md:w-16 lg:h-[72px] lg:w-[72px]">
           {skill.thumbnail ? (
             <Image
               src={skill.thumbnail}
@@ -33,7 +33,7 @@ function SkillIcon({ skill }: { skill: Skill }) {
               className="w-9 h-9 md:w-10 md:h-10 lg:w-11 lg:h-11 object-contain"
             />
           ) : (
-            <span className="text-xl md:text-2xl font-bold text-purple-600 dark:text-purple-400">
+            <span className="text-xl font-bold text-primary md:text-2xl">
               {skill.name.charAt(0).toUpperCase()}
             </span>
           )}
@@ -148,7 +148,7 @@ function RotatingArc({
 // Loading Skeleton
 function LoadingSkeleton() {
   return (
-    <section className="py-16 md:py-24 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 overflow-hidden">
+    <section className="overflow-hidden bg-background py-16 md:py-24">
       <div className="container mx-auto px-4">
         <div className="h-10 w-64 bg-gray-200 dark:bg-gray-700 rounded-lg mx-auto mb-16 animate-pulse" />
         <div className="relative h-[500px]">
@@ -174,7 +174,7 @@ function LoadingSkeleton() {
 // Mobile Grid View
 function MobileGrid({ skills, title }: { skills: Skill[]; title?: string }) {
   return (
-    <section className="py-12 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+    <section className="bg-background py-12">
       <div className="container mx-auto px-4">
         {title && (
           <h2 className="text-2xl font-bold text-center mb-8 text-gray-900 dark:text-white">
@@ -192,9 +192,9 @@ function MobileGrid({ skills, title }: { skills: Skill[]; title?: string }) {
             >
               <Link
                 href={`/skills/${skill.id}`}
-                className="flex flex-col items-center p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all group"
+                className="group flex flex-col items-center rounded-lg border border-border bg-card p-3 shadow-sm transition-colors hover:border-primary/40"
               >
-                <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center overflow-hidden group-hover:scale-110 transition-transform">
+                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">
                   {skill.thumbnail ? (
                     <Image
                       src={skill.thumbnail}
@@ -204,7 +204,7 @@ function MobileGrid({ skills, title }: { skills: Skill[]; title?: string }) {
                       className="w-8 h-8 object-contain"
                     />
                   ) : (
-                    <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                    <span className="text-lg font-bold">
                       {skill.name.charAt(0).toUpperCase()}
                     </span>
                   )}
@@ -274,15 +274,15 @@ export function OrbitCategoriesSection({ title }: OrbitCategoriesSectionProps) {
 
   // Arc configurations - larger circles
   const arcConfigs = [
-    { radius: 280, color: "#22d3ee", skills: arc1Skills, duration: 25, reverse: false },
-    { radius: 450, color: "#a855f7", skills: arc2Skills, duration: 35, reverse: true },
-    { radius: 580, color: "#3b82f6", skills: arc3Skills, duration: 45, reverse: false },
+    { radius: 280, color: "#0f766e", skills: arc1Skills, duration: 25, reverse: false },
+    { radius: 450, color: "#1d4ed8", skills: arc2Skills, duration: 35, reverse: true },
+    { radius: 580, color: "#64748b", skills: arc3Skills, duration: 45, reverse: false },
   ].filter(arc => arc.skills.length > 0);
 
   return (
     <>
       {/* Desktop/Tablet View */}
-      <section className="hidden md:block py-8 lg:py-12 bg-gradient-to-b from-white via-gray-50/30 to-white dark:from-gray-900 dark:via-gray-800/30 dark:to-gray-900 overflow-hidden">
+      <section className="hidden overflow-hidden bg-background py-8 md:block lg:py-12">
         <div className="container mx-auto px-4">
           {title && (
             <motion.h2

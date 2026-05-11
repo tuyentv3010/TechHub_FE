@@ -304,14 +304,14 @@ export default function NewVerifyEmailForm() {
       </div>
 
       {/* Right Side - Image */}
-      <div className="hidden lg:block lg:w-1/2 relative bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-700">
+      <div className="relative hidden bg-app-subtle lg:block lg:w-1/2">
         <div className="absolute inset-0 flex items-center justify-center p-12">
           <div className="relative w-full h-full max-w-2xl">
             <Image
               src="/hero/student-learning.png"
               alt="Student learning"
               fill
-              className="rounded-2xl object-cover shadow-2xl"
+              className="rounded-xl object-cover shadow-sm"
               priority
             />
           </div>

@@ -101,10 +101,7 @@ export const getFilePreviewCandidates = (file: FileLike): string[] => {
     );
   }
 
-  return collectAvailableUrls(
-    file.thumbnailUrl,
-    getPublicMinioUrlFromObjectKey(file.thumbnailObjectKey)
-  );
+  return [];
 };
 
 export const getFileSourceCandidates = (file: FileLike): string[] =>
@@ -113,7 +110,6 @@ export const getFileSourceCandidates = (file: FileLike): string[] =>
     file.cloudinarySecureUrl,
     file.publicUrl,
     file.cloudinaryUrl,
-    file.thumbnailUrl,
     getPublicMinioUrlFromObjectKey(file.objectKey)
   );
 

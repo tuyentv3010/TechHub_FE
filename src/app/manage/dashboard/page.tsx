@@ -307,7 +307,7 @@ export default function DashboardPage() {
               <Link href="/manage/ai-traces">
                 <Card className="cursor-pointer border-border/50 transition-colors hover:border-primary/50">
                   <CardContent className="flex items-center gap-3 pb-4 pt-5">
-                    <Activity className="h-8 w-8 text-purple-500" />
+                    <Activity className="h-8 w-8 text-primary" />
                     <div>
                       <p className="font-semibold">{t("overview.quickLinks.traces.title")}</p>
                       <p className="text-xs text-muted-foreground">

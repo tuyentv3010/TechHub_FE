@@ -45,6 +45,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
+import { getManageTableColumnClass } from "@/lib/manage-table";
 import TableSkeleton from "@/components/Skeleton";
 import {
   Select,
@@ -326,7 +327,7 @@ export default function CourseTable() {
         accessorKey: "totalEnrollments",
         header: t("EnrollmentsColumn"),
         cell: ({ row }) => (
-          <div className="text-center">{row.getValue("totalEnrollments")}</div>
+          <div>{row.getValue("totalEnrollments")}</div>
         ),
       },
       {
@@ -336,7 +337,7 @@ export default function CourseTable() {
           const rating = row.getValue("averageRating") as number | null;
           const count = row.original.ratingCount;
           return (
-            <div className="text-center">
+            <div>
               {rating ? (
                 <>
                   <div className="font-medium">⭐ {rating.toFixed(1)}</div>
@@ -473,7 +474,10 @@ export default function CourseTable() {
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
+                    <TableHead
+                      key={header.id}
+                      className={getManageTableColumnClass(header.column.id)}
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -493,7 +497,10 @@ export default function CourseTable() {
                     data-state={row.getIsSelected() && "selected"}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell
+                        key={cell.id}
+                        className={getManageTableColumnClass(cell.column.id)}
+                      >
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()

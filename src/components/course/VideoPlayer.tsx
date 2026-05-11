@@ -387,7 +387,7 @@ export default function VideoPlayer({
           className="absolute inset-0 flex items-center justify-center cursor-pointer"
           onClick={togglePlay}
         >
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/30 sm:h-20 sm:w-20">
             <Play className="w-8 h-8 sm:w-10 sm:h-10 text-white fill-white ml-1" />
           </div>
         </div>
@@ -562,7 +562,7 @@ export default function VideoPlayer({
 
               {/* Settings Menu */}
               {showSettingsMenu && (
-                <div className="absolute bottom-full right-0 mb-2 bg-black/95 rounded-lg overflow-hidden min-w-[180px] shadow-xl border border-white/10">
+                <div className="absolute bottom-full right-0 mb-2 min-w-[180px] overflow-hidden rounded-lg border border-white/10 bg-black/95 shadow-lg">
                   {/* Speed Option */}
                   <button
                     onClick={() => {
@@ -597,7 +597,7 @@ export default function VideoPlayer({
 
               {/* Speed Menu */}
               {showSpeedMenu && (
-                <div className="absolute bottom-full right-0 mb-2 bg-black/95 rounded-lg overflow-hidden min-w-[140px] shadow-xl border border-white/10">
+                <div className="absolute bottom-full right-0 mb-2 min-w-[140px] overflow-hidden rounded-lg border border-white/10 bg-black/95 shadow-lg">
                   <div className="px-4 py-2 text-white/60 text-xs uppercase tracking-wider border-b border-white/10">
                     Speed
                   </div>

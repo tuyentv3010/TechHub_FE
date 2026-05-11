@@ -174,6 +174,15 @@ export default function RevenueDashboardPage() {
       : role === "INSTRUCTOR"
         ? "INSTRUCTOR"
         : null;
+
+  useEffect(() => {
+    document.body.classList.add("manage-revenue-page");
+
+    return () => {
+      document.body.classList.remove("manage-revenue-page");
+    };
+  }, []);
+
   const initialFromDate = useMemo(() => formatDateInput(startOfMonth(new Date())), []);
   const initialToDate = useMemo(() => formatDateInput(new Date()), []);
   const [fromDate, setFromDate] = useState(initialFromDate);
@@ -573,12 +582,12 @@ export default function RevenueDashboardPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-start gap-3 text-sm">
-            <div className="rounded-2xl border border-border/60 bg-background/75 px-4 py-3 backdrop-blur">
+            <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
               <div className="text-muted-foreground">{t("RoleLabel")}</div>
               <div className="font-semibold">{dashboardRole}</div>
             </div>
             {dashboardRole === "INSTRUCTOR" && currentUserId && (
-              <div className="rounded-2xl border border-border/60 bg-background/75 px-4 py-3 backdrop-blur">
+              <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
                 <div className="text-muted-foreground">{t("InstructorIdLabel")}</div>
                 <div className="break-all font-semibold">{currentUserId}</div>
               </div>
@@ -637,7 +646,7 @@ export default function RevenueDashboardPage() {
           return (
             <Card
               key={card.title}
-              className={`border-blue-100 bg-gradient-to-br ${card.tone} from-white/95 shadow-sm dark:border-slate-700/50 dark:from-slate-900/75`}
+              className={`border-border bg-card ${card.tone} shadow-sm`}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">{card.title}</CardTitle>
@@ -849,7 +858,7 @@ export default function RevenueDashboardPage() {
               )}
 
               {!isHistoryLoading &&
-                transactions.map((row: NormalizedTransaction) => (
+                transactions.map((row: NormalizedTransaction, index) => (
                   <div
                     key={`mobile-${row.id || row.transactionId}`}
                     className="space-y-3 rounded-2xl border border-blue-100 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/40"
@@ -857,7 +866,7 @@ export default function RevenueDashboardPage() {
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          #{row.transactionId.slice(0, 12)}
+                          #{transactionPage * transactionPageSize + index + 1}
                         </p>
                         <p className="mt-1 break-words text-xs text-slate-500 dark:text-slate-400">
                           {formatDateTime(row.createdAt, locale, notAvailable)}
@@ -946,9 +955,9 @@ export default function RevenueDashboardPage() {
                   )}
 
                   {!isHistoryLoading &&
-                    transactions.map((row: NormalizedTransaction) => (
+                    transactions.map((row: NormalizedTransaction, index) => (
                       <tr key={row.id || row.transactionId} className="hover:bg-slate-100 dark:hover:bg-slate-900/70">
-                        <td className="px-4 py-3 font-medium">#{row.transactionId.slice(0, 12)}</td>
+                        <td className="px-4 py-3 font-medium">#{transactionPage * transactionPageSize + index + 1}</td>
                         <td className="px-4 py-3">{row.userLabel}</td>
                         <td className="px-4 py-3">{row.courseLabel}</td>
                         <td className="px-4 py-3 text-right">{formatCurrency(row.gross)}</td>
@@ -1142,10 +1151,10 @@ export default function RevenueDashboardPage() {
       <Sheet open={!!selectedTransactionId} onOpenChange={(open) => !open && setSelectedTransactionId("") }>
         <SheetContent
           side="right"
-          className="w-full border-l border-white/5 bg-[#1b1f2c] p-0 text-[#dfe2f3] shadow-2xl shadow-black/50 sm:max-w-2xl"
+          className="w-full border-l border-border bg-card p-0 text-foreground shadow-lg sm:max-w-2xl"
         >
           <div className="flex h-full flex-col overflow-y-auto">
-            <div className="sticky top-0 z-30 border-b border-white/5 bg-[#1b1f2c]/95 px-6 py-5 backdrop-blur-md">
+            <div className="sticky top-0 z-30 border-b border-border bg-card px-6 py-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="mb-1 flex items-center gap-2">
@@ -1214,7 +1223,7 @@ export default function RevenueDashboardPage() {
                         const StepIcon = step.icon;
                         return (
                           <div key={step.label} className="relative z-10 flex flex-col items-center gap-3 text-center">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4edea3] text-[#0f131f] ring-4 ring-[#1b1f2c]">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground ring-4 ring-background">
                               <StepIcon className="h-4 w-4" />
                             </div>
                             <div>
@@ -1269,7 +1278,7 @@ export default function RevenueDashboardPage() {
 
                   <section>
                     <h3 className="mb-4 text-sm font-semibold text-slate-300">{t("PurchasedItemsTitle")}</h3>
-                    <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#0f131f]">
+                    <div className="overflow-hidden rounded-xl border border-border bg-card">
                       <table className="w-full border-collapse text-left">
                         <thead className="bg-[#262a37]">
                           <tr>
@@ -1343,7 +1352,7 @@ export default function RevenueDashboardPage() {
 
                   <div className="flex gap-4 border-t border-white/5 pt-6">
                     <Button
-                      className="flex-1 rounded-full bg-gradient-to-tr from-[#adc6ff] to-[#4d8eff] py-6 font-bold text-[#001a42] shadow-lg shadow-[#adc6ff]/10 hover:opacity-95"
+                      className="flex-1 rounded-lg bg-primary py-6 font-bold text-primary-foreground shadow-sm hover:bg-primary/90"
                       onClick={() => navigator.clipboard.writeText(detailTransactionId)}
                     >
                       <ReceiptText className="mr-2 h-4 w-4" /> {t("CopyTransactionId")}

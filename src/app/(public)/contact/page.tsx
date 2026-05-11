@@ -88,8 +88,8 @@ export default function ContactPage() {
                   </div>
                 </div>
 
-                <div className="flex items-start space-x-4 p-6 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
-                  <div className="w-12 h-12 bg-purple-600 dark:bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="flex items-start space-x-4 rounded-xl bg-primary/10 p-6">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                     <Phone className="w-6 h-6 text-white" />
                   </div>
                   <div>

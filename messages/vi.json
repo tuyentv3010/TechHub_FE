@@ -68,6 +68,7 @@
     "executiveConsole": "Executive Console",
     "architecturalCurator": "Architectural Curator",
     "commandDeck": "Command Deck",
+    "backToHomepage": "Quay lại trang chủ",
     "session": "Phiên làm việc",
     "loadingNavigation": "Đang tải menu..."
   },
@@ -491,7 +492,7 @@
     "PermissionCountColumn": "Quyền",
     "PermissionCount": "{count} quyền",
     "ActionsColumn": "Hành động",
-    "SearchPlaceholder": "Tìm theo tên vai trò...",
+    "SearchPlaceholder": "Tìm vai trò, mô tả hoặc quyền...",
     "AddRole": "Thêm vai trò",
     "EditRole": "Chỉnh sửa vai trò",
     "AddRoleDescription": "Tạo vai trò mới và gán quyền tương ứng.",
@@ -533,7 +534,9 @@
     "UrlColumn": "URL",
     "ResourceColumn": "Resource",
     "ActionsColumn": "Hành động",
-    "SearchPlaceholder": "Tìm theo tên quyền...",
+    "SearchPlaceholder": "Tìm quyền, URL, method hoặc resource...",
+    "ExpandGroup": "Mở nhóm quyền",
+    "CollapseGroup": "Thu gọn nhóm quyền",
     "FilterMethod": "Lọc method",
     "FilterResource": "Lọc resource",
     "AllOption": "Tất cả",
@@ -1254,8 +1257,8 @@
       "content": "Xin chào {userName}! Mình là trợ lý AI của TechHub. Mình sẽ giúp cậu hiểu cách sử dụng trang chat AI này nhé. Bắt đầu thôi nào!"
     },
     "step2": {
-      "title": "Chế độ Chat 🎯",
-      "content": "Đây là nơi cậu chọn chế độ chat. Có 2 chế độ: \"Hỏi đáp chung\" để hỏi bất cứ điều gì, và \"Tư vấn học tập\" để được AI gợi ý lộ trình và khóa học phù hợp với cậu!"
+      "title": "Công cụ workspace",
+      "content": "Khu vực này có cài đặt hướng dẫn và tùy chỉnh cách AI phản hồi. Bạn có thể mở phần cài đặt để thêm chỉ dẫn cá nhân khi cần."
     },
     "step3": {
       "title": "Ô nhập tin nhắn 💬",
@@ -1572,6 +1575,19 @@
     "filesAttachedTitle": "Đã đính kèm file",
     "filesAttachedDesc": "{count} file đã sẵn sàng để AI phân tích.",
     "attachFailed": "Không thể đính kèm một hoặc nhiều file để AI phân tích.",
+    "attachFailedAuth": "Phiên đăng nhập đã hết hạn hoặc thiếu token. Vui lòng đăng nhập lại rồi đính kèm file.",
+    "attachFailedPermission": "Tài khoản của bạn chưa có quyền tải file lên để AI phân tích.",
+    "attachFailedTooLarge": "File vượt quá giới hạn upload của hệ thống.",
+    "attachFailedFileServiceUnavailable": "Dịch vụ file đang tạm thời không sẵn sàng. Vui lòng thử lại sau hoặc báo quản trị viên kiểm tra file-service.",
+    "attachFailedNetwork": "Không kết nối được server upload file. Vui lòng thử lại sau.",
+    "attachFailedWithReason": "Không thể đính kèm file: {reason}",
+    "unsupportedFilesTitle": "Một số file chưa được đính kèm",
+    "attachmentRejectedUnsupported": "{name} chưa phải định dạng AI có thể đọc.",
+    "attachmentRejectedTooLarge": "{name} có dung lượng {size}; giới hạn là {limit}.",
+    "supportedFilesHint": "Hỗ trợ: PDF, Word, PowerPoint, Excel, CSV/text/code và ảnh có chữ rõ.",
+    "attachmentOpenFailed": "Không thể mở file này. Vui lòng thử lại sau.",
+    "instructionsSavedTitle": "Đã lưu chỉ dẫn",
+    "instructionsSavedDesc": "Chỉ dẫn sẽ áp dụng cho các phản hồi AI tiếp theo.",
     "streamingFailed": "Streaming bị lỗi",
     "feedbackThanksTitle": "Cảm ơn phản hồi của bạn!",
     "feedbackThanksDesc": "Rất vui vì câu trả lời này hữu ích.",
@@ -1614,6 +1630,11 @@
       "instructionsLabel": "Chỉ dẫn",
       "instructionsPlaceholder": "VD: Trả lời bằng tiếng Việt, ngắn gọn, nêu giả định khi phân tích dữ liệu.",
       "instructionsHelp": "Các chỉ dẫn này áp dụng cho những phản hồi AI tiếp theo trong cuộc trò chuyện.",
+      "saveInstructions": "Lưu",
+      "resetInstructions": "Hoàn tác",
+      "instructionsUnsaved": "Chưa lưu thay đổi",
+      "instructionsSaved": "Đã lưu",
+      "instructionsNotSaved": "Chưa lưu",
       "hideConversations": "Ẩn cuộc trò chuyện",
       "showConversations": "Hiện cuộc trò chuyện",
       "savedAnalyses": "Phân tích đã lưu",
@@ -1676,7 +1697,7 @@
       "closeTitle": "Đóng xem trước",
       "truncated": "Nội dung xem trước đã được rút gọn. AI sẽ nhận phần nội dung giới hạn này để phân tích.",
       "unavailableTitle": "Không có preview",
-      "unavailableDesc": "File này không có nội dung text để xem trước. Dùng Mở nếu file có URL nguồn."
+      "unavailableDesc": "Loại file này chưa xem trước trực tiếp trong trình duyệt được. Bấm Mở để xem hoặc tải file gốc."
     },
     "runtime": {
       "thinking": "Đang suy nghĩ",
@@ -1791,6 +1812,7 @@
       "fallbackTitle": "Phân tích",
       "dataPreview": "Xem dữ liệu",
       "sqlQuery": "Câu SQL",
+      "advanced": "Nâng cao",
       "chart": "Biểu đồ",
       "sources": "Nguồn",
       "saved": "Đã lưu",

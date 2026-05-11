@@ -18,7 +18,12 @@ import { useLoginMutation, useRegisterMutation } from "@/queries/useAuth";
 import { useAppContext } from "@/components/app-provider";
 import Image from "next/image";
 import authApiRequest from "@/apiRequests/auth";
-import { useCallback, useEffect, useState } from "react";
+import {
+  getAccessTokenFromLocalStorage,
+  persistAuthSession,
+  removeTokenFromLocalStorage,
+} from "@/lib/utils";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type AuthMode = "login" | "register";
@@ -34,21 +39,15 @@ const CAROUSEL_IMAGES = [
 const CAROUSEL_INTERVAL = 5000;
 
 const carouselVariants = {
-  enter: (dir: number) => ({
+  enter: {
     opacity: 0,
-    scale: 1.04,
-    x: dir > 0 ? 60 : -60,
-  }),
+  },
   center: {
     opacity: 1,
-    scale: 1,
-    x: 0,
   },
-  exit: (dir: number) => ({
+  exit: {
     opacity: 0,
-    scale: 0.98,
-    x: dir > 0 ? -60 : 60,
-  }),
+  },
 };
 
 const INPUT_CLASS =
@@ -90,22 +89,13 @@ export default function AuthForm({
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [staySignedIn, setStaySignedIn] = useState(false);
 
   // ── Image Carousel ──
   const [currentImage, setCurrentImage] = useState(0);
-  const [carouselDirection, setCarouselDirection] = useState(1);
-
-  const goToImage = useCallback(
-    (index: number) => {
-      setCarouselDirection(index > currentImage ? 1 : -1);
-      setCurrentImage(index);
-    },
-    [currentImage]
-  );
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCarouselDirection(1);
       setCurrentImage((prev) =>
         prev === CAROUSEL_IMAGES.length - 1 ? 0 : prev + 1
       );
@@ -120,9 +110,9 @@ export default function AuthForm({
     : registerMutation.isPending;
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("accessToken");
+    const accessToken = getAccessTokenFromLocalStorage();
     if (!accessToken) {
-      localStorage.removeItem("userInfo");
+      removeTokenFromLocalStorage();
       setIsAuth(false);
       setRole(null);
     }
@@ -188,18 +178,20 @@ export default function AuthForm({
         return;
       }
 
-      localStorage.setItem("accessToken", result.payload.data.accessToken);
-      localStorage.setItem("refreshToken", result.payload.data.refreshToken);
-      await authApiRequest.setTokenToCookie({
-        accessToken: result.payload.data.accessToken,
-        refreshToken: result.payload.data.refreshToken,
+      const { accessToken, refreshToken, user } = result.payload.data;
+      persistAuthSession({
+        accessToken,
+        refreshToken,
+        userInfo: user,
+        remember: staySignedIn,
       });
-      localStorage.setItem(
-        "userInfo",
-        JSON.stringify(result.payload.data.user)
-      );
+      await authApiRequest.setTokenToCookie({
+        accessToken,
+        refreshToken,
+        remember: staySignedIn,
+      });
 
-      const userRole = result.payload.data.user.roles[0] || "USER";
+      const userRole = user.roles[0] || "USER";
       setIsAuth(true);
       setRole(userRole);
 
@@ -248,14 +240,9 @@ export default function AuthForm({
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] w-full flex overflow-hidden bg-white dark:bg-gray-950">
+    <div className="flex h-[calc(100vh-4rem)] w-full overflow-hidden bg-background">
       {/* ── Left Panel: Brand Image ── */}
-      <div className="hidden lg:flex lg:w-[52%] flex-col relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-800 to-indigo-900 dark:from-gray-900 dark:via-blue-950 dark:to-indigo-950">
-        {/* Decorative blur orbs */}
-        <div className="absolute top-[-60px] left-[-60px] w-96 h-96 rounded-full bg-blue-300/15 dark:bg-blue-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-[100px] right-[-40px] w-72 h-72 rounded-full bg-indigo-300/15 dark:bg-indigo-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 left-1/4 w-48 h-48 rounded-full bg-cyan-400/10 dark:bg-cyan-500/8 blur-2xl pointer-events-none" />
-
+      <div className="relative hidden flex-col overflow-hidden bg-primary lg:flex lg:w-[52%]">
         {/* TechHub brand mark */}
         <div className="relative px-10 pt-8 flex-shrink-0">
           <span className="text-white font-bold text-xl tracking-tight">
@@ -265,16 +252,15 @@ export default function AuthForm({
 
         {/* Image Carousel */}
         <div className="flex-1 flex items-center justify-center px-10 py-6">
-          <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-black/50 dark:shadow-black/70 ring-1 ring-white/10 dark:ring-white/5 dark:border dark:border-white/8">
-            <AnimatePresence initial={false} custom={carouselDirection}>
+          <div className="relative aspect-[3/2] w-full max-w-[620px] overflow-hidden rounded-xl border border-white/10 shadow-sm">
+            <AnimatePresence initial={false}>
               <motion.div
                 key={currentImage}
-                custom={carouselDirection}
                 variants={carouselVariants}
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{ duration: 0.5, ease: "easeInOut" }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
                 className="absolute inset-0"
               >
                 <Image
@@ -282,18 +268,20 @@ export default function AuthForm({
                   alt={`TechHub learning ${currentImage + 1}`}
                   fill
                   className="object-cover object-center dark:brightness-75 dark:saturate-75"
+                  sizes="(min-width: 1024px) 620px, 100vw"
+                  quality={95}
                   priority={currentImage === 0}
                 />
               </motion.div>
             </AnimatePresence>
             {/* Vignette */}
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/30 via-transparent to-transparent dark:from-black/60 dark:via-black/10 dark:to-transparent pointer-events-none" />
+            <div className="pointer-events-none absolute inset-0 rounded-xl bg-black/20" />
           </div>
         </div>
 
         {/* Testimonial */}
         <div className="relative px-10 pb-10 flex-shrink-0">
-          <div className="bg-white/10 dark:bg-white/5 backdrop-blur-sm rounded-xl p-5 ring-1 ring-white/10 dark:ring-white/8">
+          <div className="rounded-xl border border-white/10 bg-white/10 p-5">
             <svg
               className="w-6 h-6 text-blue-300 mb-2 opacity-80"
               fill="currentColor"
@@ -490,6 +478,8 @@ export default function AuthForm({
                       <input
                         type="checkbox"
                         id="remember"
+                        checked={staySignedIn}
+                        onChange={(event) => setStaySignedIn(event.target.checked)}
                         className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
                       />
                       <label

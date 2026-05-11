@@ -63,7 +63,7 @@ export default function SkillDetailPage() {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
           Skill not found
         </h1>
-        <Link href="/" className="text-purple-600 hover:underline">
+        <Link href="/" className="text-primary hover:underline">
           Return to homepage
         </Link>
       </div>
@@ -71,7 +71,7 @@ export default function SkillDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       {/* Hero Section with Background Image */}
       <div className="relative py-20 overflow-hidden">
         {/* Background Image */}
@@ -88,7 +88,7 @@ export default function SkillDetailPage() {
         {/* Content */}
         <div className="relative z-10 container mx-auto px-4">
           <div className="flex items-center gap-6">
-            <div className="relative w-28 h-28 rounded-full overflow-hidden bg-white/20 flex items-center justify-center border-4 border-white/30 shadow-xl">
+            <div className="relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-xl border border-white/30 bg-white/20 shadow-sm">
               {skill.thumbnail ? (
                 <Image
                   src={skill.thumbnail}
@@ -106,7 +106,7 @@ export default function SkillDetailPage() {
             <div className="text-white">
               <h1 className="text-4xl md:text-5xl font-bold mb-3 drop-shadow-lg">{skill.name}</h1>
               {skill.category && (
-                <span className="inline-block px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-sm capitalize border border-white/30">
+                <span className="inline-block rounded-lg border border-white/30 bg-white/20 px-4 py-1.5 text-sm capitalize">
                   {skill.category.toLowerCase()}
                 </span>
               )}
@@ -133,9 +133,9 @@ export default function SkillDetailPage() {
                 <Link
                   key={course.id}
                   href={`/courses/${course.id}`}
-                  className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow border dark:border-gray-700"
+                  className="overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors hover:border-primary/40"
                 >
-                  <div className="relative h-48 bg-gradient-to-br from-purple-400 to-blue-400">
+                  <div className="relative h-48 bg-muted">
                     {course.thumbnail && (
                       <Image
                         src={course.thumbnail.url}
@@ -153,7 +153,7 @@ export default function SkillDetailPage() {
                       {course.description}
                     </p>
                     <div className="mt-4 flex items-center justify-between">
-                      <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                      <span className="text-sm font-medium text-primary">
                         {course.level}
                       </span>
                       <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -189,7 +189,7 @@ export default function SkillDetailPage() {
                 <Link
                   key={path.id}
                   href={`/learning-paths/${path.id}`}
-                  className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-xl transition-shadow border dark:border-gray-700"
+                  className="rounded-lg border border-border bg-card p-6 shadow-sm transition-colors hover:border-primary/40"
                 >
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
                     {path.title}
