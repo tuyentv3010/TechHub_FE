@@ -14,6 +14,8 @@ import {
   COLOR_THEME_EVENT,
   COLOR_THEME_STORAGE_KEY,
   COLOR_THEMES,
+  CUSTOM_COLOR_THEME_STORAGE_KEY,
+  getStoredColorTheme,
   persistColorTheme,
 } from "@/lib/color-theme";
 
@@ -23,7 +25,7 @@ export function ThemeColorToggle() {
 
   React.useEffect(() => {
     setMounted(true);
-    setColorTheme(applyColorTheme(localStorage.getItem(COLOR_THEME_STORAGE_KEY)));
+    setColorTheme(applyColorTheme(getStoredColorTheme()));
 
     const handleColorThemeChange = (event: Event) => {
       const theme = (event as CustomEvent<{ theme?: string }>).detail?.theme;
@@ -31,8 +33,11 @@ export function ThemeColorToggle() {
     };
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === COLOR_THEME_STORAGE_KEY) {
-        setColorTheme(applyColorTheme(event.newValue));
+      if (
+        event.key === COLOR_THEME_STORAGE_KEY ||
+        event.key === CUSTOM_COLOR_THEME_STORAGE_KEY
+      ) {
+        setColorTheme(applyColorTheme(getStoredColorTheme()));
       }
     };
 

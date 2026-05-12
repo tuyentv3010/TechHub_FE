@@ -99,11 +99,13 @@ export function middleware(request: NextRequest) {
 
   if (accessToken) {
     try {
-      const role = decodeToken(accessToken)?.role;
+      const decoded = decodeToken(accessToken);
+      const roles = decoded?.roles ?? (decoded?.role ? [decoded.role] : []);
+      const isGuest = roles.includes("GUEST");
       const isGuestGoToManagePath =
-        role === "GUEST" && pathStartsWith(pathname, managePaths);
+        isGuest && pathStartsWith(pathname, managePaths);
       const isNotGuestGoToGuestPath =
-        role !== "GUEST" && pathStartsWith(pathname, guestPaths);
+        !isGuest && pathStartsWith(pathname, guestPaths);
 
       if (isGuestGoToManagePath || isNotGuestGoToGuestPath) {
         return NextResponse.redirect(new URL("/", request.url));

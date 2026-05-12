@@ -11,11 +11,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useLogoutMutation } from "@/queries/useAuth";
-import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import { useTranslations } from "next-intl";
 import { useAppContext } from "@/components/app-provider";
 import { useAccountProfile } from "@/queries/useAccount";
+import { usePermissions } from "@/hooks/usePermissions";
 import { getUserInfoFromStorage, removeTokenFromLocalStorage } from "@/lib/utils";
 import { normalizePersistedMediaUrl } from "@/lib/file-media";
 import { User, LogOut, BookText, BarChart3 } from "lucide-react";
@@ -32,13 +32,17 @@ interface UserInfo {
 
 export default function DropdownAvatar() {
   const t = useTranslations("NavItem");
-  const router = useRouter();
   const logoutMutation = useLogoutMutation();
   const { data, isLoading, isError, error } = useAccountProfile();
-  const { isAuth, role, setIsAuth, setRole, setPermissions } = useAppContext();
+  const { hasPermission, isLoading: isPermissionsLoading } = usePermissions();
+  const { isAuth, setIsAuth, setRole, setPermissions } = useAppContext();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   
   const account = data?.payload?.data;
+  const currentRoles = userInfo?.roles || account?.roles || [];
+  const canAccessManageDashboard =
+    currentRoles.includes("SUPER_ADMIN") ||
+    (!isPermissionsLoading && hasPermission("GET", "/manage/dashboard"));
 
   // Load user info from localStorage on mount
   useEffect(() => {
@@ -90,7 +94,7 @@ export default function DropdownAvatar() {
         description: t("logoutSuccessMessage") || "Bạn đã đăng xuất khỏi hệ thống",
       });
       
-      router.push("/");
+      window.location.replace("/login");
     } catch (error: unknown) {
       console.error("Logout error:", error);
       
@@ -106,7 +110,7 @@ export default function DropdownAvatar() {
         description: t("logoutSuccessMessage") || "Bạn đã đăng xuất khỏi hệ thống",
       });
       
-      router.push("/");
+      window.location.replace("/login");
     }
   };
 
@@ -190,9 +194,9 @@ export default function DropdownAvatar() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {(role === "ADMIN" || role === "SUPER_ADMIN") && (
+        {canAccessManageDashboard && (
           <DropdownMenuItem asChild>
-            <Link href="/manage/accounts" className="cursor-pointer">
+            <Link href="/manage/dashboard" className="cursor-pointer">
               <BarChart3 className="mr-2 h-4 w-4" />
               {t("dashboard") || "Dashboard"}
             </Link>

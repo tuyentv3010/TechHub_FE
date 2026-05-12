@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ThemeColorToggle } from "@/components/theme-color-toggle";
+import { ThemeCustomizer } from "@/components/theme-customizer";
 import { SwitchLanguage } from "@/components/switch-language";
 import { Globe, Palette } from "lucide-react";
 
@@ -12,7 +13,7 @@ export default function SettingPage() {
   const t = useTranslations("SettingsPage");
   
   return (
-    <div className="container max-w-4xl mx-auto py-8">
+    <div className="container max-w-5xl mx-auto py-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">{t("title")}</h1>
         <p className="text-muted-foreground">{t("description")}</p>
@@ -74,11 +75,9 @@ export default function SettingPage() {
               </div>
               <ThemeColorToggle />
             </div>
-            <div className="grid grid-cols-3 gap-2 rounded-lg border border-border bg-muted/40 p-3">
-              <div className="h-2 rounded-full bg-primary" />
-              <div className="h-2 rounded-full bg-accent" />
-              <div className="h-2 rounded-full bg-ring" />
-            </div>
+            <Separator />
+
+            <ThemeCustomizer />
           </CardContent>
         </Card>
       </div>

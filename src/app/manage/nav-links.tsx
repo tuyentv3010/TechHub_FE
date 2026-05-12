@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ArrowLeft, Maximize2, Minimize2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import menuItems, { MenuItem } from "@/app/manage/menuItems";
-import { Role } from "@/constants/type";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAccountProfile } from "@/queries/useAccount";
 import { cn } from "@/lib/utils";
@@ -29,23 +28,15 @@ const SESSION_COMPACT_STORAGE_KEY = "manage-session-compact";
 export default function NavLinks({ collapsed }: NavLinksProps) {
   const t = useTranslations("AdminNav");
   const pathname = usePathname();
-  const router = useRouter();
   const [sessionCompact, setSessionCompact] = useState(false);
   const { data, isLoading: isProfileLoading } = useAccountProfile();
   const { hasPermission, isLoading: isPermissionsLoading } = usePermissions();
   const account = data?.payload?.data;
   const userRoles: string[] = account?.roles || [];
-  const isLearner = userRoles.includes(Role.Learner);
   const isCourseStudio = pathname.startsWith("/manage/courses");
   const brandHref = "/";
   const sessionRole = (userRoles[0] || "STAFF").replace(/_/g, " ");
   const sessionName = account?.username || "Admin workspace";
-
-  useEffect(() => {
-    if (!isProfileLoading && isLearner) {
-      router.push("/");
-    }
-  }, [isProfileLoading, isLearner, router]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(SESSION_COMPACT_STORAGE_KEY);
@@ -61,28 +52,15 @@ export default function NavLinks({ collapsed }: NavLinksProps) {
     );
   }, [sessionCompact]);
 
-  if (isLearner) {
-    return null;
-  }
-
   const accessibleMenuItems = menuItems.filter((item: MenuItem) => {
-    if (item.roles && item.roles.length > 0) {
-      const hasRole = item.roles.some((role) => userRoles.includes(role));
-      if (!hasRole) return false;
-    }
-
-    if (item.requiredPermission && isPermissionsLoading) {
+    if (isPermissionsLoading) {
       return false;
     }
 
-    if (item.requiredPermission) {
-      return hasPermission(
-        item.requiredPermission.method,
-        item.requiredPermission.url
-      );
-    }
-
-    return true;
+    return hasPermission(
+      item.requiredPermission.method,
+      item.requiredPermission.url
+    );
   });
 
   return (

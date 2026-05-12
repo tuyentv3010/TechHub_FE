@@ -28,6 +28,7 @@ import { useGetRoles } from "@/queries/useRole";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import fileApiRequest from "@/apiRequests/file";
 import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
+import PermissionOverrides from "./permission-overrides";
 
 type EditEmployeeProps = {
   id: string; // UUID
@@ -236,7 +237,7 @@ export default function EditEmployee({
       }}
     >
       <DialogContent
-        className="sm:max-w-[600px] max-h-screen overflow-auto"
+        className="sm:max-w-[980px] max-h-screen overflow-auto"
         onCloseAutoFocus={reset}
       >
         <DialogHeader>
@@ -371,6 +372,7 @@ export default function EditEmployee({
                   </FormItem>
                 )}
               />
+              <PermissionOverrides userId={id} enabled={Boolean(id)} />
               <FormField
                 control={form.control}
                 name="changePassword"

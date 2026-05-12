@@ -652,7 +652,33 @@
     "NoRoleSelected": "Chưa chọn vai trò",
     "RoleNote": "Liên hệ quản trị viên để thay đổi vai trò",
     "FilterEmails": "Lọc theo email",
-    "FilterName": "Lọc theo tên" 
+    "FilterName": "Lọc theo tên",
+    "PermissionOverrides": {
+      "Title": "Ghi \u0111\u00e8 quy\u1ec1n",
+      "PermissionCount": "{count} quy\u1ec1n",
+      "SearchPlaceholder": "T\u00ecm ki\u1ebfm quy\u1ec1n",
+      "Refreshing": "\u0110ang l\u00e0m m\u1edbi...",
+      "PageLoadNote": "Ch\u1ec9 trang n\u00e0y \u0111\u01b0\u1ee3c t\u1ea3i t\u1eeb m\u00e1y ch\u1ee7.",
+      "PageStatus": "Trang {page} / {totalPages}",
+      "Loading": "\u0110ang t\u1ea3i quy\u1ec1n...",
+      "CatalogLoadTitle": "Kh\u00f4ng th\u1ec3 t\u1ea3i danh m\u1ee5c quy\u1ec1n.",
+      "CatalogLoadFallback": "Kh\u00f4ng th\u1ec3 t\u1ea3i danh m\u1ee5c quy\u1ec1n.",
+      "CatalogLoadHint": "Ki\u1ec3m tra migration V7/V8 \u0111\u00e3 ch\u1ea1y v\u00e0 proxy-client \u0111\u00e3 \u0111\u01b0\u1ee3c kh\u1edfi \u0111\u1ed9ng l\u1ea1i sau khi th\u00eam route catalog m\u1edbi.",
+      "HttpStatus": "HTTP {status}",
+      "NoPermissions": "Kh\u00f4ng t\u00ecm th\u1ea5y quy\u1ec1n n\u00e0o.",
+      "AllowedOverride": "Ghi \u0111\u00e8 cho ph\u00e9p",
+      "DeniedOverride": "Ghi \u0111\u00e8 t\u1eeb ch\u1ed1i",
+      "AllowedByRole": "\u0110\u01b0\u1ee3c cho ph\u00e9p b\u1edfi vai tr\u00f2",
+      "DeniedByRole": "B\u1ecb t\u1eeb ch\u1ed1i b\u1edfi vai tr\u00f2",
+      "AllowToast": "\u0110\u00e3 ghi \u0111\u00e8 quy\u1ec1n th\u00e0nh cho ph\u00e9p.",
+      "DenyToast": "\u0110\u00e3 ghi \u0111\u00e8 quy\u1ec1n th\u00e0nh t\u1eeb ch\u1ed1i.",
+      "ResetToast": "\u0110\u00e3 \u0111\u1eb7t l\u1ea1i ghi \u0111\u00e8 quy\u1ec1n.",
+      "Allow": "Cho ph\u00e9p",
+      "Deny": "T\u1eeb ch\u1ed1i",
+      "Reset": "\u0110\u1eb7t l\u1ea1i",
+      "Previous": "Tr\u01b0\u1edbc",
+      "Next": "Sau"
+    }
   },
   "DropdownAvatar": {
     "UnknownUser": "Người dùng không xác định",
@@ -2520,7 +2546,47 @@
     "themeMode": "Chế Độ Giao Diện",
     "themeModeDescription": "Chuyển đổi giữa chế độ sáng và tối",
     "colorTheme": "Màu Chủ Đề",
-    "colorThemeDescription": "Chọn bảng màu ưa thích"
+    "colorThemeDescription": "Chọn bảng màu ưa thích",
+    "ThemeStudio": {
+      "conceptTitle": "Concept chủ đề",
+      "conceptDescription": "Chọn nhanh một hướng màu hoàn chỉnh cho button, nền, chữ, card và màu nhấn.",
+      "customTitle": "Tùy chỉnh màu toàn hệ thống",
+      "customDescription": "Chỉnh sâu các token màu dùng chung trên toàn ứng dụng.",
+      "reset": "Đặt lại TechHub Blue",
+      "previewTitle": "Xem trước trực tiếp",
+      "previewDescription": "Mẫu này dùng cùng token màu với các màn hình thật.",
+      "previewPrimary": "Chính",
+      "previewSecondary": "Phụ",
+      "previewOutline": "Viền",
+      "concepts": {
+        "default": "TechHub Blue",
+        "green": "Learning Teal",
+        "orange": "Business Amber",
+        "purple": "Executive Purple",
+        "pink": "Product Rose",
+        "ocean": "Ocean Cyan",
+        "forest": "Forest Lime",
+        "slate": "Slate Coral",
+        "custom": "Bảng màu tùy chỉnh"
+      },
+      "fields": {
+        "primary": "Màu button toàn hệ thống",
+        "primaryForeground": "Màu chữ trên button",
+        "background": "Màu nền toàn hệ thống",
+        "foreground": "Màu chữ toàn hệ thống",
+        "card": "Màu nền card/panel",
+        "cardForeground": "Màu chữ trong card",
+        "secondary": "Màu nền phụ",
+        "secondaryForeground": "Màu chữ nền phụ",
+        "muted": "Màu nền mờ",
+        "mutedForeground": "Màu chữ phụ",
+        "accent": "Màu nhấn",
+        "accentForeground": "Màu chữ trên màu nhấn",
+        "border": "Màu viền",
+        "input": "Màu ô nhập liệu",
+        "ring": "Màu focus"
+      }
+    }
   },
   "ProfilePage": {
     "title": "Hồ Sơ",

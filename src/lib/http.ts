@@ -262,7 +262,7 @@ const request = async <Response>(
             console.log('🧹 [HTTP] Tokens cleared from auth storage');
             clientLogoutRequest = null;
             console.log('↪️ [HTTP] Redirecting to /login');
-            location.href = `/login`;
+            location.replace("/login");
           }
         } else if (!isClient) {
           const token = (options?.headers as any)?.Authorization?.split(

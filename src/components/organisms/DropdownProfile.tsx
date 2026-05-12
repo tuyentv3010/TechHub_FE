@@ -20,10 +20,10 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SwitchLanguage } from "@/components/switch-language";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import { useLogoutMutation } from "@/queries/useAuth";
 import { useAccountProfile } from "@/queries/useAccount";
+import { usePermissions } from "@/hooks/usePermissions";
 import { getUserInfoFromStorage, removeTokenFromLocalStorage } from "@/lib/utils";
 import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
@@ -51,12 +51,16 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
   const { isAuth, role, setIsAuth, setRole, setPermissions } = useAppContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const router = useRouter();
   const logoutMutation = useLogoutMutation();
   const { data } = useAccountProfile();
+  const { hasPermission, isLoading: isPermissionsLoading } = usePermissions();
   const isAuthHeader = variant === "auth";
   
   const account = data?.payload?.data;
+  const currentRoles = userInfo?.roles || account?.roles || [];
+  const canAccessManageDashboard =
+    currentRoles.includes("SUPER_ADMIN") ||
+    (!isPermissionsLoading && hasPermission("GET", "/manage/dashboard"));
   // Load user info from localStorage on mount
   useEffect(() => {
     if (isAuth) {
@@ -116,8 +120,7 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
         description: t("logoutSuccessMessage") || "Bạn đã đăng xuất khỏi hệ thống",
       });
       
-      // Redirect to home
-      router.push("/");
+      window.location.replace("/login");
     } catch (error: unknown) {
       console.error("Logout error:", error);
       
@@ -133,7 +136,7 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
         description: t("logoutSuccessMessage") || "Bạn đã đăng xuất khỏi hệ thống",
       });
       
-      router.push("/");
+      window.location.replace("/login");
     }
   };
 
@@ -237,9 +240,9 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {userInfo?.roles?.includes("ADMIN") && (
+                {canAccessManageDashboard && (
                   <DropdownMenuItem asChild>
-                    <Link href="/manage/accounts" className="cursor-pointer">
+                    <Link href="/manage/dashboard" className="cursor-pointer">
                       <BarChart3 className="mr-2 h-4 w-4" />
                       {t("dashboard") || "Dashboard"}
                     </Link>

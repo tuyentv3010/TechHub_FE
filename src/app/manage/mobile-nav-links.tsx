@@ -16,31 +16,20 @@ import { useAccountProfile } from "@/queries/useAccount";
 export default function MobileNavLinks() {
   const t = useTranslations("AdminNav");
   const pathname = usePathname();
-  const { data, isLoading: isProfileLoading } = useAccountProfile();
+  const { isLoading: isProfileLoading } = useAccountProfile();
   const { hasPermission, isLoading: isPermissionsLoading } = usePermissions();
-  const account = data?.payload?.data;
-  const userRoles: string[] = account?.roles || [];
   const isCourseStudio = pathname.startsWith("/manage/courses");
   const brandHref = "/";
 
   const accessibleMenuItems = menuItems.filter((item: MenuItem) => {
-    if (item.roles?.length) {
-      const hasRole = item.roles.some((role) => userRoles.includes(role));
-      if (!hasRole) return false;
-    }
-
-    if (item.requiredPermission && isPermissionsLoading) {
+    if (isPermissionsLoading) {
       return false;
     }
 
-    if (item.requiredPermission) {
-      return hasPermission(
-        item.requiredPermission.method,
-        item.requiredPermission.url
-      );
-    }
-
-    return true;
+    return hasPermission(
+      item.requiredPermission.method,
+      item.requiredPermission.url
+    );
   });
 
   return (

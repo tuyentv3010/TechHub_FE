@@ -37,7 +37,7 @@ export default function RefreshToken() {
           window.dispatchEvent(new Event("auth-logout"));
 
           if (shouldRedirectToLogin) {
-            window.location.href = "/login";
+            window.location.replace("/login");
           }
         },
         redirectOnError: shouldRedirectToLogin,

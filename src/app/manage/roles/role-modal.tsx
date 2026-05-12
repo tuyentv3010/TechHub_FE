@@ -187,14 +187,14 @@ export default function RoleModal({
 
   return (
     <Dialog open={open} onOpenChange={(value) => !value && reset()}>
-      <DialogContent className="manage-dialog-panel flex max-h-[90vh] flex-col rounded-[1.35rem] border-border/50 sm:max-w-[860px]">
+      <DialogContent className="manage-dialog-panel flex max-h-[90vh] min-h-0 flex-col overflow-hidden rounded-[1.35rem] border-border/50 sm:max-w-[860px]">
         <DialogHeader>
           <DialogTitle>{isEdit ? t("EditRole") : t("AddRole")}</DialogTitle>
           <DialogDescription>
             {isEdit ? t("EditRoleDescription") : t("AddRoleDescription")}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
           <Form {...form}>
             <form
               id="role-form"
@@ -373,7 +373,7 @@ export default function RoleModal({
             </form>
           </Form>
         </div>
-        <DialogFooter className="flex-shrink-0">
+        <DialogFooter className="flex-shrink-0 border-t border-border/50 pt-4">
           <Button
             type="submit"
             form="role-form"

@@ -37,7 +37,8 @@ export default function OauthPage() {
         if (accessToken && refreshToken) {
           // Existing flow - tokens already generated
           console.log("🔐 Login OAuth - Processing existing OAuth flow with tokens");
-          const { role } = decodeToken(accessToken);
+          const decodedToken = decodeToken(accessToken);
+          const role = decodedToken.role ?? decodedToken.roles?.[0] ?? null;
           console.log("🔐 Login OAuth - Decoded role:", role);
           
           localStorage.setItem("accessToken", accessToken);
@@ -143,12 +144,14 @@ export default function OauthPage() {
         } else {
           throw new Error("Invalid OAuth callback parameters");
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "An error occurred during login";
         console.error("OAuth processing error:", error);
         toast({
           variant: "destructive",
           title: "Login Failed",
-          description: error.message || "An error occurred during login",
+          description: message,
         });
         router.push("/login");
       } finally {

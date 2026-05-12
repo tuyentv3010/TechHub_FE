@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
@@ -13,6 +13,8 @@ import DropdownAvatar from "./dropdown-avatar";
 import NotificationBell from "@/components/organisms/NotificationBell";
 import { AiLearningPathProvider } from "@/contexts/AiLearningPathContext";
 import { DashboardShell } from "@/components/layout";
+import menuItems from "@/app/manage/menuItems";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function Layout({
   children,
@@ -20,8 +22,11 @@ export default function Layout({
   children: React.ReactNode;
 }>) {
   const t = useTranslations("AdminShell");
+  const navT = useTranslations("AdminNav");
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { hasPermission, isLoading: isPermissionsLoading } = usePermissions();
 
   useEffect(() => {
     const stored = window.localStorage.getItem("manage-sidebar-collapsed");
@@ -72,6 +77,46 @@ export default function Layout({
     };
   }, [pathname, t]);
 
+  const currentMenuItem = useMemo(() => {
+    return [...menuItems]
+      .sort((left, right) => right.href.length - left.href.length)
+      .find(
+        (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+      );
+  }, [pathname]);
+
+  const canAccessCurrentPage =
+    !currentMenuItem ||
+    hasPermission(
+      currentMenuItem.requiredPermission.method,
+      currentMenuItem.requiredPermission.url
+    );
+
+  const isUnauthorizedPage = pathname === "/manage/unauthorized";
+  const shouldHoldContent =
+    !isUnauthorizedPage &&
+    !!currentMenuItem &&
+    (isPermissionsLoading || !canAccessCurrentPage);
+
+  useEffect(() => {
+    if (
+      isUnauthorizedPage ||
+      isPermissionsLoading ||
+      !currentMenuItem ||
+      canAccessCurrentPage
+    ) {
+      return;
+    }
+
+    router.replace("/manage/unauthorized");
+  }, [
+    canAccessCurrentPage,
+    currentMenuItem,
+    isPermissionsLoading,
+    isUnauthorizedPage,
+    router,
+  ]);
+
   return (
     <AiLearningPathProvider>
       <DashboardShell
@@ -113,7 +158,13 @@ export default function Layout({
           </header>
         }
       >
-        {children}
+        {shouldHoldContent ? (
+          <div className="p-6 text-sm text-muted-foreground">
+            {navT("loadingNavigation")}
+          </div>
+        ) : (
+          children
+        )}
       </DashboardShell>
     </AiLearningPathProvider>
   );

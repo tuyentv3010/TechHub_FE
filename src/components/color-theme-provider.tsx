@@ -6,19 +6,24 @@ import {
   applyColorTheme,
   COLOR_THEME_EVENT,
   COLOR_THEME_STORAGE_KEY,
+  CUSTOM_COLOR_THEME_STORAGE_KEY,
+  getStoredColorTheme,
 } from "@/lib/color-theme";
 
 export function ColorThemeProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const applySavedTheme = () => {
-      applyColorTheme(window.localStorage.getItem(COLOR_THEME_STORAGE_KEY));
+      applyColorTheme(getStoredColorTheme());
     };
 
     applySavedTheme();
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === COLOR_THEME_STORAGE_KEY) {
-        applyColorTheme(event.newValue);
+      if (
+        event.key === COLOR_THEME_STORAGE_KEY ||
+        event.key === CUSTOM_COLOR_THEME_STORAGE_KEY
+      ) {
+        applySavedTheme();
       }
     };
 

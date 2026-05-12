@@ -41,7 +41,7 @@ type AccessCopy = {
     technicalHint: string;
   };
   methodLabels: Record<MethodKey, string>;
-  resourceLabels: Record<ResourceKey, ResourceMeta>;
+  resourceLabels: Partial<Record<ResourceKey, ResourceMeta>>;
 };
 
 type ResolvedAccessCopy = Omit<AccessCopy, "tabs" | "pageDescriptions"> & {

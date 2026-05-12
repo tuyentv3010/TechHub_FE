@@ -661,7 +661,33 @@
     "NoRoleSelected": "役割が選択されていません",
     "RoleNote": "役割を変更するには管理者に連絡してください",
     "FilterEmails": "メールで絞り込み",
-    "FilterName": "名前で絞り込み"
+    "FilterName": "名前で絞り込み",
+    "PermissionOverrides": {
+      "Title": "\u6a29\u9650\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9",
+      "PermissionCount": "{count} \u4ef6\u306e\u6a29\u9650",
+      "SearchPlaceholder": "\u6a29\u9650\u3092\u691c\u7d22",
+      "Refreshing": "\u66f4\u65b0\u4e2d...",
+      "PageLoadNote": "\u3053\u306e\u30da\u30fc\u30b8\u306e\u307f\u30b5\u30fc\u30d0\u30fc\u304b\u3089\u8aad\u307f\u8fbc\u307e\u308c\u3066\u3044\u307e\u3059\u3002",
+      "PageStatus": "{page} / {totalPages} \u30da\u30fc\u30b8",
+      "Loading": "\u6a29\u9650\u3092\u8aad\u307f\u8fbc\u307f\u4e2d...",
+      "CatalogLoadTitle": "\u6a29\u9650\u30ab\u30bf\u30ed\u30b0\u3092\u8aad\u307f\u8fbc\u3081\u307e\u305b\u3093\u3067\u3057\u305f\u3002",
+      "CatalogLoadFallback": "\u6a29\u9650\u30ab\u30bf\u30ed\u30b0\u3092\u8aad\u307f\u8fbc\u3081\u307e\u305b\u3093\u3067\u3057\u305f\u3002",
+      "CatalogLoadHint": "migration V7/V8 \u3068 proxy-client \u306e\u518d\u8d77\u52d5\u3092\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+      "HttpStatus": "HTTP {status}",
+      "NoPermissions": "\u6a29\u9650\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3002",
+      "AllowedOverride": "\u8a31\u53ef\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9",
+      "DeniedOverride": "\u62d2\u5426\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9",
+      "AllowedByRole": "\u30ed\u30fc\u30eb\u306b\u3088\u308a\u8a31\u53ef",
+      "DeniedByRole": "\u30ed\u30fc\u30eb\u306b\u3088\u308a\u62d2\u5426",
+      "AllowToast": "\u6a29\u9650\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9\u3092\u8a31\u53ef\u306b\u8a2d\u5b9a\u3057\u307e\u3057\u305f\u3002",
+      "DenyToast": "\u6a29\u9650\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9\u3092\u62d2\u5426\u306b\u8a2d\u5b9a\u3057\u307e\u3057\u305f\u3002",
+      "ResetToast": "\u6a29\u9650\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9\u3092\u30ea\u30bb\u30c3\u30c8\u3057\u307e\u3057\u305f\u3002",
+      "Allow": "\u8a31\u53ef",
+      "Deny": "\u62d2\u5426",
+      "Reset": "\u30ea\u30bb\u30c3\u30c8",
+      "Previous": "\u524d\u3078",
+      "Next": "\u6b21\u3078"
+    }
   },
   "DropdownAvatar": {
     "UnknownUser": "不明なユーザー",
@@ -2272,7 +2298,47 @@
     "themeMode": "テーマモード",
     "themeModeDescription": "ライトモードとダークモードを切り替え",
     "colorTheme": "カラーテーマ",
-    "colorThemeDescription": "お好みの配色を選択"
+    "colorThemeDescription": "お好みの配色を選択",
+    "ThemeStudio": {
+      "conceptTitle": "テーマコンセプト",
+      "conceptDescription": "ボタン、背景、文字、カード、アクセントまでまとめて配色を選択します。",
+      "customTitle": "全体カラーのカスタマイズ",
+      "customDescription": "アプリ全体で共有されるカラートークンを細かく調整します。",
+      "reset": "TechHub Blueに戻す",
+      "previewTitle": "ライブプレビュー",
+      "previewDescription": "このサンプルは実際の画面と同じトークンを使用します。",
+      "previewPrimary": "Primary",
+      "previewSecondary": "Secondary",
+      "previewOutline": "Outline",
+      "concepts": {
+        "default": "TechHub Blue",
+        "green": "Learning Teal",
+        "orange": "Business Amber",
+        "purple": "Executive Purple",
+        "pink": "Product Rose",
+        "ocean": "Ocean Cyan",
+        "forest": "Forest Lime",
+        "slate": "Slate Coral",
+        "custom": "Custom Palette"
+      },
+      "fields": {
+        "primary": "全体ボタン色",
+        "primaryForeground": "ボタン文字色",
+        "background": "全体背景色",
+        "foreground": "全体文字色",
+        "card": "カードとパネル背景",
+        "cardForeground": "カード文字色",
+        "secondary": "セカンダリ背景",
+        "secondaryForeground": "セカンダリ文字色",
+        "muted": "控えめな背景",
+        "mutedForeground": "控えめな文字色",
+        "accent": "アクセント色",
+        "accentForeground": "アクセント文字色",
+        "border": "境界線色",
+        "input": "入力欄の境界線色",
+        "ring": "フォーカス色"
+      }
+    }
   },
   "ProfilePage": {
     "title": "プロフィール",

@@ -653,7 +653,33 @@
     "NoRoleSelected": "No role selected",
     "RoleNote": "Contact administrator to change role",
     "FilterEmails": "Filter by email",
-    "FilterName": "Filter by name"
+    "FilterName": "Filter by name",
+    "PermissionOverrides": {
+      "Title": "Permission overrides",
+      "PermissionCount": "{count} permissions",
+      "SearchPlaceholder": "Search permissions",
+      "Refreshing": "Refreshing...",
+      "PageLoadNote": "Only this page is loaded from the server.",
+      "PageStatus": "Page {page} of {totalPages}",
+      "Loading": "Loading permissions...",
+      "CatalogLoadTitle": "Permission catalog could not be loaded.",
+      "CatalogLoadFallback": "Could not load permission catalog.",
+      "CatalogLoadHint": "Check that migrations V7/V8 were run and proxy-client was restarted after the new catalog route was added.",
+      "HttpStatus": "HTTP {status}",
+      "NoPermissions": "No permissions found.",
+      "AllowedOverride": "Allowed override",
+      "DeniedOverride": "Denied override",
+      "AllowedByRole": "Allowed by role",
+      "DeniedByRole": "Denied by role",
+      "AllowToast": "Permission override set to allow.",
+      "DenyToast": "Permission override set to deny.",
+      "ResetToast": "Permission override reset.",
+      "Allow": "Allow",
+      "Deny": "Deny",
+      "Reset": "Reset",
+      "Previous": "Previous",
+      "Next": "Next"
+    }
   },
   "DropdownAvatar": {
     "UnknownUser": "Unknown User",
@@ -2486,7 +2512,47 @@
     "themeMode": "Theme Mode",
     "themeModeDescription": "Switch between light and dark mode",
     "colorTheme": "Color Theme",
-    "colorThemeDescription": "Choose your preferred color scheme"
+    "colorThemeDescription": "Choose your preferred color scheme",
+    "ThemeStudio": {
+      "conceptTitle": "Theme concepts",
+      "conceptDescription": "Pick a complete visual direction for buttons, backgrounds, text, cards, and accents.",
+      "customTitle": "Custom global colors",
+      "customDescription": "Fine-tune the shared color tokens used across the application.",
+      "reset": "Reset to TechHub Blue",
+      "previewTitle": "Live preview",
+      "previewDescription": "This sample uses the same tokens as normal screens.",
+      "previewPrimary": "Primary",
+      "previewSecondary": "Secondary",
+      "previewOutline": "Outline",
+      "concepts": {
+        "default": "TechHub Blue",
+        "green": "Learning Teal",
+        "orange": "Business Amber",
+        "purple": "Executive Purple",
+        "pink": "Product Rose",
+        "ocean": "Ocean Cyan",
+        "forest": "Forest Lime",
+        "slate": "Slate Coral",
+        "custom": "Custom Palette"
+      },
+      "fields": {
+        "primary": "Global button color",
+        "primaryForeground": "Button text color",
+        "background": "Global background",
+        "foreground": "Global text",
+        "card": "Card and panel background",
+        "cardForeground": "Card text",
+        "secondary": "Secondary surface",
+        "secondaryForeground": "Secondary text",
+        "muted": "Muted surface",
+        "mutedForeground": "Muted text",
+        "accent": "Accent color",
+        "accentForeground": "Accent text",
+        "border": "Border color",
+        "input": "Input border color",
+        "ring": "Focus color"
+      }
+    }
   },
   "ProfilePage": {
     "title": "Profile",
