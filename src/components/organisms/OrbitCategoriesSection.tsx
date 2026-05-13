@@ -90,24 +90,42 @@ function buildOrbitItems(skills: Skill[]) {
   }));
 }
 
-function SkillIcon({ skill }: { skill: Skill }) {
+function SkillIcon({ skill, compact = false }: { skill: Skill; compact?: boolean }) {
   const thumbnailUrl = normalizePersistedMediaUrl(skill.thumbnail);
 
   return (
     <Link href={skill.href ?? buildCoursesUrl({ skillIds: skill.id })} className="block">
-      <div className="group flex h-[78px] w-[142px] cursor-pointer flex-col items-center justify-center rounded-xl border border-border bg-card px-3 py-2 text-center shadow-sm transition-colors hover:border-primary/40">
+      <div
+        className={
+          compact
+            ? "group flex h-16 w-28 cursor-pointer flex-col items-center justify-center rounded-lg border border-border bg-card px-2 py-2 text-center shadow-sm transition-colors hover:border-primary/40"
+            : "group flex h-[78px] w-[142px] cursor-pointer flex-col items-center justify-center rounded-xl border border-border bg-card px-3 py-2 text-center shadow-sm transition-colors hover:border-primary/40"
+        }
+      >
         {thumbnailUrl ? (
-          <div className="mb-1 flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">
+          <div
+            className={
+              compact
+                ? "mb-1 flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-primary"
+                : "mb-1 flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary"
+            }
+          >
             <Image
               src={thumbnailUrl}
               alt={skill.name}
               width={32}
               height={32}
-              className="h-6 w-6 object-contain"
+              className={compact ? "h-5 w-5 object-contain" : "h-6 w-6 object-contain"}
             />
           </div>
         ) : null}
-        <span className="line-clamp-2 max-w-full text-xs font-semibold leading-tight text-foreground">
+        <span
+          className={
+            compact
+              ? "line-clamp-2 max-w-full text-[10px] font-semibold leading-tight text-foreground"
+              : "line-clamp-2 max-w-full text-xs font-semibold leading-tight text-foreground"
+          }
+        >
           {skill.name}
         </span>
       </div>
@@ -123,6 +141,9 @@ function RotatingSemiCircle({
   centerY,
   containerWidth,
   containerHeight,
+  itemWidth = 142,
+  itemHeight = 78,
+  compact = false,
 }: {
   radius: number;
   skills: Skill[];
@@ -131,10 +152,11 @@ function RotatingSemiCircle({
   centerY: number;
   containerWidth: number;
   containerHeight: number;
+  itemWidth?: number;
+  itemHeight?: number;
+  compact?: boolean;
 }) {
   const orbitItems = buildOrbitItems(skills);
-  const itemWidth = 142;
-  const itemHeight = 78;
   const animationKey = orbitItems
     .map(({ skill }) => `${skill.id}:${skill.name}`)
     .join("|");
@@ -184,7 +206,7 @@ function RotatingSemiCircle({
                   animationDuration: `${duration}s`,
                 }}
               >
-                <SkillIcon skill={skill} />
+                <SkillIcon skill={skill} compact={compact} />
               </div>
             </div>
           );
@@ -207,55 +229,51 @@ function LoadingSkeleton() {
   );
 }
 
-function MobileGrid({ skills, title }: { skills: Skill[]; title?: string }) {
+function MobileOrbit({ skills, title }: { skills: Skill[]; title?: string }) {
+  const containerWidth = 390;
+  const containerHeight = 310;
+  const centerX = containerWidth / 2;
+  const centerY = containerHeight - 10;
+  const radius = 215;
+
   return (
-    <section className="bg-background py-12">
+    <section className="overflow-hidden bg-background py-10">
       <div className="container mx-auto px-4">
         {title && (
-          <h2 className="mb-8 text-center text-2xl font-bold text-gray-900 dark:text-white">
+          <motion.h2
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-5 text-center text-2xl font-bold text-gray-900 dark:text-white"
+          >
             {title}
-          </h2>
+          </motion.h2>
         )}
 
-        <div className="grid grid-cols-4 gap-3">
-          {skills.map((skill, index) => {
-            const thumbnailUrl = normalizePersistedMediaUrl(skill.thumbnail);
-
-            return (
-              <motion.div
-                key={skill.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <Link
-                  href={skill.href ?? buildCoursesUrl({ skillIds: skill.id })}
-                  className="group flex flex-col items-center rounded-lg border border-border bg-card p-3 shadow-sm transition-colors hover:border-primary/40"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">
-                    {thumbnailUrl ? (
-                      <Image
-                        src={thumbnailUrl}
-                        alt={skill.name}
-                        width={48}
-                        height={48}
-                        className="h-8 w-8 object-contain"
-                      />
-                    ) : (
-                      <span className="text-lg font-bold">
-                        {skill.name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <span className="mt-2 line-clamp-1 text-center text-[10px] font-medium text-gray-600 dark:text-gray-400">
-                    {skill.name}
-                  </span>
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.45 }}
+          className="relative mx-auto w-full max-w-[390px] overflow-hidden"
+          style={{
+            aspectRatio: `${containerWidth} / ${containerHeight}`,
+          }}
+        >
+          <div className="absolute inset-x-0 bottom-0 h-px bg-border" />
+          <RotatingSemiCircle
+            radius={radius}
+            skills={skills}
+            duration={28}
+            centerX={centerX}
+            centerY={centerY}
+            containerWidth={containerWidth}
+            containerHeight={containerHeight}
+            itemWidth={112}
+            itemHeight={64}
+            compact
+          />
+        </motion.div>
       </div>
     </section>
   );
@@ -349,7 +367,7 @@ export function OrbitCategoriesSection({ title }: OrbitCategoriesSectionProps) {
       </section>
 
       <div className="md:hidden">
-        <MobileGrid skills={skills} title={title} />
+        <MobileOrbit skills={skills} title={title} />
       </div>
     </>
   );

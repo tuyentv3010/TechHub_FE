@@ -1,548 +1,499 @@
 "use client";
 
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
 import {
-  useReindexAllMutation,
-  useGetQdrantStats,
-  useGetAiRuntimeStats,
-  useGetAiProviderConfig,
-  useGetLearningPathDrafts,
-  useRejectDraftMutation,
-  useGetLangfuseAnalytics,
-} from "@/queries/useAi";
-import {
-  Database,
-  Loader2,
-  CheckCircle,
-  XCircle,
-  FileText,
+  ArrowRight,
+  Bell,
+  BookOpen,
+  CheckCircle2,
+  GraduationCap,
+  LayoutDashboard,
+  LibraryBig,
+  MessageSquareText,
+  Palette,
+  ShieldCheck,
   Sparkles,
-  BarChart3,
-  MessageCircle,
-  DollarSign,
-  Zap,
-  Settings,
-  Activity,
+  UserRound,
+  Users,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AdminPageFrame, AdminSurface } from "@/components/manage/admin-page-frame";
-import {
-  LearningPathDraftPublishError,
-  publishLearningPathDraft,
-} from "@/app/manage/learning-paths/draft-publish";
-import type { DraftItemType } from "@/schemaValidations/ai.schema";
+import type { LucideIcon } from "lucide-react";
 
-type DashboardDraftItem = DraftItemType & {
-  created?: string;
-  resultPayload?: {
-    title?: string;
-  } & Record<string, unknown>;
+import { AdminPageFrame, AdminSurface } from "@/components/manage/admin-page-frame";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { usePermissions } from "@/hooks/usePermissions";
+import { cn } from "@/lib/utils";
+import { useAccountProfile } from "@/queries/useAccount";
+import menuItems, { canAccessMenuItem, type MenuItem } from "@/app/manage/menuItems";
+
+type DashboardAction = {
+  title: string;
+  description: string;
+  href: string;
+  Icon: LucideIcon;
+  badge?: string;
 };
 
+type RoleMode = "admin" | "instructor" | "learner" | "general";
+
+const ADMIN_PRIORITY = [
+  "accounts",
+  "roles",
+  "permissions",
+  "manageCourses",
+  "learningPathsAdmin",
+  "instructorApplications",
+  "filesAdmin",
+  "blogsAdmin",
+  "revenue",
+  "payouts",
+  "aiAnalytics",
+  "aiTraces",
+  "aiProviders",
+];
+
+const INSTRUCTOR_PRIORITY = [
+  "manageCourses",
+  "learningPathsAdmin",
+  "revenue",
+  "payouts",
+  "filesAdmin",
+  "aiAnalytics",
+];
+
 export default function DashboardPage() {
-  const t = useTranslations("AiDashboard");
+  const t = useTranslations("ManageDashboard");
+  const navT = useTranslations("AdminNav");
   const locale = useLocale();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [showResultDialog, setShowResultDialog] = useState(false);
-  const [reindexResults, setReindexResults] = useState<any>(null);
-  const [publishingDraftId, setPublishingDraftId] = useState<string | null>(null);
+  const { data: profileData, isLoading: isProfileLoading } = useAccountProfile();
+  const { permissions, hasPermission, isLoading: isPermissionsLoading } = usePermissions();
 
-  const reindexAllMutation = useReindexAllMutation();
-  const { data: qdrantStatsData } = useGetQdrantStats();
-  const { data: runtimeStatsData } = useGetAiRuntimeStats();
-  const { data: providerConfigData } = useGetAiProviderConfig();
-  const { data: analyticsData } = useGetLangfuseAnalytics(7);
-  const { data: pathDraftsData } = useGetLearningPathDrafts();
+  const account = profileData?.payload?.data;
+  const roles: string[] = Array.isArray(account?.roles) ? account.roles : [];
+  const normalizedRoles = roles.map((role) => role.toUpperCase());
+  const roleMode: RoleMode = normalizedRoles.some((role) => role === "ADMIN" || role === "SUPER_ADMIN")
+    ? "admin"
+    : normalizedRoles.includes("INSTRUCTOR")
+      ? "instructor"
+      : normalizedRoles.includes("LEARNER")
+        ? "learner"
+        : "general";
 
-  const rejectDraftMutation = useRejectDraftMutation();
+  const accessibleItems = useMemo(() => {
+    return menuItems.filter((item) => canAccessMenuItem(item, hasPermission));
+  }, [hasPermission, permissions]);
 
-  const qdrantStats = qdrantStatsData?.payload?.data;
-  const runtime = runtimeStatsData?.payload?.data;
-  const overview = runtime?.overview || {};
-  const config = providerConfigData?.payload?.data || {};
-  const metadata = config.metadata || {};
-  const analytics = analyticsData?.payload?.data || {};
-  const pendingDrafts: DashboardDraftItem[] = pathDraftsData?.payload?.data || [];
-  const recentRuns = runtime?.chatRuns?.recent || [];
+  const workspaceItems = accessibleItems.filter((item) => item.href !== "/manage/dashboard");
+  const allowedPermissions = permissions.filter((permission) => permission.allowed);
+  const resourceCount = new Set(allowedPermissions.map((permission) => permission.resource).filter(Boolean)).size;
+  const formattedPermissionCount = allowedPermissions.length.toLocaleString(locale);
+  const formattedAreaCount = workspaceItems.length.toLocaleString(locale);
 
-  const totalCourses = qdrantStats?.collections?.courses?.vectorCount || 0;
-  const totalLessons = qdrantStats?.collections?.lessons?.vectorCount || 0;
-  const systemHealthy = qdrantStats?.healthy !== false && !metadata.usingMockFallback;
-  const activeModel = config.activeChatModel || t("emptyValue");
-  const activeProvider = config.provider ? String(config.provider).toUpperCase() : t("emptyValue");
-  const totalTokens = analytics.totalTokens || overview.totalTokens || 0;
+  const roleLabels = roles.length > 0 ? roles.map((role) => getRoleLabel(role, t)) : [t("roles.none")];
+  const displayName = account?.username || account?.email || t("accountFallback");
+  const statusLabel = account?.status || (account?.isActive ? t("status.active") : t("status.unknown"));
 
-  const formatDate = (value?: string) => {
-    if (!value) {
-      return t("emptyValue");
-    }
-    return new Intl.DateTimeFormat(locale).format(new Date(value));
-  };
+  const manageActions = getRoleManageActions(roleMode, workspaceItems, navT, t);
+  const learnerActions = getLearnerActions(t);
+  const focusActions = roleMode === "learner" || manageActions.length === 0 ? learnerActions : manageActions;
+  const nextAction = focusActions[0] ?? learnerActions[0];
+  const attentionItems = getAttentionItems({
+    roleMode,
+    workspaceItems,
+    permissions: allowedPermissions,
+    t,
+  });
 
-  const handleApproveDraft = async (taskId: string) => {
-    try {
-      setPublishingDraftId(taskId);
-      const draft = pendingDrafts.find((item) => item.taskId === taskId);
-      await publishLearningPathDraft({ taskId, draft });
-      await queryClient.invalidateQueries({ queryKey: ["learning-path-drafts"] });
-      await queryClient.invalidateQueries({ queryKey: ["learning-path-list"] });
-      toast({ title: t("draftApproved") });
-    } catch (error: any) {
-      if (error instanceof LearningPathDraftPublishError && error.pathId) {
-        await queryClient.invalidateQueries({ queryKey: ["learning-path-drafts"] });
-        await queryClient.invalidateQueries({ queryKey: ["learning-path-list"] });
-        toast({ title: t("draftApproved"), description: error.message });
-        return;
-      }
-      toast({ title: t("error"), description: error?.message, variant: "destructive" });
-    } finally {
-      setPublishingDraftId(null);
-    }
-  };
-
-  const handleRejectDraft = async (taskId: string) => {
-    try {
-      await rejectDraftMutation.mutateAsync({ taskId });
-      toast({ title: t("draftRejected") });
-    } catch (error: any) {
-      toast({ title: t("error"), description: error?.message, variant: "destructive" });
-    }
-  };
-
-  const handleReindexAll = async () => {
-    try {
-      const response = await reindexAllMutation.mutateAsync();
-      setReindexResults(response.payload?.data);
-      setShowResultDialog(true);
-      toast({ title: t("toasts.reindexSuccess") });
-    } catch (error: any) {
-      toast({ title: t("error"), description: error?.message, variant: "destructive" });
-    }
-  };
+  if (isProfileLoading || isPermissionsLoading) {
+    return (
+      <AdminPageFrame eyebrow={t("eyebrow")} title={t("title")} description={t("description")}>
+        <AdminSurface className="p-6">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <Sparkles className="h-4 w-4 animate-pulse" />
+            {t("loading")}
+          </div>
+        </AdminSurface>
+      </AdminPageFrame>
+    );
+  }
 
   return (
-    <AdminPageFrame eyebrow={t("PageEyebrow")} title={t("title")} description={t("description")}>
-      <AdminSurface className="space-y-6 p-5 md:p-7">
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="overview" className="gap-2">
-              <Sparkles className="h-4 w-4" />
-              {t("tabs.overview")}
-            </TabsTrigger>
-            <TabsTrigger value="advanced" className="gap-2">
-              <Settings className="h-4 w-4" />
-              {t("tabs.advanced")}
-            </TabsTrigger>
-          </TabsList>
+    <AdminPageFrame eyebrow={t("eyebrow")} title={t("title")} description={t("description")}>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard
+          title={t("summary.role.title")}
+          value={roleLabels.join(", ")}
+          description={t("summary.role.description", { name: displayName })}
+          Icon={UserRound}
+        />
+        <SummaryCard
+          title={t("summary.areas.title")}
+          value={formattedAreaCount}
+          description={t("summary.areas.description", { count: workspaceItems.length })}
+          Icon={LayoutDashboard}
+        />
+        <SummaryCard
+          title={t("summary.permissions.title")}
+          value={formattedPermissionCount}
+          description={t("summary.permissions.description", { count: resourceCount })}
+          Icon={ShieldCheck}
+        />
+        <SummaryCard
+          title={t("summary.status.title")}
+          value={statusLabel}
+          description={t("summary.status.description")}
+          Icon={CheckCircle2}
+        />
+      </div>
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              <Card className="border-border/50">
-                <CardContent className="pb-4 pt-5">
-                  <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-                    {systemHealthy ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-500" />
-                    )}
-                    {t("overview.systemStatus.label")}
-                  </div>
-                  <p className="text-2xl font-bold">
-                    {systemHealthy ? t("overview.systemStatus.online") : t("overview.systemStatus.issue")}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {activeProvider} / {activeModel}
-                  </p>
-                </CardContent>
-              </Card>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+        <AdminSurface className="p-5 md:p-6">
+          <SectionHeading
+            title={t(`roleFocus.${roleMode}.title`)}
+            description={t(`roleFocus.${roleMode}.description`)}
+          />
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {focusActions.slice(0, 6).map((action) => (
+              <ActionTile key={action.href} action={action} />
+            ))}
+          </div>
+        </AdminSurface>
 
-              <Card className="border-border/50">
-                <CardContent className="pb-4 pt-5">
-                  <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-                    <MessageCircle className="h-4 w-4" />
-                    {t("overview.totalConversations.label")}
-                  </div>
-                  <p className="text-2xl font-bold">{overview.chatTotal || analytics.totalTraces || 0}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t("overview.totalConversations.successful", { count: overview.chatSuccess || 0 })}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/50">
-                <CardContent className="pb-4 pt-5">
-                  <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-                    <DollarSign className="h-4 w-4" />
-                    {t("overview.aiCost.label")}
-                  </div>
-                  <p className="text-2xl font-bold">${(analytics.totalCost || 0).toFixed(4)}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t("overview.aiCost.tokensUsed", { count: totalTokens.toLocaleString(locale) })}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/50">
-                <CardContent className="pb-4 pt-5">
-                  <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-                    <Database className="h-4 w-4" />
-                    {t("overview.knowledgeBase.label")}
-                  </div>
-                  <p className="text-2xl font-bold">{totalCourses + totalLessons}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {t("overview.knowledgeBase.indexed", {
-                      courses: totalCourses,
-                      lessons: totalLessons,
-                    })}
-                  </p>
-                </CardContent>
-              </Card>
+        <AdminSurface className="p-5 md:p-6">
+          <SectionHeading title={t("next.title")} description={t("next.description")} />
+          <div className="mt-5 rounded-lg border bg-primary/5 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <nextAction.Icon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-foreground">{nextAction.title}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{nextAction.description}</p>
+              </div>
             </div>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  {t("overview.pendingReview.title")}
-                  {pendingDrafts.length > 0 && (
-                    <Badge variant="destructive" className="ml-2">
-                      {pendingDrafts.length}
-                    </Badge>
-                  )}
-                </CardTitle>
-                <CardDescription>{t("overview.pendingReview.description")}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {pendingDrafts.length === 0 ? (
-                  <div className="py-8 text-center text-muted-foreground">
-                    <CheckCircle className="mx-auto mb-4 h-12 w-12 opacity-30" />
-                    <p>{t("overview.pendingReview.empty")}</p>
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t("overview.pendingReview.columns.type")}</TableHead>
-                        <TableHead>{t("overview.pendingReview.columns.description")}</TableHead>
-                        <TableHead>{t("overview.pendingReview.columns.created")}</TableHead>
-                        <TableHead className="text-right">{t("overview.pendingReview.columns.actions")}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pendingDrafts.map((draft) => (
-                        <TableRow key={draft.taskId}>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {draft.taskType === "LEARNING_PATH_GENERATION"
-                                ? t("overview.pendingReview.learningPath")
-                                : draft.taskType || t("emptyValue")}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-[300px]">
-                            <p className="line-clamp-2 text-sm">
-                              {draft.resultPayload?.title ||
-                                draft.prompt?.slice(0, 80) ||
-                                t("overview.pendingReview.generatedDraft")}
-                            </p>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {formatDate(draft.createdAt || draft.created)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleApproveDraft(draft.taskId)}
-                                disabled={publishingDraftId === draft.taskId}
-                              >
-                                {publishingDraftId === draft.taskId ? (
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : null}
-                                {t("overview.pendingReview.approve")}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleRejectDraft(draft.taskId)}
-                                disabled={rejectDraftMutation.isPending}
-                              >
-                                {t("overview.pendingReview.reject")}
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <Link href="/manage/ai-analytics">
-                <Card className="cursor-pointer border-border/50 transition-colors hover:border-primary/50">
-                  <CardContent className="flex items-center gap-3 pb-4 pt-5">
-                    <BarChart3 className="h-8 w-8 text-blue-500" />
-                    <div>
-                      <p className="font-semibold">{t("overview.quickLinks.analytics.title")}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("overview.quickLinks.analytics.description")}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+            <Button asChild className="mt-4 w-full">
+              <Link href={nextAction.href}>
+                {t("open")}
+                <ArrowRight className="h-4 w-4" />
               </Link>
+            </Button>
+          </div>
+        </AdminSurface>
+      </div>
 
-              <Link href="/manage/ai-traces">
-                <Card className="cursor-pointer border-border/50 transition-colors hover:border-primary/50">
-                  <CardContent className="flex items-center gap-3 pb-4 pt-5">
-                    <Activity className="h-8 w-8 text-primary" />
-                    <div>
-                      <p className="font-semibold">{t("overview.quickLinks.traces.title")}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("overview.quickLinks.traces.description")}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-
-              <Link href="/manage/ai-providers">
-                <Card className="cursor-pointer border-border/50 transition-colors hover:border-primary/50">
-                  <CardContent className="flex items-center gap-3 pb-4 pt-5">
-                    <Zap className="h-8 w-8 text-amber-500" />
-                    <div>
-                      <p className="font-semibold">{t("overview.quickLinks.providers.title")}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("overview.quickLinks.providers.description")}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.45fr)]">
+        <AdminSurface className="p-5 md:p-6">
+          <SectionHeading title={t("modules.title")} description={t("modules.description")} />
+          {workspaceItems.length === 0 ? (
+            <div className="mt-5 rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">{t("modules.emptyTitle")}</p>
+              <p className="mt-1">{t("modules.emptyDescription")}</p>
             </div>
-          </TabsContent>
-
-          <TabsContent value="advanced" className="space-y-6">
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5" />
-                  {t("advanced.vectorDb.title")}
-                </CardTitle>
-                <CardDescription>
-                  {t("advanced.vectorDb.description", { version: qdrantStats?.version || "?" })}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Button onClick={handleReindexAll} disabled={reindexAllMutation.isPending}>
-                    {reindexAllMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {t("advanced.vectorDb.reindexAll")}
-                  </Button>
-                </div>
-
-                {qdrantStats?.collections && (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t("advanced.vectorDb.columns.collection")}</TableHead>
-                        <TableHead className="text-right">{t("advanced.vectorDb.columns.vectors")}</TableHead>
-                        <TableHead>{t("advanced.vectorDb.columns.status")}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.entries(qdrantStats.collections).map(([name, stats]: [string, any]) => (
-                        <TableRow key={name}>
-                          <TableCell className="font-medium capitalize">{name}</TableCell>
-                          <TableCell className="text-right font-mono">
-                            {stats.vectorCount?.toLocaleString(locale) || 0}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={stats.status === "green" ? "default" : "secondary"}>
-                              {stats.status || t("emptyValue")}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              <Card className="border-border/50">
-                <CardContent className="pb-3 pt-4">
-                  <div className="text-xs text-muted-foreground">{t("advanced.runtime.chatTotal")}</div>
-                  <p className="text-xl font-bold">{overview.chatTotal || 0}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {t("advanced.runtime.chatTotalDetail", {
-                      success: overview.chatSuccess || 0,
-                      failed: overview.chatFailed || 0,
-                    })}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/50">
-                <CardContent className="pb-3 pt-4">
-                  <div className="text-xs text-muted-foreground">{t("advanced.runtime.avgLatency")}</div>
-                  <p className="text-xl font-bold">{runtime?.latency?.chatAverageMs || 0}ms</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {t("advanced.runtime.avgLatencyDetail", {
-                      p95: runtime?.latency?.chatP95Ms || 0,
-                    })}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/50">
-                <CardContent className="pb-3 pt-4">
-                  <div className="text-xs text-muted-foreground">{t("advanced.runtime.legacyFallback")}</div>
-                  <p className="text-xl font-bold">{overview.chatLegacyTotal || 0}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {t("advanced.runtime.legacyFallbackDetail", {
-                      mock: overview.mockChatResponses || 0,
-                    })}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/50">
-                <CardContent className="pb-3 pt-4">
-                  <div className="text-xs text-muted-foreground">{t("advanced.runtime.tokensTotal")}</div>
-                  <p className="text-xl font-bold">{(overview.totalTokens || 0).toLocaleString(locale)}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {t("advanced.runtime.tokensTotalDetail", {
-                      avg: runtime?.tokens?.averagePerChat || 0,
-                    })}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle>{t("advanced.recentRuns.title")}</CardTitle>
-                <CardDescription>{t("advanced.recentRuns.description")}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {recentRuns.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t("advanced.recentRuns.columns.pipeline")}</TableHead>
-                        <TableHead>{t("advanced.recentRuns.columns.intent")}</TableHead>
-                        <TableHead className="text-right">{t("advanced.recentRuns.columns.latency")}</TableHead>
-                        <TableHead className="text-right">{t("advanced.recentRuns.columns.tokens")}</TableHead>
-                        <TableHead>{t("advanced.recentRuns.columns.status")}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recentRuns.map((run: any, index: number) => (
-                        <TableRow key={index}>
-                          <TableCell className="font-mono text-xs">{run.pipeline}</TableCell>
-                          <TableCell>{run.intent}</TableCell>
-                          <TableCell className="text-right">{Number(run.duration_ms || 0).toFixed(0)}ms</TableCell>
-                          <TableCell className="text-right">{run.tokens_used || 0}</TableCell>
-                          <TableCell>
-                            <Badge variant={run.success ? "secondary" : "destructive"}>
-                              {run.success ? t("advanced.recentRuns.ok") : t("advanced.recentRuns.fail")}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <p className="py-4 text-center text-sm text-muted-foreground">
-                    {t("advanced.recentRuns.empty")}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle>{t("advanced.providerConfig.title")}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("advanced.providerConfig.requestedProvider")}</span>
-                  <span className="font-mono">{metadata.requestedProvider || t("emptyValue")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("advanced.providerConfig.effectiveProvider")}</span>
-                  <span className="font-mono">{metadata.effectiveProvider || t("emptyValue")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("advanced.providerConfig.chatModel")}</span>
-                  <span className="font-mono">{config.activeChatModel || t("emptyValue")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("advanced.providerConfig.embeddingModel")}</span>
-                  <span className="font-mono">{config.activeEmbeddingModel || t("emptyValue")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("advanced.providerConfig.mockFallback")}</span>
-                  <span>{metadata.usingMockFallback ? t("yes") : t("no")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t("advanced.providerConfig.status")}</span>
-                  <span>{metadata.statusMessage || t("emptyValue")}</span>
-                </div>
-                <div className="pt-2">
-                  <Link href="/manage/ai-providers" className="text-sm text-blue-500 hover:underline">
-                    {t("advanced.providerConfig.manageProviders")}
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </AdminSurface>
-
-      <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("dialog.title")}</DialogTitle>
-          </DialogHeader>
-          {reindexResults && (
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>{t("dialog.success")}</span>
-                <Badge variant={reindexResults.success ? "default" : "destructive"}>
-                  {reindexResults.success ? t("yes") : t("no")}
-                </Badge>
-              </div>
-              <div className="flex justify-between">
-                <span>{t("dialog.indexed")}</span>
-                <span className="font-mono">{reindexResults.stats?.indexed || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>{t("dialog.failed")}</span>
-                <span className="font-mono">{reindexResults.stats?.failed || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>{t("dialog.duration")}</span>
-                <span className="font-mono">{reindexResults.stats?.duration || t("emptyValue")}</span>
-              </div>
+          ) : (
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {workspaceItems.map((item) => (
+                <ModuleTile key={item.href} item={item} navT={navT} t={t} />
+              ))}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </AdminSurface>
+
+        <AdminSurface className="p-5 md:p-6">
+          <SectionHeading title={t("attention.title")} description={t("attention.description")} />
+          <div className="mt-5 space-y-3">
+            {attentionItems.map((item) => (
+              <div key={item.title} className="rounded-lg border bg-card p-4">
+                <div className="flex items-start gap-3">
+                  <div className={cn("mt-0.5 rounded-md p-2", item.tone)}>
+                    <item.Icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </AdminSurface>
+      </div>
     </AdminPageFrame>
   );
+}
+
+function SummaryCard({
+  title,
+  value,
+  description,
+  Icon,
+}: {
+  title: string;
+  value: string;
+  description: string;
+  Icon: LucideIcon;
+}) {
+  return (
+    <Card className="border-border/70">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <div className="rounded-md bg-primary/10 p-2 text-primary">
+            <Icon className="h-4 w-4" />
+          </div>
+        </div>
+        <p className="mt-3 truncate text-2xl font-semibold text-foreground">{value}</p>
+        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{description}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SectionHeading({ title, description }: { title: string; description: string }) {
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+function ActionTile({ action }: { action: DashboardAction }) {
+  return (
+    <Link
+      href={action.href}
+      className="group flex min-h-[132px] flex-col justify-between rounded-lg border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-primary/5"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="rounded-md bg-primary/10 p-2 text-primary">
+          <action.Icon className="h-5 w-5" />
+        </div>
+        {action.badge ? <Badge variant="secondary">{action.badge}</Badge> : null}
+      </div>
+      <div className="mt-4">
+        <p className="font-semibold text-foreground">{action.title}</p>
+        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{action.description}</p>
+      </div>
+    </Link>
+  );
+}
+
+function ModuleTile({
+  item,
+  navT,
+  t,
+}: {
+  item: MenuItem;
+  navT: ReturnType<typeof useTranslations<"AdminNav">>;
+  t: ReturnType<typeof useTranslations<"ManageDashboard">>;
+}) {
+  const titleKey = item.titleKey ?? "dashboard";
+
+  return (
+    <Link
+      href={item.href}
+      className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-primary/5"
+    >
+      <div className="flex items-start gap-3">
+        <div className="rounded-md bg-muted p-2 text-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+          <item.Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-semibold text-foreground">{navT(titleKey as never)}</p>
+          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+            {t(getModuleDescriptionKey(titleKey) as never)}
+          </p>
+        </div>
+        <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+      </div>
+    </Link>
+  );
+}
+
+function getRoleLabel(
+  role: string,
+  t: ReturnType<typeof useTranslations<"ManageDashboard">>
+) {
+  const normalized = role.toUpperCase();
+  if (normalized === "SUPER_ADMIN") return t("roles.superAdmin");
+  if (normalized === "ADMIN") return t("roles.admin");
+  if (normalized === "INSTRUCTOR") return t("roles.instructor");
+  if (normalized === "LEARNER") return t("roles.learner");
+
+  return role
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getRoleManageActions(
+  roleMode: RoleMode,
+  workspaceItems: MenuItem[],
+  navT: ReturnType<typeof useTranslations<"AdminNav">>,
+  t: ReturnType<typeof useTranslations<"ManageDashboard">>
+): DashboardAction[] {
+  const priority = roleMode === "instructor" ? INSTRUCTOR_PRIORITY : ADMIN_PRIORITY;
+  const orderedItems = [
+    ...priority
+      .map((key) => workspaceItems.find((item) => item.titleKey === key))
+      .filter(Boolean),
+    ...workspaceItems.filter((item) => !priority.includes(item.titleKey ?? "")),
+  ] as MenuItem[];
+
+  return orderedItems.map((item) => {
+    const titleKey = item.titleKey ?? "dashboard";
+    return {
+      title: navT(titleKey as never),
+      description: t(getModuleDescriptionKey(titleKey) as never),
+      href: item.href,
+      Icon: item.Icon,
+      badge: t("badges.manage"),
+    };
+  });
+}
+
+function getLearnerActions(
+  t: ReturnType<typeof useTranslations<"ManageDashboard">>
+): DashboardAction[] {
+  return [
+    {
+      title: t("learnerActions.myLearning.title"),
+      description: t("learnerActions.myLearning.description"),
+      href: "/my-learning",
+      Icon: GraduationCap,
+    },
+    {
+      title: t("learnerActions.courses.title"),
+      description: t("learnerActions.courses.description"),
+      href: "/courses",
+      Icon: BookOpen,
+    },
+    {
+      title: t("learnerActions.paths.title"),
+      description: t("learnerActions.paths.description"),
+      href: "/learning-paths",
+      Icon: LibraryBig,
+    },
+    {
+      title: t("learnerActions.aiChat.title"),
+      description: t("learnerActions.aiChat.description"),
+      href: "/ai-chat",
+      Icon: MessageSquareText,
+    },
+    {
+      title: t("learnerActions.notifications.title"),
+      description: t("learnerActions.notifications.description"),
+      href: "/notifications",
+      Icon: Bell,
+    },
+    {
+      title: t("learnerActions.settings.title"),
+      description: t("learnerActions.settings.description"),
+      href: "/setting",
+      Icon: Palette,
+    },
+  ];
+}
+
+function getAttentionItems({
+  roleMode,
+  workspaceItems,
+  permissions,
+  t,
+}: {
+  roleMode: RoleMode;
+  workspaceItems: MenuItem[];
+  permissions: Array<{ resource: string; url: string }>;
+  t: ReturnType<typeof useTranslations<"ManageDashboard">>;
+}) {
+  const hasAiAccess = workspaceItems.some((item) => item.titleKey?.startsWith("ai"));
+  const hasUserAdmin = workspaceItems.some((item) =>
+    ["accounts", "roles", "permissions"].includes(item.titleKey ?? "")
+  );
+  const hasCurriculum = workspaceItems.some((item) =>
+    ["manageCourses", "learningPathsAdmin"].includes(item.titleKey ?? "")
+  );
+
+  const items = [
+    {
+      title: t(`attention.role.${roleMode}.title`),
+      description: t(`attention.role.${roleMode}.description`),
+      Icon: roleMode === "learner" ? GraduationCap : ShieldCheck,
+      tone: "bg-primary/10 text-primary",
+    },
+  ];
+
+  if (workspaceItems.length === 0) {
+    items.push({
+      title: t("attention.limited.title"),
+      description: t("attention.limited.description"),
+      Icon: LayoutDashboard,
+      tone: "bg-muted text-muted-foreground",
+    });
+  }
+
+  if (hasCurriculum) {
+    items.push({
+      title: t("attention.curriculum.title"),
+      description: t("attention.curriculum.description"),
+      Icon: BookOpen,
+      tone: "bg-emerald-500/10 text-emerald-600",
+    });
+  }
+
+  if (hasUserAdmin) {
+    items.push({
+      title: t("attention.governance.title"),
+      description: t("attention.governance.description"),
+      Icon: Users,
+      tone: "bg-sky-500/10 text-sky-600",
+    });
+  }
+
+  if (hasAiAccess || permissions.some((permission) => permission.resource.toLowerCase().includes("ai"))) {
+    items.push({
+      title: t("attention.ai.title"),
+      description: t("attention.ai.description"),
+      Icon: Sparkles,
+      tone: "bg-violet-500/10 text-violet-600",
+    });
+  }
+
+  return items.slice(0, 4);
+}
+
+function getModuleDescriptionKey(titleKey: string) {
+  switch (titleKey) {
+    case "aiAnalytics":
+      return "moduleDescriptions.aiAnalytics";
+    case "aiTraces":
+      return "moduleDescriptions.aiTraces";
+    case "aiProviders":
+      return "moduleDescriptions.aiProviders";
+    case "revenue":
+      return "moduleDescriptions.revenue";
+    case "payouts":
+      return "moduleDescriptions.payouts";
+    case "accounts":
+      return "moduleDescriptions.accounts";
+    case "instructorApplications":
+      return "moduleDescriptions.instructorApplications";
+    case "roles":
+      return "moduleDescriptions.roles";
+    case "blogsAdmin":
+      return "moduleDescriptions.blogsAdmin";
+    case "filesAdmin":
+      return "moduleDescriptions.filesAdmin";
+    case "permissions":
+      return "moduleDescriptions.permissions";
+    case "manageCourses":
+      return "moduleDescriptions.manageCourses";
+    case "learningPathsAdmin":
+      return "moduleDescriptions.learningPathsAdmin";
+    default:
+      return "moduleDescriptions.default";
+  }
 }

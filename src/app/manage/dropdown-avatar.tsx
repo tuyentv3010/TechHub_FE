@@ -15,7 +15,6 @@ import { toast } from "@/components/ui/use-toast";
 import { useTranslations } from "next-intl";
 import { useAppContext } from "@/components/app-provider";
 import { useAccountProfile } from "@/queries/useAccount";
-import { usePermissions } from "@/hooks/usePermissions";
 import { getUserInfoFromStorage, removeTokenFromLocalStorage } from "@/lib/utils";
 import { normalizePersistedMediaUrl } from "@/lib/file-media";
 import { User, LogOut, BookText, BarChart3 } from "lucide-react";
@@ -34,15 +33,13 @@ export default function DropdownAvatar() {
   const t = useTranslations("NavItem");
   const logoutMutation = useLogoutMutation();
   const { data, isLoading, isError, error } = useAccountProfile();
-  const { hasPermission, isLoading: isPermissionsLoading } = usePermissions();
   const { isAuth, setIsAuth, setRole, setPermissions } = useAppContext();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   
   const account = data?.payload?.data;
   const currentRoles = userInfo?.roles || account?.roles || [];
   const canAccessManageDashboard =
-    currentRoles.includes("SUPER_ADMIN") ||
-    (!isPermissionsLoading && hasPermission("GET", "/manage/dashboard"));
+    isAuth && !currentRoles.includes("GUEST");
 
   // Load user info from localStorage on mount
   useEffect(() => {

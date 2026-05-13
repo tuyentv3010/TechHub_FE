@@ -22,10 +22,24 @@ export interface MenuItem {
   titleKey?: string;
   Icon: LucideIcon;
   href: string;
+  baseAccess?: boolean;
   requiredPermission: {
     method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
     url: string;
   };
+}
+
+type PermissionChecker = (
+  method: MenuItem["requiredPermission"]["method"],
+  url: string
+) => boolean;
+
+export function canAccessMenuItem(item: MenuItem, hasPermission: PermissionChecker) {
+  if (item.baseAccess) {
+    return true;
+  }
+
+  return hasPermission(item.requiredPermission.method, item.requiredPermission.url);
 }
 
 const menuItems: MenuItem[] = [
@@ -34,6 +48,7 @@ const menuItems: MenuItem[] = [
     titleKey: "dashboard",
     Icon: Home,
     href: "/manage/dashboard",
+    baseAccess: true,
     requiredPermission: {
       method: "GET",
       url: "/manage/dashboard",

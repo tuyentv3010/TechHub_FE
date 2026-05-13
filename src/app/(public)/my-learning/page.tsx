@@ -62,11 +62,16 @@ const emptyStateContent: Record<
 
 export default function MyLearningPage() {
   const [activeTab, setActiveTab] = useState<LearningTab>("all");
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  const { data, isLoading, error } = useMyEnrollments(statusFilter);
-  const enrollments = (data?.payload?.data || []) as Enrollment[];
+  const { data, isLoading, isFetching, error } = useMyEnrollments();
+  const allEnrollments = (data?.payload?.data || []) as Enrollment[];
+  const activeStatus = activeTab === "all" ? null : activeTab.toUpperCase();
+  const enrollments = activeStatus
+    ? allEnrollments.filter((enrollment) => enrollment.status === activeStatus)
+    : allEnrollments;
+  const isInitialLoading = isLoading && allEnrollments.length === 0;
+  const isRefreshing = isFetching && !isInitialLoading;
   const EmptyIcon = emptyStateContent[activeTab].icon;
-  console.log("enrollments", enrollments);
+
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
       ENROLLED: { label: "Đang học", variant: "default" },
@@ -85,22 +90,7 @@ export default function MyLearningPage() {
     return date.toLocaleDateString("vi-VN");
   };
 
-  if (isLoading) {
-    return (
-      <main className="min-h-screen bg-background pb-20 pt-24">
-        <div className="container mx-auto px-4">
-          <Skeleton className="h-12 w-64 mb-8" />
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Skeleton key={i} className="h-80 w-full rounded-xl" />
-            ))}
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (error) {
+  if (error && allEnrollments.length === 0) {
     return (
       <main className="min-h-screen bg-background pb-20 pt-24">
         <div className="container mx-auto px-4">
@@ -128,10 +118,9 @@ export default function MyLearningPage() {
         </div>
 
         {/* Filters */}
-        <Tabs defaultValue="all" className="mb-8" onValueChange={(value) => {
+        <Tabs value={activeTab} className="mb-8" onValueChange={(value) => {
           const nextTab = value as LearningTab;
           setActiveTab(nextTab);
-          setStatusFilter(nextTab === "all" ? undefined : nextTab.toUpperCase());
         }}>
           <TabsList className="grid w-full max-w-2xl grid-cols-5">
             <TabsTrigger value="all">Tất cả</TabsTrigger>
@@ -142,8 +131,28 @@ export default function MyLearningPage() {
           </TabsList>
         </Tabs>
 
+        {isRefreshing && (
+          <p className="mb-4 text-sm text-muted-foreground">Đang cập nhật danh sách khóa học...</p>
+        )}
+
         {/* Course Grid */}
-        {enrollments.length === 0 ? (
+        {isInitialLoading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <Skeleton className="h-48 w-full rounded-none" />
+                  <div className="space-y-4 p-6">
+                    <Skeleton className="h-6 w-4/5" />
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : enrollments.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
               <EmptyIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />

@@ -14,9 +14,12 @@ import {
   useGetAiProviderConfig,
   useGetAvailableModels,
   useGetProviderHealth,
+  useGetQdrantStats,
+  useReindexAllMutation,
   useUpdateAiProviderConfigMutation,
 } from "@/queries/useAi";
-import { CheckCircle, Cpu, Heart, Loader2, Settings, Sparkles, XCircle } from "lucide-react";
+import { CheckCircle, Cpu, Database, Heart, Loader2, RefreshCw, Settings, Sparkles, XCircle } from "lucide-react";
+import type { ReindexResponseType } from "@/schemaValidations/ai.schema";
 
 export default function AiProvidersPage() {
   const t = useTranslations("AiProviders");
@@ -24,16 +27,29 @@ export default function AiProvidersPage() {
   const { data: configRes } = useGetAiProviderConfig();
   const { data: modelsRes, isLoading: modelsLoading } = useGetAvailableModels();
   const { data: healthRes } = useGetProviderHealth();
+  const {
+    data: qdrantStatsRes,
+    refetch: refetchQdrantStats,
+    isFetching: qdrantStatsLoading,
+  } = useGetQdrantStats();
   const updateMutation = useUpdateAiProviderConfigMutation();
+  const reindexAllMutation = useReindexAllMutation();
 
   const config = configRes?.payload?.data || {};
   const metadata = config.metadata || {};
   const providersData = modelsRes?.payload?.data?.providers || {};
   const healthData = healthRes?.payload?.data || {};
+  const qdrantStats = qdrantStatsRes?.payload?.data;
+  const qdrantCollections = qdrantStats?.collections || {};
+  const qdrantTotalVectors = Object.values(qdrantCollections).reduce(
+    (sum: number, collection: any) => sum + (collection?.vectorCount || 0),
+    0
+  );
 
   const [selectedProvider, setSelectedProvider] = useState("");
   const [selectedChatModel, setSelectedChatModel] = useState("");
   const [selectedEmbeddingModel, setSelectedEmbeddingModel] = useState("");
+  const [reindexResult, setReindexResult] = useState<ReindexResponseType | null>(null);
 
   const allProviders = Object.keys(providersData).filter((provider) => providersData[provider]?.available);
   const chatModels = (providersData[selectedProvider]?.models || []).filter((model: any) => model.type === "chat");
@@ -63,6 +79,25 @@ export default function AiProvidersPage() {
       toast({
         title: t("toast.failedTitle"),
         description: t("toast.failedDescription"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReindexAll = async () => {
+    try {
+      const response = await reindexAllMutation.mutateAsync();
+      const result = response.payload?.data || null;
+      setReindexResult(result);
+      await refetchQdrantStats();
+      toast({
+        title: t("toast.reindexSuccessTitle"),
+        description: result?.message || t("toast.reindexSuccessDescription"),
+      });
+    } catch (error: any) {
+      toast({
+        title: t("toast.reindexFailedTitle"),
+        description: error?.message || t("toast.reindexFailedDescription"),
         variant: "destructive",
       });
     }
@@ -247,6 +282,130 @@ export default function AiProvidersPage() {
         </TabsContent>
 
         <TabsContent value="advanced" className="mt-4 space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Database className="h-4 w-4 text-primary" />
+                    {t("knowledgeIndex.title")}
+                  </CardTitle>
+                  <CardDescription>{t("knowledgeIndex.description")}</CardDescription>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchQdrantStats()}
+                    disabled={qdrantStatsLoading || reindexAllMutation.isPending}
+                  >
+                    {qdrantStatsLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                    )}
+                    {qdrantStats ? t("knowledgeIndex.refreshStats") : t("knowledgeIndex.loadStats")}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleReindexAll}
+                    disabled={reindexAllMutation.isPending}
+                  >
+                    {reindexAllMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t("knowledgeIndex.reindexing")}
+                      </>
+                    ) : (
+                      <>
+                        <Database className="mr-2 h-4 w-4" />
+                        {t("knowledgeIndex.reindexAll")}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div className="rounded-lg border bg-card p-4">
+                  <p className="text-sm text-muted-foreground">{t("knowledgeIndex.health")}</p>
+                  <div className="mt-2">
+                    {qdrantStats ? (
+                      qdrantStats.healthy ? (
+                        <Badge className="bg-green-600">{t("knowledgeIndex.healthy")}</Badge>
+                      ) : (
+                        <Badge variant="destructive">{t("knowledgeIndex.unhealthy")}</Badge>
+                      )
+                    ) : (
+                      <Badge variant="outline">{t("knowledgeIndex.notLoaded")}</Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-card p-4">
+                  <p className="text-sm text-muted-foreground">{t("knowledgeIndex.version")}</p>
+                  <p className="mt-2 text-xl font-semibold">{qdrantStats?.version || t("emptyValue")}</p>
+                </div>
+                <div className="rounded-lg border bg-card p-4">
+                  <p className="text-sm text-muted-foreground">{t("knowledgeIndex.collections")}</p>
+                  <p className="mt-2 text-xl font-semibold">{Object.keys(qdrantCollections).length}</p>
+                </div>
+                <div className="rounded-lg border bg-card p-4">
+                  <p className="text-sm text-muted-foreground">{t("knowledgeIndex.totalVectors")}</p>
+                  <p className="mt-2 text-xl font-semibold">{qdrantTotalVectors.toLocaleString()}</p>
+                </div>
+              </div>
+
+              {qdrantStats && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("knowledgeIndex.columns.collection")}</TableHead>
+                      <TableHead className="text-right">{t("knowledgeIndex.columns.vectors")}</TableHead>
+                      <TableHead className="text-right">{t("knowledgeIndex.columns.points")}</TableHead>
+                      <TableHead>{t("knowledgeIndex.columns.status")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(qdrantCollections).map(([name, collection]: [string, any]) => (
+                      <TableRow key={name}>
+                        <TableCell className="font-medium">{name}</TableCell>
+                        <TableCell className="text-right">{(collection.vectorCount || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{(collection.pointsCount || 0).toLocaleString()}</TableCell>
+                        <TableCell>{collection.status || t("emptyValue")}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+
+              {reindexResult && (
+                <div className="rounded-lg border bg-muted/40 p-4 text-sm">
+                  <p className="font-medium text-foreground">{t("knowledgeIndex.lastResult")}</p>
+                  <p className="mt-1 text-muted-foreground">{reindexResult.message}</p>
+                  {reindexResult.stats && (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <span>
+                        {t("knowledgeIndex.indexed")}:{" "}
+                        <strong>{reindexResult.stats.indexed.toLocaleString()}</strong>
+                      </span>
+                      <span>
+                        {t("knowledgeIndex.failed")}:{" "}
+                        <strong>{reindexResult.stats.failed.toLocaleString()}</strong>
+                      </span>
+                      <span>
+                        {t("knowledgeIndex.duration")}:{" "}
+                        <strong>{reindexResult.stats.duration || t("emptyValue")}</strong>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">{t("allModels.title")}</CardTitle>

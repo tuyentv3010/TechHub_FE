@@ -12,6 +12,7 @@ import GoogleTag from "@/components/google-tag";
 import { AppProvider } from "@/components/app-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ColorThemeProvider } from "@/components/color-theme-provider";
+import { ColorThemeScript } from "@/components/color-theme-script";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -46,6 +47,7 @@ export default async function RootLayout({
           fontSans.variable
         )}
       >
+        <ColorThemeScript />
         <NextTopLoader showSpinner={false} color="hsl(var(--foreground))" />
         <NextIntlClientProvider messages={messages}>
           <AppProvider>

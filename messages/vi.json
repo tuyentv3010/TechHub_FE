@@ -26,7 +26,7 @@
     "myLearning": "Học của tôi",
     "manageCourses": "Quản lý khóa học",
     "analytics": "Thống kê",
-    "dashboard": "Dashboard",
+    "dashboard": "Bảng điều khiển",
     "users": "Người dùng",
     "profile": "Hồ sơ",
     "settings": "Cài đặt",
@@ -49,7 +49,7 @@
     "logout": "Đăng xuất"
   },
   "AdminNav": {
-    "dashboard": "Dashboard",
+    "dashboard": "Bảng điều khiển",
     "aiAnalytics": "Phân tích AI",
     "aiTraces": "Theo dõi AI",
     "aiProviders": "Nhà cung cấp AI",
@@ -662,8 +662,8 @@
       "PageStatus": "Trang {page} / {totalPages}",
       "Loading": "\u0110ang t\u1ea3i quy\u1ec1n...",
       "CatalogLoadTitle": "Kh\u00f4ng th\u1ec3 t\u1ea3i danh m\u1ee5c quy\u1ec1n.",
-      "CatalogLoadFallback": "Kh\u00f4ng th\u1ec3 t\u1ea3i danh m\u1ee5c quy\u1ec1n.",
-      "CatalogLoadHint": "Ki\u1ec3m tra migration V7/V8 \u0111\u00e3 ch\u1ea1y v\u00e0 proxy-client \u0111\u00e3 \u0111\u01b0\u1ee3c kh\u1edfi \u0111\u1ed9ng l\u1ea1i sau khi th\u00eam route catalog m\u1edbi.",
+      "CatalogLoadFallback": "Vui l\u00f2ng th\u1eed l\u1ea1i sau. Ch\u01b0a c\u00f3 thay \u0111\u1ed5i ph\u00e2n quy\u1ec1n n\u00e0o \u0111\u01b0\u1ee3c l\u01b0u.",
+      "CatalogLoadHint": "N\u1ebfu l\u1ed7i ti\u1ebfp t\u1ee5c x\u1ea3y ra, h\u00e3y li\u00ean h\u1ec7 qu\u1ea3n tr\u1ecb h\u1ec7 th\u1ed1ng.",
       "HttpStatus": "HTTP {status}",
       "NoPermissions": "Kh\u00f4ng t\u00ecm th\u1ea5y quy\u1ec1n n\u00e0o.",
       "AllowedOverride": "Ghi \u0111\u00e8 cho ph\u00e9p",
@@ -2344,7 +2344,36 @@
       "updatedTitle": "Đã cập nhật nhà cung cấp",
       "updatedDescription": "{provider} / {model}",
       "failedTitle": "Không thể chuyển nhà cung cấp",
-      "failedDescription": "Vui lòng kiểm tra cấu hình và thử lại."
+      "failedDescription": "Vui lòng kiểm tra cấu hình và thử lại.",
+      "reindexSuccessTitle": "Đã reindex xong",
+      "reindexSuccessDescription": "Đã dựng lại knowledge index.",
+      "reindexFailedTitle": "Reindex thất bại",
+      "reindexFailedDescription": "Không thể dựng lại knowledge index."
+    },
+    "knowledgeIndex": {
+      "title": "Knowledge index",
+      "description": "Dựng lại vector khóa học và bài học trong Qdrant cho tìm kiếm AI và truy xuất ngữ cảnh chat.",
+      "loadStats": "Tải thống kê",
+      "refreshStats": "Làm mới thống kê",
+      "reindexAll": "Reindex All",
+      "reindexing": "Đang reindex...",
+      "health": "Tình trạng Qdrant",
+      "healthy": "Khỏe",
+      "unhealthy": "Có vấn đề",
+      "notLoaded": "Chưa tải",
+      "version": "Phiên bản Qdrant",
+      "collections": "Collections",
+      "totalVectors": "Tổng vectors",
+      "lastResult": "Kết quả reindex gần nhất",
+      "indexed": "Đã index",
+      "failed": "Thất bại",
+      "duration": "Thời gian",
+      "columns": {
+        "collection": "Collection",
+        "vectors": "Vectors",
+        "points": "Points",
+        "status": "Trạng thái"
+      }
     },
     "allModels": {
       "title": "Toàn bộ mô hình khả dụng",
@@ -2533,6 +2562,154 @@
     "messageSent": "Đã Gửi Tin Nhắn!",
     "messageSentDescription": "Chúng tôi sẽ phản hồi sớm nhất có thể.",
     "visitOffice": "Ghé Thăm Văn Phòng"
+  },
+  "ManageDashboard": {
+    "eyebrow": "Không gian hệ thống",
+    "title": "Bảng điều khiển hệ thống",
+    "description": "Trang vào chính dựa trên quyền thực tế, chỉ hiển thị những khu vực tài khoản này có thể dùng.",
+    "loading": "Đang tải bảng điều khiển...",
+    "accountFallback": "tài khoản này",
+    "open": "Mở",
+    "status": {
+      "active": "Đang hoạt động",
+      "unknown": "Không xác định"
+    },
+    "roles": {
+      "superAdmin": "Quản trị cao nhất",
+      "admin": "Quản trị viên",
+      "instructor": "Giảng viên",
+      "learner": "Học viên",
+      "none": "Chưa có vai trò"
+    },
+    "badges": {
+      "manage": "Quản trị"
+    },
+    "summary": {
+      "role": {
+        "title": "Vai trò hiện tại",
+        "description": "Đang đăng nhập với tên {name}"
+      },
+      "areas": {
+        "title": "Khu vực có thể truy cập",
+        "description": "{count} module quản trị có thể mở"
+      },
+      "permissions": {
+        "title": "Quyền hiệu lực",
+        "description": "Trên {count} nhóm tài nguyên"
+      },
+      "status": {
+        "title": "Trạng thái tài khoản",
+        "description": "Trạng thái trả về từ dịch vụ hồ sơ người dùng"
+      }
+    },
+    "roleFocus": {
+      "admin": {
+        "title": "Trọng tâm quản trị",
+        "description": "Đi nhanh vào người dùng, vai trò, nội dung, tài chính, tệp và các công cụ nền tảng mà vai trò này được mở."
+      },
+      "instructor": {
+        "title": "Trọng tâm giảng viên",
+        "description": "Ưu tiên vận hành khóa học, lộ trình học, nội dung cho học viên và các khu vực tài chính được cấp quyền."
+      },
+      "learner": {
+        "title": "Không gian học tập",
+        "description": "Dùng bảng điều khiển như điểm vào gọn gàng cho tiến độ học, khóa học, lộ trình, AI chat, thông báo và cài đặt."
+      },
+      "general": {
+        "title": "Trọng tâm làm việc",
+        "description": "Trang này chỉ hiển thị những module đã được cấp cho tài khoản."
+      }
+    },
+    "next": {
+      "title": "Bước tiếp theo gợi ý",
+      "description": "Điểm đến hữu ích đầu tiên dựa trên vai trò và quyền hiệu lực của tài khoản."
+    },
+    "modules": {
+      "title": "Module quản trị có thể truy cập",
+      "description": "Danh sách này khớp với quyền của sidebar, nên module bị ẩn sẽ không bị giới thiệu nhầm.",
+      "emptyTitle": "Không có module quản trị bổ sung",
+      "emptyDescription": "Tài khoản này hiện chỉ có quyền vào bảng điều khiển. Các thao tác học tập và hồ sơ vẫn có ở phía trên."
+    },
+    "moduleDescriptions": {
+      "aiAnalytics": "Xem mức dùng AI, tín hiệu chi phí và hoạt động AI ở cấp nền tảng.",
+      "aiTraces": "Kiểm tra trace AI và chẩn đoán từng lần chạy khi được cấp quyền AI.",
+      "aiProviders": "Quản lý cấu hình provider và định tuyến model cho dịch vụ AI.",
+      "revenue": "Theo dõi tín hiệu doanh thu, chính sách và hiệu quả tài chính.",
+      "payouts": "Duyệt vận hành payout và quy trình đối soát.",
+      "accounts": "Tạo, cập nhật và quản trị tài khoản nền tảng.",
+      "instructorApplications": "Duyệt hồ sơ ứng tuyển giảng viên và quyết định onboarding.",
+      "roles": "Bảo trì định nghĩa vai trò và các gói quyền đi kèm.",
+      "blogsAdmin": "Quản lý bài viết và nội dung học tập công khai.",
+      "filesAdmin": "Tải lên, sắp xếp, xem trước và quản trị tệp nền tảng.",
+      "permissions": "Kiểm tra danh mục quyền và override theo từng người dùng.",
+      "manageCourses": "Quản lý khóa học, xuất bản, chương trình học và nội dung bài học.",
+      "learningPathsAdmin": "Thiết kế và bảo trì các lộ trình học có hướng dẫn.",
+      "default": "Mở khu vực quản trị này."
+    },
+    "learnerActions": {
+      "myLearning": {
+        "title": "Học của tôi",
+        "description": "Tiếp tục các khóa đã đăng ký và theo dõi tiến độ học."
+      },
+      "courses": {
+        "title": "Duyệt khóa học",
+        "description": "Tìm khóa học phù hợp với kỹ năng bạn muốn xây dựng."
+      },
+      "paths": {
+        "title": "Lộ trình học",
+        "description": "Đi theo lộ trình có cấu trúc thay vì tự chọn từng khóa."
+      },
+      "aiChat": {
+        "title": "Trợ lý học tập AI",
+        "description": "Đặt câu hỏi, phân tích tài liệu và nhận hỗ trợ học tập."
+      },
+      "notifications": {
+        "title": "Thông báo",
+        "description": "Xem cập nhật về tài khoản, khóa học và hệ thống."
+      },
+      "settings": {
+        "title": "Cài đặt",
+        "description": "Điều chỉnh ngôn ngữ, giao diện và tùy chọn chủ đề."
+      }
+    },
+    "attention": {
+      "title": "Điểm cần chú ý",
+      "description": "Những nội dung dashboard nên nhấn mạnh theo bộ quyền hiện tại.",
+      "role": {
+        "admin": {
+          "title": "Phạm vi toàn hệ thống",
+          "description": "Vai trò này có thể thấy các khu vực liên hệ toàn hệ thống dựa trên danh mục quyền được cấp."
+        },
+        "instructor": {
+          "title": "Vận hành giảng dạy",
+          "description": "Dashboard ưu tiên việc dạy học và nội dung trước các điều khiển chỉ dành cho admin."
+        },
+        "learner": {
+          "title": "Điểm vào an toàn cho học viên",
+          "description": "Học viên thấy hành động học tập trước, không thấy analytics quản trị hoặc panel hạ tầng AI."
+        },
+        "general": {
+          "title": "Phạm vi giới hạn theo quyền",
+          "description": "Trang được dựng từ quyền hiệu lực thay vì một bố cục admin cố định."
+        }
+      },
+      "limited": {
+        "title": "Chỉ có quyền dashboard",
+        "description": "Chưa có module quản trị bổ sung, nên sidebar nên giữ tối giản."
+      },
+      "curriculum": {
+        "title": "Có quyền vận hành chương trình học",
+        "description": "Liên kết khóa học và lộ trình học xuất hiện vì tài khoản có quyền tương ứng."
+      },
+      "governance": {
+        "title": "Có quyền kiểm soát truy cập",
+        "description": "Module tài khoản, vai trò hoặc quyền hạn đang hiển thị để quản lý định danh và phân quyền."
+      },
+      "ai": {
+        "title": "Công cụ AI được tách riêng",
+        "description": "Khu vực AI chỉ xuất hiện như module bình thường khi vai trò có quyền AI rõ ràng."
+      }
+    }
   },
   "SettingsPage": {
     "title": "Cài Đặt",

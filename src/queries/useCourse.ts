@@ -210,10 +210,20 @@ export const useDeleteSkillMutation = () => {
 };
 
 // Get all tags
-export const useGetTags = () => {
+export const useGetTags = (options?: {
+  enabled?: boolean;
+  auth?: boolean;
+  redirectOnUnauthorized?: boolean;
+  suppressErrorLog?: boolean;
+  retry?: boolean | number;
+}) => {
+  const { enabled = true, retry, ...requestOptions } = options || {};
+
   return useQuery({
-    queryKey: ["tags"],
-    queryFn: () => courseApiRequest.getTags(),
+    queryKey: ["tags", requestOptions.auth === false ? "public" : "default"],
+    queryFn: () => courseApiRequest.getTags(requestOptions),
+    enabled,
+    retry: retry ?? (requestOptions.auth === false ? false : undefined),
   });
 };
 

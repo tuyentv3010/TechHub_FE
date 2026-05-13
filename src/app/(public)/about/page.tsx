@@ -11,7 +11,7 @@ export default function AboutPage() {
   const t = useTranslations("AboutPage");
 
   return (
-    <div className="w-full">
+    <div className="w-full bg-background text-foreground">
       {/* Hero Section with Background Image */}
       <section className="relative min-h-[400px] md:min-h-[500px]">
         {/* Background Image */}
@@ -39,14 +39,14 @@ export default function AboutPage() {
       </section>
 
       {/* Our Goal Section */}
-      <section className="py-16 bg-white dark:bg-gray-900">
+      <section className="bg-background py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <p className="text-blue-600 dark:text-blue-400 font-semibold mb-2">{t("ourGoal")}</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            <p className="mb-2 font-semibold text-primary">{t("ourGoal")}</p>
+            <h2 className="mb-4 text-3xl font-bold text-foreground md:text-4xl">
               {t("achieveGoals")}
             </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+            <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
               {t("goalDescription")}
             </p>
           </div>
@@ -54,7 +54,7 @@ export default function AboutPage() {
           {/* Image Grid - 3 placeholders */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {/* Image Placeholder 1 */}
-            <div className="relative h-80 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 group hover:border-blue-500 dark:hover:border-blue-400 transition-all">
+            <div className="group relative h-80 overflow-hidden rounded-2xl border-2 border-dashed border-border bg-muted transition-all hover:border-primary">
               {/* Add your image URL here */}
               <Image
                 src="/contact/Mask group (1).png"
@@ -65,7 +65,7 @@ export default function AboutPage() {
             </div>
 
             {/* Image Placeholder 2 */}
-            <div className="relative h-80 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 group hover:border-blue-500 dark:hover:border-blue-400 transition-all">
+            <div className="group relative h-80 overflow-hidden rounded-2xl border-2 border-dashed border-border bg-muted transition-all hover:border-primary">
               {/* Add your image URL here */}
               <Image
                 src="/contact/Mask group (2).png"
@@ -76,7 +76,7 @@ export default function AboutPage() {
             </div>
 
             {/* Image Placeholder 3 */}
-            <div className="relative h-80 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 group hover:border-blue-500 dark:hover:border-blue-400 transition-all">
+            <div className="group relative h-80 overflow-hidden rounded-2xl border-2 border-dashed border-border bg-muted transition-all hover:border-primary">
               {/* Add your image URL here */}
               <Image
                 src="/contact/Mask group (3).png"
@@ -90,38 +90,38 @@ export default function AboutPage() {
       </section>
 
       {/* Our Mission Section */}
-      <section className="py-16 bg-gray-50 dark:bg-gray-800">
+      <section className="bg-muted/40 py-16">
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
+              <h2 className="mb-6 text-3xl font-bold text-foreground md:text-4xl">
                 {t("ourMission")}
               </h2>
-              <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
+              <p className="mb-6 text-lg text-muted-foreground">
                 {t("missionDescription")}
               </p>
               <ul className="space-y-4">
                 <li className="flex items-start">
-                  <CheckCircle2 className="w-6 h-6 text-green-500 mr-3 mt-1 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">
+                  <CheckCircle2 className="mr-3 mt-1 h-6 w-6 flex-shrink-0 text-primary" />
+                  <span className="text-foreground/85">
                     {t("mission1")}
                   </span>
                 </li>
                 <li className="flex items-start">
-                  <CheckCircle2 className="w-6 h-6 text-green-500 mr-3 mt-1 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">
+                  <CheckCircle2 className="mr-3 mt-1 h-6 w-6 flex-shrink-0 text-primary" />
+                  <span className="text-foreground/85">
                     {t("mission2")}
                   </span>
                 </li>
                 <li className="flex items-start">
-                  <CheckCircle2 className="w-6 h-6 text-green-500 mr-3 mt-1 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">
+                  <CheckCircle2 className="mr-3 mt-1 h-6 w-6 flex-shrink-0 text-primary" />
+                  <span className="text-foreground/85">
                     {t("mission3")}
                   </span>
                 </li>
                 <li className="flex items-start">
-                  <CheckCircle2 className="w-6 h-6 text-green-500 mr-3 mt-1 flex-shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">
+                  <CheckCircle2 className="mr-3 mt-1 h-6 w-6 flex-shrink-0 text-primary" />
+                  <span className="text-foreground/85">
                     {t("mission4")}
                   </span>
                 </li>
@@ -141,32 +141,32 @@ export default function AboutPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-white dark:bg-gray-900">
+      <section className="bg-background py-16">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+              <div className="mb-2 text-4xl font-bold text-primary md:text-5xl">
                 10K+
               </div>
-              <div className="text-gray-600 dark:text-gray-400">{t("activeStudents")}</div>
+              <div className="text-muted-foreground">{t("activeStudents")}</div>
             </div>
             <div className="text-center">
-              <div className="mb-2 text-4xl font-bold text-primary md:text-5xl">
+              <div className="mb-2 text-4xl font-bold text-[hsl(var(--learning-accent))] md:text-5xl">
                 500+
               </div>
-              <div className="text-gray-600 dark:text-gray-400">{t("courses")}</div>
+              <div className="text-muted-foreground">{t("courses")}</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-green-600 dark:text-green-400 mb-2">
+              <div className="mb-2 text-4xl font-bold text-[hsl(var(--warning))] md:text-5xl">
                 100+
               </div>
-              <div className="text-gray-600 dark:text-gray-400">{t("expertInstructors")}</div>
+              <div className="text-muted-foreground">{t("expertInstructors")}</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl md:text-5xl font-bold text-orange-600 dark:text-orange-400 mb-2">
+              <div className="mb-2 text-4xl font-bold text-accent-foreground md:text-5xl">
                 95%
               </div>
-              <div className="text-gray-600 dark:text-gray-400">{t("successRate")}</div>
+              <div className="text-muted-foreground">{t("successRate")}</div>
             </div>
           </div>
         </div>
@@ -195,7 +195,7 @@ export default function AboutPage() {
             {t("ctaSubtitle")}
           </p>
           <Link href="/login">
-            <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
+            <Button size="lg">
               {t("getStarted")}
             </Button>
           </Link>

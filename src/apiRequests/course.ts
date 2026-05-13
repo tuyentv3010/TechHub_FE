@@ -151,7 +151,11 @@ const courseApiRequest = {
   deleteSkill: (id: string) => http.delete(`/app/api/proxy/courses/skills/${id}`),
 
   // Get all available tags (from course-service)
-  getTags: () => http.get(`/app/api/proxy/courses/tags`),
+  getTags: (options?: Parameters<typeof http.get>[1]) =>
+    http.get(`/app/api/proxy/courses/tags`, {
+      redirectOnUnauthorized: false,
+      ...options,
+    }),
 
   // Create/update/delete tag
   createTag: (body: any) => http.post(`/app/api/proxy/courses/tags`, body),

@@ -31,11 +31,9 @@ import { formatPrice, formatCourseLevel, createCourseSlug } from "@/lib/course";
 import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 const LEVELS = [
-  { value: "ALL_LEVELS", label: "Tất cả cấp độ" },
   { value: "BEGINNER", label: "Người mới bắt đầu" },
   { value: "INTERMEDIATE", label: "Trung cấp" },
   { value: "ADVANCED", label: "Nâng cao" },
-  { value: "EXPERT", label: "Chuyên gia" },
 ];
 
 const LANGUAGES = [
@@ -43,6 +41,7 @@ const LANGUAGES = [
   { value: "EN", label: "English" },
   { value: "JA", label: "日本語" },
 ];
+const MAX_PRICE = 10000000;
 
 const COURSE_SELECT_TRIGGER_CLASS =
   "h-12 border-border bg-background text-foreground shadow-sm data-[placeholder]:text-muted-foreground hover:bg-muted focus:ring-ring";
@@ -69,28 +68,58 @@ export default function CoursesClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialSearchQuery = searchParams.get("search") ?? "";
-  const initialSelectedSkills = searchParams
-    .getAll("skillIds")
-    .flatMap((value) => value.split(","))
-    .filter(Boolean);
+  const readMultiSearchParam = (key: string) =>
+    searchParams
+      .getAll(key)
+      .flatMap((value) => value.split(","))
+      .filter(Boolean);
+  const initialSelectedSkills = readMultiSearchParam("skillIds");
+  const initialSelectedTags = readMultiSearchParam("tagIds");
+  const initialLevelParam = searchParams.get("level") ?? "ALL";
+  const initialLanguageParam = searchParams.get("language") ?? "ALL";
+  const initialSelectedLevel = LEVELS.some((level) => level.value === initialLevelParam)
+    ? initialLevelParam
+    : "ALL";
+  const initialSelectedLanguage = LANGUAGES.some((language) => language.value === initialLanguageParam)
+    ? initialLanguageParam
+    : "ALL";
+  const initialMinPrice = Number(searchParams.get("minPrice") ?? 0);
+  const initialMaxPrice = Number(searchParams.get("maxPrice") ?? MAX_PRICE);
+  const initialPage = Number(searchParams.get("page") ?? 0);
   const hasInitialFilters =
-    initialSearchQuery.length > 0 || initialSelectedSkills.length > 0;
+    initialSearchQuery.length > 0 ||
+    initialSelectedLevel !== "ALL" ||
+    initialSelectedLanguage !== "ALL" ||
+    initialSelectedSkills.length > 0 ||
+    initialSelectedTags.length > 0 ||
+    initialMinPrice > 0 ||
+    initialMaxPrice < MAX_PRICE ||
+    initialPage > 0;
 
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
-  const [selectedLevel, setSelectedLevel] = useState<string>("ALL");
-  const [selectedLanguage, setSelectedLanguage] = useState<string>("ALL");
+  const [selectedLevel, setSelectedLevel] = useState<string>(initialSelectedLevel);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(initialSelectedLanguage);
   const [selectedSkills, setSelectedSkills] = useState<string[]>(
     initialSelectedSkills
   );
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000000]);
-  const [page, setPage] = useState(0);
+  const [selectedTags, setSelectedTags] = useState<string[]>(initialSelectedTags);
+  const [priceRange, setPriceRange] = useState<[number, number]>([
+    Number.isFinite(initialMinPrice) ? initialMinPrice : 0,
+    Number.isFinite(initialMaxPrice) ? initialMaxPrice : MAX_PRICE,
+  ]);
+  const [page, setPage] = useState(Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 0);
   const [size] = useState(12);
   const [isClientFiltering, setIsClientFiltering] = useState(hasInitialFilters);
 
   // Fetch skills and tags (use initial data if available)
-  const { data: skillsData } = useGetSkills();
-  const { data: tagsData } = useGetTags();
+  const publicFilterQueryOptions = {
+    auth: false,
+    redirectOnUnauthorized: false,
+    suppressErrorLog: true,
+    retry: false,
+  };
+  const { data: skillsData } = useGetSkills(publicFilterQueryOptions);
+  const { data: tagsData } = useGetTags(publicFilterQueryOptions);
   const skills = skillsData?.payload?.data ?? initialSkills;
   const tags = tagsData?.payload?.data ?? initialTags;
 
@@ -99,15 +128,18 @@ export default function CoursesClient({
     page,
     size,
     search: searchQuery || undefined,
-    level: selectedLevel && selectedLevel !== "ALL" ? selectedLevel : undefined,
+    level: selectedLevel && selectedLevel !== "ALL" && selectedLevel !== "ALL_LEVELS" ? selectedLevel : undefined,
     language: selectedLanguage && selectedLanguage !== "ALL" ? selectedLanguage : undefined,
     minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
-    maxPrice: priceRange[1] < 10000000 ? priceRange[1] : undefined,
+    maxPrice: priceRange[1] < MAX_PRICE ? priceRange[1] : undefined,
     skillIds: selectedSkills.length > 0 ? selectedSkills : undefined,
     tagIds: selectedTags.length > 0 ? selectedTags : undefined,
   };
 
-  const { data: coursesResponse, isLoading } = useGetCourseList(filterParams);
+  const { data: coursesResponse, isLoading } = useGetCourseList({
+    ...filterParams,
+    ...publicFilterQueryOptions,
+  });
 
   // Use SSR data for initial render, client data after filtering
   const courses = isClientFiltering 
@@ -139,7 +171,7 @@ export default function CoursesClient({
     setSelectedLanguage("ALL");
     setSelectedSkills([]);
     setSelectedTags([]);
-    setPriceRange([0, 10000000]);
+    setPriceRange([0, MAX_PRICE]);
     setPage(0);
     setIsClientFiltering(false);
   };
@@ -164,11 +196,11 @@ export default function CoursesClient({
 
   const activeFiltersCount =
     (searchQuery ? 1 : 0) +
-    (selectedLevel && selectedLevel !== "ALL" ? 1 : 0) +
+    (selectedLevel && selectedLevel !== "ALL" && selectedLevel !== "ALL_LEVELS" ? 1 : 0) +
     (selectedLanguage && selectedLanguage !== "ALL" ? 1 : 0) +
     selectedSkills.length +
     selectedTags.length +
-    (priceRange[0] > 0 || priceRange[1] < 10000000 ? 1 : 0);
+    (priceRange[0] > 0 || priceRange[1] < MAX_PRICE ? 1 : 0);
 
   const showLoading = isClientFiltering && isLoading;
 
@@ -215,11 +247,11 @@ export default function CoursesClient({
                 />
               </div>
 
-              {/* Categories Dropdown */}
+              {/* Level Dropdown */}
               <div className="w-full md:w-44">
                 <Select value={selectedLevel} onValueChange={handleLevelChange}>
                   <SelectTrigger className={COURSE_SELECT_TRIGGER_CLASS}>
-                    <SelectValue placeholder="Categories" />
+                    <SelectValue placeholder="Cấp độ" />
                   </SelectTrigger>
                   <SelectContent className={COURSE_SELECT_CONTENT_CLASS}>
                     <SelectItem value="ALL" className={COURSE_SELECT_ITEM_CLASS}>
@@ -238,11 +270,11 @@ export default function CoursesClient({
                 </Select>
               </div>
 
-              {/* Topic Dropdown */}
+              {/* Language Dropdown */}
               <div className="w-full md:w-44">
                 <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
                   <SelectTrigger className={COURSE_SELECT_TRIGGER_CLASS}>
-                    <SelectValue placeholder="Topic" />
+                    <SelectValue placeholder="Ngôn ngữ" />
                   </SelectTrigger>
                   <SelectContent className={COURSE_SELECT_CONTENT_CLASS}>
                     <SelectItem value="ALL" className={COURSE_SELECT_ITEM_CLASS}>
@@ -367,7 +399,7 @@ export default function CoursesClient({
                   </label>
                   <Slider
                     min={0}
-                    max={10000000}
+                    max={MAX_PRICE}
                     step={100000}
                     value={priceRange}
                     onValueChange={(value: number[]) => {
@@ -452,7 +484,7 @@ export default function CoursesClient({
         {activeFiltersCount > 0 && (
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium">Bộ lọc đang áp dụng:</span>
-            {selectedLevel && selectedLevel !== "ALL" && (
+            {selectedLevel && selectedLevel !== "ALL" && selectedLevel !== "ALL_LEVELS" && (
               <Badge variant="secondary" className="gap-1">
                 {LEVELS.find((l) => l.value === selectedLevel)?.label}
                 <X

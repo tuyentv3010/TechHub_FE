@@ -671,8 +671,8 @@
       "PageStatus": "{page} / {totalPages} \u30da\u30fc\u30b8",
       "Loading": "\u6a29\u9650\u3092\u8aad\u307f\u8fbc\u307f\u4e2d...",
       "CatalogLoadTitle": "\u6a29\u9650\u30ab\u30bf\u30ed\u30b0\u3092\u8aad\u307f\u8fbc\u3081\u307e\u305b\u3093\u3067\u3057\u305f\u3002",
-      "CatalogLoadFallback": "\u6a29\u9650\u30ab\u30bf\u30ed\u30b0\u3092\u8aad\u307f\u8fbc\u3081\u307e\u305b\u3093\u3067\u3057\u305f\u3002",
-      "CatalogLoadHint": "migration V7/V8 \u3068 proxy-client \u306e\u518d\u8d77\u52d5\u3092\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+      "CatalogLoadFallback": "\u5c11\u3057\u6642\u9593\u3092\u304a\u3044\u3066\u518d\u8a66\u884c\u3057\u3066\u304f\u3060\u3055\u3044\u3002\u30a2\u30ab\u30a6\u30f3\u30c8\u6a29\u9650\u306e\u5909\u66f4\u306f\u4fdd\u5b58\u3055\u308c\u3066\u3044\u307e\u305b\u3093\u3002",
+      "CatalogLoadHint": "\u554f\u984c\u304c\u7d9a\u304f\u5834\u5408\u306f\u3001\u30b7\u30b9\u30c6\u30e0\u7ba1\u7406\u8005\u306b\u9023\u7d61\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
       "HttpStatus": "HTTP {status}",
       "NoPermissions": "\u6a29\u9650\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3002",
       "AllowedOverride": "\u8a31\u53ef\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9",
@@ -2104,7 +2104,36 @@
       "updatedTitle": "プロバイダーを更新しました",
       "updatedDescription": "{provider} / {model}",
       "failedTitle": "プロバイダーを切り替えできません",
-      "failedDescription": "設定を確認してから再試行してください。"
+      "failedDescription": "設定を確認してから再試行してください。",
+      "reindexSuccessTitle": "再インデックス完了",
+      "reindexSuccessDescription": "Knowledge index を再構築しました。",
+      "reindexFailedTitle": "再インデックス失敗",
+      "reindexFailedDescription": "Knowledge index を再構築できませんでした。"
+    },
+    "knowledgeIndex": {
+      "title": "Knowledge index",
+      "description": "AI検索とチャット検索用に、Qdrant のコースとレッスンベクトルを再構築します。",
+      "loadStats": "統計を読み込む",
+      "refreshStats": "統計を更新",
+      "reindexAll": "Reindex All",
+      "reindexing": "再インデックス中...",
+      "health": "Qdrant状態",
+      "healthy": "正常",
+      "unhealthy": "問題あり",
+      "notLoaded": "未読み込み",
+      "version": "Qdrantバージョン",
+      "collections": "Collections",
+      "totalVectors": "総ベクトル数",
+      "lastResult": "最新の再インデックス結果",
+      "indexed": "Indexed",
+      "failed": "Failed",
+      "duration": "Duration",
+      "columns": {
+        "collection": "Collection",
+        "vectors": "Vectors",
+        "points": "Points",
+        "status": "状態"
+      }
     },
     "allModels": {
       "title": "利用可能なモデル一覧",
@@ -2285,6 +2314,154 @@
     "messageSent": "送信完了！",
     "messageSentDescription": "できるだけ早くご返信いたします。",
     "visitOffice": "オフィスを訪問"
+  },
+  "ManageDashboard": {
+    "eyebrow": "システムワークスペース",
+    "title": "システムダッシュボード",
+    "description": "このアカウントが実際に使える領域だけを表示する、権限ベースの入口です。",
+    "loading": "ダッシュボードを読み込み中...",
+    "accountFallback": "このアカウント",
+    "open": "開く",
+    "status": {
+      "active": "有効",
+      "unknown": "不明"
+    },
+    "roles": {
+      "superAdmin": "スーパー管理者",
+      "admin": "管理者",
+      "instructor": "講師",
+      "learner": "学習者",
+      "none": "ロールなし"
+    },
+    "badges": {
+      "manage": "管理"
+    },
+    "summary": {
+      "role": {
+        "title": "現在のロール",
+        "description": "{name} としてログイン中"
+      },
+      "areas": {
+        "title": "利用可能な領域",
+        "description": "{count} 個の管理モジュールを開けます"
+      },
+      "permissions": {
+        "title": "有効な権限",
+        "description": "{count} 個のリソースグループに適用"
+      },
+      "status": {
+        "title": "アカウント状態",
+        "description": "ユーザープロファイルサービスから返された状態"
+      }
+    },
+    "roleFocus": {
+      "admin": {
+        "title": "管理の重点",
+        "description": "ユーザー管理、コンテンツ運用、財務、ファイル、プラットフォーム機能へすばやく移動できます。"
+      },
+      "instructor": {
+        "title": "講師の重点",
+        "description": "コース運用、学習パス、学習者向けコンテンツ、許可された財務領域を優先します。"
+      },
+      "learner": {
+        "title": "学習ワークスペース",
+        "description": "学習状況、コース、学習パス、AIチャット、通知、設定への入口として使えます。"
+      },
+      "general": {
+        "title": "ワークスペースの重点",
+        "description": "このアカウントに付与されたモジュールだけを表示します。"
+      }
+    },
+    "next": {
+      "title": "次のおすすめ",
+      "description": "ロールと有効な権限から、最初に使いやすい移動先を表示します。"
+    },
+    "modules": {
+      "title": "アクセス可能な管理モジュール",
+      "description": "サイドバーと同じ権限判定を使うため、使えないモジュールは表示しません。",
+      "emptyTitle": "追加の管理モジュールはありません",
+      "emptyDescription": "このアカウントは現在ダッシュボードのみ利用できます。学習とプロフィールの操作は上に表示されています。"
+    },
+    "moduleDescriptions": {
+      "aiAnalytics": "AI利用量、コストの兆候、プラットフォーム全体のAI活動を確認します。",
+      "aiTraces": "AI権限がある場合に、トレースと実行単位の診断を確認します。",
+      "aiProviders": "AIサービスのプロバイダー設定とモデルルーティングを管理します。",
+      "revenue": "売上シグナル、ポリシー、財務パフォーマンスを監視します。",
+      "payouts": "支払い運用と精算ワークフローを確認します。",
+      "accounts": "プラットフォームアカウントを作成、更新、管理します。",
+      "instructorApplications": "講師応募とオンボーディング判断を確認します。",
+      "roles": "ロール定義と権限セットを保守します。",
+      "blogsAdmin": "公開記事と学習コンテンツを管理します。",
+      "filesAdmin": "プラットフォームのファイルをアップロード、整理、プレビュー、管理します。",
+      "permissions": "権限カタログとユーザー別の上書きを監査します。",
+      "manageCourses": "コース、公開、カリキュラム、レッスン内容を管理します。",
+      "learningPathsAdmin": "ガイド付き学習パスを設計、保守します。",
+      "default": "この管理領域を開きます。"
+    },
+    "learnerActions": {
+      "myLearning": {
+        "title": "マイ学習",
+        "description": "登録済みコースを続け、学習進捗を確認します。"
+      },
+      "courses": {
+        "title": "コースを探す",
+        "description": "伸ばしたいスキルに合うコースを見つけます。"
+      },
+      "paths": {
+        "title": "学習パス",
+        "description": "毎回コースを選ぶ代わりに、構造化されたパスに沿って学びます。"
+      },
+      "aiChat": {
+        "title": "AI学習アシスタント",
+        "description": "質問、教材分析、学習サポートに利用します。"
+      },
+      "notifications": {
+        "title": "通知",
+        "description": "アカウント、コース、システムの更新を確認します。"
+      },
+      "settings": {
+        "title": "設定",
+        "description": "言語、外観、テーマ設定を調整します。"
+      }
+    },
+    "attention": {
+      "title": "運用上の注目点",
+      "description": "現在の権限セットでこのダッシュボードが重視すべき内容です。",
+      "role": {
+        "admin": {
+          "title": "システム全体の範囲",
+          "description": "付与された権限カタログに基づいて、横断的な作業領域を表示できます。"
+        },
+        "instructor": {
+          "title": "教育運用",
+          "description": "管理者専用の制御よりも、教育とコンテンツ作業を優先します。"
+        },
+        "learner": {
+          "title": "学習者向けの安全な入口",
+          "description": "学習者には学習アクションを先に表示し、管理分析やAI基盤パネルは表示しません。"
+        },
+        "general": {
+          "title": "権限に限定された範囲",
+          "description": "固定の管理レイアウトではなく、有効な権限からページを構成します。"
+        }
+      },
+      "limited": {
+        "title": "ダッシュボードのみ利用可能",
+        "description": "追加の管理モジュールは付与されていないため、サイドバーは最小限になります。"
+      },
+      "curriculum": {
+        "title": "カリキュラム運用が利用可能",
+        "description": "対応する権限があるため、コースと学習パスのリンクが表示されます。"
+      },
+      "governance": {
+        "title": "ガバナンス制御が利用可能",
+        "description": "アカウント、ロール、権限モジュールが表示され、IDとアクセスを管理できます。"
+      },
+      "ai": {
+        "title": "AIツールは分離されています",
+        "description": "AI領域は、明示的なAI権限がある場合のみ通常のモジュールとして表示されます。"
+      }
+    }
   },
   "SettingsPage": {
     "title": "設定",

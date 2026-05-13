@@ -663,8 +663,8 @@
       "PageStatus": "Page {page} of {totalPages}",
       "Loading": "Loading permissions...",
       "CatalogLoadTitle": "Permission catalog could not be loaded.",
-      "CatalogLoadFallback": "Could not load permission catalog.",
-      "CatalogLoadHint": "Check that migrations V7/V8 were run and proxy-client was restarted after the new catalog route was added.",
+      "CatalogLoadFallback": "Please try again in a moment. No account permission changes were saved.",
+      "CatalogLoadHint": "If this keeps happening, contact a system administrator.",
       "HttpStatus": "HTTP {status}",
       "NoPermissions": "No permissions found.",
       "AllowedOverride": "Allowed override",
@@ -2310,7 +2310,36 @@
       "updatedTitle": "Provider updated",
       "updatedDescription": "{provider} / {model}",
       "failedTitle": "Failed to switch provider",
-      "failedDescription": "Please verify the configuration and try again."
+      "failedDescription": "Please verify the configuration and try again.",
+      "reindexSuccessTitle": "Reindex completed",
+      "reindexSuccessDescription": "Knowledge index has been rebuilt.",
+      "reindexFailedTitle": "Reindex failed",
+      "reindexFailedDescription": "Could not rebuild the knowledge index."
+    },
+    "knowledgeIndex": {
+      "title": "Knowledge index",
+      "description": "Rebuild course and lesson vectors in Qdrant for AI search and chat retrieval.",
+      "loadStats": "Load stats",
+      "refreshStats": "Refresh stats",
+      "reindexAll": "Reindex All",
+      "reindexing": "Reindexing...",
+      "health": "Qdrant health",
+      "healthy": "Healthy",
+      "unhealthy": "Issue",
+      "notLoaded": "Not loaded",
+      "version": "Qdrant version",
+      "collections": "Collections",
+      "totalVectors": "Total vectors",
+      "lastResult": "Latest reindex result",
+      "indexed": "Indexed",
+      "failed": "Failed",
+      "duration": "Duration",
+      "columns": {
+        "collection": "Collection",
+        "vectors": "Vectors",
+        "points": "Points",
+        "status": "Status"
+      }
     },
     "allModels": {
       "title": "All Available Models",
@@ -2499,6 +2528,154 @@
     "messageSent": "Message Sent!",
     "messageSentDescription": "We'll get back to you as soon as possible.",
     "visitOffice": "Visit Our Office"
+  },
+  "ManageDashboard": {
+    "eyebrow": "System workspace",
+    "title": "System dashboard",
+    "description": "A permission-aware landing page for the areas this account can actually use.",
+    "loading": "Loading dashboard...",
+    "accountFallback": "this account",
+    "open": "Open",
+    "status": {
+      "active": "Active",
+      "unknown": "Unknown"
+    },
+    "roles": {
+      "superAdmin": "Super admin",
+      "admin": "Admin",
+      "instructor": "Instructor",
+      "learner": "Learner",
+      "none": "No role"
+    },
+    "badges": {
+      "manage": "Manage"
+    },
+    "summary": {
+      "role": {
+        "title": "Current role",
+        "description": "Signed in as {name}"
+      },
+      "areas": {
+        "title": "Available areas",
+        "description": "{count, plural, =0 {No management module available} one {# management module available} other {# management modules available}}"
+      },
+      "permissions": {
+        "title": "Effective permissions",
+        "description": "Across {count, plural, =0 {no resource groups} one {# resource group} other {# resource groups}}"
+      },
+      "status": {
+        "title": "Account status",
+        "description": "Status returned by the user profile service"
+      }
+    },
+    "roleFocus": {
+      "admin": {
+        "title": "Administration focus",
+        "description": "Jump into user governance, content operations, finance, files, and platform tools that your role can open."
+      },
+      "instructor": {
+        "title": "Instructor focus",
+        "description": "Prioritize course operations, learning paths, learner-facing content, and eligible finance areas."
+      },
+      "learner": {
+        "title": "Learning workspace",
+        "description": "Use the dashboard as a clean entry point to learning activity, courses, paths, AI chat, notifications, and settings."
+      },
+      "general": {
+        "title": "Workspace focus",
+        "description": "Only the modules granted to this account are shown here."
+      }
+    },
+    "next": {
+      "title": "Suggested next step",
+      "description": "The first useful destination based on this account's role and effective permissions."
+    },
+    "modules": {
+      "title": "Accessible management modules",
+      "description": "This mirrors the sidebar permissions, so hidden modules are not advertised as available.",
+      "emptyTitle": "No extra management modules",
+      "emptyDescription": "This account currently has dashboard access only. Learning and profile actions remain available above."
+    },
+    "moduleDescriptions": {
+      "aiAnalytics": "Review AI usage, cost signals, and platform-level AI activity.",
+      "aiTraces": "Inspect AI traces and run-level diagnostics when AI access is granted.",
+      "aiProviders": "Manage provider configuration and model routing for AI services.",
+      "revenue": "Monitor revenue signals, policies, and financial performance.",
+      "payouts": "Review payout operations and settlement workflows.",
+      "accounts": "Create, update, and govern platform accounts.",
+      "instructorApplications": "Review instructor applications and onboarding decisions.",
+      "roles": "Maintain role definitions and their permission bundles.",
+      "blogsAdmin": "Manage editorial posts and public learning content.",
+      "filesAdmin": "Upload, organize, preview, and govern platform files.",
+      "permissions": "Audit permission catalogs and per-user overrides.",
+      "manageCourses": "Manage courses, publishing, curriculum, and lesson content.",
+      "learningPathsAdmin": "Design and maintain guided learning paths.",
+      "default": "Open this management area."
+    },
+    "learnerActions": {
+      "myLearning": {
+        "title": "My learning",
+        "description": "Continue enrolled courses and track your learning progress."
+      },
+      "courses": {
+        "title": "Browse courses",
+        "description": "Find courses that match the skills you want to build."
+      },
+      "paths": {
+        "title": "Learning paths",
+        "description": "Follow structured paths instead of choosing every course manually."
+      },
+      "aiChat": {
+        "title": "AI learning assistant",
+        "description": "Ask questions, analyze materials, and get study support."
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Check account, course, and system updates."
+      },
+      "settings": {
+        "title": "Settings",
+        "description": "Adjust language, appearance, and theme preferences."
+      }
+    },
+    "attention": {
+      "title": "Operational attention",
+      "description": "What this dashboard should emphasize for the current permission set.",
+      "role": {
+        "admin": {
+          "title": "System-wide scope",
+          "description": "This role can see cross-system work areas based on the granted permission catalog."
+        },
+        "instructor": {
+          "title": "Teaching operations",
+          "description": "The dashboard keeps teaching and content work ahead of admin-only controls."
+        },
+        "learner": {
+          "title": "Learner-safe landing",
+          "description": "Learners see learning actions first, not admin analytics or AI infrastructure panels."
+        },
+        "general": {
+          "title": "Permission-limited scope",
+          "description": "The page is driven by effective permissions instead of a fixed admin layout."
+        }
+      },
+      "limited": {
+        "title": "Dashboard-only access",
+        "description": "No additional management module is currently granted, so the sidebar should stay minimal."
+      },
+      "curriculum": {
+        "title": "Curriculum operations available",
+        "description": "Course and learning path links are available because this account has matching permissions."
+      },
+      "governance": {
+        "title": "Governance controls available",
+        "description": "Account, role, or permission modules are visible for identity and access management."
+      },
+      "ai": {
+        "title": "AI tools are separated",
+        "description": "AI areas appear as normal modules only when the role has explicit AI permissions."
+      }
+    }
   },
   "SettingsPage": {
     "title": "Settings",

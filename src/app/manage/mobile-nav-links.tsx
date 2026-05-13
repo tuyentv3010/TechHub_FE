@@ -6,7 +6,7 @@ import { ArrowLeft, PanelLeft } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import menuItems, { MenuItem } from "@/app/manage/menuItems";
+import menuItems, { canAccessMenuItem, MenuItem } from "@/app/manage/menuItems";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -26,10 +26,7 @@ export default function MobileNavLinks() {
       return false;
     }
 
-    return hasPermission(
-      item.requiredPermission.method,
-      item.requiredPermission.url
-    );
+    return canAccessMenuItem(item, hasPermission);
   });
 
   return (

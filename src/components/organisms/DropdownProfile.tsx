@@ -23,6 +23,7 @@ import Image from "next/image";
 import { toast } from "@/components/ui/use-toast";
 import { useLogoutMutation } from "@/queries/useAuth";
 import { useAccountProfile } from "@/queries/useAccount";
+import manageMenuItems, { canAccessMenuItem } from "@/app/manage/menuItems";
 import { usePermissions } from "@/hooks/usePermissions";
 import { getUserInfoFromStorage, removeTokenFromLocalStorage } from "@/lib/utils";
 import { normalizePersistedMediaUrl } from "@/lib/file-media";
@@ -59,8 +60,13 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
   const account = data?.payload?.data;
   const currentRoles = userInfo?.roles || account?.roles || [];
   const canAccessManageDashboard =
+    isAuth && !currentRoles.includes("GUEST");
+  const manageCoursesItem = manageMenuItems.find((item) => item.href === "/manage/courses");
+  const canAccessManageCourses =
     currentRoles.includes("SUPER_ADMIN") ||
-    (!isPermissionsLoading && hasPermission("GET", "/manage/dashboard"));
+    (!!manageCoursesItem &&
+      !isPermissionsLoading &&
+      canAccessMenuItem(manageCoursesItem, hasPermission));
   // Load user info from localStorage on mount
   useEffect(() => {
     if (isAuth) {
@@ -248,7 +254,7 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
                     </Link>
                   </DropdownMenuItem>
                 )}
-                {(userInfo?.roles?.includes("ADMIN") || userInfo?.roles?.includes("INSTRUCTOR")) && (
+                {canAccessManageCourses && (
                   <DropdownMenuItem asChild>
                     <Link href="/manage/courses" className="cursor-pointer">
                       <BookOpen className="mr-2 h-4 w-4" />

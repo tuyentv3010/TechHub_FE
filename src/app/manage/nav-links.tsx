@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { ArrowLeft, Maximize2, Minimize2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import menuItems, { MenuItem } from "@/app/manage/menuItems";
+import menuItems, { canAccessMenuItem, MenuItem } from "@/app/manage/menuItems";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAccountProfile } from "@/queries/useAccount";
 import { cn } from "@/lib/utils";
@@ -57,10 +57,7 @@ export default function NavLinks({ collapsed }: NavLinksProps) {
       return false;
     }
 
-    return hasPermission(
-      item.requiredPermission.method,
-      item.requiredPermission.url
-    );
+    return canAccessMenuItem(item, hasPermission);
   });
 
   return (

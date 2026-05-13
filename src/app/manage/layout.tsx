@@ -13,7 +13,7 @@ import DropdownAvatar from "./dropdown-avatar";
 import NotificationBell from "@/components/organisms/NotificationBell";
 import { AiLearningPathProvider } from "@/contexts/AiLearningPathContext";
 import { DashboardShell } from "@/components/layout";
-import menuItems from "@/app/manage/menuItems";
+import menuItems, { canAccessMenuItem } from "@/app/manage/menuItems";
 import { usePermissions } from "@/hooks/usePermissions";
 
 export default function Layout({
@@ -87,15 +87,14 @@ export default function Layout({
 
   const canAccessCurrentPage =
     !currentMenuItem ||
-    hasPermission(
-      currentMenuItem.requiredPermission.method,
-      currentMenuItem.requiredPermission.url
-    );
+    canAccessMenuItem(currentMenuItem, hasPermission);
+  const currentPageHasBaseAccess = Boolean(currentMenuItem?.baseAccess);
 
   const isUnauthorizedPage = pathname === "/manage/unauthorized";
   const shouldHoldContent =
     !isUnauthorizedPage &&
     !!currentMenuItem &&
+    !currentPageHasBaseAccess &&
     (isPermissionsLoading || !canAccessCurrentPage);
 
   useEffect(() => {

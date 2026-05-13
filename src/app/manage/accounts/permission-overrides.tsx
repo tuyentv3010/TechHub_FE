@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "@/components/ui/use-toast";
 import {
   useDeleteUserPermissionOverrideMutation,
   useGetUserPermissionCatalog,
@@ -27,6 +26,8 @@ type PermissionState = {
   badgeVariant: "default" | "secondary" | "destructive" | "outline";
 };
 
+type LocalPermissionState = Pick<PermissionSchemaType, "source" | "allowed">;
+
 const PAGE_SIZE = 20;
 
 const isUserOverride = (permission: PermissionSchemaType) =>
@@ -40,9 +41,15 @@ export default function PermissionOverrides({
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(0);
-  const [pendingPermissionId, setPendingPermissionId] = useState<string | null>(
-    null
+  const [pendingPermissionIds, setPendingPermissionIds] = useState<Set<string>>(
+    () => new Set()
   );
+  const [localPermissionState, setLocalPermissionState] = useState<
+    Record<string, LocalPermissionState>
+  >({});
+  const [rolePermissionState, setRolePermissionState] = useState<
+    Record<string, LocalPermissionState>
+  >({});
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -70,8 +77,68 @@ export default function PermissionOverrides({
   const upsertOverrideMutation = useUpsertUserPermissionMutation();
   const deleteOverrideMutation = useDeleteUserPermissionOverrideMutation();
 
-  const permissions: PermissionSchemaType[] = catalogQuery.data?.payload?.data ?? [];
+  const serverPermissions: PermissionSchemaType[] =
+    catalogQuery.data?.payload?.data ?? [];
+  const permissions: PermissionSchemaType[] = useMemo(
+    () =>
+      serverPermissions.map((permission) => ({
+        ...permission,
+        ...(localPermissionState[permission.id] ?? {}),
+      })),
+    [localPermissionState, serverPermissions]
+  );
   const pagination = catalogQuery.data?.payload?.pagination;
+
+  useEffect(() => {
+    if (serverPermissions.length === 0) {
+      return;
+    }
+
+    setRolePermissionState((current) => {
+      let changed = false;
+      const next = { ...current };
+
+      serverPermissions.forEach((permission) => {
+        if (isUserOverride(permission)) {
+          return;
+        }
+
+        const roleState = {
+          source: "ROLE" as const,
+          allowed: permission.allowed !== false,
+        };
+        const currentState = next[permission.id];
+        if (
+          currentState?.source !== roleState.source ||
+          currentState?.allowed !== roleState.allowed
+        ) {
+          next[permission.id] = roleState;
+          changed = true;
+        }
+      });
+
+      return changed ? next : current;
+    });
+
+    setLocalPermissionState((current) => {
+      let changed = false;
+      const next = { ...current };
+
+      serverPermissions.forEach((permission) => {
+        const localState = next[permission.id];
+        if (
+          localState &&
+          localState.source === permission.source &&
+          localState.allowed === permission.allowed
+        ) {
+          delete next[permission.id];
+          changed = true;
+        }
+      });
+
+      return changed ? next : current;
+    });
+  }, [serverPermissions]);
 
   const getPermissionState = (permission: PermissionSchemaType): PermissionState => {
     if (isUserOverride(permission) && permission.allowed !== false) {
@@ -89,8 +156,43 @@ export default function PermissionOverrides({
     return { label: t("DeniedByRole"), badgeVariant: "outline" };
   };
 
+  const setPermissionPending = (permissionId: string, pending: boolean) => {
+    setPendingPermissionIds((current) => {
+      const next = new Set(current);
+      if (pending) {
+        next.add(permissionId);
+      } else {
+        next.delete(permissionId);
+      }
+      return next;
+    });
+  };
+
+  const setLocalState = (
+    permissionId: string,
+    state: LocalPermissionState | undefined
+  ) => {
+    setLocalPermissionState((current) => {
+      const next = { ...current };
+      if (state) {
+        next[permissionId] = state;
+      } else {
+        delete next[permissionId];
+      }
+      return next;
+    });
+  };
+
   const applyOverride = async (permissionId: string, allowed: boolean) => {
-    setPendingPermissionId(permissionId);
+    const previousState = permissions.find(
+      (permission) => permission.id === permissionId
+    );
+    setPermissionPending(permissionId, true);
+    setLocalState(permissionId, {
+      source: "USER_OVERRIDE",
+      allowed,
+    });
+
     try {
       await upsertOverrideMutation.mutateAsync({
         userId,
@@ -100,25 +202,47 @@ export default function PermissionOverrides({
           active: true,
         },
       });
-      toast({
-        description: allowed ? t("AllowToast") : t("DenyToast"),
-      });
     } catch (error) {
+      setLocalState(
+        permissionId,
+        previousState
+          ? {
+              source: previousState.source,
+              allowed: previousState.allowed,
+            }
+          : undefined
+      );
       handleErrorApi({ error });
     } finally {
-      setPendingPermissionId(null);
+      setPermissionPending(permissionId, false);
     }
   };
 
   const resetOverride = async (permissionId: string) => {
-    setPendingPermissionId(permissionId);
+    const previousState = permissions.find(
+      (permission) => permission.id === permissionId
+    );
+    const roleState = rolePermissionState[permissionId];
+    setPermissionPending(permissionId, true);
+    if (roleState) {
+      setLocalState(permissionId, roleState);
+    }
+
     try {
       await deleteOverrideMutation.mutateAsync({ userId, permissionId });
-      toast({ description: t("ResetToast") });
     } catch (error) {
+      setLocalState(
+        permissionId,
+        previousState
+          ? {
+              source: previousState.source,
+              allowed: previousState.allowed,
+            }
+          : undefined
+      );
       handleErrorApi({ error });
     } finally {
-      setPendingPermissionId(null);
+      setPermissionPending(permissionId, false);
     }
   };
 
@@ -128,13 +252,17 @@ export default function PermissionOverrides({
     | { status?: number; message?: string; payload?: { message?: string } }
     | null;
 
-  const isMutating =
-    upsertOverrideMutation.isPending || deleteOverrideMutation.isPending;
+  useEffect(() => {
+    if (!loadError) {
+      return;
+    }
 
-  const loadErrorMessage =
-    loadError?.payload?.message ||
-    loadError?.message ||
-    t("CatalogLoadFallback");
+    console.error("[PermissionOverrides] Failed to load permission catalog", {
+      status: loadError.status,
+      message: loadError.message,
+      payload: loadError.payload,
+    });
+  }, [loadError]);
 
   return (
     <section className="space-y-3 rounded-md border p-4">
@@ -183,10 +311,7 @@ export default function PermissionOverrides({
                 {t("CatalogLoadTitle")}
               </div>
               <div className="text-muted-foreground">
-                {loadError.status
-                  ? `${t("HttpStatus", { status: loadError.status })}: `
-                  : ""}
-                {loadErrorMessage}
+                {t("CatalogLoadFallback")}
               </div>
               <div className="text-xs text-muted-foreground">
                 {t("CatalogLoadHint")}
@@ -205,12 +330,12 @@ export default function PermissionOverrides({
             permissions.map((permission) => {
               const state = getPermissionState(permission);
               const hasOverride = isUserOverride(permission);
-              const isPending = pendingPermissionId === permission.id;
+              const isPending = pendingPermissionIds.has(permission.id);
 
               return (
                 <div
                   key={permission.id}
-                  className="grid gap-3 p-3 md:grid-cols-[minmax(0,1fr)_160px_240px] md:items-center"
+                  className="grid gap-3 p-3 md:grid-cols-[minmax(0,1fr)_150px_310px] md:items-center"
                 >
                   <div className="min-w-0 space-y-1">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -231,45 +356,46 @@ export default function PermissionOverrides({
                     {state.label}
                   </Badge>
 
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-2.5 md:min-w-[310px]">
                     <Button
                       type="button"
                       size="sm"
+                      className="h-9 justify-center gap-1.5 whitespace-nowrap px-3 text-xs font-medium"
                       variant={
                         hasOverride && permission.allowed !== false
                           ? "default"
                           : "outline"
                       }
-                      disabled={isMutating && !isPending}
+                      disabled={isPending}
                       onClick={() => applyOverride(permission.id, true)}
                     >
-                      <ShieldCheck className="h-4 w-4" />
+                      <ShieldCheck className="h-4 w-4 shrink-0" />
                       {t("Allow")}
                     </Button>
                     <Button
                       type="button"
                       size="sm"
+                      className="h-9 justify-center gap-1.5 whitespace-nowrap px-3 text-xs font-medium"
                       variant={
                         hasOverride && permission.allowed === false
                           ? "destructive"
                           : "outline"
                       }
-                      disabled={isMutating && !isPending}
+                      disabled={isPending}
                       onClick={() => applyOverride(permission.id, false)}
                     >
-                      <ShieldX className="h-4 w-4" />
+                      <ShieldX className="h-4 w-4 shrink-0" />
                       {t("Deny")}
                     </Button>
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={
-                        (isMutating && !isPending) || !hasOverride
-                      }
+                      className="h-9 justify-center gap-1.5 whitespace-nowrap px-3 text-xs font-medium"
+                      disabled={isPending || !hasOverride}
                       onClick={() => resetOverride(permission.id)}
                     >
-                      <RotateCcw className="h-4 w-4" />
+                      <RotateCcw className="h-4 w-4 shrink-0" />
                       {t("Reset")}
                     </Button>
                   </div>
