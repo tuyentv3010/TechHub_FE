@@ -39,12 +39,12 @@ const HeroPostCard = ({ blog }: { blog: Blog }) => {
 
   return (
     <Link href={`/blog/${blogSlug}`}>
-      <Card className="group flex h-full flex-col overflow-hidden border-border transition-colors hover:border-primary/40">
+      <Card className="group th-hover-lift th-focus-ring flex h-full flex-col overflow-hidden border border-border shadow-sm">
         <CardHeader className="space-y-4 p-0">
           <div className="relative h-64 w-full overflow-hidden bg-muted">
             {coverImage ? (
               <div
-                className="h-full w-full bg-muted transition-transform duration-300 group-hover:scale-[1.03]"
+                className="th-hover-zoom h-full w-full bg-muted"
                 style={{
                   backgroundImage: `url(${coverImage})`,
                   backgroundSize: "cover",
@@ -62,7 +62,7 @@ const HeroPostCard = ({ blog }: { blog: Blog }) => {
           </div>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col space-y-4 p-6">
-          <CardTitle className="line-clamp-2 text-2xl transition group-hover:text-primary">
+          <CardTitle className="th-hover-title line-clamp-2 text-2xl">
             {blog.title}
           </CardTitle>
           <p className="line-clamp-3 text-sm text-muted-foreground">{excerpt}</p>
@@ -90,12 +90,12 @@ const SmallPostCard = ({ blog }: { blog: Blog }) => {
 
   return (
     <Link href={`/blog/${blogSlug}`}>
-      <Card className="group flex h-full flex-col overflow-hidden border-muted-foreground/10 transition hover:border-primary/40 hover:shadow-lg">
+      <Card className="group th-hover-lift th-focus-ring flex h-full flex-col overflow-hidden border border-muted-foreground/10 shadow-sm">
         <CardHeader className="space-y-3 p-0">
           <div className="relative h-40 w-full overflow-hidden bg-muted">
             {coverImage ? (
               <div
-                className="h-full w-full bg-muted transition-transform duration-300 group-hover:scale-[1.03]"
+                className="th-hover-zoom h-full w-full bg-muted"
                 style={{
                   backgroundImage: `url(${coverImage})`,
                   backgroundSize: "cover",
@@ -110,7 +110,7 @@ const SmallPostCard = ({ blog }: { blog: Blog }) => {
           </div>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col space-y-3 p-4">
-          <CardTitle className="line-clamp-2 text-base transition group-hover:text-primary">
+          <CardTitle className="th-hover-title line-clamp-2 text-base">
             {blog.title}
           </CardTitle>
           <p className="line-clamp-2 text-xs text-muted-foreground">{excerpt}</p>
@@ -139,7 +139,7 @@ const BlogCardItem = ({ blog }: { blog: Blog }) => {
         <div className="relative h-48 w-full overflow-hidden bg-muted">
           {coverImage ? (
             <div
-              className="h-full w-full bg-muted transition group-hover:scale-[1.03]"
+              className="th-hover-zoom h-full w-full bg-muted"
               style={{
                 backgroundImage: `url(${coverImage})`,
                 backgroundSize: "cover",
@@ -158,7 +158,7 @@ const BlogCardItem = ({ blog }: { blog: Blog }) => {
             <span>•</span>
             <span>{readingMinutes} phút đọc</span>
           </div>
-          <CardTitle className="line-clamp-2 text-xl transition group-hover:text-primary">
+          <CardTitle className="th-hover-title line-clamp-2 text-xl">
             {blog.title}
           </CardTitle>
           <p className="line-clamp-3 text-sm text-muted-foreground">{excerpt}</p>

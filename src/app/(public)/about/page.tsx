@@ -3,9 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Users, Award, Target } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 export default function AboutPage() {
   const t = useTranslations("AboutPage");
@@ -202,7 +201,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 }

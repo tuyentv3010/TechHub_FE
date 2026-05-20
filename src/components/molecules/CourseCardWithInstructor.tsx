@@ -9,9 +9,10 @@ interface CourseWithInstructorId extends Omit<Course, 'instructor' | 'instructor
 
 interface CourseCardWithInstructorProps {
   course: CourseWithInstructorId;
+  variant?: "default" | "showcase";
 }
 
-export default function CourseCardWithInstructor({ course }: CourseCardWithInstructorProps) {
+export default function CourseCardWithInstructor({ course, variant = "default" }: CourseCardWithInstructorProps) {
   const { data: instructorResponse, isLoading } = useGetAccount({
     id: course.instructorId,
     enabled: !!course.instructorId,
@@ -29,5 +30,5 @@ export default function CourseCardWithInstructor({ course }: CourseCardWithInstr
     instructorAvatar: instructor?.avatar || "/avatars/default.jpg",
   };
   
-  return <CourseCard course={courseWithInstructor} />;
+  return <CourseCard course={courseWithInstructor} variant={variant} />;
 }

@@ -145,6 +145,19 @@ module.exports = {
       },
       boxShadow: {
         "card": "0 1px 2px rgb(0 0 0 / 0.04)",
+        "lift": "var(--lift-shadow)",
+        "lift-strong": "var(--lift-shadow-strong)",
+        "focus-ring": "var(--focus-ring-shadow)",
+      },
+      transitionDuration: {
+        snappy: "var(--motion-fast)",
+        std: "var(--motion-base)",
+        gentle: "var(--motion-slow)",
+      },
+      transitionTimingFunction: {
+        "out-soft": "var(--ease-out-soft)",
+        "in-out-soft": "var(--ease-in-out-soft)",
+        spring: "var(--ease-spring)",
       },
       borderRadius: {
         lg: "var(--radius)",

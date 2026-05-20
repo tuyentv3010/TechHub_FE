@@ -13,7 +13,6 @@ import { SkillsSection } from "@/components/organisms/NewSkillsSection";
 import { CommunitySection } from "@/components/organisms/CommunitySectionNew";
 import { InstructorsSection } from "@/components/organisms/InstructorsSection";
 import { BlogSection } from "@/components/organisms/BlogSection";
-import Footer from "@/components/footer";
 import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 export default function Home() {
@@ -34,16 +33,24 @@ export default function Home() {
   const coursesWithInstructorIds = coursesData?.payload?.data?.map((course: any) => ({
     id: course.id, // Add course ID for creating slug
     title: course.title,
+    description: course.description,
     instructorId: course.instructorId, // Keep ID for fetching
-    image: normalizePersistedMediaUrl(course.thumbnail?.secureUrl || course.thumbnail?.url) || "/courses/default.png",
+    image: normalizePersistedMediaUrl(course.thumbnail?.secureUrl || course.thumbnail?.url) || null,
     rating: course.averageRating || 0,
     reviews: course.ratingCount || 0,
     price: course.discountPrice || course.price || 0,
+    originalPrice: course.price || 0,
+    currency: course.currency,
     badge: course.categories?.[0] || "",
+    level: course.level,
+    language: course.language,
     hours: 0, // Will be calculated from lessons if needed
     lectures: 0, // Will be calculated from lessons if needed
     lessons: 0, // Will be calculated from chapters if needed
     students: course.totalEnrollments || 0,
+    skills: course.skills || [],
+    promoEndDate: course.promoEndDate,
+    createdAt: course.created,
   })) || [];
   const communityStats = {
     totalStudents: t("community.stats.totalStudents"),
@@ -167,8 +174,6 @@ export default function Home() {
         subtitle={t("blog.mostPopular")}
       />
 
-      {/* Newsletter Section */}
-      <Footer />
     </div>
   );
 }

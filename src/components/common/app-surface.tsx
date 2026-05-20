@@ -23,12 +23,20 @@ export interface AppSurfaceProps extends React.HTMLAttributes<HTMLElement> {
   as?: "section" | "article" | "div" | "aside";
   variant?: AppSurfaceVariant;
   padding?: AppSurfacePadding;
+  /**
+   * When true, the surface gets the unified hover/focus interaction
+   * (subtle lift, primary-tinted border, soft shadow, press feedback).
+   * Use it for clickable cards / tiles. Pair the parent <Link> /
+   * <button> with `group` so the surface reacts.
+   */
+  interactive?: boolean;
 }
 
 export function AppSurface({
   as: Comp = "section",
   variant = "default",
   padding = "md",
+  interactive = false,
   className,
   ...props
 }: AppSurfaceProps) {
@@ -38,6 +46,7 @@ export function AppSurface({
         "rounded-xl",
         variantClasses[variant],
         paddingClasses[padding],
+        interactive && "th-hover-lift th-focus-ring cursor-pointer",
         className
       )}
       {...props}

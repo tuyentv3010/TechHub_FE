@@ -66,20 +66,21 @@ export function LearningPathsSection() {
             const stepTitles = [t("step1"), t("step2"), t("step3"), t("step4")];
 
             return (
-              <Link key={path.id} href={`/learning-paths/${path.id}`} className="group block">
-                <AppSurface
-                  padding="md"
-                  className="h-full transition-colors hover:border-primary/40 hover:bg-card"
-                >
+              <Link
+                key={path.id}
+                href={`/learning-paths/${path.id}`}
+                className="group block th-focus-ring rounded-xl"
+              >
+                <AppSurface padding="md" interactive className="h-full">
                   <div className="mb-5 flex items-center justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <div className="th-hover-icon flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                       <BookOpen className="h-5 w-5" />
                     </div>
                     <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                       {String(index + 1).padStart(2, "0")}
                     </span>
                   </div>
-                  <h3 className="mb-3 line-clamp-2 text-base font-semibold text-foreground group-hover:text-primary">
+                  <h3 className="th-hover-title mb-3 line-clamp-2 text-base font-semibold text-foreground">
                     {stepTitles[index] || path.title}
                   </h3>
                   {path.description ? (

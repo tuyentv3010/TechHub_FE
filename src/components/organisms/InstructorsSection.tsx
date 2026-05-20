@@ -32,17 +32,22 @@ export function InstructorsSection({ title, subtitle, instructors }: Instructors
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {displayInstructors.map((instructor) => (
-            <AppSurface key={instructor.id} padding="none" className="overflow-hidden">
-              <div className="relative h-72 bg-muted">
+            <AppSurface
+              key={instructor.id}
+              padding="none"
+              interactive
+              className="group overflow-hidden"
+            >
+              <div className="relative h-72 overflow-hidden bg-muted">
                 <Image
                   src={instructor.avatar || "/instructors/Square.png"}
                   alt={instructor.username}
                   fill
-                  className="object-cover"
+                  className="th-hover-zoom object-cover"
                 />
               </div>
               <div className="p-5">
-                <h3 className="line-clamp-1 text-base font-semibold text-foreground">
+                <h3 className="th-hover-title line-clamp-1 text-base font-semibold text-foreground">
                   {instructor.username}
                 </h3>
                 <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">

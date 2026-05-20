@@ -298,16 +298,18 @@ export default function MediaLibraryDialog({
         return (
           <div
             key={file.id}
-            className="group relative cursor-pointer overflow-hidden rounded-lg border transition-all hover:border-primary hover:shadow-md"
+            className="group th-hover-lift th-focus-ring relative cursor-pointer overflow-hidden rounded-lg border"
             onClick={() => handleSelectFile(file)}
+            tabIndex={0}
+            role="button"
           >
             <div className="relative aspect-square bg-muted">
               {renderPreviewMedia(file, "h-8 w-8", "h-full w-full object-cover")}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all group-hover:bg-black/40">
+              <div className="th-interactive-color absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40">
                 {isVideo ? (
-                  <Play className="h-8 w-8 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                  <Play className="th-reveal-on-hover h-8 w-8 text-white" />
                 ) : (
-                  <Eye className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                  <Eye className="th-reveal-on-hover h-5 w-5 text-white" />
                 )}
               </div>
               {isVideo && file.duration ? (

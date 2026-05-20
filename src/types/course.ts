@@ -77,18 +77,25 @@ export interface ApiCourse {
 export interface Course {
   id?: string;
   title: string;
+  description?: string;
   instructor: string;
-  image: string;
+  image: string | null;
   rating: number;
   reviews: number;
   price: number;
+  originalPrice?: number;
   badge?: string;
+  level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | string;
+  language?: "VI" | "EN" | "JA" | string;
   hours?: number;
   lectures?: number;
   lessons?: number;
   students?: number;
   instructorAvatar?: string;
   skills?: Skill[];
+  promoEndDate?: string | null;
+  createdAt?: string;
+  currency?: string;
 }
 
 // Course API Response Type

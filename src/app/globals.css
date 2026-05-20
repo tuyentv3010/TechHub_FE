@@ -79,6 +79,80 @@
     --chart-5: 27 87% 67%;
 
     --radius: 0.5rem;
+
+    /* ─────────────────────────────────────────────
+       Unified motion & interaction tokens
+       Use these via the .th-* utility classes below
+       or directly in component styles. Keep durations
+       and easings consistent across the entire FE.
+       ───────────────────────────────────────────── */
+    --motion-fast: 140ms;
+    --motion-base: 220ms;
+    --motion-slow: 360ms;
+    --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-in-out-soft: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --hover-lift: -2px;
+    --hover-zoom: 1.04;
+    --press-scale: 0.97;
+    /* Card depth tokens ─ default (rest) and on-hover.
+       Light theme uses a soft, low-opacity ambient shadow so cards
+       "float" gently above the page; the lift version is slightly
+       stronger but still uses very high blur + low opacity to stay
+       modern. */
+    --card-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 4px 16px -6px rgba(15, 23, 42, 0.06);
+    --card-border: hsl(var(--border) / 0.7);
+    --lift-shadow:
+      0 6px 18px -8px rgba(15, 23, 42, 0.12),
+      0 14px 32px -16px rgba(15, 23, 42, 0.16);
+    --lift-shadow-strong:
+      0 10px 26px -12px rgba(15, 23, 42, 0.14),
+      0 22px 44px -20px rgba(15, 23, 42, 0.18);
+    --focus-ring-shadow: 0 0 0 3px hsl(var(--ring) / 0.32);
+
+    /* "Money" colour — warm amber for prices / CTA emphasis instead
+       of the cool primary. Keeps the eye away from neon-blue while
+       still feeling premium. */
+    --money: 38 92% 50%;          /* amber-500 */
+    --money-foreground: 26 83% 32%; /* amber-700 */
+
+    /* Placeholder (no-thumbnail) palette — LIGHT MODE.
+       Base is a neutral muted gradient; the accent radial-glow uses
+       the active theme's --primary so the placeholder follows the
+       user's theme (blue / green / orange / purple / pink / ocean /
+       forest) without us hardcoding one gradient per theme. */
+    --placeholder-base: linear-gradient(
+      135deg,
+      hsl(var(--background)) 0%,
+      hsl(var(--secondary)) 55%,
+      hsl(var(--muted)) 100%
+    );
+    --placeholder-accent: hsl(var(--primary) / 0.14);
+    --placeholder-fg: var(--foreground);            /* HSL triplet ref */
+    --placeholder-fg-muted: var(--muted-foreground);
+    --placeholder-chip-bg: hsl(var(--foreground) / 0.05);
+    --placeholder-chip-border: hsl(var(--foreground) / 0.08);
+    --placeholder-watermark: 0.05;
+    --placeholder-texture: hsl(var(--foreground) / 0.06);
+
+    /* Glass badges that sit on top of thumbnails — LIGHT MODE.
+       Frosted-white with theme-neutral text. The two semantic tones
+       (emerald = "enrolled", rose = "discount %") are fixed: they
+       carry a universal meaning (positive / warning) and shouldn't
+       morph with theme. */
+    --glass-badge-bg: hsl(var(--card) / 0.85);
+    --glass-badge-fg: var(--foreground);
+    --glass-badge-border: hsl(var(--foreground) / 0.08);
+    --glass-badge-shadow: 0 4px 14px -8px hsl(var(--foreground) / 0.18);
+    --glass-badge-emerald-fg: 161 94% 24%;  /* emerald-700 */
+    --glass-badge-emerald-border: rgba(16, 185, 129, 0.35);
+    --glass-badge-emerald-bg: rgba(209, 250, 229, 0.85);
+    --glass-badge-rose-fg: 350 89% 40%;     /* rose-700 */
+    --glass-badge-rose-border: rgba(244, 63, 94, 0.35);
+    --glass-badge-rose-bg: rgba(255, 228, 230, 0.85);
+
     --color-chrome: #ff0000; /* Red */
     --color-safari: #00ff00; /* Green */
     --color-firefox: #0000ff; /* Blue */
@@ -148,360 +222,78 @@
     --chart-4: 280 65% 60%;
 
     --chart-5: 340 75% 55%;
+
+    /* Motion tokens stay constant; depth tokens use deeper falloff on dark.
+       In dark mode, card surface is lifted ~1 tone above the page so the
+       card detaches from the background even without a strong border. */
+    --app-surface: 222 38% 14%;            /* a notch lighter than --background 222 47% 8% */
+    --card: 222 38% 14%;
+    --card-border: hsl(0 0% 100% / 0.06);   /* near-invisible high-transparency border */
+    --border: 217 32% 22%;
+    --card-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.04) inset,
+      0 10px 30px -16px rgba(0, 0, 0, 0.55),
+      0 2px 8px -4px rgba(0, 0, 0, 0.45);
+    --lift-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 18px 40px -18px rgba(0, 0, 0, 0.7),
+      0 8px 18px -8px rgba(0, 0, 0, 0.55);
+    --lift-shadow-strong:
+      0 1px 0 rgba(255, 255, 255, 0.08) inset,
+      0 26px 56px -22px rgba(0, 0, 0, 0.78),
+      0 12px 24px -10px rgba(0, 0, 0, 0.6);
+
+    /* Slightly muted money colour for dark mode (less harsh). */
+    --money: 38 95% 60%;            /* amber-400 */
+    --money-foreground: 36 90% 78%; /* amber-200 */
+
+    /* Placeholder (no-thumbnail) palette — DARK MODE.
+       Same theme-driven approach: base uses the page's neutral
+       dark surfaces, middle stop tints toward the active --primary.
+       So picking "theme-green" gives a teal glow, "theme-pink"
+       gives a magenta glow, etc. */
+    --placeholder-base: linear-gradient(
+      135deg,
+      hsl(var(--background)) 0%,
+      hsl(var(--primary) / 0.18) 55%,
+      hsl(var(--card)) 100%
+    );
+    --placeholder-accent: hsl(var(--primary) / 0.22);
+    --placeholder-fg: 0 0% 100%;
+    --placeholder-fg-muted: 215 20% 75%;
+    --placeholder-chip-bg: rgba(255, 255, 255, 0.1);
+    --placeholder-chip-border: rgba(255, 255, 255, 0.15);
+    --placeholder-watermark: 0.07;
+    --placeholder-texture: rgba(255, 255, 255, 0.12);
+
+    /* Glass badges — DARK MODE: dark frosted glass so white text
+       reads against any photo / placeholder. Semantic tones unchanged. */
+    --glass-badge-bg: hsl(var(--background) / 0.55);
+    --glass-badge-fg: 0 0% 100%;
+    --glass-badge-border: rgba(255, 255, 255, 0.1);
+    --glass-badge-shadow: 0 4px 14px -8px rgba(0, 0, 0, 0.5);
+    --glass-badge-emerald-fg: 152 76% 80%;
+    --glass-badge-emerald-border: rgba(110, 231, 183, 0.45);
+    --glass-badge-emerald-bg: hsl(var(--background) / 0.55);
+    --glass-badge-rose-fg: 351 95% 86%;
+    --glass-badge-rose-border: rgba(253, 164, 175, 0.5);
+    --glass-badge-rose-bg: hsl(var(--background) / 0.55);
   }
 }
 
-/* Color Theme Variations */
-.theme-green {
-  --background: 180 47% 98%;
-  --app-bg: 180 47% 98%;
-  --app-surface: 0 0% 100%;
-  --app-surface-subtle: 174 40% 94%;
-  --app-border: 174 35% 84%;
-  --foreground: 184 61% 10%;
-  --card: 0 0% 100%;
-  --card-foreground: 184 61% 10%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 184 61% 10%;
-  --primary: 176 77% 26%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 173 58% 94%;
-  --secondary-foreground: 184 61% 10%;
-  --muted: 174 40% 94%;
-  --muted-foreground: 184 20% 36%;
-  --accent: 199 95% 93%;
-  --accent-foreground: 199 89% 28%;
-  --border: 174 35% 84%;
-  --input: 174 35% 84%;
-  --learning-accent: 176 77% 26%;
-  --ring: 176 77% 26%;
-}
+/* ─────────────────────────────────────────────
+   Named theme palettes (.theme-green, .theme-orange, …)
+   ARE NO LONGER DEFINED HERE.
 
-.theme-orange {
-  --background: 45 60% 98%;
-  --app-bg: 45 60% 98%;
-  --app-surface: 0 0% 100%;
-  --app-surface-subtle: 43 74% 92%;
-  --app-border: 36 55% 84%;
-  --foreground: 224 43% 11%;
-  --card: 0 0% 100%;
-  --card-foreground: 224 43% 11%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 224 43% 11%;
-  --primary: 32 95% 44%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 214 100% 96%;
-  --secondary-foreground: 224 43% 11%;
-  --muted: 43 74% 92%;
-  --muted-foreground: 28 23% 38%;
-  --accent: 216 100% 94%;
-  --accent-foreground: 224 76% 34%;
-  --border: 36 55% 84%;
-  --input: 36 55% 84%;
-  --learning-accent: 32 95% 44%;
-  --ring: 32 95% 44%;
-}
+   They live as data in `src/lib/theme-palettes.ts` and get
+   injected as a single <style id="techhub-named-theme-palettes">
+   block by <ColorThemeScript /> (server-rendered in app/layout).
 
-.theme-purple {
-  --background: 270 60% 99%;
-  --app-bg: 270 60% 99%;
-  --app-surface: 0 0% 100%;
-  --app-surface-subtle: 270 95% 96%;
-  --app-border: 267 43% 86%;
-  --foreground: 260 43% 12%;
-  --card: 0 0% 100%;
-  --card-foreground: 260 43% 12%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 260 43% 12%;
-  --primary: 262.1 83.3% 57.8%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 187 65% 92%;
-  --secondary-foreground: 260 43% 12%;
-  --muted: 270 95% 96%;
-  --muted-foreground: 259 18% 42%;
-  --accent: 270 95% 96%;
-  --accent-foreground: 262.1 83.3% 40%;
-  --border: 267 43% 86%;
-  --input: 267 43% 86%;
-  --learning-accent: 262.1 83.3% 57.8%;
-  --ring: 262.1 83.3% 57.8%;
-}
-
-.theme-pink {
-  --background: 355 80% 99%;
-  --app-bg: 355 80% 99%;
-  --app-surface: 0 0% 100%;
-  --app-surface-subtle: 327 73% 97%;
-  --app-border: 340 45% 86%;
-  --foreground: 336 48% 12%;
-  --card: 0 0% 100%;
-  --card-foreground: 336 48% 12%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 336 48% 12%;
-  --primary: 322.2 84% 60.5%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 43 90% 94%;
-  --secondary-foreground: 336 48% 12%;
-  --muted: 327 73% 97%;
-  --muted-foreground: 335 20% 42%;
-  --accent: 327 73% 97%;
-  --accent-foreground: 322.2 84% 40%;
-  --border: 340 45% 86%;
-  --input: 340 45% 86%;
-  --learning-accent: 322.2 84% 60.5%;
-  --ring: 322.2 84% 60.5%;
-}
-
-.theme-ocean {
-  --background: 204 100% 98%;
-  --app-bg: 204 100% 98%;
-  --app-surface: 0 0% 100%;
-  --app-surface-subtle: 199 95% 93%;
-  --app-border: 199 42% 84%;
-  --foreground: 205 80% 12%;
-  --card: 0 0% 100%;
-  --card-foreground: 205 80% 12%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 205 80% 12%;
-  --primary: 199 89% 48%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 160 84% 93%;
-  --secondary-foreground: 205 80% 12%;
-  --muted: 199 95% 93%;
-  --muted-foreground: 205 25% 38%;
-  --accent: 160 84% 92%;
-  --accent-foreground: 161 94% 24%;
-  --border: 199 42% 84%;
-  --input: 199 42% 84%;
-  --learning-accent: 199 89% 48%;
-  --ring: 199 89% 48%;
-}
-
-.theme-forest {
-  --background: 84 55% 98%;
-  --app-bg: 84 55% 98%;
-  --app-surface: 0 0% 100%;
-  --app-surface-subtle: 84 58% 92%;
-  --app-border: 125 28% 82%;
-  --foreground: 151 68% 9%;
-  --card: 0 0% 100%;
-  --card-foreground: 151 68% 9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 151 68% 9%;
-  --primary: 152 69% 31%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 84 58% 92%;
-  --secondary-foreground: 151 68% 9%;
-  --muted: 82 45% 92%;
-  --muted-foreground: 142 20% 34%;
-  --accent: 83 78% 90%;
-  --accent-foreground: 142 76% 25%;
-  --border: 125 28% 82%;
-  --input: 125 28% 82%;
-  --learning-accent: 152 69% 31%;
-  --ring: 152 69% 31%;
-}
-
-.theme-slate {
-  --background: 210 40% 98%;
-  --app-bg: 210 40% 98%;
-  --app-surface: 0 0% 100%;
-  --app-surface-subtle: 18 100% 94%;
-  --app-border: 214.3 31.8% 87%;
-  --foreground: 222 47% 11%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --primary: 215 25% 27%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 18 100% 94%;
-  --secondary-foreground: 222 47% 11%;
-  --muted: 210 40% 94%;
-  --muted-foreground: 215 18% 38%;
-  --accent: 20 96% 90%;
-  --accent-foreground: 15 80% 30%;
-  --border: 214.3 31.8% 87%;
-  --input: 214.3 31.8% 87%;
-  --learning-accent: 215 25% 27%;
-  --ring: 215 25% 27%;
-}
-
-.dark.theme-green {
-  --background: 184 40% 8%;
-  --app-bg: 184 40% 8%;
-  --app-surface: 182 30% 12%;
-  --app-surface-subtle: 180 32% 15%;
-  --app-border: 180 23% 24%;
-  --foreground: 172 65% 92%;
-  --card: 182 30% 12%;
-  --card-foreground: 172 65% 92%;
-  --popover: 182 30% 12%;
-  --popover-foreground: 172 65% 92%;
-  --primary: 173 58% 42%;
-  --primary-foreground: 222 47% 8%;
-  --secondary: 180 32% 15%;
-  --secondary-foreground: 172 65% 92%;
-  --muted: 180 32% 15%;
-  --muted-foreground: 174 22% 68%;
-  --accent: 199 46% 18%;
-  --accent-foreground: 199 82% 86%;
-  --border: 180 23% 24%;
-  --input: 180 23% 24%;
-  --learning-accent: 173 58% 42%;
-  --ring: 173 58% 42%;
-}
-
-.dark.theme-orange {
-  --background: 230 35% 9%;
-  --app-bg: 230 35% 9%;
-  --app-surface: 228 30% 13%;
-  --app-surface-subtle: 35 34% 16%;
-  --app-border: 35 28% 25%;
-  --foreground: 38 92% 92%;
-  --card: 228 30% 13%;
-  --card-foreground: 38 92% 92%;
-  --popover: 228 30% 13%;
-  --popover-foreground: 38 92% 92%;
-  --primary: 35 92% 58%;
-  --primary-foreground: 222 47% 8%;
-  --secondary: 220 34% 17%;
-  --secondary-foreground: 38 92% 92%;
-  --muted: 35 34% 16%;
-  --muted-foreground: 36 28% 70%;
-  --accent: 216 40% 20%;
-  --accent-foreground: 216 92% 88%;
-  --border: 35 28% 25%;
-  --input: 35 28% 25%;
-  --learning-accent: 35 92% 58%;
-  --ring: 35 92% 58%;
-}
-
-.dark.theme-purple {
-  --background: 263 42% 9%;
-  --app-bg: 263 42% 9%;
-  --app-surface: 263 34% 13%;
-  --app-surface-subtle: 263 44% 18%;
-  --app-border: 263 25% 26%;
-  --foreground: 263 92% 92%;
-  --card: 263 34% 13%;
-  --card-foreground: 263 92% 92%;
-  --popover: 263 34% 13%;
-  --popover-foreground: 263 92% 92%;
-  --primary: 263.4 70% 50.4%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 188 30% 18%;
-  --secondary-foreground: 263 92% 92%;
-  --muted: 263 44% 18%;
-  --muted-foreground: 263 18% 70%;
-  --accent: 263 44% 18%;
-  --accent-foreground: 263 92% 92%;
-  --border: 263 25% 26%;
-  --input: 263 25% 26%;
-  --learning-accent: 263.4 70% 50.4%;
-  --ring: 263.4 70% 50.4%;
-}
-
-.dark.theme-pink {
-  --background: 336 40% 9%;
-  --app-bg: 336 40% 9%;
-  --app-surface: 336 32% 13%;
-  --app-surface-subtle: 322 44% 18%;
-  --app-border: 322 25% 27%;
-  --foreground: 322 92% 92%;
-  --card: 336 32% 13%;
-  --card-foreground: 322 92% 92%;
-  --popover: 336 32% 13%;
-  --popover-foreground: 322 92% 92%;
-  --primary: 322.2 84% 60.5%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 37 36% 17%;
-  --secondary-foreground: 322 92% 92%;
-  --muted: 322 44% 18%;
-  --muted-foreground: 325 20% 70%;
-  --accent: 322 44% 18%;
-  --accent-foreground: 322 92% 92%;
-  --border: 322 25% 27%;
-  --input: 322 25% 27%;
-  --learning-accent: 322.2 84% 60.5%;
-  --ring: 322.2 84% 60.5%;
-}
-
-.dark.theme-ocean {
-  --background: 205 45% 8%;
-  --app-bg: 205 45% 8%;
-  --app-surface: 204 38% 12%;
-  --app-surface-subtle: 200 40% 16%;
-  --app-border: 200 28% 25%;
-  --foreground: 199 95% 92%;
-  --card: 204 38% 12%;
-  --card-foreground: 199 95% 92%;
-  --popover: 204 38% 12%;
-  --popover-foreground: 199 95% 92%;
-  --primary: 199 89% 55%;
-  --primary-foreground: 205 45% 8%;
-  --secondary: 160 34% 18%;
-  --secondary-foreground: 199 95% 92%;
-  --muted: 200 40% 16%;
-  --muted-foreground: 199 30% 70%;
-  --accent: 160 34% 18%;
-  --accent-foreground: 160 84% 86%;
-  --border: 200 28% 25%;
-  --input: 200 28% 25%;
-  --learning-accent: 199 89% 55%;
-  --ring: 199 89% 55%;
-}
-
-.dark.theme-forest {
-  --background: 151 35% 8%;
-  --app-bg: 151 35% 8%;
-  --app-surface: 151 28% 12%;
-  --app-surface-subtle: 142 28% 16%;
-  --app-border: 142 22% 25%;
-  --foreground: 142 68% 91%;
-  --card: 151 28% 12%;
-  --card-foreground: 142 68% 91%;
-  --popover: 151 28% 12%;
-  --popover-foreground: 142 68% 91%;
-  --primary: 142 69% 45%;
-  --primary-foreground: 151 35% 8%;
-  --secondary: 84 26% 17%;
-  --secondary-foreground: 142 68% 91%;
-  --muted: 142 28% 16%;
-  --muted-foreground: 142 22% 70%;
-  --accent: 84 26% 17%;
-  --accent-foreground: 84 78% 84%;
-  --border: 142 22% 25%;
-  --input: 142 22% 25%;
-  --learning-accent: 142 69% 45%;
-  --ring: 142 69% 45%;
-}
-
-.dark.theme-slate {
-  --background: 222 27% 8%;
-  --app-bg: 222 27% 8%;
-  --app-surface: 222 23% 12%;
-  --app-surface-subtle: 217 23% 17%;
-  --app-border: 215 18% 25%;
-  --foreground: 210 40% 96%;
-  --card: 222 23% 12%;
-  --card-foreground: 210 40% 96%;
-  --popover: 222 23% 12%;
-  --popover-foreground: 210 40% 96%;
-  --primary: 210 16% 76%;
-  --primary-foreground: 222 47% 8%;
-  --secondary: 17 34% 18%;
-  --secondary-foreground: 210 40% 96%;
-  --muted: 217 23% 17%;
-  --muted-foreground: 215 20% 68%;
-  --accent: 17 40% 20%;
-  --accent-foreground: 20 96% 86%;
-  --border: 215 18% 25%;
-  --input: 215 18% 25%;
-  --learning-accent: 210 16% 76%;
-  --ring: 210 16% 76%;
-}
-
+   To add a new theme:
+     1. Add an entry to NAMED_THEME_PALETTES in theme-palettes.ts
+     2. Add a row to COLOR_THEMES in lib/color-theme.ts
+   No CSS edit required.
+   ───────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -1201,10 +993,10 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.72),
       0 10px 30px -24px rgba(37, 99, 235, 0.34);
     transition:
-      border-color 0.18s ease,
-      box-shadow 0.18s ease,
-      background-color 0.18s ease,
-      color 0.18s ease;
+      border-color var(--motion-base) var(--ease-out-soft),
+      box-shadow var(--motion-base) var(--ease-out-soft),
+      background-color var(--motion-base) var(--ease-out-soft),
+      color var(--motion-base) var(--ease-out-soft);
   }
 
   .manage-shell :is(
@@ -1817,10 +1609,10 @@
     color: hsl(var(--foreground)) !important;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
     transition:
-      background-color 160ms ease,
-      border-color 160ms ease,
-      color 160ms ease,
-      box-shadow 160ms ease;
+      background-color var(--motion-base) var(--ease-out-soft),
+      border-color var(--motion-base) var(--ease-out-soft),
+      color var(--motion-base) var(--ease-out-soft),
+      box-shadow var(--motion-base) var(--ease-out-soft);
   }
 
   .app-control:hover {
@@ -1941,6 +1733,390 @@
   .public-shell [class*="to-indigo"] {
     background-image: none !important;
     background-color: hsl(var(--app-surface-subtle)) !important;
+  }
+
+  /* Normalise legacy hover-scale / translate values inside the
+     public shell. Anywhere a card uses an arbitrary
+     `hover:-translate-y-{n}` or `group-hover:scale-[…]` we
+     remap it to the unified token so the feel stays consistent
+     even before each component is migrated to .th-* utilities. */
+  .public-shell .hover\:-translate-y-1:hover,
+  .public-shell .hover\:-translate-y-2:hover,
+  .public-shell .hover\:-translate-y-0\.5:hover {
+    --tw-translate-y: var(--hover-lift) !important;
+  }
+  .public-shell .group:hover .group-hover\:scale-105,
+  .public-shell .group:hover .group-hover\:scale-110,
+  .public-shell .group:hover .group-hover\:scale-\[1\.03\],
+  .public-shell .group:hover .group-hover\:scale-\[1\.05\],
+  .public-shell .group:hover .group-hover\:scale-\[1\.07\] {
+    --tw-scale-x: var(--hover-zoom) !important;
+    --tw-scale-y: var(--hover-zoom) !important;
+  }
+  .public-shell .duration-200,
+  .public-shell .duration-300,
+  .public-shell .duration-500,
+  .public-shell .duration-700 {
+    transition-duration: var(--motion-base) !important;
+  }
+  .public-shell .duration-1000 {
+    transition-duration: var(--motion-slow) !important;
+  }
+
+  /* ─────────────────────────────────────────────
+     Unified interaction utilities (.th-*)
+
+     One place to change the "feel" of the whole app.
+     Every clickable card / tile / icon / button should
+     lean on these so hover, press, focus, and selected
+     states stay consistent across pages.
+     ───────────────────────────────────────────── */
+
+  /* Base transition for any interactive element.
+     Animates colour, background, border, shadow and
+     transform together using the standard easing. */
+  .th-interactive {
+    transition-property: color, background-color, border-color, box-shadow,
+      transform, opacity;
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--ease-out-soft);
+    will-change: transform;
+  }
+
+  /* Pure colour-only interactive element (links, icons in text). */
+  .th-interactive-color {
+    transition: color var(--motion-base) var(--ease-out-soft),
+      background-color var(--motion-base) var(--ease-out-soft),
+      border-color var(--motion-base) var(--ease-out-soft);
+  }
+
+  /* Standard focus ring used on cards, tiles, links, custom buttons.
+     Pairs with focus-visible. */
+  .th-focus-ring:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring-shadow);
+    border-color: hsl(var(--ring)) !important;
+  }
+
+  /* Default elevated card surface. Applies the soft "floating"
+     shadow + a near-invisible border so cards read as a single
+     surface separated from the page bg even before any hover. */
+  .th-card-elevated {
+    background-color: hsl(var(--card));
+    border: 1px solid var(--card-border);
+    box-shadow: var(--card-shadow);
+  }
+
+  /* Card / tile lift used on every "clickable card" (course card,
+     blog card, learning-path card, category tile, instructor card,
+     skill tile, etc.). Apply alongside `group` so child elements
+     can react via group-hover. Pairs with .th-card-elevated for
+     the rest-state shadow. */
+  .th-hover-lift {
+    box-shadow: var(--card-shadow);
+    transition-property: transform, box-shadow, border-color,
+      background-color;
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--ease-out-soft);
+    will-change: transform;
+  }
+  .th-hover-lift:hover {
+    transform: translateY(var(--hover-lift));
+    box-shadow: var(--lift-shadow);
+    border-color: hsl(var(--primary) / 0.32) !important;
+  }
+  .th-hover-lift:focus-visible {
+    outline: none;
+    transform: translateY(var(--hover-lift));
+    box-shadow: var(--lift-shadow), var(--focus-ring-shadow);
+    border-color: hsl(var(--ring)) !important;
+  }
+  .th-hover-lift:active {
+    transform: translateY(0) scale(var(--press-scale));
+    transition-duration: var(--motion-fast);
+  }
+
+  /* Stronger lift for hero / featured cards. */
+  .th-hover-lift-strong {
+    transition-property: transform, box-shadow, border-color;
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--ease-out-soft);
+    will-change: transform;
+  }
+  .th-hover-lift-strong:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--lift-shadow-strong);
+    border-color: hsl(var(--primary) / 0.5) !important;
+  }
+
+  /* Image zoom inside a `.group` parent. Sits on the <img> /
+     <Image> directly. Replaces every ad-hoc
+     `group-hover:scale-[1.03|1.05|1.1] duration-300|500`. */
+  .th-hover-zoom {
+    transition: transform var(--motion-slow) var(--ease-out-soft);
+    will-change: transform;
+  }
+  .group:hover .th-hover-zoom,
+  .group:focus-visible .th-hover-zoom {
+    transform: scale(var(--hover-zoom));
+  }
+
+  /* Icon pop inside a `.group`. Replaces ad-hoc
+     `group-hover:scale-110 transition-transform`. */
+  .th-hover-icon {
+    transition: transform var(--motion-base) var(--ease-spring),
+      color var(--motion-base) var(--ease-out-soft);
+    will-change: transform;
+  }
+  .group:hover .th-hover-icon,
+  .group:focus-visible .th-hover-icon {
+    transform: scale(1.08);
+  }
+
+  /* Title colour swap inside a `.group`. Replaces ad-hoc
+     `transition-colors group-hover:text-primary`. */
+  .th-hover-title {
+    transition: color var(--motion-base) var(--ease-out-soft);
+  }
+  .group:hover .th-hover-title,
+  .group:focus-visible .th-hover-title {
+    color: hsl(var(--primary));
+  }
+
+  /* Arrow / chevron slide inside a `.group`. Replaces ad-hoc
+     `transition-transform group-hover:translate-x-1`. */
+  .th-hover-arrow {
+    transition: transform var(--motion-base) var(--ease-out-soft);
+  }
+  .group:hover .th-hover-arrow,
+  .group:focus-visible .th-hover-arrow {
+    transform: translateX(4px);
+  }
+
+  /* Press feedback for buttons / pill controls.
+     Adds a subtle scale-down on :active. */
+  .th-press {
+    transition: transform var(--motion-fast) var(--ease-out-soft);
+  }
+  .th-press:active {
+    transform: scale(var(--press-scale));
+  }
+
+  /* Hover overlay reveal (e.g. dark gradient on top of a thumbnail,
+     play icon on a video tile). Place on a child of `.group` that
+     starts at opacity-0. */
+  .th-reveal-on-hover {
+    opacity: 0;
+    transition: opacity var(--motion-base) var(--ease-out-soft);
+  }
+  .group:hover .th-reveal-on-hover,
+  .group:focus-visible .th-reveal-on-hover {
+    opacity: 1;
+  }
+
+  /* Selected / active state used by tabs, segmented controls,
+     nav items, list items, dropdown items, etc. Recognises
+     all the common Radix / ARIA / shadcn flags so designers
+     don't have to remember which one to use. */
+  .th-selectable {
+    transition-property: background-color, color, border-color,
+      box-shadow;
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--ease-out-soft);
+  }
+  .th-selectable:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+  }
+  .th-selectable[data-state="active"],
+  .th-selectable[data-state="open"],
+  .th-selectable[data-selected="true"],
+  .th-selectable[aria-selected="true"],
+  .th-selectable[aria-current="page"],
+  .th-selectable[aria-pressed="true"],
+  .th-selectable[data-active="true"] {
+    background-color: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+    border-color: hsl(var(--primary) / 0.35);
+  }
+
+  /* Glassmorphism badge — theme-aware via CSS variables. In light
+     mode it's a frosted-white pill (so it doesn't punch black holes
+     into the pastel placeholder); in dark mode it stays the dark
+     frosted glass we used before. Tone variants only tweak the
+     border + text colour, never a saturated fill, so the badge wall
+     stays calm. */
+  .th-glass-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: hsl(var(--glass-badge-fg));
+    background: var(--glass-badge-bg);
+    border: 1px solid var(--glass-badge-border);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    box-shadow: var(--glass-badge-shadow);
+  }
+  .th-glass-badge[data-tone="emerald"] {
+    color: hsl(var(--glass-badge-emerald-fg));
+    background: var(--glass-badge-emerald-bg);
+    border-color: var(--glass-badge-emerald-border);
+  }
+  .th-glass-badge[data-tone="rose"] {
+    color: hsl(var(--glass-badge-rose-fg));
+    background: var(--glass-badge-rose-bg);
+    border-color: var(--glass-badge-rose-border);
+  }
+  /* `amber` tone retained for back-compat — same calm look as
+     default; icon is the signal. */
+  .th-glass-badge[data-tone="amber"] {
+    color: hsl(var(--glass-badge-fg));
+    background: var(--glass-badge-bg);
+    border-color: var(--glass-badge-border);
+  }
+
+  /* Empty-state thumbnail surface. Driven entirely by the
+     `--placeholder-*` tokens so it switches automatically between
+     pastel (light) and deep slate/indigo (dark). The accent radial
+     position is passed as a runtime style via --placeholder-accent-pos. */
+  .th-placeholder-surface {
+    position: relative;
+    background-image:
+      radial-gradient(
+        circle at var(--placeholder-accent-pos, 50% 30%),
+        var(--placeholder-accent) 0%,
+        transparent 55%
+      ),
+      var(--placeholder-base);
+    color: hsl(var(--placeholder-fg));
+  }
+  .th-placeholder-chip {
+    background-color: var(--placeholder-chip-bg);
+    border: 1px solid var(--placeholder-chip-border);
+    color: hsl(var(--placeholder-fg));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .th-placeholder-muted {
+    color: hsl(var(--placeholder-fg-muted));
+  }
+
+  /* Price emphasis — uses neutral foreground (white in dark / near
+     black in light) rather than a saturated colour, so it never
+     competes with the primary CTA button for visual spotlight. */
+  .th-price {
+    color: hsl(var(--foreground));
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Opt-in warm variant when the design explicitly wants a money
+     accent (e.g. "free" highlight). Most callers shouldn't use it. */
+  .th-price[data-tone="money"] {
+    color: hsl(var(--money));
+  }
+
+  /* Soft separator that reads cleanly on both light and dark.
+     Use to split the lower "purchase" half of a card from the
+     upper "content" half. */
+  .th-divider {
+    border-top: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  /* Metadata pill — minimal, monochrome. No background, no border
+     by default; just spaced caps text in muted-foreground. This
+     is the right choice for secondary info (level, language) so
+     the card stays calm. Use `data-tone="ghost"` for a barely-
+     visible outlined version when separation is needed. */
+  .th-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+  .th-meta-pill + .th-meta-pill::before {
+    content: "·";
+    margin-right: 0.5rem;
+    color: hsl(var(--muted-foreground) / 0.5);
+  }
+  .th-meta-pill[data-tone="ghost"] {
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+  .th-meta-pill[data-tone="ghost"] + .th-meta-pill[data-tone="ghost"]::before {
+    content: none;
+  }
+
+  /* Global normalisation: any element using the legacy patterns
+     gets the standard easing automatically. This makes scattered
+     `transition-all` / `transition-colors` / `transition-transform`
+     calls converge on the same easing curve without having to
+     touch every component. */
+  .transition-colors,
+  .transition-opacity,
+  .transition-transform,
+  .transition-shadow,
+  .transition-all {
+    transition-timing-function: var(--ease-out-soft);
+  }
+}
+
+@layer utilities {
+  /* Shorthand duration / easing helpers compatible with Tailwind's
+     transition-* utilities. Use alongside `transition-colors` etc. */
+  .duration-snappy {
+    transition-duration: var(--motion-fast);
+  }
+  .duration-std {
+    transition-duration: var(--motion-base);
+  }
+  .duration-gentle {
+    transition-duration: var(--motion-slow);
+  }
+  .ease-out-soft {
+    transition-timing-function: var(--ease-out-soft);
+  }
+  .ease-in-out-soft {
+    transition-timing-function: var(--ease-in-out-soft);
+  }
+  .ease-spring {
+    transition-timing-function: var(--ease-spring);
+  }
+}
+
+/* Respect reduced-motion globally, not just inside .ai-chat-theme. */
+@media (prefers-reduced-motion: reduce) {
+  .th-interactive,
+  .th-interactive-color,
+  .th-hover-lift,
+  .th-hover-lift-strong,
+  .th-hover-zoom,
+  .th-hover-icon,
+  .th-hover-title,
+  .th-hover-arrow,
+  .th-press,
+  .th-reveal-on-hover,
+  .th-selectable {
+    transition-duration: 0.001ms !important;
+  }
+  .th-hover-lift:hover,
+  .th-hover-lift-strong:hover,
+  .group:hover .th-hover-zoom,
+  .group:hover .th-hover-icon,
+  .group:hover .th-hover-arrow {
+    transform: none !important;
   }
 }
 

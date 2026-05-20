@@ -1,6 +1,13 @@
+import {
+  buildCustomThemeStylesheet,
+  type ThemePalette,
+} from "@/lib/theme-palettes";
+
 export const COLOR_THEME_STORAGE_KEY = "color-theme";
 export const CUSTOM_COLOR_THEME_STORAGE_KEY = "custom-color-theme";
 export const COLOR_THEME_EVENT = "techhub-color-theme-change";
+/** id of the <style> element used to apply the user's custom palette. */
+export const CUSTOM_THEME_STYLE_ID = "techhub-custom-theme";
 
 export const COLOR_THEMES = [
   {
@@ -181,9 +188,6 @@ export const CUSTOM_COLOR_THEME_FIELDS = [
 const activeThemeValues = COLOR_THEMES.map((theme) => theme.value);
 const legacyThemeValues = ["red"];
 const removableThemeValues = [...activeThemeValues, ...legacyThemeValues];
-const customThemeVariables = Array.from(
-  new Set(CUSTOM_COLOR_THEME_FIELDS.flatMap((field) => field.cssVariables))
-);
 
 function isHexColor(value: unknown): value is string {
   return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
@@ -219,21 +223,28 @@ function hexToHsl(value: string) {
   )}%`;
 }
 
-function getThemeTargets() {
-  if (typeof document === "undefined") {
-    return [];
-  }
-
-  return [document.documentElement, document.body].filter(Boolean);
-}
-
+/**
+ * Remove any leftover <style id="techhub-custom-theme"> element and
+ * legacy inline-style custom-theme overrides applied to either
+ * <html> or <body>. Called whenever we switch away from the custom
+ * theme so the next theme can take over cleanly.
+ */
 function clearCustomThemeStyles() {
-  getThemeTargets().forEach((target) => {
-    customThemeVariables.forEach((variable) => {
-      target.style.removeProperty(variable);
-    });
-    delete target.dataset.customColorTheme;
+  if (typeof document === "undefined") return;
+
+  const targets = [document.documentElement, document.body].filter(Boolean);
+  const cssVariables = Array.from(
+    new Set(CUSTOM_COLOR_THEME_FIELDS.flatMap((f) => f.cssVariables))
+  );
+
+  targets.forEach((target) => {
+    cssVariables.forEach((v) => target.style.removeProperty(v));
+    if (target instanceof HTMLElement) {
+      delete target.dataset.customColorTheme;
+    }
   });
+
+  document.getElementById(CUSTOM_THEME_STYLE_ID)?.remove();
 }
 
 export function normalizeCustomColorTheme(
@@ -244,6 +255,72 @@ export function normalizeCustomColorTheme(
     theme[field.key] = isHexColor(color) ? color : field.defaultValue;
     return theme;
   }, {} as CustomColorTheme);
+}
+
+/**
+ * Map a normalised hex-based CustomColorTheme into two CSS-variable
+ * palettes: one for light mode (full override) and one for dark
+ * mode (accent-only override — background / card / muted stay neutral
+ * so toggling light/dark visibly works). The dark-mode palette only
+ * pins the brand accent so the user's chosen primary persists across
+ * both modes.
+ */
+function buildCustomPalettes(theme: CustomColorTheme): {
+  light: ThemePalette;
+  dark: ThemePalette;
+} {
+  const light: ThemePalette = {};
+  const dark: ThemePalette = {};
+
+  /** CSS variables that should also be pinned in dark mode (accent
+   *  family). All other vars in dark fall back to the .dark globals. */
+  const darkOverrideKeys = new Set<CustomColorThemeKey>([
+    "primary",
+    "primaryForeground",
+    "ring",
+  ]);
+
+  CUSTOM_COLOR_THEME_FIELDS.forEach((field) => {
+    const hsl = hexToHsl(theme[field.key]);
+    field.cssVariables.forEach((cssVar) => {
+      light[cssVar] = hsl;
+      if (darkOverrideKeys.has(field.key)) {
+        dark[cssVar] = hsl;
+      }
+    });
+  });
+
+  return { light, dark };
+}
+
+/**
+ * Inject (or update) the <style id="techhub-custom-theme"> element
+ * inside <head>. Returns true if the element exists after the call.
+ */
+function writeCustomThemeStylesheet(theme: CustomColorTheme) {
+  if (typeof document === "undefined") return false;
+
+  const { light, dark } = buildCustomPalettes(theme);
+  const css = buildCustomThemeStylesheet(light, dark);
+
+  let styleEl = document.getElementById(
+    CUSTOM_THEME_STYLE_ID
+  ) as HTMLStyleElement | null;
+
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.id = CUSTOM_THEME_STYLE_ID;
+    document.head.appendChild(styleEl);
+  }
+
+  styleEl.textContent = css;
+
+  // Mark the root so the selectors :root[data-color-theme="custom"]
+  // / .dark[data-color-theme="custom"] match.
+  document.documentElement.dataset.colorTheme = "custom";
+  document.documentElement.dataset.customColorTheme = "true";
+
+  return true;
 }
 
 export function normalizeColorTheme(value: string | null | undefined): ColorThemeValue {
@@ -279,17 +356,7 @@ export function getStoredCustomColorTheme(): CustomColorTheme {
 
 export function applyCustomColorTheme(value: Partial<CustomColorTheme>): CustomColorTheme {
   const normalizedTheme = normalizeCustomColorTheme(value);
-
-  getThemeTargets().forEach((target) => {
-    CUSTOM_COLOR_THEME_FIELDS.forEach((field) => {
-      const hslValue = hexToHsl(normalizedTheme[field.key]);
-      field.cssVariables.forEach((variable) => {
-        target.style.setProperty(variable, hslValue);
-      });
-    });
-    target.dataset.customColorTheme = "true";
-  });
-
+  writeCustomThemeStylesheet(normalizedTheme);
   return normalizedTheme;
 }
 

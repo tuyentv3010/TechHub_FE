@@ -2,6 +2,7 @@
 import { DropdownProfile } from "@/components/organisms/DropdownProfile";
 import { AiLearningPathProvider } from "@/contexts/AiLearningPathContext";
 import { PublicShell } from "@/components/layout";
+import Footer from "@/components/footer";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 
@@ -28,6 +29,21 @@ function isAuthHeaderPath(pathname: string | null) {
   );
 }
 
+function isFooterPath(pathname: string | null) {
+  if (!pathname) return false;
+  return (
+    pathname === "/" ||
+    pathname === "/about" ||
+    pathname === "/contact" ||
+    pathname === "/courses" ||
+    pathname.startsWith("/courses/") ||
+    pathname === "/learning-paths" ||
+    pathname.startsWith("/learning-paths/") ||
+    pathname === "/blog" ||
+    pathname.startsWith("/blog/")
+  );
+}
+
 export default function Layout({
   children,
   modal,
@@ -37,6 +53,7 @@ export default function Layout({
 }>) {
   const pathname = usePathname();
   const useAuthHeader = isAuthHeaderPath(pathname);
+  const showFooter = isFooterPath(pathname);
   const showAiShortcut = !(pathname === "/ai-chat" || pathname?.startsWith("/ai-chat/"));
 
   return (
@@ -63,6 +80,7 @@ export default function Layout({
         <DropdownProfile variant={useAuthHeader ? "auth" : "default"} />
         {children}
         {modal}
+        {showFooter ? <Footer /> : null}
       </PublicShell>
     </AiLearningPathProvider>
   );

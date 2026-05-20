@@ -83,15 +83,23 @@ export function BlogSection({ title, subtitle }: BlogSectionProps) {
             const blogSlug = createBlogSlug(blog.title, blog.id);
 
             return (
-              <Link href={`/blog/${blogSlug}`} key={blog.id} className="group block">
-                <AppSurface padding="none" className="h-full overflow-hidden">
+              <Link
+                href={`/blog/${blogSlug}`}
+                key={blog.id}
+                className="group block th-focus-ring rounded-xl"
+              >
+                <AppSurface
+                  padding="none"
+                  interactive
+                  className="h-full overflow-hidden"
+                >
                   <div className="relative h-48 overflow-hidden bg-muted">
                     {coverImage ? (
                       <Image
                         src={coverImage}
                         alt={blog.title}
                         fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                        className="th-hover-zoom object-cover"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-muted">
@@ -105,7 +113,7 @@ export function BlogSection({ title, subtitle }: BlogSectionProps) {
                   </div>
 
                   <div className="p-5">
-                    <h3 className="mb-3 line-clamp-2 text-lg font-semibold leading-snug text-foreground group-hover:text-primary">
+                    <h3 className="th-hover-title mb-3 line-clamp-2 text-lg font-semibold leading-snug text-foreground">
                       {blog.title}
                     </h3>
                     <p className="mb-4 line-clamp-3 text-sm leading-6 text-muted-foreground">

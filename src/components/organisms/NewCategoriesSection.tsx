@@ -63,12 +63,17 @@ function GridCategoriesSection({ title }: { title: string }) {
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8">
           {skills.slice(0, 16).map((skill: any) => (
-            <Link key={skill.id} href={`/skills/${skill.id}`} className="group block">
+            <Link
+              key={skill.id}
+              href={`/skills/${skill.id}`}
+              className="group block th-focus-ring rounded-xl"
+            >
               <AppSurface
                 padding="md"
-                className="h-full text-center transition-colors hover:border-primary/40 hover:bg-card"
+                interactive
+                className="h-full text-center"
               >
-                <div className="mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                <div className="th-interactive-color mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground">
                   {skill.thumbnail ? (
                     <Image
                       src={skill.thumbnail}
@@ -83,7 +88,7 @@ function GridCategoriesSection({ title }: { title: string }) {
                     </span>
                   )}
                 </div>
-                <h3 className="mt-3 line-clamp-2 text-sm font-medium text-foreground">
+                <h3 className="th-hover-title mt-3 line-clamp-2 text-sm font-medium text-foreground">
                   {skill.name}
                 </h3>
                 {skill.category ? (
