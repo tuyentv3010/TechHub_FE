@@ -332,48 +332,6 @@ export const checkAndRefreshToken = async (param?: {
     console.log('[checkAndRefreshToken] Token still valid, no refresh needed');
   }
 };
-///
-/**
- * Currency conversion rate (1 USD = 25000 VND approximately)
- */
-export const VND_TO_USD_RATE = 25000;
-
-/**
- * Convert VND to USD
- * @param vnd - Amount in VND
- * @returns Amount in USD
- */
-export function convertVNDtoUSD(vnd: number): number {
-  return vnd / VND_TO_USD_RATE;
-}
-
-/**
- * Convert USD to VND
- * @param usd - Amount in USD
- * @returns Amount in VND
- */
-export function convertUSDtoVND(usd: number): number {
-  return usd * VND_TO_USD_RATE;
-}
-
-/**
- * Format price to display (xx.xx USD)
- * @param price - Price in USD (from backend)
- * @returns Formatted string like "49.99 USD"
- */
-export function formatPriceUSD(price: number): string {
-  return `${price.toFixed(2)} USD`;
-}
-
-/**
- * Format price in VND with spaces (120 000 VND)
- * @param price - Price in VND
- * @returns Formatted string like "120 000 VND"
- */
-export function formatPriceVND(price: number): string {
-  return `${formatCurrencyInput(price)} VND`;
-}
-
 /**
  * Format currency input based on currency type
  * @param value - The numeric value

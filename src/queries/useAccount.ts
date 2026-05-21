@@ -56,6 +56,7 @@ export const useGetAccount = ({
     queryKey: ["account", id],
     queryFn: () => accountApiRequest.getAccountById(id),
     enabled: enabled && !!id,
+    staleTime: 5 * 60 * 1000,
   });
 };
 

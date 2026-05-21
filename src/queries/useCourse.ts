@@ -536,6 +536,7 @@ export const useUpdateProgressMutation = () => {
       courseApiRequest.updateProgress(courseId, lessonId, body),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["progress", variables.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["learning-streak"] });
     },
   });
 };
@@ -549,6 +550,7 @@ export const useMarkLessonCompleteMutation = () => {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["progress", variables.courseId] });
       queryClient.invalidateQueries({ queryKey: ["course", variables.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["learning-streak"] });
     },
   });
 };

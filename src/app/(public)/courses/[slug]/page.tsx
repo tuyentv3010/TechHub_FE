@@ -40,7 +40,7 @@ import {
   formatTagLabel,
 } from "@/lib/course";
 import { useToast } from "@/hooks/use-toast";
-import { normalizePersistedMediaUrl } from "@/lib/file-media";
+import { normalizePersistedMediaUrl, normalizePublicMediaUrl } from "@/lib/file-media";
 import { 
   useCourseComments, 
   useAddCourseCommentMutation 
@@ -285,7 +285,7 @@ export default function CourseDetailPage() {
     enabled: !!courseSummary?.instructorId,
   });
   const instructor = instructorResponse?.payload?.data;
-  const instructorAvatarUrl = normalizePersistedMediaUrl(instructor?.avatar);
+  const instructorAvatarUrl = normalizePublicMediaUrl(instructor?.avatar);
 
   const toggleChapter = (chapterId: string) => {
     setExpandedChapters((prev) => {

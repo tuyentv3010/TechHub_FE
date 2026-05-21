@@ -125,6 +125,17 @@ export const CourseListRes = z.object({
 
 export type CourseListResponseType = z.TypeOf<typeof CourseListRes>;
 
+export const LearningStreakRes = z.object({
+  userId: z.string().optional(),
+  currentStreak: z.number(),
+  longestStreak: z.number(),
+  lastActivityDate: z.string().nullable().optional(),
+  lastActivityAt: z.string().nullable().optional(),
+  completedToday: z.boolean().optional(),
+});
+
+export type LearningStreakResType = z.TypeOf<typeof LearningStreakRes>;
+
 // Course Detail Response (with API wrapper and nested structure)
 export const CourseDetailRes = z.object({
   success: z.boolean(),
@@ -144,6 +155,7 @@ export const CourseDetailRes = z.object({
     currentChapterId: z.string().nullable().optional(),
     lockedChapterIds: z.array(z.string()).optional(),
     unlockedChapterIds: z.array(z.string()).optional(),
+    learningStreak: LearningStreakRes.nullable().optional(),
   }),
   timestamp: z.string(),
   path: z.string(),

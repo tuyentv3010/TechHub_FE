@@ -41,7 +41,7 @@ import {
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
-import paymentApiRequest, { PaymentPageResponse, PaymentTransactionItem } from "@/apiRequests/payment";
+import paymentApiRequest, { fxApi, PaymentPageResponse, PaymentTransactionItem } from "@/apiRequests/payment";
 import { RevenuePolicyScope } from "@/apiRequests/revenue";
 import { useActiveRevenuePolicy, useCreateRevenuePolicy, useRevenueDashboard, useRevenuePolicies } from "@/queries/useRevenue";
 import { decodeToken, formatCurrency, getAccessTokenFromLocalStorage } from "@/lib/utils";
@@ -196,10 +196,18 @@ export default function RevenueDashboardPage() {
   const [transactionPage, setTransactionPage] = useState(0);
   const [transactionPageSize, setTransactionPageSize] = useState(10);
   const [selectedTransactionId, setSelectedTransactionId] = useState("");
-  // Tỉ giá tham khảo VND → USD (1 USD ≈ 25.000 VND).
-  const VND_PER_USD = 25000;
+  const { data: vndToUsdRate = 1 / 25000 } = useQuery({
+    queryKey: ["fx-rate", "VND", "USD"],
+    queryFn: async () => {
+      const response = await fxApi.getRate("VND", "USD");
+      const rate = Number(response.payload?.data?.rate ?? 0);
+      return rate > 0 ? rate : 1 / 25000;
+    },
+    staleTime: 30 * 60 * 1000,
+    enabled: !!dashboardRole,
+  });
   const toUsd = (vnd: number) =>
-    vnd > 0 ? `≈ $${(vnd / VND_PER_USD).toFixed(2)} USD` : "";
+    vnd > 0 ? `≈ $${(vnd * vndToUsdRate).toFixed(2)} USD` : "";
   // Format số tiền theo currency của course/giao dịch (USD/VND).
   const fmtMoney = (value: number, currency?: string) => {
     const code = (currency || "VND").toUpperCase();
@@ -213,7 +221,7 @@ export default function RevenueDashboardPage() {
     const code = (currency || "VND").toUpperCase();
     if (!value) return "";
     if (code === "USD") {
-      const vnd = value * VND_PER_USD;
+      const vnd = vndToUsdRate > 0 ? value / vndToUsdRate : value * 25000;
       return `≈ ${new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(vnd)}`;
     }
     return toUsd(value);

@@ -1,6 +1,7 @@
 import { useGetAccount } from "@/queries/useAccount";
 import CourseCard from "./CourseCard";
 import { Course } from "@/types/course";
+import { normalizePublicMediaUrl } from "@/lib/file-media";
 
 interface CourseWithInstructorId extends Omit<Course, 'instructor' | 'instructorAvatar'> {
   id: string; // Course ID for creating slug
@@ -19,6 +20,7 @@ export default function CourseCardWithInstructor({ course, variant = "default" }
   });
   
   const instructor = instructorResponse?.payload?.data;
+  const instructorAvatar = normalizePublicMediaUrl(instructor?.avatar) || undefined;
   
   // Build the complete course object with instructor info
   const courseWithInstructor: Course = {
@@ -27,7 +29,7 @@ export default function CourseCardWithInstructor({ course, variant = "default" }
     instructor: isLoading 
       ? "Loading..." 
       : instructor?.username || "Unknown Instructor",
-    instructorAvatar: instructor?.avatar || "/avatars/default.jpg",
+    instructorAvatar,
   };
   
   return <CourseCard course={courseWithInstructor} variant={variant} />;

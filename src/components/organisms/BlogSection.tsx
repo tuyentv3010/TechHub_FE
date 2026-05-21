@@ -86,12 +86,12 @@ export function BlogSection({ title, subtitle }: BlogSectionProps) {
               <Link
                 href={`/blog/${blogSlug}`}
                 key={blog.id}
-                className="group block th-focus-ring rounded-xl"
+                className="group block h-full th-focus-ring rounded-xl"
               >
                 <AppSurface
                   padding="none"
                   interactive
-                  className="h-full overflow-hidden"
+                  className="flex h-full flex-col overflow-hidden"
                 >
                   <div className="relative h-48 overflow-hidden bg-muted">
                     {coverImage ? (
@@ -112,7 +112,7 @@ export function BlogSection({ title, subtitle }: BlogSectionProps) {
                     </div>
                   </div>
 
-                  <div className="p-5">
+                  <div className="flex flex-1 flex-col p-5">
                     <h3 className="th-hover-title mb-3 line-clamp-2 text-lg font-semibold leading-snug text-foreground">
                       {blog.title}
                     </h3>
@@ -120,7 +120,7 @@ export function BlogSection({ title, subtitle }: BlogSectionProps) {
                       {excerpt}
                     </p>
 
-                    <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+                    <div className="mt-auto flex items-center justify-between gap-3 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <Clock className="h-4 w-4 text-primary" />
                         <span>{readingTime} min</span>

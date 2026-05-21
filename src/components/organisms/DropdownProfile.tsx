@@ -26,7 +26,7 @@ import { useAccountProfile } from "@/queries/useAccount";
 import manageMenuItems, { canAccessMenuItem } from "@/app/manage/menuItems";
 import { usePermissions } from "@/hooks/usePermissions";
 import { getUserInfoFromStorage, removeTokenFromLocalStorage } from "@/lib/utils";
-import { normalizePersistedMediaUrl } from "@/lib/file-media";
+import { normalizePublicMediaUrl } from "@/lib/file-media";
 
 interface MenuItem {
   title: string;
@@ -147,9 +147,9 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
   };
 
   const avatarUrl =
-    normalizePersistedMediaUrl(userInfo?.avatar) ||
-    normalizePersistedMediaUrl(account?.avatar) ||
-    "/placeholder-avatar.jpg";
+    normalizePublicMediaUrl(userInfo?.avatar) ||
+    normalizePublicMediaUrl(account?.avatar) ||
+    undefined;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95">

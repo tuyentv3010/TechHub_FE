@@ -4,10 +4,12 @@ export interface CourseComment {
   lessonId?: string;
   userId: string;
   content: string;
+  parentId?: string | null;
   parentCommentId?: string;
   created: string;
   updated: string;
   replies: CourseComment[];
+  isPending?: boolean;
 }
 
 export interface AddCourseCommentBody {

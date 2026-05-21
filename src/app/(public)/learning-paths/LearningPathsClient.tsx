@@ -10,8 +10,11 @@ import { Input } from "@/components/ui/input";
 import { BookOpen, TrendingUp, ArrowRight, Search } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { PublicPagination } from "@/components/common/public-pagination";
 import { normalizeLearningPathListPayload } from "@/lib/learning-paths";
 import { LearningPathItemType, LearningPathPaginationType } from "@/schemaValidations/learning-path.schema";
+
+const LEARNING_PATH_PAGE_SIZE = 9;
 
 interface LearningPathsClientProps {
   initialPaths: LearningPathItemType[];
@@ -30,7 +33,7 @@ export default function LearningPathsClient({
   // Fetch learning paths (use initial data if not filtering)
   const { data, isLoading } = useGetLearningPathList({
     page,
-    size: 9,
+    size: LEARNING_PATH_PAGE_SIZE,
     sortBy: "created",
     sortDirection: "DESC",
   });
@@ -58,6 +61,7 @@ export default function LearningPathsClient({
 
   const handleSearch = () => {
     setIsClientFiltering(true);
+    setPage(0);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -129,8 +133,7 @@ export default function LearningPathsClient({
               {/* Search Button */}
               <Button
                 onClick={handleSearch}
-                className="h-12 px-8 text-base font-semibold text-white hover:opacity-90"
-                style={{ backgroundColor: "#3dcbb1" }}
+                className="h-12 px-8 text-base font-semibold"
               >
                 <Search className="mr-2 h-5 w-5" />
                 Search
@@ -145,7 +148,10 @@ export default function LearningPathsClient({
         {/* Results Count */}
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            {t("showingResults", { count: filteredPaths.length, total: paths.length })}
+            {t("showingResults", {
+              count: filteredPaths.length,
+              total: pagination?.totalElements ?? paths.length,
+            })}
           </p>
         </div>
 
@@ -226,25 +232,14 @@ export default function LearningPathsClient({
 
         {/* Pagination */}
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-8">
-            <Button
-              variant="outline"
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page === 0}
-            >
-              {t("previous")}
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              {t("page")} {page + 1} {t("of")} {pagination.totalPages}
-            </span>
-            <Button
-              variant="outline"
-              onClick={() => handlePageChange(page + 1)}
-              disabled={page >= pagination.totalPages - 1}
-            >
-              {t("next")}
-            </Button>
-          </div>
+          <PublicPagination
+            page={page}
+            totalPages={pagination.totalPages}
+            onPageChange={handlePageChange}
+            previousLabel={t("previous")}
+            nextLabel={t("next")}
+            className="pt-8"
+          />
         )}
       </div>
     </>

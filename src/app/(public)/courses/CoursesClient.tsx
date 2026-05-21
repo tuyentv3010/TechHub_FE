@@ -7,6 +7,7 @@ import { ArrowDownUp, Search, SlidersHorizontal, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import CourseCardWithInstructor from "@/components/molecules/CourseCardWithInstructor";
+import { PublicPagination } from "@/components/common/public-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -59,17 +60,17 @@ const SORT_OPTIONS = [
   { value: "price-desc", labelKey: "sortPriceDesc" },
 ];
 
-const PRICE_PRESETS = [
-  { value: "all", labelKey: "priceAll", range: [0, 1000] as [number, number] },
-  { value: "free", labelKey: "priceFree", range: [0, 0] as [number, number] },
-  { value: "under-500", labelKey: "priceUnder500", range: [0, 500] as [number, number] },
-  { value: "under-1000", labelKey: "priceUnder1000", range: [0, 1000] as [number, number] },
-  { value: "premium", labelKey: "pricePremium", range: [500, 1000] as [number, number] },
-];
-
-const MAX_PRICE = 1000;
-const PRICE_FILTER_CURRENCY = "USD";
-const CATALOG_PAGE_SIZE = 100;
+const DEFAULT_PRICE_CURRENCY = "VND";
+const DEFAULT_PRICE_MAX_BY_CURRENCY: Record<string, number> = {
+  VND: 1_000_000,
+  USD: 1_000,
+};
+const PRICE_STEP_BY_CURRENCY: Record<string, number> = {
+  VND: 50_000,
+  USD: 25,
+};
+const CATALOG_FETCH_SIZE = 100;
+const CATALOG_PAGE_SIZE = 9;
 
 const SELECT_TRIGGER_CLASS =
   "h-11 border-border bg-background text-foreground shadow-sm data-[placeholder]:text-muted-foreground hover:bg-muted focus:ring-ring";
@@ -94,6 +95,64 @@ function getEffectivePrice(course: any) {
   const originalPrice = Number(course.price ?? 0);
   const discountPrice = Number(course.discountPrice ?? 0);
   return discountPrice > 0 && discountPrice < originalPrice ? discountPrice : originalPrice;
+}
+
+function getCourseCurrency(courses: any[]) {
+  return (
+    courses
+      .map((course) => String(course?.currency ?? "").trim().toUpperCase())
+      .find(Boolean) ?? DEFAULT_PRICE_CURRENCY
+  );
+}
+
+function getPriceStep(currency: string) {
+  return PRICE_STEP_BY_CURRENCY[currency] ?? PRICE_STEP_BY_CURRENCY.USD;
+}
+
+function getDefaultPriceMax(currency: string) {
+  return DEFAULT_PRICE_MAX_BY_CURRENCY[currency] ?? DEFAULT_PRICE_MAX_BY_CURRENCY.USD;
+}
+
+function roundUpToStep(value: number, step: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return 0;
+  }
+  return Math.ceil(value / step) * step;
+}
+
+function getPriceFilterMeta(courses: any[]) {
+  const currency = getCourseCurrency(courses);
+  const step = getPriceStep(currency);
+  const maxCoursePrice = Math.max(...courses.map(getEffectivePrice), 0);
+  const maxPrice = maxCoursePrice > 0
+    ? roundUpToStep(maxCoursePrice, step)
+    : getDefaultPriceMax(currency);
+
+  return { currency, maxPrice, step };
+}
+
+function buildPricePresets(
+  maxPrice: number,
+  currency: string,
+  t: ReturnType<typeof useTranslations>
+) {
+  const step = getPriceStep(currency);
+  const midpoint = Math.max(step, roundUpToStep(maxPrice * 0.5, step));
+
+  return [
+    { value: "all", label: t("priceAll"), range: [0, maxPrice] as [number, number] },
+    { value: "free", label: t("priceFree"), range: [0, 0] as [number, number] },
+    {
+      value: "under-midpoint",
+      label: `<= ${formatPrice(midpoint, currency)}`,
+      range: [0, midpoint] as [number, number],
+    },
+    {
+      value: "from-midpoint",
+      label: `>= ${formatPrice(midpoint, currency)}`,
+      range: [midpoint, maxPrice] as [number, number],
+    },
+  ];
 }
 
 function sortCourses(courses: any[], sortBy: string) {
@@ -276,8 +335,10 @@ export default function CoursesClient({
   const initialLanguageParam = searchParams.get("language") ?? "ALL";
   const initialSelectedLevel = initialLevelParam !== "ALL" ? initialLevelParam : "ALL";
   const initialSelectedLanguage = initialLanguageParam !== "ALL" ? initialLanguageParam : "ALL";
+  const initialPriceFilterMeta = getPriceFilterMeta(initialCourses);
+  const hasInitialPriceFilter = searchParams.has("minPrice") || searchParams.has("maxPrice");
   const initialMinPrice = Number(searchParams.get("minPrice") ?? 0);
-  const initialMaxPrice = Number(searchParams.get("maxPrice") ?? MAX_PRICE);
+  const initialMaxPrice = Number(searchParams.get("maxPrice") ?? initialPriceFilterMeta.maxPrice);
   const initialPage = Number(searchParams.get("page") ?? 0);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedLevel, setSelectedLevel] = useState<string>(initialSelectedLevel);
@@ -286,27 +347,24 @@ export default function CoursesClient({
   const [selectedTags, setSelectedTags] = useState<string[]>(initialSelectedTags);
   const [priceRange, setPriceRange] = useState<[number, number]>([
     Number.isFinite(initialMinPrice) ? initialMinPrice : 0,
-    Number.isFinite(initialMaxPrice) ? initialMaxPrice : MAX_PRICE,
+    Number.isFinite(initialMaxPrice) ? initialMaxPrice : initialPriceFilterMeta.maxPrice,
   ]);
   const [sortBy, setSortBy] = useState("newest");
   const [page, setPage] = useState(Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 0);
-  const [size] = useState(CATALOG_PAGE_SIZE);
 
-  const publicFilterQueryOptions = {
-    auth: false,
-    redirectOnUnauthorized: false,
-    suppressErrorLog: true,
+  const catalogQueryOptions = {
+    redirectOnUnauthorized: true,
     retry: false,
   };
-  const { data: skillsData } = useGetSkills(publicFilterQueryOptions);
-  const { data: tagsData } = useGetTags(publicFilterQueryOptions);
+  const { data: skillsData } = useGetSkills(catalogQueryOptions);
+  const { data: tagsData } = useGetTags(catalogQueryOptions);
   const skills = skillsData?.payload?.data ?? initialSkills;
   const tags = tagsData?.payload?.data ?? initialTags;
 
   const { data: coursesResponse, isLoading } = useGetCourseList({
     page: 0,
-    size,
-    ...publicFilterQueryOptions,
+    size: CATALOG_FETCH_SIZE,
+    ...catalogQueryOptions,
   });
 
   const catalogCourses = useMemo(
@@ -318,6 +376,35 @@ export default function CoursesClient({
     },
     [coursesResponse?.payload?.data, initialCourses]
   );
+  const filterSourceCourses = useMemo(
+    () => (initialCourses.length > 0 ? initialCourses : catalogCourses),
+    [catalogCourses, initialCourses]
+  );
+  const priceFilterMeta = useMemo(
+    () => getPriceFilterMeta(filterSourceCourses),
+    [filterSourceCourses]
+  );
+  const maxPrice = priceFilterMeta.maxPrice;
+  const priceCurrency = priceFilterMeta.currency;
+  const priceStep = priceFilterMeta.step;
+  const pricePresets = useMemo(
+    () => buildPricePresets(maxPrice, priceCurrency, t),
+    [maxPrice, priceCurrency, t]
+  );
+
+  useEffect(() => {
+    setPriceRange((current) => {
+      const [min, max] = current;
+      if (!hasInitialPriceFilter && min === 0 && max !== maxPrice) {
+        return [0, maxPrice];
+      }
+
+      const nextMin = Math.max(0, Math.min(min, maxPrice));
+      const nextMax = Math.max(nextMin, Math.min(max, maxPrice));
+      return nextMin === min && nextMax === max ? current : [nextMin, nextMax];
+    });
+  }, [hasInitialPriceFilter, maxPrice]);
+
   const filteredCourses = useMemo(
     () =>
       catalogCourses.filter((course: any) => {
@@ -345,14 +432,10 @@ export default function CoursesClient({
     [catalogCourses, priceRange, searchQuery, selectedLanguage, selectedLevel, selectedSkills, selectedTags, skills, tags]
   );
   const sortedCourses = useMemo(() => sortCourses(filteredCourses, sortBy), [filteredCourses, sortBy]);
-  const visibleTotalPages = Math.max(1, Math.ceil(sortedCourses.length / size));
+  const visibleTotalPages = Math.max(1, Math.ceil(sortedCourses.length / CATALOG_PAGE_SIZE));
   const courses = useMemo(
-    () => sortedCourses.slice(page * size, page * size + size),
-    [page, size, sortedCourses]
-  );
-  const filterSourceCourses = useMemo(
-    () => (initialCourses.length > 0 ? initialCourses : catalogCourses),
-    [catalogCourses, initialCourses]
+    () => sortedCourses.slice(page * CATALOG_PAGE_SIZE, page * CATALOG_PAGE_SIZE + CATALOG_PAGE_SIZE),
+    [page, sortedCourses]
   );
   const availableLevelOptions = useMemo(
     () =>
@@ -406,7 +489,7 @@ export default function CoursesClient({
     setSelectedLanguage("ALL");
     setSelectedSkills([]);
     setSelectedTags([]);
-    setPriceRange([0, MAX_PRICE]);
+    setPriceRange([0, maxPrice]);
     setSortBy("newest");
     setPage(0);
   };
@@ -417,10 +500,10 @@ export default function CoursesClient({
     (selectedLanguage !== "ALL" ? 1 : 0) +
     selectedSkills.length +
     selectedTags.length +
-    (priceRange[0] > 0 || priceRange[1] < MAX_PRICE ? 1 : 0);
+    (priceRange[0] > 0 || priceRange[1] < maxPrice ? 1 : 0);
 
   const showLoading = isLoading && catalogCourses.length === 0;
-  const priceLabel = `${formatPrice(priceRange[0], PRICE_FILTER_CURRENCY)} - ${formatPrice(priceRange[1], PRICE_FILTER_CURRENCY)}`;
+  const priceLabel = `${formatPrice(priceRange[0], priceCurrency)} - ${formatPrice(priceRange[1], priceCurrency)}`;
   const showPagination = visibleTotalPages > 1 && sortedCourses.length > 0;
 
   const toHomeCardCourse = (course: any) => {
@@ -604,7 +687,7 @@ export default function CoursesClient({
                 <div>
                   <label className="mb-2 block text-sm font-medium text-foreground">{t("priceRange")}</label>
                   <div className="mb-3 flex flex-wrap gap-2">
-                    {PRICE_PRESETS.map((preset) => (
+                    {pricePresets.map((preset) => (
                       <Button
                         key={preset.value}
                         type="button"
@@ -616,7 +699,7 @@ export default function CoursesClient({
                           setPage(0);
                         }}
                       >
-                        {t(preset.labelKey)}
+                        {preset.label}
                       </Button>
                     ))}
                   </div>
@@ -624,8 +707,8 @@ export default function CoursesClient({
                     <p className="mb-4 text-sm font-medium">{priceLabel}</p>
                     <Slider
                       min={0}
-                      max={MAX_PRICE}
-                      step={25}
+                      max={maxPrice}
+                      step={priceStep}
                       value={priceRange}
                       onValueChange={(value: number[]) => {
                         setPriceRange(value as [number, number]);
@@ -734,13 +817,13 @@ export default function CoursesClient({
                 />
               </Badge>
             ) : null}
-            {priceRange[0] > 0 || priceRange[1] < MAX_PRICE ? (
+            {priceRange[0] > 0 || priceRange[1] < maxPrice ? (
               <Badge variant="secondary" className="gap-1 rounded-full">
                 {priceLabel}
                 <X
                   className="h-3 w-3 cursor-pointer"
                   onClick={() => {
-                    setPriceRange([0, MAX_PRICE]);
+                    setPriceRange([0, maxPrice]);
                     setPage(0);
                   }}
                 />
@@ -813,40 +896,14 @@ export default function CoursesClient({
         ) : null}
 
         {showPagination ? (
-          <div className="mt-8 flex items-center justify-center gap-2">
-            <Button
-              variant="outline"
-              disabled={page <= 0}
-              onClick={() => {
-                setPage(Math.max(0, page - 1));
-              }}
-            >
-              {t("previous")}
-            </Button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: visibleTotalPages }, (_, index) => (
-                <Button
-                  key={index}
-                  variant={index === page ? "default" : "outline"}
-                  onClick={() => {
-                    setPage(index);
-                  }}
-                  className="h-10 w-10 p-0"
-                >
-                  {index + 1}
-                </Button>
-              )).slice(Math.max(0, page - 2), Math.min(visibleTotalPages, page + 3))}
-            </div>
-            <Button
-              variant="outline"
-              disabled={page + 1 >= visibleTotalPages}
-              onClick={() => {
-                setPage(page + 1);
-              }}
-            >
-              {t("next")}
-            </Button>
-          </div>
+          <PublicPagination
+            page={page}
+            totalPages={visibleTotalPages}
+            onPageChange={setPage}
+            previousLabel={t("previous")}
+            nextLabel={t("next")}
+            className="mt-8"
+          />
         ) : null}
       </section>
     </main>

@@ -292,7 +292,7 @@ export default function CourseFilters({
           className="manage-popover-panel w-80 rounded-2xl"
         >
           <div className="space-y-4">
-            <h4 className="font-medium">Price Range (USD)</h4>
+            <h4 className="font-medium">Price Range</h4>
             <div className="grid gap-4">
               <div className="space-y-2">
                 <Label htmlFor="minPrice">Min Price</Label>

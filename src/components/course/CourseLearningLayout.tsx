@@ -23,7 +23,8 @@ import {
   Award,
   Video,
   HelpCircle,
-  Badge
+  Badge,
+  Flame
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -113,6 +114,7 @@ export default function CourseLearningLayout({
   const { data: progressResponse } = useCourseProgress(courseSummary?.id, !!courseSummary?.id);
   const progressData = progressResponse?.payload?.data;
   const completedLessons = progressData?.completedLessons || 0;
+  const learningStreak = progressData?.learningStreak;
   
   // Calculate progress percentage
   const progressPercentage = allLessons.length > 0 
@@ -535,6 +537,15 @@ export default function CourseLearningLayout({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {learningStreak && (
+              <div
+                className="hidden items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm font-semibold text-orange-700 md:flex"
+                title="Learning streak"
+              >
+                <Flame className="h-4 w-4 fill-orange-500 text-orange-500" />
+                <span>{learningStreak.currentStreak ?? 0} ngày</span>
+              </div>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -854,6 +865,15 @@ export default function CourseLearningLayout({
             
             {/* Progress Bar */}
             <div>
+              {learningStreak && (
+                <div className="mb-3 flex items-center justify-between rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800">
+                  <span className="flex items-center gap-2 font-medium">
+                    <Flame className="h-4 w-4 fill-orange-500 text-orange-500" />
+                    Streak học tập
+                  </span>
+                  <span className="font-bold">{learningStreak.currentStreak ?? 0} ngày</span>
+                </div>
+              )}
               <div className="flex items-center justify-between text-xs mb-1">
                 <span className="text-muted-foreground">
                   {completedLessons}/{allLessons.length} bài học

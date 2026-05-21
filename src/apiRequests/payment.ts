@@ -15,7 +15,7 @@ export const fxApi = {
 };
 
 export interface VNPayPaymentRequest {
-  amount: number;
+  amount?: number;
   bankCode?: string;
   userId: string;
   courseId: string;
@@ -172,21 +172,19 @@ const paymentApiRequest = {
   createVNPayPayment: (params: VNPayPaymentRequest) =>
     http.get<VNPayPaymentResponse>("/app/api/proxy/payments/vn-pay", {
       params: {
-        amount: params.amount,
         bankCode: params.bankCode,
         userId: params.userId,
         courseId: params.courseId,
       },
     }),
 
-  // PayPal payment - POST with query params
-  createPayPalPayment: (amount: number, userId: string, courseId: string) =>
+  // PayPal payment - backend resolves amount from courseId and gateway currency
+  createPayPalPayment: (userId: string, courseId: string) =>
     http.post<PayPalPaymentResponse>(
       "/app/api/proxy/payments/paypal/create",
       {}, // body - empty object
       {
         params: {
-          amount: amount,
           userId: userId,
           courseId: courseId,
         },

@@ -2,9 +2,20 @@
 
 import { useState } from "react";
 import { useMyEnrollments } from "@/queries/useMyLearning";
+import { useLearningStreak } from "@/queries/useCourseProgress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Clock, CheckCircle, PlayCircle, Calendar, XCircle } from "lucide-react";
+import {
+  BookOpen,
+  Calendar,
+  CalendarCheck,
+  CheckCircle,
+  Clock,
+  Flame,
+  PlayCircle,
+  Trophy,
+  XCircle,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +24,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Enrollment } from "@/types/enrollment.types";
 
 type LearningTab = "all" | "enrolled" | "in_progress" | "completed" | "dropped";
+
+type LearningStreak = {
+  currentStreak?: number;
+  longestStreak?: number;
+  lastActivityDate?: string | null;
+  lastActivityAt?: string | null;
+  completedToday?: boolean;
+};
 
 const emptyStateContent: Record<
   LearningTab,
@@ -63,7 +82,21 @@ const emptyStateContent: Record<
 export default function MyLearningPage() {
   const [activeTab, setActiveTab] = useState<LearningTab>("all");
   const { data, isLoading, isFetching, error } = useMyEnrollments();
+  const {
+    data: streakResponse,
+    isLoading: isStreakLoading,
+    isError: isStreakError,
+  } = useLearningStreak();
   const allEnrollments = (data?.payload?.data || []) as Enrollment[];
+  const streakPayload = streakResponse?.payload?.data ?? streakResponse?.payload;
+  const learningStreak =
+    streakPayload && typeof streakPayload === "object"
+      ? (streakPayload as LearningStreak)
+      : null;
+  const currentStreak = Number(learningStreak?.currentStreak ?? 0);
+  const longestStreak = Number(learningStreak?.longestStreak ?? 0);
+  const lastActivityDate =
+    learningStreak?.lastActivityDate ?? learningStreak?.lastActivityAt ?? "";
   const activeStatus = activeTab === "all" ? null : activeTab.toUpperCase();
   const enrollments = activeStatus
     ? allEnrollments.filter((enrollment) => enrollment.status === activeStatus)
@@ -115,6 +148,69 @@ export default function MyLearningPage() {
           <p className="text-muted-foreground">
             Quản lý và theo dõi tiến độ học tập của bạn
           </p>
+        </div>
+
+        <div className="mb-8 grid gap-4 md:grid-cols-3">
+          <Card className="border-orange-200 bg-orange-50/70 dark:border-orange-900/60 dark:bg-orange-950/30">
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-500/15 text-orange-600">
+                <Flame className="h-6 w-6 fill-orange-500 text-orange-500" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-orange-900 dark:text-orange-100">
+                  Streak hiện tại
+                </p>
+                {isStreakLoading ? (
+                  <Skeleton className="mt-2 h-8 w-24 bg-orange-200/70" />
+                ) : (
+                  <p className="text-2xl font-bold text-orange-950 dark:text-orange-50">
+                    {currentStreak} ngày
+                  </p>
+                )}
+                <p className="text-xs text-orange-800/80 dark:text-orange-100/80">
+                  {isStreakError
+                    ? "Chưa tải được streak"
+                    : learningStreak?.completedToday
+                      ? "Đã học hôm nay"
+                      : "Hoàn thành một bài để giữ chuỗi"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Trophy className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-muted-foreground">Kỷ lục streak</p>
+                {isStreakLoading ? (
+                  <Skeleton className="mt-2 h-8 w-24" />
+                ) : (
+                  <p className="text-2xl font-bold">{longestStreak} ngày</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+                <CalendarCheck className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-muted-foreground">Lần học gần nhất</p>
+                {isStreakLoading ? (
+                  <Skeleton className="mt-2 h-8 w-28" />
+                ) : (
+                  <p className="text-2xl font-bold">
+                    {lastActivityDate ? formatDate(lastActivityDate) : "Chưa có"}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Filters */}

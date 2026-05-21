@@ -44,7 +44,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "@/components/ui/use-toast";
-import { handleErrorApi } from "@/lib/utils";
+import { formatPrice, handleErrorApi } from "@/lib/utils";
 import { getManageTableColumnClass } from "@/lib/manage-table";
 import TableSkeleton from "@/components/Skeleton";
 import {
@@ -311,7 +311,8 @@ export default function CourseTable() {
         accessorKey: "price",
         header: t("Price"),
         cell: ({ row }) => {
-          const price = parseFloat(row.getValue("price"));
+          const price = Number(row.getValue("price") ?? 0);
+          const currency = row.original.currency || "VND";
           return (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -319,7 +320,7 @@ export default function CourseTable() {
                   <DollarSign className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <div className="font-medium">{price.toFixed(2)} USD</div>
+                  <div className="font-medium">{formatPrice(price, currency)}</div>
                 </div>
               </div>
             </div>

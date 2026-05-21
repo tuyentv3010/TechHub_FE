@@ -91,8 +91,6 @@ export default function PaymentPage() {
 
       if (selectedMethod === "vnpay") {
         // Tính giá cuối cùng (có giảm giá thì lấy giá giảm)
-        const finalPrice = courseSummary.discountPrice || courseSummary.price;
-
         toast({
           title: "Đang tạo liên kết thanh toán...",
           description: "Vui lòng đợi trong giây lát",
@@ -100,7 +98,6 @@ export default function PaymentPage() {
 
         // Gọi API để tạo payment URL với userId
         const response = await createVNPayPayment.mutateAsync({
-          amount: finalPrice,
           bankCode: "NCB", // Mã ngân hàng mặc định, có thể để người dùng chọn
           userId: userProfile.id,
           courseId: courseId,
@@ -113,16 +110,8 @@ export default function PaymentPage() {
           throw new Error("Không nhận được URL thanh toán");
         }
       } else if (selectedMethod === "paypal") {
-        // Lấy giá cuối cùng (đã là USD từ backend)
+        // Giá hiển thị dùng currency của khóa học; backend tự đổi sang USD cho PayPal.
         const finalPrice = courseSummary.discountPrice || courseSummary.price;
-
-        // Debug log để kiểm tra giá
-        console.log("💰 PayPal Payment Debug:", {
-          originalPrice: courseSummary.price,
-          discountPrice: courseSummary.discountPrice,
-          finalPrice: finalPrice,
-          courseSummary: courseSummary
-        });
 
         if (!finalPrice || finalPrice === 0) {
           toast({
@@ -134,27 +123,16 @@ export default function PaymentPage() {
           return;
         }
 
-        // Backend đã lưu giá bằng USD, không cần chuyển đổi
-        const priceInUSD = finalPrice.toFixed(2);
-
-        console.log("💵 PayPal Payment - Price is already in USD:", {
-          priceUSD: priceInUSD,
-          priceAsNumber: parseFloat(priceInUSD)
-        });
-
         toast({
           title: "Đang tạo liên kết thanh toán PayPal...",
           description: "Vui lòng đợi trong giây lát",
         });
 
-        // Gọi API để tạo PayPal payment với userId và courseId
+        // Backend resolve amount from courseId, frontend không gửi số tiền tự tính.
         const response = await createPayPalPayment.mutateAsync({
-          amount: parseFloat(priceInUSD),
           userId: userProfile.id,
           courseId: courseId,
         });
-
-        console.log("✅ PayPal API Response:", response);
 
         const paypalOrder = response?.payload?.data ?? response?.payload;
         const links = paypalOrder?.links;
@@ -172,7 +150,6 @@ export default function PaymentPage() {
           const redirectLink = approveLink || payerActionLink;
 
           if (redirectLink) {
-            console.log("🔗 Redirecting to PayPal:", redirectLink.href);
             // Chuyển hướng đến trang thanh toán PayPal
             window.location.href = redirectLink.href;
           } else {

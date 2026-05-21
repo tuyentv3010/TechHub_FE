@@ -116,6 +116,10 @@ const courseApiRequest = {
   getCourseById: (id: string) =>
     http.get<CourseDetailResponseType>(`/app/api/proxy/courses/${id}`),
 
+  // Get current user's learning streak
+  getLearningStreak: () =>
+    http.get(`/app/api/proxy/courses/streak`),
+
   // Create new course
   createCourse: (body: CreateCourseBodyType) =>
     http.post<CourseDetailResponseType>("/app/api/proxy/courses", body),

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { RatingDistribution } from "./RatingDistribution";
@@ -37,7 +37,49 @@ export function CourseRating({
 }: CourseRatingProps) {
   const [hoveredStar, setHoveredStar] = useState<number | null>(null);
   const [selectedStar, setSelectedStar] = useState<number | null>(userScore);
+  const [localSummary, setLocalSummary] = useState({
+    averageRating,
+    ratingCount,
+    userScore,
+    ratingDistribution,
+  });
   const { toast } = useToast();
+
+  useEffect(() => {
+    setSelectedStar(userScore);
+    setLocalSummary({
+      averageRating,
+      ratingCount,
+      userScore,
+      ratingDistribution,
+    });
+  }, [averageRating, ratingCount, ratingDistribution, userScore]);
+
+  const buildOptimisticSummary = (nextScore: number) => {
+    const previousScore = localSummary.userScore;
+    const nextCount = previousScore ? localSummary.ratingCount : localSummary.ratingCount + 1;
+    const previousTotal = (localSummary.averageRating ?? 0) * localSummary.ratingCount;
+    const nextTotal = previousTotal - (previousScore ?? 0) + nextScore;
+    const nextDistribution = localSummary.ratingDistribution
+      ? ({ ...localSummary.ratingDistribution } as CourseRatingProps["ratingDistribution"])
+      : undefined;
+
+    if (nextDistribution) {
+      if (previousScore && previousScore >= 1 && previousScore <= 5) {
+        const key = previousScore as keyof NonNullable<CourseRatingProps["ratingDistribution"]>;
+        nextDistribution[key] = Math.max(0, (nextDistribution[key] ?? 0) - 1);
+      }
+      const nextKey = nextScore as keyof NonNullable<CourseRatingProps["ratingDistribution"]>;
+      nextDistribution[nextKey] = (nextDistribution[nextKey] ?? 0) + 1;
+    }
+
+    return {
+      averageRating: nextCount > 0 ? Math.round((nextTotal / nextCount) * 100) / 100 : nextScore,
+      ratingCount: nextCount,
+      userScore: nextScore,
+      ratingDistribution: nextDistribution,
+    };
+  };
 
   const handleStarClick = async (rating: number) => {
     if (!isEnrolled) {
@@ -51,14 +93,20 @@ export function CourseRating({
 
     if (isSubmitting) return;
 
+    const previousSummary = localSummary;
+    const previousSelectedStar = selectedStar;
+    setSelectedStar(rating);
+    setLocalSummary(buildOptimisticSummary(rating));
+
     try {
       await onSubmitRating(rating);
-      setSelectedStar(rating);
       toast({
         title: "Đã gửi đánh giá",
         description: `Bạn đã đánh giá ${rating} sao cho khóa học này.`,
       });
     } catch (error: any) {
+      setSelectedStar(previousSelectedStar);
+      setLocalSummary(previousSummary);
       toast({
         title: "Không thể gửi đánh giá",
         description: error?.message || "Vui lòng thử lại sau.",
@@ -126,24 +174,24 @@ export function CourseRating({
         <div className="mb-8">
           <div className="mb-6 flex items-end gap-3">
             <div className="text-6xl font-bold tracking-tight">
-              {averageRating ? averageRating.toFixed(1) : "0.0"}
+              {localSummary.averageRating ? localSummary.averageRating.toFixed(1) : "0.0"}
             </div>
             <div className="pb-2">
-              {renderStars(5, averageRating || 0, false, "md")}
+              {renderStars(5, localSummary.averageRating || 0, false, "md")}
               <p className="mt-1 text-sm text-muted-foreground">
-                {ratingCount > 0
-                  ? `${ratingCount.toLocaleString()} reviews`
+                {localSummary.ratingCount > 0
+                  ? `${localSummary.ratingCount.toLocaleString()} reviews`
                   : "No reviews yet"}
               </p>
             </div>
           </div>
 
           {/* Rating Distribution */}
-          {ratingDistribution && ratingCount > 0 && (
+          {localSummary.ratingDistribution && localSummary.ratingCount > 0 && (
             <div className="mt-6">
               <RatingDistribution
-                distributions={ratingDistribution}
-                totalRatings={ratingCount}
+                distributions={localSummary.ratingDistribution}
+                totalRatings={localSummary.ratingCount}
               />
             </div>
           )}

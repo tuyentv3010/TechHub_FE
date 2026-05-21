@@ -93,6 +93,27 @@ const removePresignedQuery = (value: unknown): string | null => {
 export const normalizePersistedMediaUrl = (value: unknown): string | null =>
   removePresignedQuery(value);
 
+export const isInternalFileProxyUrl = (value: unknown): boolean => {
+  const normalizedUrl = normalizeMediaUrl(value);
+  if (!normalizedUrl) {
+    return false;
+  }
+
+  try {
+    const url = new URL(normalizedUrl, "http://techhub.local");
+    return url.pathname.startsWith("/api/proxy/files/")
+      || url.pathname.startsWith("/app/api/proxy/files/");
+  } catch {
+    return normalizedUrl.startsWith("/api/proxy/files/")
+      || normalizedUrl.startsWith("/app/api/proxy/files/");
+  }
+};
+
+export const normalizePublicMediaUrl = (value: unknown): string | null => {
+  const url = normalizePersistedMediaUrl(value);
+  return url && !isInternalFileProxyUrl(url) ? url : null;
+};
+
 const collectAvailableUrls = (...values: unknown[]) => {
   const resolvedUrls: string[] = [];
   const seenUrls = new Set<string>();

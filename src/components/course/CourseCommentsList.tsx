@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { Loader2, MessageCircle, Smile } from "lucide-react";
+import { Loader2, MessageCircle, Send, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -117,9 +117,9 @@ export function CourseCommentsList({
   }, [comments]);
 
   return (
-    <section className="space-y-6 rounded-2xl border border-muted/40 bg-card/60 p-6">
+    <section className="space-y-5 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
       {/* Header with count and sort */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-lg font-semibold">
           <MessageCircle className="h-5 w-5" />
           <span>{t("count", { count: totalCommentCount })}</span>
@@ -127,7 +127,8 @@ export function CourseCommentsList({
         <select
           value={sortOrder}
           onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
-          className="text-sm rounded-lg border border-muted bg-background px-3 py-1.5 text-muted-foreground hover:bg-muted/50 transition"
+          aria-label="Comment sort order"
+          className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-muted-foreground transition hover:bg-muted/50"
         >
           <option value="newest">{t("sortNewest")}</option>
           <option value="oldest">{t("sortOldest")}</option>
@@ -135,7 +136,7 @@ export function CourseCommentsList({
       </div>
 
       {/* New Comment Input */}
-      <div className="space-y-3">
+      <div className="rounded-lg border bg-background p-3">
         <div className="relative">
           <Textarea
             placeholder={t("commentPlaceholder")}
@@ -143,6 +144,7 @@ export function CourseCommentsList({
             onChange={(event) => setCommentContent(event.target.value)}
             rows={3}
             ref={mainTextareaRef}
+            className="min-h-[92px] resize-none border-0 pr-10 shadow-none focus-visible:ring-0"
           />
 
           <button
@@ -169,12 +171,14 @@ export function CourseCommentsList({
             </div>
           )}
         </div>
-        <div className="flex justify-end">
+        <div className="mt-3 flex justify-end">
           <Button
             onClick={handleSubmitComment}
             disabled={isSubmitting || !commentContent.trim()}
+            className="min-w-28"
           >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {!isSubmitting && <Send className="mr-2 h-4 w-4" />}
             {t("submitComment")}
           </Button>
         </div>
@@ -183,15 +187,15 @@ export function CourseCommentsList({
       <Separator />
 
       {/* Comments List */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {isLoading ? (
           <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={index} className="h-28 w-full rounded-2xl" />
+              <Skeleton key={index} className="h-24 w-full rounded-xl" />
             ))}
           </div>
         ) : sortedComments.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">
+          <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
             {t("empty")}
           </p>
         ) : (

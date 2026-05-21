@@ -10,6 +10,7 @@ import { AdminPageFrame, AdminSurface } from "@/components/manage/admin-page-fra
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatPrice } from "@/lib/utils";
 import { useGetChapters, useGetCourseById } from "@/queries/useCourse";
 
 import AiExercisePanel from "./ai-exercise-panel";
@@ -73,7 +74,7 @@ export default function CourseDetailPage() {
           </div>
           <div className="manage-subsurface p-4">
             <span className="text-muted-foreground">{t("Price")}: </span>
-            <span className="font-medium">{course.price.toFixed(2)} USD</span>
+            <span className="font-medium">{formatPrice(course.price, course.currency)}</span>
           </div>
           <div className="manage-subsurface p-4">
             <span className="text-muted-foreground">{t("Enrollments")}: </span>

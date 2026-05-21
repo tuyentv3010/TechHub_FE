@@ -107,8 +107,7 @@ export default function LearningPathList() {
               {/* Search Button */}
               <Button
                 onClick={handleSearch}
-                className="h-12 px-8 text-base font-semibold text-white hover:opacity-90"
-                style={{ backgroundColor: '#3dcbb1' }}
+                className="h-12 px-8 text-base font-semibold"
               >
                 <Search className="mr-2 h-5 w-5" />
                 Search
