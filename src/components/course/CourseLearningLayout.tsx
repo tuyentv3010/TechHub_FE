@@ -850,64 +850,61 @@ export default function CourseLearningLayout({
         </ScrollArea>
 
         {/* Navigation Buttons - Sticky at bottom */}
-        <div className="sticky bottom-0 left-0 right-0 bg-background">
-          {/* Navigation Buttons */}
-          <div className="px-6 py-4 border-t">
+        <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t">
+          <div className="px-6 py-3">
             <div className="flex items-center justify-between gap-2">
               {/* Bài trước */}
               <Button
-                variant="outline"
+                variant="ghost"
                 disabled={currentLessonIndex === 0}
                 onClick={() => onLessonChange(currentLessonIndex - 1)}
-                className="flex-shrink-0"
+                className="flex-shrink-0 rounded-full font-semibold text-muted-foreground hover:text-foreground disabled:opacity-30"
               >
                 <ChevronLeft className="h-4 w-4 mr-2" />
                 BÀI TRƯỚC
               </Button>
 
-              {/* Hoàn thành + Hỏi đáp - Ở giữa */}
+              {/* Hoàn thành + actions - Ở giữa */}
               <div className="flex items-center gap-2">
                 {/* Mark Complete Button */}
                 {isLessonCompleted(currentLesson?.id) ? (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-green-600 text-white shadow-md">
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-green-500 bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400 shadow-sm">
                     <CheckCircle2 className="h-4 w-4" />
-                    <span className="text-xs font-medium hidden sm:inline">Đã hoàn thành</span>
+                    <span className="text-sm font-semibold hidden sm:inline">Đã hoàn thành</span>
                   </div>
                 ) : (
                   <Button
                     onClick={handleMarkComplete}
                     disabled={markCompleteMutation.isPending}
-                    size="sm"
-                    className="rounded-full bg-green-600 hover:bg-green-700 shadow-md"
+                    className="rounded-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/30 font-semibold px-5"
                   >
                     <CheckCircle2 className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline font-medium">Hoàn thành</span>
+                    <span className="hidden sm:inline">Hoàn thành</span>
                   </Button>
                 )}
 
-                {/* Hỏi đáp Button */}
-                <Button 
+                {/* Hỏi đáp */}
+                <Button
                   onClick={() => setShowCommentModal(true)}
-                  variant="default"
                   size="icon"
-                  className="h-9 w-9 rounded-full bg-orange-500 hover:bg-orange-600 shadow-md"
+                  className="h-10 w-10 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/30"
                   id="qa-button"
                   title={commentT("openDiscussion")}
                 >
                   <MessageSquare className="h-4 w-4" />
                 </Button>
 
-                {/* Bài tập Button */}
-                <Button 
+                {/* Bài tập */}
+                <Button
                   onClick={() => {
-                    const exerciseSection = document.getElementById('exercise-section');
+                    const exerciseSection = document.getElementById("exercise-section");
                     if (exerciseSection) {
-                      exerciseSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      exerciseSection.scrollIntoView({ behavior: "smooth", block: "start" });
                     }
                   }}
-                  variant="default"
                   size="icon"
-                  className="h-9 w-9 rounded-lg bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                  variant="outline"
+                  className="h-10 w-10 rounded-full border-2"
                   title="Bài tập"
                 >
                   <BookOpenCheck className="h-4 w-4" />
@@ -918,7 +915,7 @@ export default function CourseLearningLayout({
               <Button
                 disabled={currentLessonIndex >= allLessons.length - 1}
                 onClick={() => onLessonChange(currentLessonIndex + 1)}
-                className="flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                className="flex-shrink-0 rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:opacity-90 font-semibold shadow-md shadow-primary/30 disabled:opacity-30"
               >
                 BÀI TIẾP THEO
                 <ChevronRight className="h-4 w-4 ml-2" />
@@ -937,171 +934,196 @@ export default function CourseLearningLayout({
           {/* Progress Header */}
           <div className="p-4 border-b space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Nội dung khóa học</h3>
+              <h3 className="font-bold text-base">Nội dung khóa học</h3>
               <button
                 onClick={() => setIsSidebarOpen(false)}
-                className="p-1 hover:bg-muted rounded"
+                className="p-1.5 hover:bg-muted rounded-full transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            
-            {/* Progress Bar */}
-            <div>
-              {learningStreak && (
-                <div className="mb-3 flex items-center justify-between rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800">
-                  <span className="flex items-center gap-2 font-medium">
-                    <Flame className="h-4 w-4 fill-orange-500 text-orange-500" />
+
+            {/* Streak Card */}
+            {learningStreak && (
+              (learningStreak.currentStreak ?? 0) > 0 ? (
+                <div className="relative overflow-hidden rounded-xl border border-orange-300/60 bg-gradient-to-br from-orange-100 via-pink-50 to-orange-50 dark:from-orange-950/40 dark:via-pink-950/30 dark:to-orange-950/20 p-3 shadow-sm">
+                  <div className="absolute -right-3 -top-3 h-16 w-16 rounded-full bg-orange-400/20 blur-xl" />
+                  <div className="relative flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-sm font-semibold text-orange-800 dark:text-orange-200">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-pink-500 shadow-md shadow-orange-500/40">
+                        <Flame className="h-4 w-4 fill-white text-white" />
+                      </span>
+                      Streak học tập
+                    </span>
+                    <span className="text-lg font-extrabold text-orange-600 dark:text-orange-300">
+                      {learningStreak.currentStreak} <span className="text-xs font-medium">ngày</span>
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between rounded-xl border bg-muted/30 px-3 py-2.5 text-sm">
+                  <span className="flex items-center gap-2 font-medium text-muted-foreground">
+                    <Flame className="h-4 w-4" />
                     Streak học tập
                   </span>
-                  <span className="font-bold">{learningStreak.currentStreak ?? 0} ngày</span>
+                  <span className="font-bold text-muted-foreground">0 ngày</span>
                 </div>
-              )}
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-muted-foreground">
+              )
+            )}
+
+            {/* Progress */}
+            <div>
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="text-muted-foreground font-medium">
                   {completedLessons}/{allLessons.length} bài học
                 </span>
-                <span className="font-bold text-primary">{progressPercentage}%</span>
+                <span className="font-extrabold text-primary text-sm">{progressPercentage}%</span>
               </div>
               <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-primary transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-500"
                   style={{ width: `${progressPercentage}%` }}
                 />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {completedLessons === allLessons.length 
-                  ? "🎉 Đã hoàn thành khóa học!" 
-                  : `Còn ${allLessons.length - completedLessons} bài để hoàn thành`
-                }
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {completedLessons === allLessons.length
+                  ? "🎉 Đã hoàn thành khóa học!"
+                  : `Còn ${allLessons.length - completedLessons} bài để hoàn thành`}
               </p>
             </div>
           </div>
 
           <ScrollArea className="flex-1">
-            <div className="p-2">
-              <Accordion type="multiple" defaultValue={chapters.map((ch: any) => ch.id)} className="space-y-2">
+            <div className="p-3">
+              <Accordion type="multiple" defaultValue={chapters.map((ch: any) => ch.id)} className="space-y-3">
                 {chapters.map((chapter: any, chapterIndex: number) => {
                   const chapterLessons = chapter.lessons || [];
-                  const completedCount = chapterLessons.filter((l: any) => 
+                  const completedCount = chapterLessons.filter((l: any) =>
                     isLessonCompleted(l.id)
                   ).length;
+                  const chapterPct = chapterLessons.length
+                    ? Math.round((completedCount / chapterLessons.length) * 100)
+                    : 0;
+                  const isChapterDone = completedCount === chapterLessons.length && chapterLessons.length > 0;
 
                   return (
-                    <AccordionItem 
-                      key={chapter.id} 
+                    <AccordionItem
+                      key={chapter.id}
                       value={chapter.id}
-                      className="border rounded-lg bg-card"
+                      className="border rounded-xl bg-card overflow-hidden shadow-sm"
                     >
-                      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50 rounded-t-lg">
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/40">
                         <div className="flex items-center gap-3 text-left flex-1">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">
-                            {chapterIndex + 1}
+                          <div
+                            className={`flex items-center justify-center w-9 h-9 rounded-full font-extrabold text-sm flex-shrink-0 ${
+                              isChapterDone
+                                ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-sm shadow-emerald-500/30"
+                                : "bg-primary/10 text-primary"
+                            }`}
+                          >
+                            {isChapterDone ? <CheckCircle2 className="h-4 w-4" /> : chapterIndex + 1}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm line-clamp-1">
-                              {chapter.title}
-                            </h4>
-                            <p className="text-xs text-muted-foreground">
-                              {completedCount}/{chapterLessons.length} • {Math.round((completedCount / chapterLessons.length) * 100)}%
-                            </p>
+                            <h4 className="font-semibold text-sm line-clamp-1">{chapter.title}</h4>
+                            <div className="mt-1 flex items-center gap-2">
+                              <div className="h-1 w-20 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className="h-full bg-primary/80"
+                                  style={{ width: `${chapterPct}%` }}
+                                />
+                              </div>
+                              <p className="text-[11px] text-muted-foreground">
+                                {completedCount}/{chapterLessons.length} · {chapterPct}%
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-2 pb-2">
-                        <div className="space-y-1 pt-1">
+                        <div className="space-y-1.5 pt-1">
                           {chapterLessons.map((lesson: any, lessonIndex: number) => {
-                            const globalIndex = allLessons.findIndex(
-                              (l) => l.id === lesson.id
-                            );
+                            const globalIndex = allLessons.findIndex((l) => l.id === lesson.id);
                             const isCompleted = isLessonCompleted(lesson.id);
-                            // Bài học bị khóa nếu: không phải bài hiện tại, không phải bài kế tiếp, và chưa hoàn thành
                             const isLocked = !isCompleted && globalIndex > currentLessonIndex + 1;
                             const isCurrent = globalIndex === currentLessonIndex;
                             const isFirstLesson = globalIndex === 0;
 
-                            // DEBUG: Log lesson render state
-                            console.log(`[Lesson Render] ${lesson.title}:`, {
-                              lessonId: lesson.id,
-                              isCompleted,
-                              isLocked,
-                              isCurrent,
-                              globalIndex,
-                              currentLessonIndex
-                            });
-
-                            // Get content type icon (matching manage)
-                            let contentIcon = <Video className="h-4 w-4" />;
-                            if (lesson.contentType === "TEXT") {
-                              contentIcon = <FileText className="h-4 w-4" />;
-                            } else if (lesson.contentType === "QUIZ") {
-                              contentIcon = <HelpCircle className="h-4 w-4" />;
-                            } else if (lesson.contentType === "CODING") {
-                              contentIcon = <Code className="h-4 w-4" />;
-                            }
+                            const typeMeta: Record<string, { label: string; chip: string; Icon: any }> = {
+                              VIDEO: { label: "Video", chip: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300", Icon: Video },
+                              TEXT: { label: "Text", chip: "bg-primary/10 text-primary border-primary/30", Icon: FileText },
+                              QUIZ: { label: "Quiz", chip: "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950/40 dark:text-pink-300", Icon: HelpCircle },
+                              CODING: { label: "Code", chip: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300", Icon: Code },
+                            };
+                            const meta = typeMeta[lesson.contentType] || typeMeta.VIDEO;
+                            const TypeIcon = meta.Icon;
+                            const durationMin = lesson.estimatedDuration
+                              ? Math.max(1, Math.round(lesson.estimatedDuration / 60))
+                              : null;
 
                             return (
                               <button
                                 key={lesson.id}
-                                className={`w-full p-3 rounded-lg border transition-all text-left relative ${
+                                className={`group w-full rounded-lg border px-3 py-2.5 text-left transition-all ${
                                   isCurrent
-                                    ? "bg-primary/10 border-primary shadow-sm"
-                                    : "hover:bg-muted/50 border-transparent"
+                                    ? "bg-primary/8 border-primary shadow-sm ring-1 ring-primary/40"
+                                    : isCompleted
+                                    ? "border-transparent hover:bg-emerald-50/40 dark:hover:bg-emerald-950/10"
+                                    : "border-transparent hover:bg-muted/60"
                                 } ${isLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                                 onClick={() => !isLocked && onLessonChange(globalIndex)}
                                 disabled={isLocked}
                                 id={isFirstLesson ? "first-lesson" : globalIndex === 1 ? "second-lesson-locked" : undefined}
                               >
-                                {/* Completed Badge - Small green checkmark at bottom right */}
-                                {isCompleted && (
-                                  <div className="absolute bottom-2 right-2 flex items-center justify-center w-5 h-5 rounded-full bg-green-600 text-white">
-                                    <CheckCircle2 className="h-3.5 w-3.5" fill="currentColor" />
-                                  </div>
-                                )}
-
                                 <div className="flex items-start gap-3">
-                                  {/* Status Icon */}
+                                  {/* State circle */}
                                   <div className="flex-shrink-0 mt-0.5">
                                     {isCompleted ? (
-                                      <div className="h-5 w-5 rounded-full border-2 border-green-600 flex items-center justify-center bg-green-50 dark:bg-green-900/20">
-                                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                      <div className="h-5 w-5 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm shadow-emerald-500/40">
+                                        <CheckCircle2 className="h-3 w-3 text-white" strokeWidth={3} />
                                       </div>
                                     ) : isLocked ? (
-                                      <Lock className="h-5 w-5 text-muted-foreground" />
+                                      <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center">
+                                        <Lock className="h-3 w-3 text-muted-foreground" />
+                                      </div>
+                                    ) : isCurrent ? (
+                                      <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center shadow-sm shadow-primary/40">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                                      </div>
                                     ) : (
-                                      <div className="h-5 w-5 rounded-full border-2 border-muted-foreground flex items-center justify-center">
-                                        {isCurrent && <div className="h-2 w-2 rounded-full bg-primary" />}
+                                      <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/40 flex items-center justify-center">
+                                        <span className="text-[10px] font-bold text-muted-foreground">
+                                          {lessonIndex + 1}
+                                        </span>
                                       </div>
                                     )}
                                   </div>
-                                  
-                                  {/* Lesson Info */}
-                                  <div className="flex-1 min-w-0 pr-6">
-                                    <div className="flex items-start gap-2 mb-1">
-                                      <span className="text-xs text-muted-foreground flex-shrink-0">
-                                        {lessonIndex + 1}.
+
+                                  {/* Lesson info */}
+                                  <div className="flex-1 min-w-0">
+                                    <p
+                                      className={`text-sm font-medium line-clamp-2 mb-1.5 ${
+                                        isCurrent ? "text-primary" : ""
+                                      }`}
+                                    >
+                                      {lesson.title}
+                                    </p>
+
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span
+                                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide ${meta.chip}`}
+                                      >
+                                        <TypeIcon className="h-3 w-3" />
+                                        {meta.label}
                                       </span>
-                                      <p className="text-sm font-medium line-clamp-2 flex-1">
-                                        {lesson.title}
-                                      </p>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                      <span className="flex items-center gap-1">
-                                        {contentIcon}
-                                        <span className="capitalize">
-                                          {lesson.contentType?.toLowerCase() || "Video"}
-                                        </span>
-                                      </span>
-                                      {lesson.estimatedDuration && (
-                                        <span className="flex items-center gap-1">
+                                      {durationMin && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                                           <Clock className="h-3 w-3" />
-                                          {Math.floor(lesson.estimatedDuration / 60)} phút
+                                          {durationMin}p
                                         </span>
                                       )}
                                       {lesson.hasExercise && (
-                                        <span className="flex items-center gap-1 text-orange-600">
-                                          <HelpCircle className="h-3 w-3" />
+                                        <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-700 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-900/40">
+                                          <HelpCircle className="h-2.5 w-2.5" />
                                           Bài tập
                                         </span>
                                       )}

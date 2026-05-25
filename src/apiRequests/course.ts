@@ -311,6 +311,12 @@ const courseApiRequest = {
   submitExercise: (courseId: string, lessonId: string, body: any) =>
     http.post(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercise/submissions`, body),
 
+  // Lesson leaderboard (top N learners by submission grade)
+  getLessonLeaderboard: (courseId: string, lessonId: string, limit: number = 10) =>
+    http.get<any>(
+      `/app/api/proxy/courses/${courseId}/lessons/${lessonId}/leaderboard?limit=${limit}`,
+    ),
+
   // Update exercise
   updateExercise: (courseId: string, lessonId: string, exerciseId: string, body: any) => {
     const url = `/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/${exerciseId}`;

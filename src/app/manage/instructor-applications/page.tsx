@@ -6,6 +6,10 @@ import { useLocale, useTranslations } from "next-intl";
 import instructorApplicationApi, {
   InstructorApplication,
 } from "@/apiRequests/instructor-application";
+import instructorProfileApi, {
+  InstructorProfile,
+} from "@/apiRequests/instructor-profile";
+import InstructorProfileView from "@/components/instructor-profile-view";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -148,6 +152,20 @@ export default function ManageInstructorApplicationsPage() {
   const cccdFrontData = useMemo(() => safeParse(detail?.cccdFrontData), [detail]);
   const cccdBackData = useMemo(() => safeParse(detail?.cccdBackData), [detail]);
   const [rescanning, setRescanning] = useState<string | null>(null);
+  const [profile, setProfile] = useState<InstructorProfile | null>(null);
+
+  useEffect(() => {
+    setProfile(null);
+    if (detail?.adminStatus === "APPROVED" && detail.userId) {
+      instructorProfileApi
+        .getByUserId(detail.userId)
+        .then((res: any) => {
+          const data = res?.payload?.data || res?.payload;
+          if (data) setProfile(data);
+        })
+        .catch(() => setProfile(null));
+    }
+  }, [detail?.adminStatus, detail?.userId]);
 
   const refreshDetail = async () => {
     if (!selectedId) return;
@@ -502,6 +520,15 @@ export default function ManageInstructorApplicationsPage() {
                     note: detail.adminNote || t("NoNote"),
                   })}
                 </div>
+              )}
+
+              {detail.adminStatus === "APPROVED" && profile && (
+                <section className="space-y-3 border-t pt-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide">
+                    Profile giảng viên (đã sync)
+                  </h3>
+                  <InstructorProfileView profile={profile} variant="full" />
+                </section>
               )}
             </div>
           )}
