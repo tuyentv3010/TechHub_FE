@@ -1,15 +1,40 @@
 import http from "@/lib/http";
 
+export type InstructorApplicationCertificate = {
+  id: string;
+  fileId: string;
+  fileUrl?: string | null;
+  aiStatus: "PENDING" | "PROCESSED" | "FAILED";
+  aiData?: string | null;
+  aiError?: string | null;
+};
+
 export type InstructorApplication = {
   id: string;
   userId: string;
   userName?: string | null;
   userEmail?: string | null;
+
   cvFileId: string;
   cvFileUrl?: string | null;
   aiStatus: "PENDING" | "PROCESSED" | "FAILED";
   aiExtractedData?: string | null; // JSON string
   aiError?: string | null;
+
+  cccdFrontFileId?: string | null;
+  cccdFrontFileUrl?: string | null;
+  cccdFrontStatus?: "PENDING" | "PROCESSED" | "FAILED" | null;
+  cccdFrontData?: string | null;
+  cccdFrontError?: string | null;
+
+  cccdBackFileId?: string | null;
+  cccdBackFileUrl?: string | null;
+  cccdBackStatus?: "PENDING" | "PROCESSED" | "FAILED" | null;
+  cccdBackData?: string | null;
+  cccdBackError?: string | null;
+
+  certificates?: InstructorApplicationCertificate[] | null;
+
   adminStatus: "PENDING" | "APPROVED" | "REJECTED";
   adminNote?: string | null;
   reviewedBy?: string | null;
@@ -26,11 +51,21 @@ export type InstructorApplicationListResponse = {
   size: number;
 };
 
+export type SubmitInstructorApplicationPayload = {
+  cvFileId: string;
+  cvFileUrl?: string;
+  cccdFrontFileId?: string;
+  cccdFrontFileUrl?: string;
+  cccdBackFileId?: string;
+  cccdBackFileUrl?: string;
+  certificates?: { fileId: string; fileUrl?: string }[];
+};
+
 const BASE = "/app/api/proxy/users/instructor-applications";
 
 const instructorApplicationApi = {
-  submit: (cvFileId: string, cvFileUrl?: string) =>
-    http.post<any>(BASE, { cvFileId, cvFileUrl }),
+  submit: (payload: SubmitInstructorApplicationPayload) =>
+    http.post<any>(BASE, payload),
 
   getMine: () => http.get<any>(`${BASE}/me`),
 
@@ -49,6 +84,12 @@ const instructorApplicationApi = {
 
   reject: (id: string, note: string) =>
     http.put<any>(`${BASE}/${id}/reject`, { note }),
+
+  rescanCv: (id: string) => http.post<any>(`${BASE}/${id}/rescan/cv`, {}),
+  rescanCccdFront: (id: string) => http.post<any>(`${BASE}/${id}/rescan/cccd-front`, {}),
+  rescanCccdBack: (id: string) => http.post<any>(`${BASE}/${id}/rescan/cccd-back`, {}),
+  rescanCertificate: (certId: string) =>
+    http.post<any>(`${BASE}/certificates/${certId}/rescan`, {}),
 };
 
 export default instructorApplicationApi;

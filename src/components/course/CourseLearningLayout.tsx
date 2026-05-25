@@ -518,37 +518,58 @@ export default function CourseLearningLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden" id="learning-content-area">
         {/* Header */}
-        <header className="border-b bg-card px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <header className="border-b bg-card/80 backdrop-blur px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-4 min-w-0">
             <Button
               variant="ghost"
               size="icon"
+              className="rounded-full"
               onClick={() => window.history.back()}
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="font-semibold text-lg line-clamp-1">
+
+            {/* Progress ring */}
+            <div className="relative h-10 w-10 flex-shrink-0">
+              <svg className="h-10 w-10 -rotate-90" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.5" stroke="currentColor" strokeWidth="3" fill="none" className="text-muted/40" />
+                <circle
+                  cx="18" cy="18" r="15.5"
+                  stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round"
+                  className="text-primary transition-all"
+                  strokeDasharray={`${(progressPercentage / 100) * 97.4} 97.4`}
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-primary">
+                {progressPercentage}%
+              </span>
+            </div>
+
+            <div className="min-w-0">
+              <h1 className="font-semibold text-base md:text-lg line-clamp-1">
                 {courseSummary.title}
               </h1>
-              <p className="text-sm text-muted-foreground">
-                {completedLessons}/{allLessons.length} bài hoàn thành • {progressPercentage}%
+              <p className="text-xs text-muted-foreground">
+                {completedLessons}/{allLessons.length} bài hoàn thành
+                {allLessons.length - completedLessons > 0 &&
+                  ` · còn ${allLessons.length - completedLessons} bài`}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {learningStreak && (
               <div
-                className="hidden items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm font-semibold text-orange-700 md:flex"
+                className="hidden items-center gap-1.5 rounded-full border border-orange-200 bg-gradient-to-r from-orange-50 to-pink-50 px-3 py-1.5 text-sm font-semibold text-orange-700 shadow-sm md:flex"
                 title="Learning streak"
               >
                 <Flame className="h-4 w-4 fill-orange-500 text-orange-500" />
-                <span>{learningStreak.currentStreak ?? 0} ngày</span>
+                <span>{learningStreak.currentStreak ?? 0}</span>
               </div>
             )}
             <Button
               variant="ghost"
               size="sm"
+              className="rounded-full"
               onClick={() => onStartTour?.()}
             >
               <BookOpen className="h-4 w-4 mr-1" />
@@ -557,6 +578,7 @@ export default function CourseLearningLayout({
             <Button
               variant="outline"
               size="sm"
+              className="rounded-full"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             >
               {isSidebarOpen ? "Ẩn" : "Hiện"} danh sách
@@ -566,64 +588,125 @@ export default function CourseLearningLayout({
 
         {/* Scrollable Content Area */}
         <ScrollArea className="flex-1">
-          {/* Video/Content Player */}
-          <div className="bg-black flex items-center justify-center w-full" id="video-player-area">
-            {currentLessonVideoUrl ? (
-              <VideoPlayer
-                src={currentLessonVideoUrl}
-                title={currentLesson?.title}
-                subtitle={courseSummary?.instructorName}
-                onEnded={() => {
-                  // Optional: Auto-advance to next lesson
-                  console.log("Video ended");
-                }}
-              />
-            ) : (
-              <div className="text-white text-center p-8 aspect-video w-full flex flex-col items-center justify-center">
-                <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                <p className="text-xl mb-2">{currentLesson?.title}</p>
-                <p className="text-muted-foreground">
-                  {currentLesson?.description || "Nội dung bài học"}
-                </p>
-              </div>
-            )}
-          </div>
+          {(() => {
+            const lessonType = (currentLesson?.contentType || (currentLessonVideoUrl ? "VIDEO" : "TEXT")) as
+              | "VIDEO" | "TEXT" | "QUIZ" | "CODING";
+            const typeMeta: Record<string, { label: string; cls: string; icon: any }> = {
+              VIDEO: { label: "VIDEO", cls: "bg-blue-50 text-blue-700 border-blue-200", icon: Video },
+              TEXT: { label: "TEXT", cls: "bg-primary/10 text-primary border-primary/30", icon: FileText },
+              QUIZ: { label: "QUIZ", cls: "bg-pink-50 text-pink-700 border-pink-200", icon: HelpCircle },
+              CODING: { label: "CODE", cls: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: Code },
+            };
+            const meta = typeMeta[lessonType] || typeMeta.TEXT;
+            const TypeIcon = meta.icon;
+            const readMinutes = currentLesson?.estimatedDuration
+              ? Math.max(1, Math.round(currentLesson.estimatedDuration / 60))
+              : null;
 
-          {/* Lesson Title & Info */}
-          <div className="p-6 border-b">
-            <div className="flex items-start justify-between gap-4 mb-2">
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold mb-2">{currentLesson?.title}</h1>
-                <p className="text-sm text-muted-foreground">
-                  Cập nhật {currentLesson?.created ? new Date(currentLesson.created).toLocaleDateString('vi-VN') : 'N/A'}
-                </p>
-              </div>
-              <Button variant="outline" size="sm" className="flex-shrink-0" id="add-note-button">
-                <FileText className="h-4 w-4 mr-2" />
-                Thêm ghi chú tại 01:46
-              </Button>
-            </div>
-            
-            {/* Content Description Collapsible */}
-            {currentLesson?.content && (
-              <div className="bg-muted/30 rounded-lg p-4 mb-4">
-                <button 
-                  onClick={() => setShowContentDescription(!showContentDescription)}
-                  className="flex items-center justify-between w-full text-left font-medium mb-2"
-                >
-                  <span>Nội dung bài học</span>
-                  <ChevronRight className={`h-4 w-4 transition-transform ${showContentDescription ? 'rotate-90' : ''}`} />
-                </button>
-                {showContentDescription && (  
-                  <div 
-                    className="text-sm text-muted-foreground prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: currentLesson.content }}
-                  />)
-                }
-              </div>
-            )}
+            return (
+              <>
+                {/* VIDEO player only when there is a video URL */}
+                {currentLessonVideoUrl && (
+                  <div className="bg-black w-full" id="video-player-area">
+                    <VideoPlayer
+                      src={currentLessonVideoUrl}
+                      title={currentLesson?.title}
+                      subtitle={courseSummary?.instructorName}
+                      onEnded={() => console.log("Video ended")}
+                    />
+                  </div>
+                )}
 
-          </div>
+                {/* Lesson Header (chip + title + meta) */}
+                <div className="px-6 md:px-10 pt-8 pb-2 max-w-[820px] mx-auto w-full">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold tracking-wider ${meta.cls}`}
+                    >
+                      <TypeIcon className="h-3.5 w-3.5" />
+                      {meta.label}
+                      {readMinutes && <span className="opacity-70">· {readMinutes} phút</span>}
+                    </span>
+                    {currentLesson?.hasExercise && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-bold tracking-wider text-orange-700">
+                        <HelpCircle className="h-3.5 w-3.5" />
+                        BÀI TẬP
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-start justify-between gap-4 mb-1">
+                    <h1 className="text-3xl md:text-[34px] font-extrabold tracking-tight leading-tight flex-1">
+                      {currentLesson?.title}
+                    </h1>
+                    <Button variant="outline" size="sm" className="flex-shrink-0 rounded-full" id="add-note-button">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Ghi chú
+                    </Button>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground mb-6">
+                    {currentLesson?.chapterTitle && (
+                      <>
+                        <span className="font-medium text-foreground/80">{currentLesson.chapterTitle}</span>
+                        <span className="mx-2">·</span>
+                      </>
+                    )}
+                    Cập nhật{" "}
+                    {currentLesson?.created
+                      ? new Date(currentLesson.created).toLocaleDateString("vi-VN")
+                      : "N/A"}
+                  </p>
+                </div>
+
+                {/* Lesson Article Body */}
+                {currentLesson?.content && (
+                  <div className="px-6 md:px-10 pb-8 max-w-[820px] mx-auto w-full">
+                    <button
+                      onClick={() => setShowContentDescription(!showContentDescription)}
+                      className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                    >
+                      <ChevronRight
+                        className={`h-3.5 w-3.5 transition-transform ${
+                          showContentDescription ? "rotate-90" : ""
+                        }`}
+                      />
+                      {showContentDescription ? "Ẩn nội dung" : "Hiện nội dung"}
+                    </button>
+                    {showContentDescription && (
+                      <article
+                        className="prose prose-slate dark:prose-invert max-w-none
+                          prose-headings:tracking-tight prose-headings:font-bold
+                          prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-2xl
+                          prose-h3:mt-6 prose-h3:text-xl
+                          prose-p:leading-[1.75] prose-p:text-[17px]
+                          prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+                          prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:not-italic
+                          prose-code:bg-primary/10 prose-code:text-primary prose-code:rounded prose-code:px-1.5 prose-code:py-0.5 prose-code:font-medium prose-code:before:content-none prose-code:after:content-none
+                          prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-xl prose-pre:shadow-lg
+                          prose-img:rounded-xl prose-img:shadow-md
+                          prose-hr:border-border"
+                        dangerouslySetInnerHTML={{ __html: currentLesson.content }}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Empty state when no video + no content */}
+                {!currentLessonVideoUrl && !currentLesson?.content && (
+                  <div className="px-6 md:px-10 py-16 max-w-[820px] mx-auto w-full text-center">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <BookOpen className="h-8 w-8" />
+                    </div>
+                    <p className="text-lg font-semibold mb-1">{currentLesson?.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {currentLesson?.description || "Nội dung bài học đang được cập nhật."}
+                    </p>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
           {/* Exercise Section - New Interactive Design */}
           <div id="exercise-section" className="p-6 border-b">
