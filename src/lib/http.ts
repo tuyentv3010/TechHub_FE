@@ -339,11 +339,12 @@ const request = async <Response>(
     return data;
   } catch (error: any) {
     if (!options?.suppressErrorLog) {
-      console.error(`HTTP ${method} error for ${fullUrl}:`, {
-        message: error.message,
-        status: error.status,
-        payload: error.payload,
-      });
+      const errorInfo: Record<string, any> = {};
+      if (error?.message !== undefined) errorInfo.message = error.message;
+      if (error?.status !== undefined) errorInfo.status = error.status;
+      if (error?.payload !== undefined) errorInfo.payload = error.payload;
+      if (Object.keys(errorInfo).length === 0) errorInfo.raw = String(error);
+      console.error(`HTTP ${method} error for ${fullUrl}:`, errorInfo);
     }
     throw error;
   }

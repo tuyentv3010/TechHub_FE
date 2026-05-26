@@ -100,6 +100,14 @@ export const useRecommendScheduledMutation = () => {
   });
 };
 
+// Simple collaborative filtering recommendations mutation
+export const useRecommendSimpleMutation = () => {
+  return useMutation({
+    mutationFn: (body: RecommendationRequestType) =>
+      aiApiRequest.recommendSimple(body),
+  });
+};
+
 export const useGetRecommendationHistory = (
   userId: string,
   mode?: "REALTIME" | "SCHEDULED",

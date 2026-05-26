@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
-import { useGetRecommendationHistory, useRecommendRealtimeMutation, useRecommendScheduledMutation } from "@/queries/useAi";
-import { Sparkles, Loader2, Clock, TrendingUp, BookOpen, Star } from "lucide-react";
+import { useGetRecommendationHistory, useRecommendRealtimeMutation, useRecommendScheduledMutation, useRecommendSimpleMutation } from "@/queries/useAi";
+import { Sparkles, Loader2, Clock, TrendingUp, BookOpen, Star, Users } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -56,6 +57,10 @@ export default function RecommendationsPage() {
 
   const realtimeMutation = useRecommendRealtimeMutation();
   const scheduledMutation = useRecommendScheduledMutation();
+  const simpleMutation = useRecommendSimpleMutation();
+  const [simpleRecommendations, setSimpleRecommendations] = useState<any[]>([]);
+  const [simpleMetadata, setSimpleMetadata] = useState<{ total_candidates?: number } | null>(null);
+  const [hasSearchedSimple, setHasSearchedSimple] = useState(false);
   const { data: accountData } = useAccountProfile();
   const { data: historyData, refetch: refetchHistory } = useGetRecommendationHistory(userId, "SCHEDULED", 20);
 
@@ -182,6 +187,42 @@ export default function RecommendationsPage() {
     }
   };
 
+  const handleRecommendSimple = async () => {
+    if (!userId) {
+      toast({ title: tCommon("error"), description: tCommon("error"), variant: "destructive" });
+      return;
+    }
+    try {
+      const response = await simpleMutation.mutateAsync({ userId, mode: "REALTIME", language });
+      setSimpleRecommendations(response.payload?.data?.recommendations || []);
+      setSimpleMetadata((response.payload?.data?.metadata as any) || null);
+      setHasSearchedSimple(true);
+      toast({
+        title: tCommon("success"),
+        description: `Tìm được ${response.payload?.data?.recommendations?.length || 0} gợi ý từ cộng đồng`,
+      });
+    } catch (error) {
+      toast({
+        title: tCommon("error"),
+        description: error instanceof Error ? error.message : "Lỗi khi tìm gợi ý",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getSignalBadges = (reason: string): { label: string; className: string }[] => {
+    const badges: { label: string; className: string }[] = [];
+    if (reason.includes("hành trình học tương tự") || reason.includes("Học viên có"))
+      badges.push({ label: "Cộng đồng học viên", className: "bg-indigo-100 text-indigo-700 border border-indigo-200" });
+    if (reason.includes("Trùng kỹ năng"))
+      badges.push({ label: "Trùng kỹ năng", className: "bg-green-100 text-green-700 border border-green-200" });
+    if (reason.includes("chủ đề"))
+      badges.push({ label: "Trùng chủ đề", className: "bg-amber-100 text-amber-700 border border-amber-200" });
+    if (badges.length === 0)
+      badges.push({ label: "Cộng đồng học viên", className: "bg-indigo-100 text-indigo-700 border border-indigo-200" });
+    return badges;
+  };
+
   const handleAskAiWhy = (recommendation: Recommendation) => {
     const prompt = `Vi sao ban goi y khoa hoc "${recommendation.title}" cho toi? Hay phan tich theo muc tieu, muc do phu hop va buoc tiep theo.`;
     router.push(`/ai-chat?prompt=${encodeURIComponent(prompt)}`);
@@ -299,6 +340,10 @@ export default function RecommendationsPage() {
             <TabsList>
               <TabsTrigger value="realtime">Realtime</TabsTrigger>
               <TabsTrigger value="scheduled">{t("scheduledHistory")}</TabsTrigger>
+              <TabsTrigger value="community" className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                Theo cộng đồng
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="realtime" className="space-y-6">
@@ -499,6 +544,159 @@ export default function RecommendationsPage() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+            <TabsContent value="community" className="space-y-4">
+              {/* Info banner */}
+              <div className="flex items-start gap-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-800">
+                <Users className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+                <p>
+                  Gợi ý dựa trên lịch sử học của những học viên có hành trình tương tự bạn.
+                  Không dùng AI — tốc độ nhanh, hoạt động dựa trên kỹ năng và chủ đề trùng khớp.
+                </p>
+              </div>
+
+              {/* Trigger button */}
+              <Button
+                onClick={handleRecommendSimple}
+                disabled={simpleMutation.isPending}
+                className="w-full"
+              >
+                {simpleMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Đang tìm...
+                  </>
+                ) : (
+                  <>
+                    <Users className="mr-2 h-4 w-4" />
+                    Tìm gợi ý
+                  </>
+                )}
+              </Button>
+
+              {/* Metadata */}
+              {simpleMetadata?.total_candidates != null && (
+                <p className="text-xs text-muted-foreground">
+                  Phân tích từ {simpleMetadata.total_candidates} khóa học trong cộng đồng
+                </p>
+              )}
+
+              {/* Results */}
+              {!hasSearchedSimple ? (
+                <div className="py-12 text-center">
+                  <Users className="mx-auto mb-4 h-16 w-16 text-muted-foreground opacity-40" />
+                  <p className="text-muted-foreground">Nhấn &quot;Tìm gợi ý&quot; để xem đề xuất từ cộng đồng</p>
+                </div>
+              ) : simpleRecommendations.length === 0 ? (
+                <div className="py-12 text-center">
+                  <BookOpen className="mx-auto mb-4 h-16 w-16 text-muted-foreground opacity-40" />
+                  <p className="text-muted-foreground">Chưa có gợi ý từ cộng đồng</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Hãy đăng ký và hoàn thành một số khóa học để nhận gợi ý phù hợp hơn.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {simpleRecommendations.map((rec: any, idx: number) => {
+                    const badges = getSignalBadges(rec.reason || "");
+                    const scorePercent = Math.round((rec.score || 0) * 100);
+                    return (
+                      <Card key={idx} className="hover:shadow-md transition-shadow">
+                        <CardContent className="pt-6">
+                          {/* Signal badges */}
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {badges.map((b, bi) => (
+                              <span
+                                key={bi}
+                                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${b.className}`}
+                              >
+                                {b.label}
+                              </span>
+                            ))}
+                          </div>
+
+                          {/* Title + score badge */}
+                          <div className="flex items-start justify-between gap-3 mb-1">
+                            <h3 className="font-semibold text-lg leading-tight">{rec.title}</h3>
+                            <Badge className={`shrink-0 ${getScoreColor(rec.score)}`}>
+                              {getScoreLabel(rec.score)}
+                            </Badge>
+                          </div>
+
+                          {/* Description */}
+                          <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                            {rec.description}
+                          </p>
+
+                          {/* Score bar */}
+                          <div className="mb-3 space-y-1">
+                            <Progress value={scorePercent} className="h-2" />
+                            <p className="text-xs text-muted-foreground">Điểm phù hợp: {scorePercent}%</p>
+                          </div>
+
+                          {/* Tags */}
+                          {rec.tags && rec.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mb-3">
+                              {rec.tags.slice(0, 3).map((tag: string, ti: number) => (
+                                <Badge key={ti} variant="secondary">{tag}</Badge>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Reason box */}
+                          <div className="border-l-2 border-indigo-400 bg-indigo-50 pl-3 py-2 rounded-r-md text-sm mb-4">
+                            <p className="text-indigo-900">
+                              <strong>Lý do: </strong>{rec.reason}
+                            </p>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex gap-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" onClick={() => setShowDetails(rec)}>
+                                  {t("viewDetails")}
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>{showDetails?.title}</DialogTitle>
+                                  <DialogDescription>{showDetails?.description}</DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <strong>{t("matchScore")}</strong>{" "}
+                                    <Badge className={getScoreColor(showDetails?.score || 0)}>
+                                      {((showDetails?.score || 0) * 100).toFixed(0)}%
+                                    </Badge>
+                                  </div>
+                                  <div>
+                                    <strong>{t("reason")}</strong>
+                                    <p className="text-sm text-muted-foreground mt-1">{showDetails?.reason}</p>
+                                  </div>
+                                  {showDetails?.tags && showDetails.tags.length > 0 && (
+                                    <div>
+                                      <strong>{t("tags")}</strong>
+                                      <div className="flex flex-wrap gap-2 mt-2">
+                                        {showDetails.tags.map((tag: string, ti: number) => (
+                                          <Badge key={ti} variant="secondary">{tag}</Badge>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                            <Button size="sm" className="flex-1" onClick={() => handleEnroll(rec.courseId)}>
+                              {t("enroll")}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>

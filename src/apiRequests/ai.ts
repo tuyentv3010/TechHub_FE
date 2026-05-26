@@ -68,6 +68,13 @@ const aiApiRequest = {
       body
     ),
 
+  // Simple collaborative filtering recommendations (no LLM, no Qdrant)
+  recommendSimple: (body: RecommendationRequestType) =>
+    http.post<{ payload: { data: RecommendationResponseType } }>(
+      "/app/api/proxy/ai/recommendations/simple",
+      body
+    ),
+
   getRecommendationHistory: (userId: string, mode?: "REALTIME" | "SCHEDULED", limit: number = 20) =>
     http.get<{ payload: { data: RecommendationHistoryItemType[] } }>(
       `/app/api/proxy/ai/recommendations/history?userId=${userId}${mode ? `&mode=${mode}` : ""}&limit=${limit}`
