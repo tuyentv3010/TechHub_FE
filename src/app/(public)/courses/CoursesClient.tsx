@@ -32,7 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { useGetCourseList, useGetSkills, useGetTags } from "@/queries/useCourse";
 import { formatPrice } from "@/lib/course";
-import { normalizePersistedMediaUrl } from "@/lib/file-media";
+import { normalizePublicMediaUrl } from "@/lib/file-media";
 
 type FilterOption = {
   value: string;
@@ -507,7 +507,7 @@ export default function CoursesClient({
   const showPagination = visibleTotalPages > 1 && sortedCourses.length > 0;
 
   const toHomeCardCourse = (course: any) => {
-    const thumbnailUrl = normalizePersistedMediaUrl(
+    const thumbnailUrl = normalizePublicMediaUrl(
       course.thumbnail?.secureUrl || course.thumbnail?.url
     ) || null;
 

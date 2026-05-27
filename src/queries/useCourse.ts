@@ -11,6 +11,13 @@ export const useGetMyCourses = (params?: {
   page?: number;
   size?: number;
   search?: string;
+  status?: string;
+  level?: string;
+  language?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  skillIds?: string[];
+  tagIds?: string[];
 }) => {
   return useQuery({
     queryKey: ["my-courses", params],

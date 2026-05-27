@@ -13,7 +13,7 @@ import { SkillsSection } from "@/components/organisms/NewSkillsSection";
 import { CommunitySection } from "@/components/organisms/CommunitySectionNew";
 import { InstructorsSection } from "@/components/organisms/InstructorsSection";
 import { BlogSection } from "@/components/organisms/BlogSection";
-import { normalizePersistedMediaUrl } from "@/lib/file-media";
+import { normalizePublicMediaUrl } from "@/lib/file-media";
 
 export default function Home() {
   const t = useTranslations("HomePage");
@@ -35,7 +35,7 @@ export default function Home() {
     title: course.title,
     description: course.description,
     instructorId: course.instructorId, // Keep ID for fetching
-    image: normalizePersistedMediaUrl(course.thumbnail?.secureUrl || course.thumbnail?.url) || null,
+    image: normalizePublicMediaUrl(course.thumbnail?.secureUrl || course.thumbnail?.url) || null,
     rating: course.averageRating || 0,
     reviews: course.ratingCount || 0,
     price: course.discountPrice || course.price || 0,

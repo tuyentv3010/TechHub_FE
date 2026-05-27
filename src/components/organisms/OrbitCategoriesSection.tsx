@@ -297,15 +297,42 @@ export function OrbitCategoriesSection({ title }: OrbitCategoriesSectionProps) {
   const apiSkills = ((skillsData?.payload?.data ?? []) as Partial<Skill>[])
     .map((skill) => normalizeSkillItem(skill))
     .filter((skill): skill is Skill => Boolean(skill));
-  const fallbackSkills = buildFallbackSkillsFromCourses(
-    (coursesData?.payload?.data ?? []) as CourseLike[]
-  );
+  const courseList = (coursesData?.payload?.data ?? []) as CourseLike[];
+  const fallbackSkills = buildFallbackSkillsFromCourses(courseList);
+
+  // Skills actually used by at least one PUBLISHED course in the response.
+  // Without this, the orbit can surface skills that have no courses, and
+  // clicking them leads to an empty `/courses` page.
+  const usedSkillKeys = new Set<string>();
+  courseList.forEach((course) => {
+    (course.skills ?? []).forEach((item) => {
+      if (typeof item === "string") {
+        if (item) usedSkillKeys.add(item.toLowerCase());
+        return;
+      }
+      if (item?.id) usedSkillKeys.add(String(item.id).toLowerCase());
+      if (item?.name) usedSkillKeys.add(String(item.name).toLowerCase());
+    });
+    (course.categories ?? []).forEach((category) => {
+      if (category) usedSkillKeys.add(category.toLowerCase());
+    });
+  });
+
+  const filteredApiSkills =
+    usedSkillKeys.size > 0
+      ? apiSkills.filter(
+          (skill) =>
+            usedSkillKeys.has(skill.id.toLowerCase()) ||
+            usedSkillKeys.has(skill.name.toLowerCase())
+        )
+      : apiSkills;
+
   const sourceSkills =
-    apiSkills.length > 0
-      ? apiSkills
+    filteredApiSkills.length > 0
+      ? filteredApiSkills
       : fallbackSkills.length > 0
         ? fallbackSkills
-        : [];
+        : apiSkills;
   const skills = sourceSkills.slice(0, MAX_VISIBLE_CATEGORIES);
   const isLoading =
     skills.length === 0 &&

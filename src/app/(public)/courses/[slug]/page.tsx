@@ -43,7 +43,7 @@ import {
   formatTagLabel,
 } from "@/lib/course";
 import { useToast } from "@/hooks/use-toast";
-import { normalizePersistedMediaUrl, normalizePublicMediaUrl } from "@/lib/file-media";
+import { normalizePublicMediaUrl } from "@/lib/file-media";
 import { 
   useCourseComments, 
   useAddCourseCommentMutation 
@@ -80,10 +80,10 @@ export default function CourseDetailPage() {
 
   const course = courseResponse?.payload?.data;
   const courseSummary = course?.summary;
-  const courseThumbnailUrl = normalizePersistedMediaUrl(
+  const courseThumbnailUrl = normalizePublicMediaUrl(
     courseSummary?.thumbnail?.secureUrl || courseSummary?.thumbnail?.url
   );
-  const courseIntroVideoUrl = normalizePersistedMediaUrl(
+  const courseIntroVideoUrl = normalizePublicMediaUrl(
     courseSummary?.introVideo?.secureUrl || courseSummary?.introVideo?.url
   );
   const chapters = course?.chapters || [];

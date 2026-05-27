@@ -42,7 +42,7 @@ import { useGetSkills, useGetTags } from "@/queries/useCourse";
 import SkillManager from "@/components/manage/SkillManager";
 import TagManager from "@/components/manage/TagManager";
 import { CurrencyInputWithSwitch } from "@/components/ui/currency-input-with-switch";
-import { resolveManagedFileUrl } from "@/lib/file-media";
+import { resolvePersistentFileUrl } from "@/lib/file-media";
 
 export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   const t = useTranslations("ManageCourse");
@@ -171,7 +171,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
       const response = await fileApiRequest.uploadFile(formData);
       
       const thumbnailUrl = response.payload?.data
-        ? resolveManagedFileUrl(response.payload.data, userId, "thumbnail")
+        ? resolvePersistentFileUrl(response.payload.data, "thumbnail")
         : null;
 
       if (thumbnailUrl) {
@@ -227,7 +227,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
       const response = await fileApiRequest.uploadFile(formData);
       
       const videoUrl = response.payload?.data
-        ? resolveManagedFileUrl(response.payload.data, userId, "content")
+        ? resolvePersistentFileUrl(response.payload.data, "content")
         : null;
 
       if (videoUrl) {
@@ -750,7 +750,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             mediaType="IMAGE"
             title={t("SelectThumbnail") || "Select Thumbnail"}
             onSelectFile={(file) => {
-              const thumbnailUrl = resolveManagedFileUrl(file, userId, "thumbnail");
+              const thumbnailUrl = resolvePersistentFileUrl(file, "thumbnail");
               if (thumbnailUrl) {
                 form.setValue("thumbnail", thumbnailUrl);
                 setThumbnailPreview(thumbnailUrl);
@@ -765,7 +765,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             mediaType="VIDEO"
             title={t("SelectIntroVideo") || "Select Intro Video"}
             onSelectFile={(file) => {
-              const videoUrl = resolveManagedFileUrl(file, userId, "content");
+              const videoUrl = resolvePersistentFileUrl(file, "content");
               if (videoUrl) {
                 form.setValue("introVideo", videoUrl);
                 setVideoPreview(videoUrl);
