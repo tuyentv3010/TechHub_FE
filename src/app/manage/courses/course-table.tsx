@@ -190,6 +190,13 @@ export default function CourseTable() {
     page: page - 1,
     size: pageSize,
     search: search || undefined,
+    status: status || undefined,
+    level: level || undefined,
+    language: language || undefined,
+    skillIds: skillIds.length > 0 ? skillIds : undefined,
+    tagIds: tagIds.length > 0 ? tagIds : undefined,
+    minPrice: minPrice ? Number(minPrice) : undefined,
+    maxPrice: maxPrice ? Number(maxPrice) : undefined,
   });
 
   const data = useMemo(

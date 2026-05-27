@@ -28,11 +28,13 @@ export default function SkillManager({
   onOpenChange,
   onSelect,
   selectedItems,
+  embedded = false,
 }: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
   onSelect?: (s: Skill) => void;
   selectedItems?: string[];
+  embedded?: boolean;
 }) {
   const { data: skillsData } = useGetSkills();
   const skills = skillsData?.payload?.data ?? [];
@@ -122,12 +124,8 @@ export default function SkillManager({
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl">
-        <DialogHeader>
-          <DialogTitle>Manage skills</DialogTitle>
-        </DialogHeader>
+  const body = (
+    <>
           <div className="grid grid-cols-12 gap-6">
             {/* Left: Form */}
             <div className="col-span-5 p-4 border rounded-lg">
@@ -294,6 +292,20 @@ export default function SkillManager({
           mediaType="IMAGE"
           title="Select image"
         />
+    </>
+  );
+
+  if (embedded) {
+    return <div className="space-y-4">{body}</div>;
+  }
+
+  return (
+    <Dialog open={!!open} onOpenChange={onOpenChange ?? (() => {})}>
+      <DialogContent className="max-w-5xl">
+        <DialogHeader>
+          <DialogTitle>Manage skills</DialogTitle>
+        </DialogHeader>
+        {body}
       </DialogContent>
     </Dialog>
   );

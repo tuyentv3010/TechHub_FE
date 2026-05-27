@@ -14,17 +14,31 @@ const courseApiRequest = {
     page?: number;
     size?: number;
     search?: string;
+    status?: string;
+    level?: string;
+    language?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    skillIds?: string[];
+    tagIds?: string[];
   }) => {
-    console.log("🔍 [FE] getMyCourses called with params:", JSON.stringify(params, null, 2));
-    
     const searchParams = new URLSearchParams();
     if (params?.page !== undefined) searchParams.append("page", String(params.page));
     if (params?.size !== undefined) searchParams.append("size", String(params.size));
     if (params?.search) searchParams.append("search", params.search);
+    if (params?.status) searchParams.append("status", params.status);
+    if (params?.level) searchParams.append("level", params.level);
+    if (params?.language) searchParams.append("language", params.language);
+    if (params?.minPrice !== undefined) searchParams.append("minPrice", String(params.minPrice));
+    if (params?.maxPrice !== undefined) searchParams.append("maxPrice", String(params.maxPrice));
+    if (params?.skillIds && params.skillIds.length > 0) {
+      params.skillIds.forEach((id) => searchParams.append("skillIds", id));
+    }
+    if (params?.tagIds && params.tagIds.length > 0) {
+      params.tagIds.forEach((id) => searchParams.append("tagIds", id));
+    }
 
     const url = `/app/api/proxy/courses/my-courses${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
-    console.log("🌐 [FE] getMyCourses Request URL:", url);
-
     return http.get<CourseListResponseType>(url);
   },
 

@@ -13,11 +13,13 @@ export default function TagManager({
   onOpenChange,
   onSelect,
   selectedItems,
+  embedded = false,
 }: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
   onSelect?: (s: Tag) => void;
   selectedItems?: string[];
+  embedded?: boolean;
 }) {
   const { data: tagsData } = useGetTags();
   const tags = tagsData?.payload?.data ?? [];
@@ -41,13 +43,7 @@ export default function TagManager({
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Manage tags</DialogTitle>
-        </DialogHeader>
-
+  const body = (
         <div className="space-y-3">
           <div className="flex gap-2">
             <Input
@@ -89,6 +85,19 @@ export default function TagManager({
             ))}
           </div>
         </div>
+  );
+
+  if (embedded) {
+    return body;
+  }
+
+  return (
+    <Dialog open={!!open} onOpenChange={onOpenChange ?? (() => {})}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Manage tags</DialogTitle>
+        </DialogHeader>
+        {body}
       </DialogContent>
     </Dialog>
   );
