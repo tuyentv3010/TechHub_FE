@@ -30,6 +30,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGetCourseById, useEnrollCourseMutation, useGetSkills, useGetTags } from "@/queries/useCourse";
 import { useGetAccount } from "@/queries/useAccount";
+import instructorProfileApi, {
+  InstructorProfile,
+} from "@/apiRequests/instructor-profile";
 import {
   extractIdFromSlug,
   formatCourseLevel,
@@ -287,6 +290,33 @@ export default function CourseDetailPage() {
   const instructor = instructorResponse?.payload?.data;
   const instructorAvatarUrl = normalizePublicMediaUrl(instructor?.avatar);
 
+  // Instructor profile (AI extracted)
+  const [instructorProfile, setInstructorProfile] = useState<InstructorProfile | null>(null);
+  useEffect(() => {
+    const uid = courseSummary?.instructorId;
+    if (!uid) {
+      setInstructorProfile(null);
+      return;
+    }
+    instructorProfileApi
+      .getByUserId(uid)
+      .then((res: any) => {
+        const data = res?.payload?.data || res?.payload;
+        if (data) setInstructorProfile(data);
+      })
+      .catch(() => setInstructorProfile(null));
+  }, [courseSummary?.instructorId]);
+
+  const instructorSkills: string[] = Array.isArray(instructorProfile?.skills)
+    ? (instructorProfile?.skills as string[])
+    : [];
+  const instructorExperience: any[] = Array.isArray(instructorProfile?.experience)
+    ? (instructorProfile?.experience as any[])
+    : [];
+  const instructorEducation: any[] = Array.isArray(instructorProfile?.education)
+    ? (instructorProfile?.education as any[])
+    : [];
+
   const toggleChapter = (chapterId: string) => {
     setExpandedChapters((prev) => {
       const newSet = new Set(prev);
@@ -428,7 +458,10 @@ export default function CourseDetailPage() {
 
               {/* Instructor */}
               {instructor && (
-                <div className="flex items-center gap-3">
+                <Link
+                  href={`/instructor/${courseSummary?.instructorId || ""}`}
+                  className="flex items-center gap-3 rounded-lg transition hover:bg-white/10 p-1"
+                >
                   {instructorAvatarUrl ? (
                     <img
                       src={instructorAvatarUrl}
@@ -442,9 +475,11 @@ export default function CourseDetailPage() {
                   )}
                   <div>
                     <p className="text-sm text-white/80">{t("instructor")}</p>
-                    <p className="font-semibold">{instructor.username || instructor.name}</p>
+                    <p className="font-semibold">
+                      {instructorProfile?.fullName || instructor.username || instructor.name}
+                    </p>
                   </div>
-                </div>
+                </Link>
               )}
             </div>
 
@@ -719,6 +754,105 @@ export default function CourseDetailPage() {
                       {courseSummary.description}
                     </p>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Về giảng viên */}
+            {instructorProfile && (
+              <Card>
+                <CardContent className="space-y-4 p-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold">Về giảng viên</h2>
+                    <Link
+                      href={`/instructor/${courseSummary?.instructorId || ""}`}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Xem profile đầy đủ →
+                    </Link>
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    {instructorAvatarUrl ? (
+                      <img
+                        src={instructorAvatarUrl}
+                        alt={instructorProfile.fullName || "Instructor"}
+                        className="h-16 w-16 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold uppercase text-primary">
+                        {(instructorProfile.fullName || "IN").slice(0, 2)}
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <p className="text-lg font-semibold">{instructorProfile.fullName}</p>
+                      {instructorProfile.cvLocation && (
+                        <p className="text-sm text-muted-foreground">{instructorProfile.cvLocation}</p>
+                      )}
+                      {typeof instructorProfile.yearsOfExperience === "number" && (
+                        <p className="text-sm text-muted-foreground">
+                          {instructorProfile.yearsOfExperience} năm kinh nghiệm
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {instructorProfile.cvSummary && (
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      {instructorProfile.cvSummary}
+                    </p>
+                  )}
+
+                  {instructorSkills.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-sm font-semibold">Kỹ năng</p>
+                      <div className="flex flex-wrap gap-2">
+                        {instructorSkills.slice(0, 12).map((s, i) => (
+                          <Badge key={i} variant="secondary">
+                            {s}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {instructorExperience.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-sm font-semibold">Kinh nghiệm</p>
+                      <ul className="space-y-2 text-sm">
+                        {instructorExperience.slice(0, 3).map((e, i) => (
+                          <li key={i}>
+                            <span className="font-medium">{e.role || e.title}</span>
+                            {e.company && <> — {e.company}</>}
+                            {e.duration && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                ({e.duration})
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {instructorEducation.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-sm font-semibold">Học vấn</p>
+                      <ul className="space-y-1 text-sm">
+                        {instructorEducation.slice(0, 3).map((e, i) => (
+                          <li key={i}>
+                            <span className="font-medium">{e.school}</span>
+                            {(e.major || e.degree) && (
+                              <> — {e.major || e.degree}</>
+                            )}
+                            {e.year && (
+                              <span className="ml-2 text-xs text-muted-foreground">({e.year})</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

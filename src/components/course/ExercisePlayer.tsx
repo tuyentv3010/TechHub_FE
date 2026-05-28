@@ -1137,13 +1137,15 @@ export default function ExercisePlayer({
       )}
 
       {gameState === 'leaderboard' && (
-        <ExerciseLeaderboard 
+        <ExerciseLeaderboard
           onRetry={handleRetry}
           onComplete={() => {
             onNextLesson?.();
             onClose?.();
           }}
           lessonSlug={lessonSlug}
+          courseId={courseId}
+          lessonId={lessonId ?? undefined}
         />
       )}
     </div>

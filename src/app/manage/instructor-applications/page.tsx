@@ -6,6 +6,10 @@ import { useLocale, useTranslations } from "next-intl";
 import instructorApplicationApi, {
   InstructorApplication,
 } from "@/apiRequests/instructor-application";
+import instructorProfileApi, {
+  InstructorProfile,
+} from "@/apiRequests/instructor-profile";
+import InstructorProfileView from "@/components/instructor-profile-view";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -145,6 +149,126 @@ export default function ManageInstructorApplicationsPage() {
   };
 
   const aiData = useMemo(() => safeParse(detail?.aiExtractedData), [detail]);
+  const cccdFrontData = useMemo(() => safeParse(detail?.cccdFrontData), [detail]);
+  const cccdBackData = useMemo(() => safeParse(detail?.cccdBackData), [detail]);
+  const [rescanning, setRescanning] = useState<string | null>(null);
+  const [profile, setProfile] = useState<InstructorProfile | null>(null);
+
+  useEffect(() => {
+    setProfile(null);
+    if (detail?.adminStatus === "APPROVED" && detail.userId) {
+      instructorProfileApi
+        .getByUserId(detail.userId)
+        .then((res: any) => {
+          const data = res?.payload?.data || res?.payload;
+          if (data) setProfile(data);
+        })
+        .catch(() => setProfile(null));
+    }
+  }, [detail?.adminStatus, detail?.userId]);
+
+  const refreshDetail = async () => {
+    if (!selectedId) return;
+    try {
+      const res: any = await instructorApplicationApi.getDetail(selectedId);
+      const data = res?.payload?.data || res?.payload;
+      setDetail(data);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleRescan = async (kind: "cv" | "cccdFront" | "cccdBack" | "cert", certId?: string) => {
+    if (!selectedId && kind !== "cert") return;
+    setRescanning(kind === "cert" ? `cert:${certId}` : kind);
+    try {
+      if (kind === "cv") await instructorApplicationApi.rescanCv(selectedId!);
+      else if (kind === "cccdFront") await instructorApplicationApi.rescanCccdFront(selectedId!);
+      else if (kind === "cccdBack") await instructorApplicationApi.rescanCccdBack(selectedId!);
+      else if (kind === "cert" && certId) await instructorApplicationApi.rescanCertificate(certId);
+      toast({ title: "Đã gửi lại quét. Đang xử lý..." });
+      await refreshDetail();
+    } catch (e: any) {
+      toast({ title: e?.payload?.message || "Quét lại thất bại", variant: "destructive" });
+    } finally {
+      setRescanning(null);
+    }
+  };
+
+  const PENDING_TIMEOUT_MS = 2 * 60 * 1000; // 2 phút
+
+  const RescanButton = ({
+    kind,
+    certId,
+    status,
+    updatedAt,
+  }: {
+    kind: "cv" | "cccdFront" | "cccdBack" | "cert";
+    certId?: string;
+    status?: string | null;
+    updatedAt?: string | null;
+  }) => {
+    const key = kind === "cert" ? `cert:${certId}` : kind;
+    const isPending = String(status || "").toUpperCase() === "PENDING";
+    let pendingTooLong = false;
+    if (isPending && updatedAt) {
+      const elapsed = Date.now() - new Date(updatedAt).getTime();
+      pendingTooLong = elapsed > PENDING_TIMEOUT_MS;
+    }
+    const busy = rescanning === key || (isPending && !pendingTooLong);
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={busy}
+        onClick={() => handleRescan(kind, certId)}
+        title={pendingTooLong ? "N8n không phản hồi sau 2 phút — bấm để quét lại" : undefined}
+      >
+        {rescanning === key
+          ? "Đang gửi..."
+          : pendingTooLong
+            ? "Quét lại (timeout)"
+            : isPending
+              ? "Đang quét..."
+              : "Quét n8n"}
+      </Button>
+    );
+  };
+
+  const StatusBadge = ({ value }: { value?: string | null }) => (
+    <span className={`rounded px-2 py-1 text-xs ${STATUS_TONE[String(value || "").toUpperCase()] || "bg-slate-100 text-slate-700"}`}>
+      {getStatusLabel(value)}
+    </span>
+  );
+
+  const isImage = (url?: string | null) =>
+    !!url && /\.(jpe?g|png|gif|webp|bmp)(\?|$)/i.test(url);
+
+  const FilePreview = ({ url, label }: { url?: string | null; label: string }) => {
+    if (!url) return <p className="text-xs text-muted-foreground">Chưa có file</p>;
+    return (
+      <div className="space-y-1">
+        {isImage(url) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={url}
+            alt={label}
+            className="max-h-[260px] w-full rounded border object-contain bg-slate-50"
+          />
+        ) : (
+          <iframe src={url} title={label} className="h-[300px] w-full rounded border" />
+        )}
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-block text-xs text-blue-600 underline"
+        >
+          Mở file trong tab mới
+        </a>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4 p-6">
@@ -240,44 +364,128 @@ export default function ManageInstructorApplicationsPage() {
                 {detail.userEmail && <div className="text-muted-foreground">{detail.userEmail}</div>}
               </div>
 
-              {detail.cvFileUrl && (
-                <div>
-                  <div className="mb-2 text-xs uppercase text-muted-foreground">{t("OriginalCvLabel")}</div>
-                  <iframe
-                    src={detail.cvFileUrl}
-                    title={t("OriginalCvLabel")}
-                    className="h-[400px] w-full rounded border"
-                  />
-                  <a
-                    href={detail.cvFileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-1 inline-block text-blue-600 underline"
-                  >
-                    {t("OpenCv")}
-                  </a>
+              {/* CV */}
+              <section className="rounded-lg border p-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide">CV</h3>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge value={detail.aiStatus} />
+                    <RescanButton kind="cv" status={detail.aiStatus} updatedAt={detail.updated} />
+                  </div>
                 </div>
+                <FilePreview url={detail.cvFileUrl} label="CV" />
+                {detail.aiError && (
+                  <p className="mt-2 text-xs text-rose-600">Lỗi AI: {detail.aiError}</p>
+                )}
+                {aiData && (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                      Dữ liệu AI trích xuất
+                    </summary>
+                    <pre className="mt-2 max-h-[260px] overflow-auto rounded bg-slate-100 p-3 text-xs dark:bg-slate-900">
+                      {JSON.stringify(aiData, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </section>
+
+              {/* CCCD */}
+              {(detail.cccdFrontFileUrl || detail.cccdBackFileUrl) && (
+                <section className="rounded-lg border p-4">
+                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide">CCCD</h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">Mặt trước</span>
+                        <div className="flex items-center gap-2">
+                          <StatusBadge value={detail.cccdFrontStatus} />
+                          {detail.cccdFrontFileUrl && (
+                            <RescanButton kind="cccdFront" status={detail.cccdFrontStatus} updatedAt={detail.updated} />
+                          )}
+                        </div>
+                      </div>
+                      <FilePreview url={detail.cccdFrontFileUrl} label="CCCD mặt trước" />
+                      {detail.cccdFrontError && (
+                        <p className="mt-1 text-xs text-rose-600">{detail.cccdFrontError}</p>
+                      )}
+                    </div>
+                    <div>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">Mặt sau</span>
+                        <div className="flex items-center gap-2">
+                          <StatusBadge value={detail.cccdBackStatus} />
+                          {detail.cccdBackFileUrl && (
+                            <RescanButton kind="cccdBack" status={detail.cccdBackStatus} updatedAt={detail.updated} />
+                          )}
+                        </div>
+                      </div>
+                      <FilePreview url={detail.cccdBackFileUrl} label="CCCD mặt sau" />
+                      {detail.cccdBackError && (
+                        <p className="mt-1 text-xs text-rose-600">{detail.cccdBackError}</p>
+                      )}
+                    </div>
+                  </div>
+                  {(cccdFrontData || cccdBackData) && (
+                    <details className="mt-3">
+                      <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                        Dữ liệu AI trích xuất từ CCCD
+                      </summary>
+                      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {cccdFrontData && (
+                          <pre className="max-h-[220px] overflow-auto rounded bg-slate-100 p-3 text-xs dark:bg-slate-900">
+                            {JSON.stringify(cccdFrontData, null, 2)}
+                          </pre>
+                        )}
+                        {cccdBackData && (
+                          <pre className="max-h-[220px] overflow-auto rounded bg-slate-100 p-3 text-xs dark:bg-slate-900">
+                            {JSON.stringify(cccdBackData, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    </details>
+                  )}
+                </section>
               )}
 
-              <div>
-                <div className="text-xs uppercase text-muted-foreground">{t("AiStatusLabel")}</div>
-                <span className={`rounded px-2 py-1 text-xs ${STATUS_TONE[detail.aiStatus] || ""}`}>
-                  {getStatusLabel(detail.aiStatus)}
-                </span>
-                {detail.aiError && (
-                  <p className="mt-1 text-rose-600">{t("AiErrorPrefix", { error: detail.aiError })}</p>
-                )}
-              </div>
-
-              {aiData && (
-                <div>
-                  <div className="mb-2 text-xs uppercase text-muted-foreground">
-                    {t("AiExtractedDataLabel")}
+              {/* Certificates */}
+              {detail.certificates && detail.certificates.length > 0 && (
+                <section className="rounded-lg border p-4">
+                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide">
+                    Chứng chỉ ({detail.certificates.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {detail.certificates.map((cert, idx) => {
+                      const certData = safeParse(cert.aiData);
+                      return (
+                        <div key={cert.id} className="rounded border p-3">
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className="text-xs font-medium text-muted-foreground">
+                              Chứng chỉ #{idx + 1}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <StatusBadge value={cert.aiStatus} />
+                              <RescanButton kind="cert" certId={cert.id} status={cert.aiStatus} updatedAt={detail.updated} />
+                            </div>
+                          </div>
+                          <FilePreview url={cert.fileUrl} label={`Chứng chỉ ${idx + 1}`} />
+                          {cert.aiError && (
+                            <p className="mt-1 text-xs text-rose-600">{cert.aiError}</p>
+                          )}
+                          {certData && (
+                            <details className="mt-2">
+                              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                                Dữ liệu AI
+                              </summary>
+                              <pre className="mt-2 max-h-[200px] overflow-auto rounded bg-slate-100 p-3 text-xs dark:bg-slate-900">
+                                {JSON.stringify(certData, null, 2)}
+                              </pre>
+                            </details>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                  <pre className="max-h-[300px] overflow-auto rounded bg-slate-100 p-3 text-xs dark:bg-slate-900">
-                    {JSON.stringify(aiData, null, 2)}
-                  </pre>
-                </div>
+                </section>
               )}
 
               {detail.adminStatus === "PENDING" ? (
@@ -290,7 +498,7 @@ export default function ManageInstructorApplicationsPage() {
                   <div className="flex gap-2">
                     <Button
                       onClick={handleApprove}
-                      disabled={acting || detail.aiStatus !== "PROCESSED"}
+                      disabled={acting}
                       className="bg-emerald-600 hover:bg-emerald-700"
                     >
                       {t("ApproveButton")}
@@ -300,7 +508,9 @@ export default function ManageInstructorApplicationsPage() {
                     </Button>
                   </div>
                   {detail.aiStatus !== "PROCESSED" && (
-                    <p className="text-xs text-amber-600">{t("ApproveBlockedByAi")}</p>
+                    <p className="text-xs text-amber-600">
+                      AI chưa xử lý xong / thất bại — bạn vẫn có thể duyệt thủ công sau khi xem CV gốc.
+                    </p>
                   )}
                 </div>
               ) : (
@@ -310,6 +520,15 @@ export default function ManageInstructorApplicationsPage() {
                     note: detail.adminNote || t("NoNote"),
                   })}
                 </div>
+              )}
+
+              {detail.adminStatus === "APPROVED" && profile && (
+                <section className="space-y-3 border-t pt-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide">
+                    Profile giảng viên (đã sync)
+                  </h3>
+                  <InstructorProfileView profile={profile} variant="full" />
+                </section>
               )}
             </div>
           )}

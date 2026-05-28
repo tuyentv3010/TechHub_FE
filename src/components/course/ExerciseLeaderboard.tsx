@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Share2, RotateCcw, CheckCircle } from "lucide-react";
 import Image from "next/image";
 import envConfig from "@/config";
+import courseApiRequest from "@/apiRequests/course";
 
 // Types
 interface LeaderboardPlayer {
@@ -22,6 +24,8 @@ interface ExerciseLeaderboardProps {
   onComplete?: () => void;
   exerciseId?: string;
   lessonSlug?: string;
+  courseId?: string;
+  lessonId?: string;
 }
 
 // Mock data - replace with API call later
@@ -283,14 +287,55 @@ function LeaderboardItem({ player }: { player: LeaderboardPlayer }) {
 
 // Main Leaderboard Component
 export default function ExerciseLeaderboard({
-  players = mockData,
+  players: playersProp,
   totalQuestions = 20,
   onShare,
   onRetry,
   onComplete,
   exerciseId,
   lessonSlug,
+  courseId,
+  lessonId,
 }: ExerciseLeaderboardProps) {
+  const [fetched, setFetched] = useState<LeaderboardPlayer[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(!!(courseId && lessonId) && !playersProp);
+
+  useEffect(() => {
+    if (playersProp || !courseId || !lessonId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const res: any = await courseApiRequest.getLessonLeaderboard(courseId, lessonId, 10);
+        const rows = res?.payload?.data || res?.payload || [];
+        if (cancelled) return;
+        const mapped: LeaderboardPlayer[] = (Array.isArray(rows) ? rows : []).map((r: any, i: number) => ({
+          id: r.userId || String(i),
+          rank: r.rank ?? i + 1,
+          name: r.username || "Người dùng",
+          avatar: r.avatar || `/exercise/exercise-${(i % 6) + 1}.png`,
+          score: Math.round(r.score || 0),
+          totalQuestions,
+        }));
+        setFetched(mapped);
+      } catch (e) {
+        console.error("[Leaderboard] fetch failed", e);
+        if (!cancelled) setFetched([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, lessonId, playersProp, totalQuestions]);
+
+  // Có courseId+lessonId → bám data thật, kể cả khi rỗng (KHÔNG fallback mockData).
+  // Không có (preview / design) → dùng mockData để UI không trống.
+  const usingRealApi = !!(courseId && lessonId) && !playersProp;
+  const players: LeaderboardPlayer[] = playersProp
+    ?? (usingRealApi ? (fetched ?? []) : mockData);
+
   const top3 = players.slice(0, 3);
   const restPlayers = players.slice(3);
 
@@ -330,8 +375,65 @@ export default function ExerciseLeaderboard({
     onComplete?.();
   };
 
+  // Loading / empty states (chỉ khi đang dùng real API)
+  if (usingRealApi && loading) {
+    return (
+      <div
+        className="relative w-full min-h-[600px] rounded-2xl overflow-hidden p-6 flex items-center justify-center"
+        style={{ backgroundColor: "#FFF8DD" }}
+      >
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-orange-300 border-t-orange-600" />
+          <p className="text-sm font-medium text-orange-900/70">Đang tải bảng xếp hạng...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (usingRealApi && players.length === 0) {
+    return (
+      <div
+        className="relative w-full min-h-[600px] rounded-2xl overflow-hidden p-6"
+        style={{ backgroundColor: "#FFF8DD" }}
+      >
+        <DecorativeFlower color="#FF6B35" className="absolute top-8 left-8 w-10 h-10" />
+        <DecorativeFlower color="#F7B731" className="absolute top-20 right-16 w-8 h-8" />
+        <DecorativeFlower color="#4ECDC4" className="absolute bottom-12 right-8 w-10 h-10" />
+        <div className="relative z-10 flex h-full min-h-[500px] flex-col items-center justify-center text-center max-w-md mx-auto">
+          <Image
+            src="/leaderboard/medal-gold.png"
+            alt="empty"
+            width={120}
+            height={120}
+            className="opacity-30 mb-6"
+          />
+          <h3 className="text-xl font-bold text-orange-900 mb-2">Chưa có bảng xếp hạng</h3>
+          <p className="text-sm text-orange-900/70 mb-6 max-w-xs">
+            Bạn là người đầu tiên hoàn thành bài này. Hoàn thành để giữ vị trí top 1!
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleRetry}
+              className="flex items-center gap-2 rounded-full border-2 border-orange-300 bg-white px-5 py-2.5 font-semibold text-orange-900 hover:bg-orange-50"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Làm lại
+            </button>
+            <button
+              onClick={handleComplete}
+              className="flex items-center gap-2 rounded-full bg-green-500 px-5 py-2.5 font-semibold text-white shadow-md hover:bg-green-600"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Hoàn thành
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div 
+    <div
       className="relative w-full min-h-[600px] rounded-2xl overflow-hidden p-6"
       style={{ backgroundColor: '#FFF8DD' }}
     >
