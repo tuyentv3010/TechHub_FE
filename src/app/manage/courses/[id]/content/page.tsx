@@ -106,7 +106,7 @@ import TableSkeleton from "@/components/Skeleton";
 import { useAccountProfile } from "@/queries/useAccount";
 import AiExercisePanel from "@/app/manage/courses/[id]/ai-exercise-panel";
 import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
-import "./curriculum-studio.css";
+
 
 const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"), {
   ssr: false,
