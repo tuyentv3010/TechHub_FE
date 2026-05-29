@@ -28,15 +28,7 @@ interface ExerciseLeaderboardProps {
   lessonId?: string;
 }
 
-// Mock data - replace with API call later
-const mockData: LeaderboardPlayer[] = [
-  { id: "1", rank: 1, name: "Maryam1", avatar: "/exercise/exercise-1.png", score: 20, totalQuestions: 20 },
-  { id: "2", rank: 2, name: "Amina", avatar: "/exercise/exercise-2.png", score: 19, totalQuestions: 20 },
-  { id: "3", rank: 3, name: "Areej", avatar: "/exercise/exercise-3.png", score: 18, totalQuestions: 20 },
-  { id: "4", rank: 4, name: "Mohammed Ali", avatar: "/exercise/exercise-4.png", score: 17, totalQuestions: 20 },
-  { id: "5", rank: 5, name: "Salwa", avatar: "/exercise/exercise-5.png", score: 15, totalQuestions: 20 },
-  { id: "6", rank: 6, name: "Karima", avatar: "/exercise/exercise-6.png", score: 15, totalQuestions: 20 },
-];
+const mockData: LeaderboardPlayer[] = [];
 
 // Medal images for top 3
 const MEDAL_IMAGES = {
@@ -390,7 +382,7 @@ export default function ExerciseLeaderboard({
     );
   }
 
-  if (usingRealApi && players.length === 0) {
+  if (players.length === 0) {
     return (
       <div
         className="relative w-full min-h-[600px] rounded-2xl overflow-hidden p-6"

@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,6 +62,7 @@ import { useDeleteCourseMutation, useGetMyCourses, useGetSkills, useGetTags } fr
 import { CourseListResponseType } from "@/schemaValidations/course.schema";
 import { DollarSign } from "lucide-react";
 import { normalizePersistedMediaUrl } from "@/lib/file-media";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type CourseItem = CourseListResponseType["data"][0];
 
@@ -136,6 +137,7 @@ export default function CourseTable() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+  const { hasPermission } = usePermissions();
 
   const page = searchParams.get("page") ? Number(searchParams.get("page")) : 1;
   const pageSize = searchParams.get("pageSize")
@@ -157,6 +159,20 @@ export default function CourseTable() {
   const [courseIdEdit, setCourseIdEdit] = useState<string | undefined>();
   const [courseDelete, setCourseDelete] = useState<CourseItem | null>(null);
   const [searchInput, setSearchInput] = useState(search); // Local state for search input
+
+  const canManageCourseContent = useCallback(
+    (courseId: string) =>
+      hasPermission("GET", "/manage/courses") &&
+      hasPermission("GET", `/api/courses/${courseId}`) &&
+      hasPermission("GET", `/api/courses/${courseId}/chapters`) &&
+      (hasPermission("POST", `/api/courses/${courseId}/chapters`) ||
+        hasPermission("PUT", `/api/courses/${courseId}/chapters/any-chapter`) ||
+        hasPermission("POST", `/api/courses/${courseId}/chapters/any-chapter/lessons`) ||
+        hasPermission("PUT", `/api/courses/${courseId}/chapters/any-chapter/lessons/any-lesson`) ||
+        hasPermission("POST", `/api/courses/${courseId}/chapters/any-chapter/lessons/any-lesson/assets`) ||
+        hasPermission("PUT", `/api/courses/${courseId}/chapters/any-chapter/lessons/any-lesson/assets/any-asset`)),
+    [hasPermission]
+  );
 
   // Debounce search
   useEffect(() => {
@@ -385,11 +401,13 @@ export default function CourseTable() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>{t("Actions")}</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => window.location.href = `/manage/courses/${course.id}/content`}
-                >
-                  {t("ManageContent")}
-                </DropdownMenuItem>
+                {canManageCourseContent(course.id) && (
+                  <DropdownMenuItem
+                    onClick={() => router.push(`/manage/courses/${course.id}/content`)}
+                  >
+                    {t("ManageContent")}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={() => navigator.clipboard.writeText(course.id)}
                 >
@@ -411,7 +429,7 @@ export default function CourseTable() {
         },
       },
     ],
-    [t, setCourseIdEdit, setCourseDelete]
+    [canManageCourseContent, router, t, setCourseIdEdit, setCourseDelete]
   );
 
   const table = useReactTable({

@@ -52,7 +52,12 @@ import {
   Paperclip,
   Upload,
   FolderOpen,
-  Download
+  Download,
+  Layers,
+  BookOpen,
+  CheckCircle2,
+  Check,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
@@ -101,6 +106,7 @@ import TableSkeleton from "@/components/Skeleton";
 import { useAccountProfile } from "@/queries/useAccount";
 import AiExercisePanel from "@/app/manage/courses/[id]/ai-exercise-panel";
 import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
+import "./curriculum-studio.css";
 
 const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"), {
   ssr: false,
@@ -134,6 +140,44 @@ const AssetTypeIcon = ({ type }: { type: string }) => {
   return icons[type as keyof typeof icons] || <Paperclip className="h-3 w-3" />;
 };
 
+// Curriculum Studio content-type chip (Video=red, Text=blue, Quiz=orange, Coding=green)
+const TypeChip = ({ type }: { type: string }) => {
+  const map: Record<string, { cls: string; Icon: any }> = {
+    VIDEO: { cls: "type-video", Icon: Video },
+    TEXT: { cls: "type-text", Icon: FileText },
+    QUIZ: { cls: "type-quiz", Icon: HelpCircle },
+    CODING: { cls: "type-coding", Icon: Code },
+  };
+  const m = map[type] || map.TEXT;
+  const Icon = m.Icon;
+  return (
+    <span className={`type-chip ${m.cls}`}>
+      <Icon />
+    </span>
+  );
+};
+
+// Dashed-border empty state tile
+const Empty = ({
+  icon: Icon,
+  text,
+  action,
+  small,
+}: {
+  icon: any;
+  text: string;
+  action?: React.ReactNode;
+  small?: boolean;
+}) => (
+  <div className={`empty${small ? " is-sm" : ""}`}>
+    <div className="empty-ic">
+      <Icon />
+    </div>
+    <p className="empty-text">{text}</p>
+    {action}
+  </div>
+);
+
 // Exercise Display Component
 const ExerciseDisplay = ({ 
   courseId, 
@@ -157,121 +201,105 @@ const ExerciseDisplay = ({
   const exercises = exercisesData?.payload?.data || [];
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+    <div>
+      <div className="section-head">
+        <span className="section-label">
+          <HelpCircle />
           {t("Exercise")}
-        </h4>
+        </span>
         {onCreate && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onCreate}
-          >
-            <Plus className="h-3 w-3 mr-1" />
+          <button type="button" className="btn btn-outline btn-sm" onClick={onCreate}>
+            <Plus />
             {t("AddExercise")}
-          </Button>
+          </button>
         )}
       </div>
-      
+
       {isLoading ? (
-        <div className="text-center py-2">
-          <p className="text-xs text-muted-foreground">{t("Loading") || "Đang tải..."}</p>
-        </div>
+        <p className="empty-text" style={{ textAlign: "center", padding: "8px 0" }}>
+          {t("Loading")}
+        </p>
       ) : exercises.length > 0 ? (
-        <div className="space-y-3">
-          {exercises.map((exercise: any) => (
-            <div key={exercise.id} className="p-3 bg-background rounded border space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 flex-1">
-                  <HelpCircle className="h-4 w-4 flex-shrink-0 text-primary" />
-                  <div className="flex-1">
-                    <Badge variant="secondary" className="text-xs mb-2">
-                      {exercise.type === "MULTIPLE_CHOICE" ? "Trắc nghiệm" : 
-                       exercise.type === "CODING" ? "Lập trình" : 
-                       exercise.type === "OPEN_ENDED" ? "Tự luận" : exercise.type}
-                    </Badge>
-                    <p className="text-sm font-medium">{exercise.question}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  {onEdit && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEdit(exercise)}
-                    >
-                      <Edit2 className="h-3 w-3" />
-                    </Button>
-                  )}
-                  {onDelete && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDelete(exercise)}
-                    >
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* MCQ Options */}
-              {exercise.type === "MULTIPLE_CHOICE" && exercise.options?.choices && (
-                <div className="space-y-2 pl-6">
-              {exercise.options.choices.map((choice: any, idx: number) => (
-                <div 
-                  key={choice.id || idx}
-                  className={`text-xs p-2 rounded flex items-start gap-2 ${
-                    choice.isCorrect 
-                      ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800" 
-                      : "bg-muted/50"
-                  }`}
-                >
-                  <span className="font-semibold min-w-[20px]">
-                    {String.fromCharCode(65 + idx)}.
+        <div>
+          {exercises.map((exercise: any) => {
+            const tag =
+              exercise.type === "CODING"
+                ? { cls: "ex-coding", Icon: Code, label: "Lập trình" }
+                : exercise.type === "OPEN_ENDED"
+                ? { cls: "ex-essay", Icon: FileText, label: "Tự luận" }
+                : { cls: "ex-mcq", Icon: HelpCircle, label: "Trắc nghiệm" };
+            const TagIcon = tag.Icon;
+            return (
+              <div key={exercise.id} className="exercise">
+                <div className="ex-top">
+                  <span className={`ex-tag ${tag.cls}`}>
+                    <TagIcon /> {tag.label}
                   </span>
-                  <span className="flex-1">{choice.text}</span>
-                      {choice.isCorrect && (
-                        <Badge variant="default" className="text-xs bg-green-600">
-                          ✓ Đúng
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
+                  <div className="row-actions" style={{ opacity: 1, transform: "none" }}>
+                    {onEdit && (
+                      <button
+                        type="button"
+                        className="icon-btn is-edit tip"
+                        data-tip={t("Edit")}
+                        aria-label={t("Edit")}
+                        onClick={() => onEdit(exercise)}
+                      >
+                        <Edit2 />
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        type="button"
+                        className="icon-btn is-danger tip"
+                        data-tip={t("Delete")}
+                        aria-label={t("Delete")}
+                        onClick={() => onDelete(exercise)}
+                      >
+                        <Trash2 />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              )}
 
-              {/* Coding Test Cases */}
-              {exercise.type === "CODING" && exercise.testCases && exercise.testCases.length > 0 && (
-                <div className="space-y-2 pl-6">
-              <p className="text-xs font-semibold text-muted-foreground">Test Cases:</p>
-              {exercise.testCases.slice(0, 3).map((tc: any, idx: number) => (
-                <div key={idx} className="text-xs p-2 rounded bg-muted/50">
-                  <div className="flex gap-2">
-                    <span className="font-semibold">Input:</span>
-                    <code className="flex-1">{tc.input}</code>
+                <p className="ex-q">{exercise.question}</p>
+
+                {/* MCQ Options */}
+                {exercise.type === "MULTIPLE_CHOICE" && exercise.options?.choices && (
+                  <div className="opt-list">
+                    {exercise.options.choices.map((choice: any, idx: number) => (
+                      <div
+                        key={choice.id || idx}
+                        className={`opt${choice.isCorrect ? " is-correct" : ""}`}
+                      >
+                        <span className="opt-key">{String.fromCharCode(65 + idx)}</span>
+                        <span style={{ flex: 1 }}>{choice.text}</span>
+                        {choice.isCorrect && (
+                          <span className="opt-correct-mark">
+                            <Check />
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex gap-2 mt-1">
-                    <span className="font-semibold">Expected:</span>
-                    <code className="flex-1">{tc.expectedOutput}</code>
+                )}
+
+                {/* Coding Test Cases */}
+                {exercise.type === "CODING" && exercise.testCases && exercise.testCases.length > 0 && (
+                  <div className="opt-list">
+                    {exercise.testCases.slice(0, 3).map((tc: any, idx: number) => (
+                      <pre key={idx} className="code-block">{`Input:    ${tc.input}\nExpected: ${tc.expectedOutput}`}</pre>
+                    ))}
+                    {exercise.testCases.length > 3 && (
+                      <p className="asset-sub">+ {exercise.testCases.length - 3} test cases</p>
+                    )}
                   </div>
-                </div>
-              ))}
-                  {exercise.testCases.length > 3 && (
-                    <p className="text-xs text-muted-foreground">+ {exercise.testCases.length - 3} more test cases</p>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
-        <div className="text-center py-2">
-          <p className="text-xs text-muted-foreground">
-            {t("NoExercise") || "Chưa có bài tập"}
-          </p>
-        </div>
+        <Empty small icon={HelpCircle} text={t("NoExercise")} />
       )}
     </div>
   );
@@ -1104,84 +1132,110 @@ export default function CourseContentManagementPage() {
   }
 
   return (
-    <main className="manage-page space-y-6">
-      {/* Course Header */}
-      <Card className="manage-surface border-border/50">
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Button asChild variant="outline" className="manage-secondary-button gap-2">
-              <Link href="/manage/courses">
-                <ArrowLeft className="h-4 w-4" />
+    <main className="curriculum-studio">
+      <div className="studio-container">
+        {/* ===== Course header ===== */}
+        <div className="card card-pad course-header">
+          <div className="ch-top">
+            <div style={{ minWidth: 0 }}>
+              <Link
+                href="/manage/courses"
+                className="btn btn-ghost btn-sm"
+                style={{ paddingLeft: 0 }}
+              >
+                <ArrowLeft />
                 {t("BackToCourses")}
               </Link>
-            </Button>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl">{course.title}</CardTitle>
-              <CardDescription className="mt-2">{course.description}</CardDescription>
+              <h1 className="ch-title">{course.title}</h1>
+              <p className="ch-desc">{course.description}</p>
             </div>
-            <Button onClick={() => setChapterDialog({ open: true, mode: 'create' })}>
-              <Plus className="h-4 w-4 mr-2" />
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setChapterDialog({ open: true, mode: 'create' })}
+            >
+              <Plus />
               {t("AddChapter")}
-            </Button>
+            </button>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-muted-foreground">{t("Chapters")}: </span>
-              <span className="font-medium">{chapters.length}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{t("Lessons")}: </span>
-              <span className="font-medium">
-                {chapters.reduce((sum: number, ch: any) => sum + (ch.lessons?.length || 0), 0)}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{t("Duration")}: </span>
-              <span className="font-medium">
-                {formatDuration(course.estimatedDuration || 0)}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{t("Status")}: </span>
-              <Badge variant={course.status === 'PUBLISHED' ? 'default' : 'secondary'}>
-                {course.status}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Drag & Drop Course Content */}
-      <Card className="manage-surface border-border/50">
-        <CardHeader>
-          <CardTitle>{t("CourseContent")}</CardTitle>
-          <CardDescription>{t("ManageChaptersLessonsDescription")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {chapters.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>{t("NoChaptersYet")}</p>
-              <Button 
-                variant="outline" 
-                className="mt-4"
-                onClick={() => setChapterDialog({ open: true, mode: 'create' })}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                {t("AddChapter")}
-              </Button>
+          <div className="stat-grid">
+            <div className="stat">
+              <span className="stat-ic is-chapter">
+                <Layers />
+              </span>
+              <div className="stat-meta">
+                <span className="stat-label">{t("Chapters")}</span>
+                <span className="stat-value">{chapters.length}</span>
+              </div>
             </div>
+            <div className="stat">
+              <span className="stat-ic is-lesson">
+                <BookOpen />
+              </span>
+              <div className="stat-meta">
+                <span className="stat-label">{t("Lessons")}</span>
+                <span className="stat-value">
+                  {chapters.reduce((sum: number, ch: any) => sum + (ch.lessons?.length || 0), 0)}
+                </span>
+              </div>
+            </div>
+            <div className="stat">
+              <span className="stat-ic is-time">
+                <Clock />
+              </span>
+              <div className="stat-meta">
+                <span className="stat-label">{t("Duration")}</span>
+                <span className="stat-value">{formatDuration(course.estimatedDuration || 0)}</span>
+              </div>
+            </div>
+            <div className="stat">
+              <span className="stat-ic is-status">
+                <CheckCircle2 />
+              </span>
+              <div className="stat-meta">
+                <span className="stat-label">{t("StatusLabel")}</span>
+                <span
+                  className={`badge badge-status is-${String(course.status || "").toLowerCase()}`}
+                  style={{ marginTop: 2, width: "fit-content" }}
+                >
+                  {t(`Status.${course.status}`)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ===== Course content ===== */}
+        <div className="card card-pad">
+          <div className="card-head">
+            <h2 className="card-title">{t("CourseContent")}</h2>
+            <p className="card-sub">{t("ManageChaptersLessonsDescription")}</p>
+          </div>
+
+          {chapters.length === 0 ? (
+            <Empty
+              icon={Layers}
+              text={t("NoChaptersYet")}
+              action={
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setChapterDialog({ open: true, mode: 'create' })}
+                >
+                  <Plus />
+                  {t("AddChapter")}
+                </button>
+              }
+            />
           ) : (
-            <DragDropContext 
+            <DragDropContext
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <Droppable 
-                droppableId="chapters" 
-                type="CHAPTER" 
+              <Droppable
+                droppableId="chapters"
+                type="CHAPTER"
                 isDropDisabled={false}
                 isCombineEnabled={false}
                 ignoreContainerClipping={false}
@@ -1190,7 +1244,7 @@ export default function CourseContentManagementPage() {
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className="space-y-2"
+                    className="chapter-list"
                   >
                     {chapters.map((chapter: any, index: number) => (
                       <Draggable
@@ -1202,75 +1256,84 @@ export default function CourseContentManagementPage() {
                           <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
-                            className={`border rounded-lg ${
-                              snapshot.isDragging ? 'shadow-lg bg-background' : ''
+                            className={`chapter${expandedChapters.has(chapter.id) ? " is-open" : ""}${
+                              snapshot.isDragging ? " is-dragging" : ""
                             }`}
                           >
-                            {/* Chapter Header */}
-                            <div className="flex items-center gap-3 p-4 bg-muted/30">
-                              <div {...provided.dragHandleProps} className="cursor-grab">
-                                <GripVertical className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                              
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleChapter(chapter.id)}
+                            {/* Chapter header row */}
+                            <div className="row chapter-row">
+                              <span
+                                {...provided.dragHandleProps}
+                                className="grip tip"
+                                data-tip={t("DragToReorder")}
                               >
-                                {expandedChapters.has(chapter.id) ? (
-                                  <ChevronDown className="h-4 w-4" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4" />
-                                )}
-                              </Button>
+                                <GripVertical />
+                              </span>
 
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <h3 className="font-semibold">{chapter.title}</h3>
-                                  <Badge variant="outline" className="text-xs">
+                              <button
+                                type="button"
+                                className={`disclose${expandedChapters.has(chapter.id) ? " is-open" : ""}`}
+                                onClick={() => toggleChapter(chapter.id)}
+                                aria-label={t("Expand")}
+                              >
+                                <ChevronRight />
+                              </button>
+
+                              <div className="row-main">
+                                <div className="row-titleline">
+                                  <span className="chapter-name">{chapter.title}</span>
+                                  <span className="badge badge-count">
+                                    <BookOpen />
                                     {chapter.lessons?.length || 0} {t("Lessons")}
-                                  </Badge>
+                                  </span>
                                   {chapter.locked && (
-                                    <Lock className="h-4 w-4 text-muted-foreground" />
+                                    <span className="lock-ic tip" data-tip={t("Locked")}>
+                                      <Lock />
+                                    </span>
                                   )}
                                 </div>
                                 {chapter.description && (
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    {chapter.description}
-                                  </p>
+                                  <div className="row-sub">{chapter.description}</div>
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
+                              <div className="row-actions">
+                                <button
+                                  type="button"
+                                  className="icon-btn is-add tip"
+                                  data-tip={t("AddLesson")}
+                                  aria-label={t("AddLesson")}
                                   onClick={() => setLessonDialog({
                                     open: true,
                                     mode: 'create',
                                     chapterId: chapter.id,
                                   })}
                                 >
-                                  <Plus className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
+                                  <Plus />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="icon-btn is-edit tip"
+                                  data-tip={t("EditChapter")}
+                                  aria-label={t("EditChapter")}
                                   onClick={() => setChapterDialog({
                                     open: true,
                                     mode: 'edit',
                                     data: chapter,
                                   })}
                                 >
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
+                                  <Edit2 />
+                                </button>
+                                <span className="action-sep" />
+                                <button
+                                  type="button"
+                                  className="icon-btn is-danger tip"
+                                  data-tip={t("DeleteChapter")}
+                                  aria-label={t("DeleteChapter")}
                                   onClick={() => handleDeleteChapter(chapter.id, chapter.title)}
                                 >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
+                                  <Trash2 />
+                                </button>
                               </div>
                             </div>
 

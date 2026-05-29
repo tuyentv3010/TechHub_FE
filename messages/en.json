@@ -1545,7 +1545,13 @@
     "TestCaseTimeout": "Timeout (seconds)",
     "Error": "Error",
     "ManageSkills": "Manage skills",
-    "ManageTags": "Manage tags"
+    "ManageTags": "Manage tags",
+    "DragToReorder": "Drag to reorder",
+    "Locked": "Locked",
+    "Expand": "Expand",
+    "DeleteChapter": "Delete chapter",
+    "DeleteLesson": "Delete lesson",
+    "Download": "Download"
   },
   "CourseOnboarding": {
     "step1": {

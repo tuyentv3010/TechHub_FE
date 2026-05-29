@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/components/ui/use-toast";
@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Upload, ImageIcon, Lock, User as UserIcon } from "lucide-react";
+import { Loader2, Upload, ImageIcon, Lock, User as UserIcon, GraduationCap } from "lucide-react";
+import instructorProfileApi, { InstructorProfile } from "@/apiRequests/instructor-profile";
+import InstructorProfileView from "@/components/instructor-profile-view";
 import { useAccountProfile, useUpdateProfileMutation } from "@/queries/useAccount";
 import { UpdateProfileBody, UpdateProfileBodyType } from "@/schemaValidations/account.schema";
 import { ChangePasswordBody, ChangePasswordBodyType } from "@/schemaValidations/password.schema";
@@ -28,6 +30,17 @@ export default function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [showAvatarLibrary, setShowAvatarLibrary] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [instructorProfile, setInstructorProfile] = useState<InstructorProfile | null>(null);
+
+  useEffect(() => {
+    instructorProfileApi
+      .getMine()
+      .then((res: any) => {
+        const data = res?.payload?.data || res?.payload;
+        if (data) setInstructorProfile(data);
+      })
+      .catch(() => setInstructorProfile(null));
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const account = profileData?.payload?.data;
@@ -167,11 +180,17 @@ export default function ProfilePage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className={`grid w-full ${instructorProfile ? "grid-cols-3" : "grid-cols-2"}`}>
           <TabsTrigger value="profile">
             <UserIcon className="w-4 h-4 mr-2" />
             {t("profileTab")}
           </TabsTrigger>
+          {instructorProfile && (
+            <TabsTrigger value="instructor">
+              <GraduationCap className="w-4 h-4 mr-2" />
+              Hồ sơ giảng viên
+            </TabsTrigger>
+          )}
           <TabsTrigger value="password">
             <Lock className="w-4 h-4 mr-2" />
             {t("passwordTab")}
@@ -304,6 +323,22 @@ export default function ProfilePage() {
         </TabsContent>
 
         {/* Password Tab */}
+        {instructorProfile && (
+          <TabsContent value="instructor">
+            <Card>
+              <CardHeader>
+                <CardTitle>Hồ sơ giảng viên</CardTitle>
+                <CardDescription>
+                  Thông tin được trích xuất tự động từ đơn ứng tuyển. Liên hệ admin nếu cần chỉnh sửa.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <InstructorProfileView profile={instructorProfile} variant="full" />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
         <TabsContent value="password">
           <Card>
             <CardHeader>

@@ -582,16 +582,6 @@ export default function InstructorApplicationPage() {
                     state="done"
                   />
                   <Step
-                    icon={<Brain className="h-5 w-5" />}
-                    title={isAiProcessed ? "AI đã phân tích xong" : "AI đang phân tích..."}
-                    desc={
-                      isAiProcessed
-                        ? "Trích xuất kỹ năng & kinh nghiệm hoàn tất"
-                        : "Đang trích xuất kỹ năng từ CV"
-                    }
-                    state={isAiProcessed ? "done" : isAiPending ? "current" : "done"}
-                  />
-                  <Step
                     icon={<ClipboardCheck className="h-5 w-5" />}
                     title="Admin xem xét"
                     desc={
@@ -600,11 +590,7 @@ export default function InstructorApplicationPage() {
                         : "Dự kiến hoàn thành trong 24-48h"
                     }
                     state={
-                      isApproved || isRejected
-                        ? "done"
-                        : isAiProcessed
-                        ? "current"
-                        : "pending"
+                      isApproved || isRejected ? "done" : "current"
                     }
                   />
                   <Step

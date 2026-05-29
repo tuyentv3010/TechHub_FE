@@ -1,4 +1,5 @@
 import { useAccountProfile, useUserPermissions } from "@/queries/useAccount";
+import { getAccessTokenFromLocalStorage } from "@/lib/utils";
 import { useMemo } from "react";
 
 type PermissionMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
@@ -16,6 +17,8 @@ interface Permission {
 
 export const usePermissions = () => {
   const { data: profileData, isLoading: isProfileLoading } = useAccountProfile();
+  const hasAccessToken =
+    typeof window !== "undefined" && !!getAccessTokenFromLocalStorage();
   const userId = profileData?.payload?.data?.id;
 
   const {
@@ -46,7 +49,10 @@ export const usePermissions = () => {
   return {
     permissions,
     error,
-    isLoading: isProfileLoading || (!!userId && isPermissionsLoading),
+    isLoading:
+      isProfileLoading ||
+      (!!userId && isPermissionsLoading) ||
+      (hasAccessToken && !userId && !error),
     hasPermission,
     hasPermissionByName,
   };
