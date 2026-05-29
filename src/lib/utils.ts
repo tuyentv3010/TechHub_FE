@@ -209,6 +209,8 @@ export const removeTokenFromLocalStorage = () => {
   window.dispatchEvent(new Event("auth-logout"));
 };
 ////
+let refreshTokenRequest: Promise<void> | null = null;
+
 export const checkAndRefreshToken = async (param?: {
   onError?: () => void;
   onSuccess?: () => void;
@@ -228,27 +230,27 @@ export const checkAndRefreshToken = async (param?: {
   });
   
   // Chua dang nhap thi cung khong cho chay
-  if (!accessToken || !refreshToken) {
+  if (!refreshToken || (!accessToken && !param?.force)) {
     console.log('[checkAndRefreshToken] No tokens found, skipping');
     return;
   }
   
-  const decodedAccessToken = decodeToken(accessToken);
+  const decodedAccessToken = accessToken ? decodeToken(accessToken) : null;
   const decodedRefreshToken = decodeToken(refreshToken);
   //Thoi diem het han cua token tinh theo epoch time(s)
   // Con khi cac ban dung cu phap new Date().getTime() thi no se tra ve epoch time (ms)
   const now = Math.round(new Date().getTime() / 1000);
   
   // Check if access token is already expired
-  const isAccessTokenExpired = decodedAccessToken.exp <= now;
+  const isAccessTokenExpired = !decodedAccessToken || decodedAccessToken.exp <= now;
   
   console.log('[checkAndRefreshToken] Token status:', {
-    accessTokenExp: new Date(decodedAccessToken.exp * 1000).toLocaleTimeString(),
+    accessTokenExp: decodedAccessToken ? new Date(decodedAccessToken.exp * 1000).toLocaleTimeString() : null,
     refreshTokenExp: new Date(decodedRefreshToken.exp * 1000).toLocaleTimeString(),
     now: new Date(now * 1000).toLocaleTimeString(),
     isAccessTokenExpired,
     isRefreshTokenExpired: decodedRefreshToken.exp <= now,
-    timeUntilAccessExpiry: decodedAccessToken.exp - now,
+    timeUntilAccessExpiry: decodedAccessToken ? decodedAccessToken.exp - now : null,
     timeUntilRefreshExpiry: decodedRefreshToken.exp - now
   });
   
@@ -256,7 +258,8 @@ export const checkAndRefreshToken = async (param?: {
   if (decodedRefreshToken.exp <= now) {
     console.log('[checkAndRefreshToken] Refresh token expired, logging out');
     removeTokenFromLocalStorage();
-    return param?.onError && param.onError();
+    param?.onError?.();
+    return;
   }
   
   // If access token expired but refresh token still valid, force refresh
@@ -271,6 +274,7 @@ export const checkAndRefreshToken = async (param?: {
   // thoi gian het han cua access token dua tren cong thuc : decodedAccessToken - decodeAccessToken.iat
   if (
     param?.force ||
+    !decodedAccessToken ||
     decodedAccessToken.exp - now <
       (decodedAccessToken.exp - decodedAccessToken.iat) / 3
   ) {
@@ -278,6 +282,13 @@ export const checkAndRefreshToken = async (param?: {
     // This allows server-side to clear httpOnly cookies when token is revoked
     console.log('[checkAndRefreshToken] Calling refresh token API...');
     try {
+      if (refreshTokenRequest) {
+        await refreshTokenRequest;
+        param?.onSuccess?.();
+        return;
+      }
+
+      refreshTokenRequest = (async () => {
       const response = await fetch("/api/auth/refresh-token", {
         method: "POST",
         headers: {
@@ -299,10 +310,13 @@ export const checkAndRefreshToken = async (param?: {
       if (result.success && result.data) {
         setAccessTokenToLocalStorage(result.data.accessToken);
         setRefreshTokenToLocalStorage(result.data.refreshToken);
-        param?.onSuccess && param.onSuccess();
       } else {
         throw new Error("Invalid refresh token response");
       }
+      })();
+
+      await refreshTokenRequest;
+      param?.onSuccess?.();
     } catch (error: any) {
       console.error("[checkAndRefreshToken] Failed to refresh token:", error);
       // Clear tokens immediately when refresh fails
@@ -326,7 +340,9 @@ export const checkAndRefreshToken = async (param?: {
         }
       }
       
-      param?.onError && param.onError();
+      param?.onError?.();
+    } finally {
+      refreshTokenRequest = null;
     }
   } else {
     console.log('[checkAndRefreshToken] Token still valid, no refresh needed');

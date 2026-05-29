@@ -89,20 +89,33 @@ export default function Layout({
     !currentMenuItem ||
     canAccessMenuItem(currentMenuItem, hasPermission);
   const currentPageHasBaseAccess = Boolean(currentMenuItem?.baseAccess);
+  const isCourseContentPage =
+    /^\/manage\/courses\/[^/]+\/content(?:\/.*)?$/.test(pathname);
+  const canAccessCourseContentPage =
+    !isCourseContentPage ||
+    (hasPermission("GET", "/manage/courses") &&
+      hasPermission("GET", "/api/courses/{id}") &&
+      hasPermission("GET", "/api/courses/{id}/chapters") &&
+      (hasPermission("POST", "/api/courses/{id}/chapters") ||
+        hasPermission("PUT", "/api/courses/{courseId}/chapters/{chapterId}") ||
+        hasPermission("POST", "/api/courses/{courseId}/chapters/{chapterId}/lessons") ||
+        hasPermission("PUT", "/api/courses/{courseId}/chapters/{chapterId}/lessons/{lessonId}") ||
+        hasPermission("POST", "/api/courses/{courseId}/chapters/{chapterId}/lessons/{lessonId}/assets") ||
+        hasPermission("PUT", "/api/courses/{courseId}/chapters/{chapterId}/lessons/{lessonId}/assets/{assetId}")));
 
   const isUnauthorizedPage = pathname === "/manage/unauthorized";
   const shouldHoldContent =
     !isUnauthorizedPage &&
     !!currentMenuItem &&
     !currentPageHasBaseAccess &&
-    (isPermissionsLoading || !canAccessCurrentPage);
+    (isPermissionsLoading || !canAccessCurrentPage || !canAccessCourseContentPage);
 
   useEffect(() => {
     if (
       isUnauthorizedPage ||
       isPermissionsLoading ||
       !currentMenuItem ||
-      canAccessCurrentPage
+      (canAccessCurrentPage && canAccessCourseContentPage)
     ) {
       return;
     }
@@ -110,6 +123,7 @@ export default function Layout({
     router.replace("/manage/unauthorized");
   }, [
     canAccessCurrentPage,
+    canAccessCourseContentPage,
     currentMenuItem,
     isPermissionsLoading,
     isUnauthorizedPage,

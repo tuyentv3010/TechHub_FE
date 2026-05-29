@@ -697,12 +697,18 @@ function ResultScreen({
   onRetry,
   onComplete,
   lessonSlug,
+  courseId,
+  lessonId,
+  totalQuestions,
 }: {
   results: ExerciseResult[];
   totalTime: number;
   onRetry: () => void;
   onComplete: () => void;
   lessonSlug?: string;
+  courseId?: string;
+  lessonId?: string;
+  totalQuestions: number;
 }) {
   const correctCount = results.filter(r => r.isCorrect).length;
   const totalCount = results.length;
@@ -724,6 +730,9 @@ function ResultScreen({
       onRetry={onRetry}
       onComplete={onComplete}
       lessonSlug={lessonSlug}
+      courseId={courseId}
+      lessonId={lessonId}
+      totalQuestions={totalQuestions}
     />
   );
 }
@@ -1133,6 +1142,9 @@ export default function ExercisePlayer({
             onClose?.();
           }}
           lessonSlug={lessonSlug}
+          courseId={courseId}
+          lessonId={lessonId}
+          totalQuestions={multipleChoiceExercises.length}
         />
       )}
 
@@ -1146,6 +1158,7 @@ export default function ExercisePlayer({
           lessonSlug={lessonSlug}
           courseId={courseId}
           lessonId={lessonId ?? undefined}
+          totalQuestions={multipleChoiceExercises.length}
         />
       )}
     </div>

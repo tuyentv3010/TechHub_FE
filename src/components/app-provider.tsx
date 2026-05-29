@@ -4,6 +4,7 @@ import { RoleType, Permission } from "@/types/jwt.types";
 import {
   decodeToken,
   getAccessTokenFromLocalStorage,
+  getRefreshTokenFromLocalStorage,
   removeTokenFromLocalStorage,
   setUserInfoToAuthStorage,
 } from "@/lib/utils";
@@ -52,8 +53,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const applyProfileRole = async () => {
       const token = getAccessTokenFromLocalStorage();
+      const refreshToken = getRefreshTokenFromLocalStorage();
       if (token) {
         if (!isTokenFresh(token)) {
+          if (refreshToken) {
+            if (isMounted) {
+              setIsAuth(true);
+              setPermissions(null);
+            }
+            return;
+          }
+
           removeTokenFromLocalStorage();
           if (isMounted) {
             setIsAuth(false);

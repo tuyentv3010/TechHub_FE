@@ -7,8 +7,6 @@ import {
   setAccessTokenToLocalStorage,
   setRefreshTokenToLocalStorage,
 } from "@/lib/utils";
-import { LoginResType } from "@/schemaValidations/auth.schema";
-import { redirect } from "next/navigation";
 
 type CustomOptions = Omit<RequestInit, "method"> & {
   auth?: boolean;
@@ -106,8 +104,8 @@ export class ForbiddenError extends HttpError {
   }
 }
 
-let clientLogoutRequest: null | Promise<any> = null;
 const isClient = typeof window !== "undefined";
+let refreshTokenRequest: Promise<string> | null = null;
 
 const request = async <Response>(
   method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
@@ -235,41 +233,6 @@ const request = async <Response>(
           ? payload.message || "Unauthorized"
           : `Non-JSON response: ${payload.slice(0, 100)}...`;
 
-        if (options?.redirectOnUnauthorized === false) {
-          throw new HttpError({
-            status: res.status,
-            payload,
-            message,
-          });
-        }
-
-        console.warn('🔐 [HTTP] 401 Unauthorized - Token expired or invalid');
-        if (isClient && !clientLogoutRequest) {
-          console.log('🚪 [HTTP] Logging out user...');
-          clientLogoutRequest = fetch("/api/auth/logout", {
-            method: "POST",
-            headers: {
-              ...baseHeaders,
-            } as any,
-          });
-          try {
-            await clientLogoutRequest;
-            console.log('✅ [HTTP] Logout successful');
-          } catch (error) {
-            console.error("❌ [HTTP] Logout error:", error);
-          } finally {
-            removeTokenFromLocalStorage();
-            console.log('🧹 [HTTP] Tokens cleared from auth storage');
-            clientLogoutRequest = null;
-            console.log('↪️ [HTTP] Redirecting to /login');
-            location.replace("/login");
-          }
-        } else if (!isClient) {
-          const token = (options?.headers as any)?.Authorization?.split(
-            "Bearer "
-          )[1];
-          redirect(`/logout?accessToken=${token}`);
-        }
         throw new HttpError({
           status: res.status,
           payload,
@@ -352,6 +315,10 @@ const request = async <Response>(
 // Token refresh logic
 // Use Next.js API route instead of direct backend call to enable server-side cookie clearing
 const refreshToken = async (redirectOnFailure = true) => {
+  if (refreshTokenRequest) {
+    return refreshTokenRequest;
+  }
+
   const refreshToken = getRefreshTokenFromLocalStorage();
   if (!refreshToken) {
     throw new HttpError({
@@ -360,7 +327,9 @@ const refreshToken = async (redirectOnFailure = true) => {
       message: "No refresh token available",
     });
   }
-  try {
+
+  refreshTokenRequest = (async () => {
+    try {
     // Use Next.js API route instead of direct backend call
     // This allows server-side to clear httpOnly cookies on error
     const response = await fetch("/api/auth/refresh-token", {
@@ -416,7 +385,12 @@ const refreshToken = async (redirectOnFailure = true) => {
       location.href = "/login";
     }
     throw error;
-  }
+    } finally {
+      refreshTokenRequest = null;
+    }
+  })();
+
+  return refreshTokenRequest;
 };
 
 // Wrapper for requests with token refresh

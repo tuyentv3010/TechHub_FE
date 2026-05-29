@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -52,7 +52,12 @@ import {
   Paperclip,
   Upload,
   FolderOpen,
-  Download
+  Download,
+  Layers,
+  BookOpen,
+  CheckCircle2,
+  Check,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
@@ -102,6 +107,7 @@ import { useAccountProfile } from "@/queries/useAccount";
 import AiExercisePanel from "@/app/manage/courses/[id]/ai-exercise-panel";
 import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
 
+
 const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"), {
   ssr: false,
 });
@@ -111,16 +117,6 @@ const formatDuration = (seconds: number) => {
   const minutes = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-};
-
-const ContentTypeIcon = ({ type }: { type: string }) => {
-  const icons = {
-    VIDEO: <Video className="h-4 w-4 text-red-500" />,
-    TEXT: <FileText className="h-4 w-4 text-blue-500" />,
-    QUIZ: <HelpCircle className="h-4 w-4 text-primary" />,
-    CODING: <Code className="h-4 w-4 text-green-500" />,
-  };
-  return icons[type as keyof typeof icons] || <FileText className="h-4 w-4" />;
 };
 
 const AssetTypeIcon = ({ type }: { type: string }) => {
@@ -133,6 +129,44 @@ const AssetTypeIcon = ({ type }: { type: string }) => {
   };
   return icons[type as keyof typeof icons] || <Paperclip className="h-3 w-3" />;
 };
+
+// Curriculum Studio content-type chip (Video=red, Text=blue, Quiz=orange, Coding=green)
+const TypeChip = ({ type }: { type: string }) => {
+  const map: Record<string, { cls: string; Icon: any }> = {
+    VIDEO: { cls: "type-video", Icon: Video },
+    TEXT: { cls: "type-text", Icon: FileText },
+    QUIZ: { cls: "type-quiz", Icon: HelpCircle },
+    CODING: { cls: "type-coding", Icon: Code },
+  };
+  const m = map[type] || map.TEXT;
+  const Icon = m.Icon;
+  return (
+    <span className={`type-chip ${m.cls}`}>
+      <Icon />
+    </span>
+  );
+};
+
+// Dashed-border empty state tile
+const Empty = ({
+  icon: Icon,
+  text,
+  action,
+  small,
+}: {
+  icon: any;
+  text: string;
+  action?: React.ReactNode;
+  small?: boolean;
+}) => (
+  <div className={`empty${small ? " is-sm" : ""}`}>
+    <div className="empty-ic">
+      <Icon />
+    </div>
+    <p className="empty-text">{text}</p>
+    {action}
+  </div>
+);
 
 // Exercise Display Component
 const ExerciseDisplay = ({ 
@@ -157,121 +191,105 @@ const ExerciseDisplay = ({
   const exercises = exercisesData?.payload?.data || [];
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+    <div>
+      <div className="section-head">
+        <span className="section-label">
+          <HelpCircle />
           {t("Exercise")}
-        </h4>
+        </span>
         {onCreate && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onCreate}
-          >
-            <Plus className="h-3 w-3 mr-1" />
+          <button type="button" className="btn btn-outline btn-sm" onClick={onCreate}>
+            <Plus />
             {t("AddExercise")}
-          </Button>
+          </button>
         )}
       </div>
-      
+
       {isLoading ? (
-        <div className="text-center py-2">
-          <p className="text-xs text-muted-foreground">{t("Loading") || "Đang tải..."}</p>
-        </div>
+        <p className="empty-text" style={{ textAlign: "center", padding: "8px 0" }}>
+          {t("Loading")}
+        </p>
       ) : exercises.length > 0 ? (
-        <div className="space-y-3">
-          {exercises.map((exercise: any) => (
-            <div key={exercise.id} className="p-3 bg-background rounded border space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 flex-1">
-                  <HelpCircle className="h-4 w-4 flex-shrink-0 text-primary" />
-                  <div className="flex-1">
-                    <Badge variant="secondary" className="text-xs mb-2">
-                      {exercise.type === "MULTIPLE_CHOICE" ? "Trắc nghiệm" : 
-                       exercise.type === "CODING" ? "Lập trình" : 
-                       exercise.type === "OPEN_ENDED" ? "Tự luận" : exercise.type}
-                    </Badge>
-                    <p className="text-sm font-medium">{exercise.question}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  {onEdit && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEdit(exercise)}
-                    >
-                      <Edit2 className="h-3 w-3" />
-                    </Button>
-                  )}
-                  {onDelete && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDelete(exercise)}
-                    >
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* MCQ Options */}
-              {exercise.type === "MULTIPLE_CHOICE" && exercise.options?.choices && (
-                <div className="space-y-2 pl-6">
-              {exercise.options.choices.map((choice: any, idx: number) => (
-                <div 
-                  key={choice.id || idx}
-                  className={`text-xs p-2 rounded flex items-start gap-2 ${
-                    choice.isCorrect 
-                      ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800" 
-                      : "bg-muted/50"
-                  }`}
-                >
-                  <span className="font-semibold min-w-[20px]">
-                    {String.fromCharCode(65 + idx)}.
+        <div>
+          {exercises.map((exercise: any) => {
+            const tag =
+              exercise.type === "CODING"
+                ? { cls: "ex-coding", Icon: Code, label: "Lập trình" }
+                : exercise.type === "OPEN_ENDED"
+                ? { cls: "ex-essay", Icon: FileText, label: "Tự luận" }
+                : { cls: "ex-mcq", Icon: HelpCircle, label: "Trắc nghiệm" };
+            const TagIcon = tag.Icon;
+            return (
+              <div key={exercise.id} className="exercise">
+                <div className="ex-top">
+                  <span className={`ex-tag ${tag.cls}`}>
+                    <TagIcon /> {tag.label}
                   </span>
-                  <span className="flex-1">{choice.text}</span>
-                      {choice.isCorrect && (
-                        <Badge variant="default" className="text-xs bg-green-600">
-                          ✓ Đúng
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
+                  <div className="row-actions" style={{ opacity: 1, transform: "none" }}>
+                    {onEdit && (
+                      <button
+                        type="button"
+                        className="icon-btn is-edit tip"
+                        data-tip={t("Edit")}
+                        aria-label={t("Edit")}
+                        onClick={() => onEdit(exercise)}
+                      >
+                        <Edit2 />
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        type="button"
+                        className="icon-btn is-danger tip"
+                        data-tip={t("Delete")}
+                        aria-label={t("Delete")}
+                        onClick={() => onDelete(exercise)}
+                      >
+                        <Trash2 />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              )}
 
-              {/* Coding Test Cases */}
-              {exercise.type === "CODING" && exercise.testCases && exercise.testCases.length > 0 && (
-                <div className="space-y-2 pl-6">
-              <p className="text-xs font-semibold text-muted-foreground">Test Cases:</p>
-              {exercise.testCases.slice(0, 3).map((tc: any, idx: number) => (
-                <div key={idx} className="text-xs p-2 rounded bg-muted/50">
-                  <div className="flex gap-2">
-                    <span className="font-semibold">Input:</span>
-                    <code className="flex-1">{tc.input}</code>
+                <p className="ex-q">{exercise.question}</p>
+
+                {/* MCQ Options */}
+                {exercise.type === "MULTIPLE_CHOICE" && exercise.options?.choices && (
+                  <div className="opt-list">
+                    {exercise.options.choices.map((choice: any, idx: number) => (
+                      <div
+                        key={choice.id || idx}
+                        className={`opt${choice.isCorrect ? " is-correct" : ""}`}
+                      >
+                        <span className="opt-key">{String.fromCharCode(65 + idx)}</span>
+                        <span style={{ flex: 1 }}>{choice.text}</span>
+                        {choice.isCorrect && (
+                          <span className="opt-correct-mark">
+                            <Check />
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex gap-2 mt-1">
-                    <span className="font-semibold">Expected:</span>
-                    <code className="flex-1">{tc.expectedOutput}</code>
+                )}
+
+                {/* Coding Test Cases */}
+                {exercise.type === "CODING" && exercise.testCases && exercise.testCases.length > 0 && (
+                  <div className="opt-list">
+                    {exercise.testCases.slice(0, 3).map((tc: any, idx: number) => (
+                      <pre key={idx} className="code-block">{`Input:    ${tc.input}\nExpected: ${tc.expectedOutput}`}</pre>
+                    ))}
+                    {exercise.testCases.length > 3 && (
+                      <p className="asset-sub">+ {exercise.testCases.length - 3} test cases</p>
+                    )}
                   </div>
-                </div>
-              ))}
-                  {exercise.testCases.length > 3 && (
-                    <p className="text-xs text-muted-foreground">+ {exercise.testCases.length - 3} more test cases</p>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
-        <div className="text-center py-2">
-          <p className="text-xs text-muted-foreground">
-            {t("NoExercise") || "Chưa có bài tập"}
-          </p>
-        </div>
+        <Empty small icon={HelpCircle} text={t("NoExercise")} />
       )}
     </div>
   );
@@ -1104,84 +1122,110 @@ export default function CourseContentManagementPage() {
   }
 
   return (
-    <main className="manage-page space-y-6">
-      {/* Course Header */}
-      <Card className="manage-surface border-border/50">
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Button asChild variant="outline" className="manage-secondary-button gap-2">
-              <Link href="/manage/courses">
-                <ArrowLeft className="h-4 w-4" />
+    <main className="curriculum-studio">
+      <div className="studio-container">
+        {/* ===== Course header ===== */}
+        <div className="card card-pad course-header">
+          <div className="ch-top">
+            <div style={{ minWidth: 0 }}>
+              <Link
+                href="/manage/courses"
+                className="btn btn-ghost btn-sm"
+                style={{ paddingLeft: 0 }}
+              >
+                <ArrowLeft />
                 {t("BackToCourses")}
               </Link>
-            </Button>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl">{course.title}</CardTitle>
-              <CardDescription className="mt-2">{course.description}</CardDescription>
+              <h1 className="ch-title">{course.title}</h1>
+              <p className="ch-desc">{course.description}</p>
             </div>
-            <Button onClick={() => setChapterDialog({ open: true, mode: 'create' })}>
-              <Plus className="h-4 w-4 mr-2" />
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setChapterDialog({ open: true, mode: 'create' })}
+            >
+              <Plus />
               {t("AddChapter")}
-            </Button>
+            </button>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-muted-foreground">{t("Chapters")}: </span>
-              <span className="font-medium">{chapters.length}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{t("Lessons")}: </span>
-              <span className="font-medium">
-                {chapters.reduce((sum: number, ch: any) => sum + (ch.lessons?.length || 0), 0)}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{t("Duration")}: </span>
-              <span className="font-medium">
-                {formatDuration(course.estimatedDuration || 0)}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{t("Status")}: </span>
-              <Badge variant={course.status === 'PUBLISHED' ? 'default' : 'secondary'}>
-                {course.status}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Drag & Drop Course Content */}
-      <Card className="manage-surface border-border/50">
-        <CardHeader>
-          <CardTitle>{t("CourseContent")}</CardTitle>
-          <CardDescription>{t("ManageChaptersLessonsDescription")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {chapters.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>{t("NoChaptersYet")}</p>
-              <Button 
-                variant="outline" 
-                className="mt-4"
-                onClick={() => setChapterDialog({ open: true, mode: 'create' })}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                {t("AddChapter")}
-              </Button>
+          <div className="stat-grid">
+            <div className="stat">
+              <span className="stat-ic is-chapter">
+                <Layers />
+              </span>
+              <div className="stat-meta">
+                <span className="stat-label">{t("Chapters")}</span>
+                <span className="stat-value">{chapters.length}</span>
+              </div>
             </div>
+            <div className="stat">
+              <span className="stat-ic is-lesson">
+                <BookOpen />
+              </span>
+              <div className="stat-meta">
+                <span className="stat-label">{t("Lessons")}</span>
+                <span className="stat-value">
+                  {chapters.reduce((sum: number, ch: any) => sum + (ch.lessons?.length || 0), 0)}
+                </span>
+              </div>
+            </div>
+            <div className="stat">
+              <span className="stat-ic is-time">
+                <Clock />
+              </span>
+              <div className="stat-meta">
+                <span className="stat-label">{t("Duration")}</span>
+                <span className="stat-value">{formatDuration(course.estimatedDuration || 0)}</span>
+              </div>
+            </div>
+            <div className="stat">
+              <span className="stat-ic is-status">
+                <CheckCircle2 />
+              </span>
+              <div className="stat-meta">
+                <span className="stat-label">{t("StatusLabel")}</span>
+                <span
+                  className={`badge badge-status is-${String(course.status || "").toLowerCase()}`}
+                  style={{ marginTop: 2, width: "fit-content" }}
+                >
+                  {t(`Status.${course.status}`)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ===== Course content ===== */}
+        <div className="card card-pad">
+          <div className="card-head">
+            <h2 className="card-title">{t("CourseContent")}</h2>
+            <p className="card-sub">{t("ManageChaptersLessonsDescription")}</p>
+          </div>
+
+          {chapters.length === 0 ? (
+            <Empty
+              icon={Layers}
+              text={t("NoChaptersYet")}
+              action={
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setChapterDialog({ open: true, mode: 'create' })}
+                >
+                  <Plus />
+                  {t("AddChapter")}
+                </button>
+              }
+            />
           ) : (
-            <DragDropContext 
+            <DragDropContext
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <Droppable 
-                droppableId="chapters" 
-                type="CHAPTER" 
+              <Droppable
+                droppableId="chapters"
+                type="CHAPTER"
                 isDropDisabled={false}
                 isCombineEnabled={false}
                 ignoreContainerClipping={false}
@@ -1190,7 +1234,7 @@ export default function CourseContentManagementPage() {
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className="space-y-2"
+                    className="chapter-list"
                   >
                     {chapters.map((chapter: any, index: number) => (
                       <Draggable
@@ -1202,97 +1246,110 @@ export default function CourseContentManagementPage() {
                           <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
-                            className={`border rounded-lg ${
-                              snapshot.isDragging ? 'shadow-lg bg-background' : ''
+                            className={`chapter${expandedChapters.has(chapter.id) ? " is-open" : ""}${
+                              snapshot.isDragging ? " is-dragging" : ""
                             }`}
                           >
-                            {/* Chapter Header */}
-                            <div className="flex items-center gap-3 p-4 bg-muted/30">
-                              <div {...provided.dragHandleProps} className="cursor-grab">
-                                <GripVertical className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                              
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleChapter(chapter.id)}
+                            {/* Chapter header row */}
+                            <div className="row chapter-row">
+                              <span
+                                {...provided.dragHandleProps}
+                                className="grip tip"
+                                data-tip={t("DragToReorder")}
                               >
-                                {expandedChapters.has(chapter.id) ? (
-                                  <ChevronDown className="h-4 w-4" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4" />
-                                )}
-                              </Button>
+                                <GripVertical />
+                              </span>
 
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <h3 className="font-semibold">{chapter.title}</h3>
-                                  <Badge variant="outline" className="text-xs">
+                              <button
+                                type="button"
+                                className={`disclose${expandedChapters.has(chapter.id) ? " is-open" : ""}`}
+                                onClick={() => toggleChapter(chapter.id)}
+                                aria-label={t("Expand")}
+                              >
+                                <ChevronRight />
+                              </button>
+
+                              <div className="row-main">
+                                <div className="row-titleline">
+                                  <span className="chapter-name">{chapter.title}</span>
+                                  <span className="badge badge-count">
+                                    <BookOpen />
                                     {chapter.lessons?.length || 0} {t("Lessons")}
-                                  </Badge>
+                                  </span>
                                   {chapter.locked && (
-                                    <Lock className="h-4 w-4 text-muted-foreground" />
+                                    <span className="lock-ic tip" data-tip={t("Locked")}>
+                                      <Lock />
+                                    </span>
                                   )}
                                 </div>
                                 {chapter.description && (
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    {chapter.description}
-                                  </p>
+                                  <div className="row-sub">{chapter.description}</div>
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
+                              <div className="row-actions">
+                                <button
+                                  type="button"
+                                  className="icon-btn is-add tip"
+                                  data-tip={t("AddLesson")}
+                                  aria-label={t("AddLesson")}
                                   onClick={() => setLessonDialog({
                                     open: true,
                                     mode: 'create',
                                     chapterId: chapter.id,
                                   })}
                                 >
-                                  <Plus className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
+                                  <Plus />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="icon-btn is-edit tip"
+                                  data-tip={t("EditChapter")}
+                                  aria-label={t("EditChapter")}
                                   onClick={() => setChapterDialog({
                                     open: true,
                                     mode: 'edit',
                                     data: chapter,
                                   })}
                                 >
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
+                                  <Edit2 />
+                                </button>
+                                <span className="action-sep" />
+                                <button
+                                  type="button"
+                                  className="icon-btn is-danger tip"
+                                  data-tip={t("DeleteChapter")}
+                                  aria-label={t("DeleteChapter")}
                                   onClick={() => handleDeleteChapter(chapter.id, chapter.title)}
                                 >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
+                                  <Trash2 />
+                                </button>
                               </div>
                             </div>
 
-                            {/* Lessons List */}
+                            {/* Lessons */}
                             {expandedChapters.has(chapter.id) && (
-                              <div className="p-4 bg-background">
+                              <div>
                                 {(!chapter.lessons || chapter.lessons.length === 0) ? (
-                                  <div className="text-center py-8 text-muted-foreground">
-                                    <p className="text-sm">{t("NoLessons")}</p>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="mt-2"
-                                      onClick={() => setLessonDialog({
-                                        open: true,
-                                        mode: 'create',
-                                        chapterId: chapter.id,
-                                      })}
-                                    >
-                                      <Plus className="h-4 w-4 mr-2" />
-                                      {t("AddLesson")}
-                                    </Button>
+                                  <div className="lessons">
+                                    <Empty
+                                      icon={FileText}
+                                      text={t("NoLessons")}
+                                      action={
+                                        <button
+                                          type="button"
+                                          className="btn btn-outline btn-sm"
+                                          onClick={() => setLessonDialog({
+                                            open: true,
+                                            mode: 'create',
+                                            chapterId: chapter.id,
+                                          })}
+                                        >
+                                          <Plus />
+                                          {t("AddLesson")}
+                                        </button>
+                                      }
+                                    />
                                   </div>
                                 ) : (
                                   <Droppable
@@ -1306,7 +1363,7 @@ export default function CourseContentManagementPage() {
                                       <div
                                         {...provided.droppableProps}
                                         ref={provided.innerRef}
-                                        className="space-y-2"
+                                        className="lessons"
                                       >
                                         {chapter.lessons.map((lesson: any, lessonIndex: number) => (
                                           <Draggable
@@ -1318,72 +1375,66 @@ export default function CourseContentManagementPage() {
                                               <div
                                                 ref={provided.innerRef}
                                                 {...provided.draggableProps}
-                                                className={`border rounded-lg ${
-                                                  snapshot.isDragging ? 'shadow-md bg-background' : ''
+                                                className={`lesson${expandedLessons.has(lesson.id) ? " is-open" : ""}${
+                                                  snapshot.isDragging ? " is-dragging" : ""
                                                 }`}
                                               >
-                                                {/* Lesson Header */}
-                                                <div className={`flex items-center gap-3 p-3 ${
-                                                  snapshot.isDragging ? '' : 'hover:bg-muted/50'
-                                                }`}>
-                                                  <div
+                                                {/* Lesson header row */}
+                                                <div className="row lesson-row">
+                                                  <span
                                                     {...provided.dragHandleProps}
-                                                    className="cursor-grab"
+                                                    className="grip tip"
+                                                    data-tip={t("DragToReorder")}
                                                   >
-                                                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                                  </div>
+                                                    <GripVertical />
+                                                  </span>
 
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
+                                                  <button
+                                                    type="button"
+                                                    className={`disclose${expandedLessons.has(lesson.id) ? " is-open" : ""}`}
                                                     onClick={() => toggleLesson(lesson.id)}
+                                                    aria-label={t("Expand")}
                                                   >
-                                                    {expandedLessons.has(lesson.id) ? (
-                                                      <ChevronDown className="h-3 w-3" />
-                                                    ) : (
-                                                      <ChevronRight className="h-3 w-3" />
-                                                    )}
-                                                  </Button>
+                                                    <ChevronRight />
+                                                  </button>
 
-                                                  <ContentTypeIcon type={lesson.contentType} />
+                                                  <TypeChip type={lesson.contentType} />
 
-                                                  <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                      <span className="font-medium text-sm">
-                                                        {lesson.title}
-                                                      </span>
+                                                  <div className="row-main">
+                                                    <div className="row-titleline">
+                                                      <span className="lesson-name">{lesson.title}</span>
                                                       {lesson.isFree && (
-                                                        <Badge variant="secondary" className="text-xs">
-                                                          {t("Free")}
-                                                        </Badge>
+                                                        <span className="badge badge-free">{t("Free")}</span>
                                                       )}
                                                       {lesson.hasExercise && (
-                                                        <Badge variant="default" className="bg-primary text-xs">
-                                                          <HelpCircle className="h-3 w-3 mr-1" />
+                                                        <span className="badge badge-ex">
+                                                          <HelpCircle />
                                                           {t("Exercise")}
-                                                        </Badge>
+                                                        </span>
                                                       )}
                                                       {lesson.assets && lesson.assets.length > 0 && (
-                                                        <Badge variant="outline" className="text-xs">
-                                                          <Paperclip className="h-3 w-3 mr-1" />
+                                                        <span className="badge badge-asset">
+                                                          <Paperclip />
                                                           {lesson.assets.length}
-                                                        </Badge>
+                                                        </span>
                                                       )}
                                                     </div>
-                                                    {lesson.estimatedDuration && (
-                                                      <div className="flex items-center gap-1 mt-1">
-                                                        <Clock className="h-3 w-3 text-muted-foreground" />
-                                                        <span className="text-xs text-muted-foreground">
+                                                    {lesson.estimatedDuration ? (
+                                                      <div className="row-sub">
+                                                        <span className="meta-time">
+                                                          <Clock />
                                                           {formatDuration(lesson.estimatedDuration)}
                                                         </span>
                                                       </div>
-                                                    )}
+                                                    ) : null}
                                                   </div>
 
-                                                  <div className="flex items-center gap-1">
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="sm"
+                                                  <div className="row-actions">
+                                                    <button
+                                                      type="button"
+                                                      className="icon-btn is-add tip"
+                                                      data-tip={t("AddAsset")}
+                                                      aria-label={t("AddAsset")}
                                                       onClick={() => setAssetDialog({
                                                         open: true,
                                                         mode: 'create',
@@ -1391,11 +1442,13 @@ export default function CourseContentManagementPage() {
                                                         lessonId: lesson.id,
                                                       })}
                                                     >
-                                                      <Plus className="h-3 w-3" />
-                                                    </Button>
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="sm"
+                                                      <Plus />
+                                                    </button>
+                                                    <button
+                                                      type="button"
+                                                      className="icon-btn is-edit tip"
+                                                      data-tip={t("EditLesson")}
+                                                      aria-label={t("EditLesson")}
                                                       onClick={() => setLessonDialog({
                                                         open: true,
                                                         mode: 'edit',
@@ -1404,28 +1457,31 @@ export default function CourseContentManagementPage() {
                                                         data: lesson,
                                                       })}
                                                     >
-                                                      <Edit2 className="h-3 w-3" />
-                                                    </Button>
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="sm"
+                                                      <Edit2 />
+                                                    </button>
+                                                    <span className="action-sep" />
+                                                    <button
+                                                      type="button"
+                                                      className="icon-btn is-danger tip"
+                                                      data-tip={t("DeleteLesson")}
+                                                      aria-label={t("DeleteLesson")}
                                                       onClick={() => handleDeleteLesson(
                                                         chapter.id,
                                                         lesson.id,
                                                         lesson.title
                                                       )}
                                                     >
-                                                      <Trash2 className="h-3 w-3 text-destructive" />
-                                                    </Button>
+                                                      <Trash2 />
+                                                    </button>
                                                   </div>
                                                 </div>
 
-                                                {/* Assets & Exercise List */}
+                                                {/* Lesson body: exercises + materials */}
                                                 {expandedLessons.has(lesson.id) && (
-                                                  <div className="px-12 py-3 bg-muted/30 border-t space-y-4">
-                                                    {/* Exercise Section */}
-                                                    <ExerciseDisplay 
-                                                      courseId={courseId} 
+                                                  <div className="lesson-body">
+                                                    {/* Exercises */}
+                                                    <ExerciseDisplay
+                                                      courseId={courseId}
                                                       lessonId={lesson.id}
                                                       chapterId={chapter.id}
                                                       hasExercise={lesson.hasExercise}
@@ -1435,117 +1491,125 @@ export default function CourseContentManagementPage() {
                                                         chapterId: chapter.id,
                                                         lessonId: lesson.id,
                                                       })}
-                                                      onEdit={(exercise) => {
-                                                        console.log('📝 === OPENING EXERCISE EDIT DIALOG ===');
-                                                        console.log('📝 Exercise to edit:', JSON.stringify(exercise, null, 2));
-                                                        console.log('📝 Exercise ID:', exercise.id);
-                                                        console.log('📝 Exercise type:', exercise.type);
-                                                        console.log('📝 Exercise question:', exercise.question);
-                                                        console.log('📝 Exercise options (raw):', exercise.options);
-                                                        console.log('📝 Exercise testCases (raw):', exercise.testCases);
-                                                        console.log('📝 Exercise orderIndex:', exercise.orderIndex);
-                                                        console.log('📝 Chapter ID:', chapter.id);
-                                                        console.log('📝 Lesson ID:', lesson.id);
-                                                        
-                                                        setExerciseDialog({
-                                                          open: true,
-                                                          mode: 'edit',
-                                                          chapterId: chapter.id,
-                                                          lessonId: lesson.id,
-                                                          data: exercise,
-                                                        });
-                                                        console.log('📝 Exercise dialog state set, opening...');
-                                                      }}
+                                                      onEdit={(exercise) => setExerciseDialog({
+                                                        open: true,
+                                                        mode: 'edit',
+                                                        chapterId: chapter.id,
+                                                        lessonId: lesson.id,
+                                                        data: exercise,
+                                                      })}
                                                       onDelete={(exercise) => handleDeleteExercise(chapter.id, lesson.id, exercise)}
                                                     />
 
-                                                    {/* Assets Section */}
-                                                    <div className="space-y-2">
-                                                      <div className="flex items-center justify-between">
-                                                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+                                                    {/* Materials / assets */}
+                                                    <div>
+                                                      <div className="section-head">
+                                                        <span className="section-label">
+                                                          <Paperclip />
                                                           {t("Assets")}
-                                                        </h4>
-                                                      </div>
-                                                    {(!lesson.assets || lesson.assets.length === 0) ? (
-                                                      <div className="text-center py-2">
-                                                        <p className="text-xs text-muted-foreground mb-2">
-                                                          {t("NoAssets")}
-                                                        </p>
-                                                        <Button
-                                                          variant="outline"
-                                                          size="sm"
-                                                          onClick={() => setAssetDialog({
-                                                            open: true,
-                                                            mode: 'create',
-                                                            chapterId: chapter.id,
-                                                            lessonId: lesson.id,
-                                                          })}
-                                                        >
-                                                          <Plus className="h-3 w-3 mr-1" />
-                                                          {t("AddAsset")}
-                                                        </Button>
-                                                      </div>
-                                                    ) : (
-                                                      <div className="space-y-2">
-                                                        {lesson.assets.map((asset: any) => (
-                                                          <div
-                                                            key={asset.id}
-                                                            className="flex items-center gap-2 p-2 bg-background rounded border text-xs"
+                                                        </span>
+                                                        {lesson.assets && lesson.assets.length > 0 && (
+                                                          <button
+                                                            type="button"
+                                                            className="btn btn-outline btn-sm"
+                                                            onClick={() => setAssetDialog({
+                                                              open: true,
+                                                              mode: 'create',
+                                                              chapterId: chapter.id,
+                                                              lessonId: lesson.id,
+                                                            })}
                                                           >
-                                                            <AssetTypeIcon type={asset.assetType} />
-                                                            <div className="flex-1">
-                                                              <div className="font-medium">{asset.title}</div>
-                                                              {asset.externalUrl && (
-                                                                <a
-                                                                  href={asset.externalUrl}
-                                                                  target="_blank"
-                                                                  rel="noopener noreferrer"
-                                                                  className="text-blue-500 hover:underline truncate block"
-                                                                >
-                                                                  {asset.externalUrl}
-                                                                </a>
-                                                              )}
-                                                            </div>
-                                                            {/* Download button for DOCUMENT type */}
-                                                            {asset.assetType === 'DOCUMENT' && asset.externalUrl && (
-                                                              <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => handleDownloadAsset(asset.externalUrl, asset.title)}
-                                                                title="Tải xuống"
-                                                              >
-                                                                <Download className="h-3 w-3 text-blue-500" />
-                                                              </Button>
-                                                            )}
-                                                            <Button
-                                                              variant="ghost"
-                                                              size="sm"
+                                                            <Plus />
+                                                            {t("AddAsset")}
+                                                          </button>
+                                                        )}
+                                                      </div>
+                                                      {(!lesson.assets || lesson.assets.length === 0) ? (
+                                                        <Empty
+                                                          small
+                                                          icon={Paperclip}
+                                                          text={t("NoAssets")}
+                                                          action={
+                                                            <button
+                                                              type="button"
+                                                              className="btn btn-outline btn-sm"
                                                               onClick={() => setAssetDialog({
                                                                 open: true,
-                                                                mode: 'edit',
+                                                                mode: 'create',
                                                                 chapterId: chapter.id,
                                                                 lessonId: lesson.id,
-                                                                data: asset,
                                                               })}
                                                             >
-                                                              <Edit2 className="h-3 w-3" />
-                                                            </Button>
-                                                            <Button
-                                                              variant="ghost"
-                                                              size="sm"
-                                                              onClick={() => handleDeleteAsset(
-                                                                chapter.id,
-                                                                lesson.id,
-                                                                asset.id,
-                                                                asset.title
+                                                              <Plus />
+                                                              {t("AddAsset")}
+                                                            </button>
+                                                          }
+                                                        />
+                                                      ) : (
+                                                        <div className="asset-list">
+                                                          {lesson.assets.map((asset: any) => (
+                                                            <div key={asset.id} className="asset">
+                                                              <span className="asset-ic">
+                                                                <AssetTypeIcon type={asset.assetType} />
+                                                              </span>
+                                                              <div className="asset-meta">
+                                                                <div className="asset-name">{asset.title}</div>
+                                                                {asset.externalUrl && (
+                                                                  <div className="asset-sub">
+                                                                    <a
+                                                                      href={asset.externalUrl}
+                                                                      target="_blank"
+                                                                      rel="noopener noreferrer"
+                                                                    >
+                                                                      {asset.externalUrl}
+                                                                    </a>
+                                                                  </div>
+                                                                )}
+                                                              </div>
+                                                              {asset.assetType === 'DOCUMENT' && asset.externalUrl && (
+                                                                <button
+                                                                  type="button"
+                                                                  className="icon-btn tip"
+                                                                  data-tip={t("Download")}
+                                                                  aria-label={t("Download")}
+                                                                  onClick={() => handleDownloadAsset(asset.externalUrl, asset.title)}
+                                                                >
+                                                                  <Download />
+                                                                </button>
                                                               )}
-                                                            >
-                                                              <Trash2 className="h-3 w-3 text-destructive" />
-                                                            </Button>
-                                                          </div>
-                                                        ))}
-                                                      </div>
-                                                    )}
+                                                              <button
+                                                                type="button"
+                                                                className="icon-btn is-edit tip"
+                                                                data-tip={t("Edit")}
+                                                                aria-label={t("Edit")}
+                                                                onClick={() => setAssetDialog({
+                                                                  open: true,
+                                                                  mode: 'edit',
+                                                                  chapterId: chapter.id,
+                                                                  lessonId: lesson.id,
+                                                                  data: asset,
+                                                                })}
+                                                              >
+                                                                <Edit2 />
+                                                              </button>
+                                                              <button
+                                                                type="button"
+                                                                className="icon-btn is-danger tip"
+                                                                data-tip={t("Delete")}
+                                                                aria-label={t("Delete")}
+                                                                onClick={() => handleDeleteAsset(
+                                                                  chapter.id,
+                                                                  lesson.id,
+                                                                  asset.id,
+                                                                  asset.title
+                                                                )}
+                                                              >
+                                                                <Trash2 />
+                                                              </button>
+                                                            </div>
+                                                          ))}
+                                                        </div>
+                                                      )}
                                                     </div>
                                                   </div>
                                                 )}
@@ -1570,8 +1634,7 @@ export default function CourseContentManagementPage() {
               </Droppable>
             </DragDropContext>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
       {/* Chapter Dialog */}
       <ChapterDialog
@@ -1616,15 +1679,14 @@ export default function CourseContentManagementPage() {
         onUpdate={handleUpdateExercise}
       />
 
-      {/* AI Exercise Generation Panel */}
-      <Card className="manage-surface border-border/50">
-        <CardContent className="pt-6">
-          <AiExercisePanel 
-            courseId={courseId} 
+        {/* AI Exercise Generation Panel */}
+        <div className="card card-pad">
+          <AiExercisePanel
+            courseId={courseId}
             chapters={chapters}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </main>
   );
 }
@@ -1683,7 +1745,7 @@ function ChapterDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">{t("Title")}</Label>
+            <Label htmlFor="title">{t("TitleLabel")}</Label>
             <Input
               id="title"
               {...register("title")}
@@ -2551,7 +2613,7 @@ function LessonDialog({
         ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">{t("Title")}</Label>
+            <Label htmlFor="title">{t("TitleLabel")}</Label>
             <Input
               id="title"
               {...register("title")}
@@ -2923,7 +2985,7 @@ function AssetDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">{t("Title")}</Label>
+            <Label htmlFor="title">{t("TitleLabel")}</Label>
             <Input
               id="title"
               {...register("title")}

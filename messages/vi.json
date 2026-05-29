@@ -1544,7 +1544,13 @@
     "TestCaseTimeout": "Timeout (giây)",
     "Error": "Lỗi",
     "ManageSkills": "Quản lý kỹ năng",
-    "ManageTags": "Quản lý thẻ"
+    "ManageTags": "Quản lý thẻ",
+    "DragToReorder": "Kéo để sắp xếp lại",
+    "Locked": "Đã khóa",
+    "Expand": "Mở rộng",
+    "DeleteChapter": "Xóa chương",
+    "DeleteLesson": "Xóa bài học",
+    "Download": "Tải xuống"
   },
   "CourseOnboarding": {
     "step1": {

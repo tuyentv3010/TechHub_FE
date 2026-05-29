@@ -763,9 +763,16 @@ export default function CourseLearningLayout({
                   }
                 }}
                 onNextLesson={() => {
+                  handleMarkComplete();
+
                   // Navigate to next lesson if available
                   if (currentLessonIndex < allLessons.length - 1) {
                     onLessonChange(currentLessonIndex + 1);
+                  } else {
+                    toast({
+                      title: "Da hoan thanh",
+                      description: "Ban dang o bai hoc cuoi cung cua khoa hoc.",
+                    });
                   }
                 }}
               />
