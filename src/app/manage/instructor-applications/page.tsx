@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Award,
   Ban,
+  Braces,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -44,7 +45,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 
-type AiStatus = "PENDING" | "PROCESSED" | "FAILED";
 type AdminStatus = "PENDING" | "APPROVED" | "REJECTED";
 type StatusFilter = AdminStatus | "ALL";
 
@@ -107,6 +107,7 @@ export default function ManageInstructorApplicationsPage() {
   const [note, setNote] = useState("");
   const [acting, setActing] = useState(false);
   const [rescanning, setRescanning] = useState<string | null>(null);
+  const [refreshingDetail, setRefreshingDetail] = useState(false);
   const [profile, setProfile] = useState<InstructorProfile | null>(null);
   const [preview, setPreview] = useState<PreviewState>(null);
 
@@ -189,14 +190,19 @@ export default function ManageInstructorApplicationsPage() {
     }
   };
 
-  const refreshDetail = async () => {
+  const refreshDetail = async (options?: { silent?: boolean }) => {
     if (!selectedId) return;
+    if (!options?.silent) setRefreshingDetail(true);
     try {
       const res: any = await instructorApplicationApi.getDetail(selectedId);
       const data = res?.payload?.data || res?.payload;
       setDetail(data);
     } catch {
-      toast({ title: t("DetailLoadError"), variant: "destructive" });
+      if (!options?.silent) {
+        toast({ title: t("DetailLoadError"), variant: "destructive" });
+      }
+    } finally {
+      if (!options?.silent) setRefreshingDetail(false);
     }
   };
 
@@ -291,6 +297,27 @@ export default function ManageInstructorApplicationsPage() {
     };
   }, [detail]);
 
+  const hasPendingAiScan = useMemo(() => {
+    if (!detail) return false;
+    return [
+      detail.aiStatus,
+      detail.cccdFrontStatus,
+      detail.cccdBackStatus,
+      ...(detail.certificates || []).map((cert) => cert.aiStatus),
+    ].some((value) => value === "PENDING");
+  }, [detail]);
+
+  useEffect(() => {
+    if (!open || !selectedId || !hasPendingAiScan) return;
+
+    const timer = window.setInterval(() => {
+      refreshDetail({ silent: true });
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, selectedId, hasPendingAiScan]);
+
   const StatusBadge = ({ value }: { value?: string | null }) => {
     const normalized = String(value || "").toUpperCase();
     return (
@@ -304,14 +331,18 @@ export default function ManageInstructorApplicationsPage() {
     kind,
     certId,
     status,
+    updatedAt,
   }: {
     kind: "cv" | "cccdFront" | "cccdBack" | "cert";
     certId?: string;
     status?: string | null;
+    updatedAt?: string | null;
   }) => {
     const key = kind === "cert" ? `cert:${certId}` : kind;
     const isPending = String(status || "").toUpperCase() === "PENDING";
-    const isBusy = rescanning === key || isPending;
+    const pendingElapsedMs = updatedAt ? Date.now() - new Date(updatedAt).getTime() : 0;
+    const pendingTimedOut = isPending && pendingElapsedMs > 72_000;
+    const isBusy = rescanning === key || (isPending && !pendingTimedOut);
 
     return (
       <Button
@@ -326,7 +357,7 @@ export default function ManageInstructorApplicationsPage() {
         ) : (
           <RefreshCw className="h-3.5 w-3.5" />
         )}
-        {isPending ? "Đang scan" : "Scan lại"}
+        {rescanning === key ? "Đang gửi" : isPending && !pendingTimedOut ? "Đang scan" : "Scan lại"}
       </Button>
     );
   };
@@ -342,7 +373,7 @@ export default function ManageInstructorApplicationsPage() {
 
     return (
       <div className="overflow-hidden rounded-lg border bg-white shadow-sm dark:bg-slate-950">
-        <div className="flex h-[360px] items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="flex h-[520px] items-center justify-center bg-slate-50 dark:bg-slate-900">
           {isImage(url) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={url} alt={label} className="h-full w-full object-contain p-2" />
@@ -418,7 +449,9 @@ export default function ManageInstructorApplicationsPage() {
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge value={status} />
-            {rescanKind && <RescanButton kind={rescanKind} certId={certId} status={status} />}
+            {rescanKind && (
+              <RescanButton kind={rescanKind} certId={certId} status={status} updatedAt={detail?.updated} />
+            )}
           </div>
         </div>
 
@@ -430,16 +463,7 @@ export default function ManageInstructorApplicationsPage() {
           </p>
         )}
 
-        {aiData ? (
-          <details className="mt-3">
-            <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
-              Dữ liệu AI trích xuất
-            </summary>
-            <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-slate-100 p-3 text-xs dark:bg-slate-900">
-              {JSON.stringify(aiData, null, 2)}
-            </pre>
-          </details>
-        ) : null}
+        <AiDataPanel data={aiData} />
       </section>
     );
   };
@@ -576,7 +600,7 @@ export default function ManageInstructorApplicationsPage() {
       </div>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+        <SheetContent className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(1120px,calc(100vw-32px))]">
           <SheetHeader className="border-b bg-white px-5 py-4 dark:bg-slate-950">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -589,6 +613,20 @@ export default function ManageInstructorApplicationsPage() {
                 ) : null}
               </div>
               <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!detail || refreshingDetail}
+                  onClick={() => refreshDetail()}
+                  className="mr-2 gap-1.5"
+                >
+                  {refreshingDetail ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  Làm mới
+                </Button>
                 <Button
                   size="icon"
                   variant="ghost"
@@ -618,7 +656,7 @@ export default function ManageInstructorApplicationsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-amber-600" />
-                  <span>{aiSummary.pending} đang chờ</span>
+                  <span>{aiSummary.pending} đang chờ{hasPendingAiScan ? " - tự cập nhật mỗi 5s" : ""}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-rose-600" />
@@ -654,14 +692,18 @@ export default function ManageInstructorApplicationsPage() {
                     status={detail.cccdFrontStatus || detail.cccdBackStatus || undefined}
                     aiData={cccdFrontData || cccdBackData ? { front: cccdFrontData, back: cccdBackData } : null}
                   >
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-4 xl:grid-cols-2">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-medium text-muted-foreground">Mặt trước</span>
                           <div className="flex items-center gap-2">
                             <StatusBadge value={detail.cccdFrontStatus} />
                             {detail.cccdFrontFileUrl && (
-                              <RescanButton kind="cccdFront" status={detail.cccdFrontStatus} />
+                              <RescanButton
+                                kind="cccdFront"
+                                status={detail.cccdFrontStatus}
+                                updatedAt={detail.updated}
+                              />
                             )}
                           </div>
                         </div>
@@ -674,7 +716,11 @@ export default function ManageInstructorApplicationsPage() {
                           <div className="flex items-center gap-2">
                             <StatusBadge value={detail.cccdBackStatus} />
                             {detail.cccdBackFileUrl && (
-                              <RescanButton kind="cccdBack" status={detail.cccdBackStatus} />
+                              <RescanButton
+                                kind="cccdBack"
+                                status={detail.cccdBackStatus}
+                                updatedAt={detail.updated}
+                              />
                             )}
                           </div>
                         </div>
@@ -696,7 +742,7 @@ export default function ManageInstructorApplicationsPage() {
                         <p className="text-xs text-muted-foreground">{detail.certificates.length} tài liệu</p>
                       </div>
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-4 xl:grid-cols-2">
                       {detail.certificates.map((cert, index) => (
                         <CertificateItem
                           key={cert.id}
@@ -705,6 +751,7 @@ export default function ManageInstructorApplicationsPage() {
                           StatusBadge={StatusBadge}
                           RescanButton={RescanButton}
                           FilePreview={FilePreview}
+                          updatedAt={detail.updated}
                         />
                       ))}
                     </div>
@@ -863,12 +910,105 @@ function StatusTabs({
   );
 }
 
+function AiDataPanel({ data }: { data?: unknown }) {
+  const parsed = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
+  const entries = parsed ? Object.entries(parsed) : [];
+  const previewEntries = entries
+    .filter(([, value]) => value !== null && value !== undefined && typeof value !== "object")
+    .slice(0, 4);
+
+  return (
+    <div className="mt-4 overflow-hidden rounded-xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-orange-50 shadow-sm dark:border-sky-500/20 dark:from-sky-500/10 dark:via-slate-950 dark:to-orange-500/10">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sky-100/80 px-4 py-3 dark:border-sky-500/20">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold text-slate-950 dark:text-white">Dữ liệu AI trích xuất</h4>
+            <p className="text-xs text-muted-foreground">
+              {entries.length > 0 ? `${entries.length} trường dữ liệu được nhận diện` : "Chưa có dữ liệu AI"}
+            </p>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-white px-2.5 py-1 text-xs font-medium text-sky-700 dark:border-sky-500/30 dark:bg-slate-900 dark:text-sky-300">
+          <Braces className="h-3.5 w-3.5" />
+          JSON
+        </span>
+      </div>
+
+      {entries.length > 0 ? (
+        <div className="space-y-3 p-4">
+          {previewEntries.length > 0 && (
+            <div className="grid gap-2 md:grid-cols-2">
+              {previewEntries.map(([key, value]) => (
+                <div key={key} className="rounded-lg border bg-white/80 px-3 py-2 dark:bg-slate-900/80">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{formatAiKey(key)}</p>
+                  <p className="mt-1 line-clamp-2 text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {String(value)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <details className="group overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs font-semibold text-slate-200">
+              <span className="inline-flex items-center gap-2">
+                <Braces className="h-3.5 w-3.5 text-orange-300" />
+                Xem JSON đầy đủ
+              </span>
+              <span className="text-slate-400 transition group-open:rotate-90">›</span>
+            </summary>
+            <pre className="max-h-80 overflow-auto border-t border-slate-800 p-4 text-xs leading-5 text-slate-100">
+              <code dangerouslySetInnerHTML={{ __html: highlightJson(JSON.stringify(data, null, 2)) }} />
+            </pre>
+          </details>
+        </div>
+      ) : (
+        <div className="p-4">
+          <div className="rounded-lg border border-dashed bg-white/70 px-4 py-6 text-center text-sm text-muted-foreground dark:bg-slate-900/60">
+            AI chưa trả dữ liệu trích xuất cho tài liệu này.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatAiKey(key: string) {
+  return key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function highlightJson(json: string) {
+  const escaped = json
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  return escaped.replace(
+    /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(?=\s*:)|"(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"|true|false|null|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+    (match) => {
+      let color = "text-orange-300";
+      if (/^"/.test(match)) color = /:$/.test(match) ? "text-sky-300" : "text-emerald-300";
+      if (/true|false/.test(match)) color = "text-purple-300";
+      if (/null/.test(match)) color = "text-slate-400";
+      if (/^-?\d/.test(match)) color = "text-amber-300";
+      return `<span class="${color}">${match}</span>`;
+    }
+  );
+}
+
 function CertificateItem({
   cert,
   index,
   StatusBadge,
   RescanButton,
   FilePreview,
+  updatedAt,
 }: {
   cert: InstructorApplicationCertificate;
   index: number;
@@ -877,8 +1017,10 @@ function CertificateItem({
     kind: "cv" | "cccdFront" | "cccdBack" | "cert";
     certId?: string;
     status?: string | null;
+    updatedAt?: string | null;
   }) => React.ReactNode;
   FilePreview: (props: { url?: string | null; label: string }) => React.ReactNode;
+  updatedAt?: string | null;
 }) {
   const certData = safeParse(cert.aiData);
 
@@ -888,21 +1030,12 @@ function CertificateItem({
         <span className="text-xs font-medium text-muted-foreground">Chứng chỉ #{index + 1}</span>
         <div className="flex items-center gap-2">
           <StatusBadge value={cert.aiStatus} />
-          <RescanButton kind="cert" certId={cert.id} status={cert.aiStatus} />
+          <RescanButton kind="cert" certId={cert.id} status={cert.aiStatus} updatedAt={updatedAt} />
         </div>
       </div>
       <FilePreview url={cert.fileUrl} label={`Chứng chỉ ${index + 1}`} />
       {cert.aiError && <p className="mt-2 text-xs text-rose-600">{cert.aiError}</p>}
-      {certData ? (
-        <details className="mt-3">
-          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
-            Dữ liệu AI
-          </summary>
-          <pre className="mt-2 max-h-52 overflow-auto rounded-lg bg-slate-100 p-3 text-xs dark:bg-slate-900">
-            {JSON.stringify(certData, null, 2)}
-          </pre>
-        </details>
-      ) : null}
+      <AiDataPanel data={certData} />
     </div>
   );
 }

@@ -335,11 +335,16 @@ export const AssetItem = z.object({
 
 export type AssetItemType = z.TypeOf<typeof AssetItem>;
 
+// Accept an absolute URL (http/https) or an app-relative path (e.g. "/api/proxy/files/..."),
+// since uploaded assets are stored as relative paths, not full URLs.
+const isUrlOrPath = (value: string) =>
+  /^https?:\/\//i.test(value) || value.startsWith("/");
+
 // Create Asset Body
 export const CreateAssetBody = z.object({
   assetType: AssetType,
   title: z.string().min(1, "Title is required").max(255),
-  externalUrl: z.string().url("Invalid URL"),
+  externalUrl: z.string().min(1, "Invalid URL").refine(isUrlOrPath, "Invalid URL"),
   orderIndex: z.number().min(1, "Order must be at least 1").optional(),
 });
 
@@ -349,7 +354,7 @@ export type CreateAssetBodyType = z.TypeOf<typeof CreateAssetBody>;
 export const UpdateAssetBody = z.object({
   assetType: AssetType.optional(),
   title: z.string().min(1).max(255).optional(),
-  externalUrl: z.string().url().optional(),
+  externalUrl: z.string().refine(isUrlOrPath, "Invalid URL").optional(),
   orderIndex: z.number().min(1).optional(),
 });
 
