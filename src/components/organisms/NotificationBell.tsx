@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, CheckCheck, ExternalLink } from "lucide-react";
+import { Bell, CheckCheck, ExternalLink, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { vi, enUS } from "date-fns/locale";
@@ -24,9 +24,11 @@ import {
   useGetUnreadCount,
   useMarkAsReadMutation,
   useMarkAllAsReadMutation,
+  useDeleteAllNotificationsMutation,
 } from "@/queries/useNotification";
 import { NotificationType } from "@/schemaValidations/notification.schema";
 import { cn } from "@/lib/utils";
+import { NotificationAvatar } from "@/components/organisms/NotificationAvatar";
 
 interface NotificationBellProps {
   className?: string;
@@ -51,6 +53,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
   // Mutations
   const markAsReadMutation = useMarkAsReadMutation();
   const markAllAsReadMutation = useMarkAllAsReadMutation();
+  const deleteAllNotificationsMutation = useDeleteAllNotificationsMutation();
 
   // Format time ago
   const formatTimeAgo = (dateString: string) => {
@@ -61,48 +64,6 @@ export function NotificationBell({ className }: NotificationBellProps) {
       });
     } catch {
       return dateString;
-    }
-  };
-
-  // Get notification icon/color based on type
-  const getNotificationStyle = (type: string) => {
-    switch (type) {
-      case "ACCOUNT":
-        return {
-          bgColor: "bg-primary/10",
-          textColor: "text-primary",
-          icon: "👤",
-        };
-      case "BLOG":
-        return {
-          bgColor: "bg-green-100 dark:bg-green-900/30",
-          textColor: "text-green-600 dark:text-green-400",
-          icon: "📝",
-        };
-      case "PROGRESS":
-        return {
-          bgColor: "bg-primary/10",
-          textColor: "text-primary",
-          icon: "📊",
-        };
-      case "COMMENT":
-        return {
-          bgColor: "bg-yellow-100 dark:bg-yellow-900/30",
-          textColor: "text-yellow-600 dark:text-yellow-400",
-          icon: "💬",
-        };
-      case "SYSTEM":
-        return {
-          bgColor: "bg-muted",
-          textColor: "text-muted-foreground",
-          icon: "⚙️",
-        };
-      default:
-        return {
-          bgColor: "bg-muted",
-          textColor: "text-muted-foreground",
-          icon: "🔔",
-        };
     }
   };
 
@@ -129,6 +90,17 @@ export function NotificationBell({ className }: NotificationBellProps) {
   // Handle mark all as read
   const handleMarkAllAsRead = () => {
     markAllAsReadMutation.mutate();
+  };
+
+  // Handle delete all (with confirmation)
+  const handleDeleteAll = () => {
+    const ok = window.confirm(
+      t("deleteAllConfirmDesc") ||
+        "This will remove all your notifications. You can't undo this."
+    );
+    if (ok) {
+      deleteAllNotificationsMutation.mutate();
+    }
   };
 
   // Handle view all
@@ -166,22 +138,36 @@ export function NotificationBell({ className }: NotificationBellProps) {
         forceMount
       >
         {/* Header */}
-        <DropdownMenuLabel className="flex items-center justify-between">
+        <DropdownMenuLabel className="flex items-center justify-between gap-1">
           <span className="font-semibold">
             {t("notifications") || "Notifications"}
           </span>
-          {totalUnread > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
-              onClick={handleMarkAllAsRead}
-              disabled={markAllAsReadMutation.isPending}
-            >
-              <CheckCheck className="h-3 w-3 mr-1" />
-              {t("markAllRead") || "Mark all read"}
-            </Button>
-          )}
+          <div className="flex items-center gap-0.5">
+            {totalUnread > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={handleMarkAllAsRead}
+                disabled={markAllAsReadMutation.isPending}
+              >
+                <CheckCheck className="h-3 w-3 mr-1" />
+                {t("markAllRead") || "Mark all read"}
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
+                title={t("deleteAll") || "Delete all"}
+                onClick={handleDeleteAll}
+                disabled={deleteAllNotificationsMutation.isPending}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         </DropdownMenuLabel>
 
         <DropdownMenuSeparator />
@@ -192,9 +178,9 @@ export function NotificationBell({ className }: NotificationBellProps) {
             // Loading skeleton
             <div className="p-2 space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="flex gap-3 p-2">
-                  <Skeleton className="h-10 w-10 rounded-full" />
-                  <div className="flex-1 space-y-2">
+                <div key={i} className="flex gap-3 p-2.5">
+                  <Skeleton className="h-11 w-11 rounded-xl" />
+                  <div className="flex-1 space-y-2 pt-0.5">
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-3 w-1/2" />
                   </div>
@@ -211,50 +197,44 @@ export function NotificationBell({ className }: NotificationBellProps) {
             </div>
           ) : (
             // Notifications list
-            <div className="p-1">
-              {notifications.map((notification) => {
-                const style = getNotificationStyle(notification.type);
-                return (
-                  <DropdownMenuItem
-                    key={notification.id}
-                    className={cn(
-                      "flex items-start gap-3 p-3 cursor-pointer rounded-lg mb-1",
-                      !notification.read && "bg-accent/50"
-                    )}
-                    onClick={() => handleNotificationClick(notification)}
-                  >
-                    {/* Icon */}
-                    <div
+            <div className="p-1.5 space-y-1">
+              {notifications.map((notification) => (
+                <DropdownMenuItem
+                  key={notification.id}
+                  className={cn(
+                    "group flex items-start gap-3 rounded-xl p-2.5 cursor-pointer transition-colors",
+                    "focus:bg-accent data-[highlighted]:bg-accent",
+                    !notification.read && "bg-primary/[0.06]"
+                  )}
+                  onClick={() => handleNotificationClick(notification)}
+                >
+                  {/* Avatar: course thumbnail or type icon */}
+                  <NotificationAvatar notification={notification} size={44} />
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <p
                       className={cn(
-                        "flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-lg",
-                        style.bgColor
+                        "text-sm line-clamp-1",
+                        notification.read ? "font-medium" : "font-semibold"
                       )}
                     >
-                      {style.icon}
-                    </div>
+                      {notification.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
+                      {notification.message}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground/80 mt-1">
+                      {formatTimeAgo(notification.createdAt)}
+                    </p>
+                  </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium line-clamp-1">
-                        {notification.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                        {notification.message}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatTimeAgo(notification.createdAt)}
-                      </p>
-                    </div>
-
-                    {/* Unread indicator */}
-                    {!notification.read && (
-                      <div className="flex-shrink-0">
-                        <div className="h-2 w-2 rounded-full bg-primary" />
-                      </div>
-                    )}
-                  </DropdownMenuItem>
-                );
-              })}
+                  {/* Unread indicator */}
+                  {!notification.read && (
+                    <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
+                  )}
+                </DropdownMenuItem>
+              ))}
             </div>
           )}
         </ScrollArea>

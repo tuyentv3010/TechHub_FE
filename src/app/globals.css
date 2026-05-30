@@ -876,13 +876,13 @@
   .manage-shell .manage-finance-table {
     overflow-x: auto;
     border-radius: 1rem;
-    border: 1px solid rgba(191, 219, 254, 0.55);
-    background: rgba(255, 255, 255, 0.74);
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card) / 0.9);
   }
 
   .dark .manage-shell .manage-finance-table {
-    border-color: rgba(148, 163, 184, 0.16);
-    background: rgba(255, 255, 255, 0.04);
+    border-color: hsl(var(--border));
+    background: hsl(var(--card) / 0.9);
   }
 
   .manage-shell .manage-finance-table table {
@@ -890,7 +890,7 @@
   }
 
   .manage-shell .manage-finance-table thead {
-    background: rgba(241, 245, 249, 0.92);
+    background: hsl(var(--muted) / 0.8);
   }
 
   .manage-shell .manage-finance-table th,
@@ -899,43 +899,39 @@
   }
 
   .dark .manage-shell .manage-finance-table thead {
-    background: rgba(255, 255, 255, 0.05);
+    background: hsl(var(--muted) / 0.8);
   }
 
   .manage-shell .manage-finance-table tbody tr:hover {
-    background: rgba(219, 234, 254, 0.42);
+    background: hsl(var(--accent) / 0.45);
   }
 
   .dark .manage-shell .manage-finance-table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: hsl(var(--accent) / 0.3);
   }
 
   .manage-shell .manage-finance-input {
     height: 2.75rem;
-    border: 1px solid rgba(191, 219, 254, 0.62);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9));
+    border: 1px solid hsl(var(--input));
+    background: hsl(var(--card));
     border-radius: 0.95rem;
-    color: #0f172a;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.72),
-      0 10px 30px -24px rgba(37, 99, 235, 0.34);
+    color: hsl(var(--foreground));
+    box-shadow: 0 10px 30px -24px hsl(var(--primary) / 0.34);
   }
 
   .manage-shell .manage-finance-input::placeholder {
-    color: #475569;
+    color: hsl(var(--muted-foreground));
   }
 
   .dark .manage-shell .manage-finance-input {
-    border-color: rgba(148, 163, 184, 0.18);
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.84));
-    color: #e2e8f0;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      0 16px 36px -26px rgba(2, 6, 23, 0.6);
+    border-color: hsl(var(--input));
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    box-shadow: 0 16px 36px -26px hsl(var(--background) / 0.6);
   }
 
   .dark .manage-shell .manage-finance-input::placeholder {
-    color: rgba(226, 232, 240, 0.38);
+    color: hsl(var(--muted-foreground));
   }
 
   .manage-shell .manage-finance-primary {

@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,12 +21,26 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   useGetNotifications,
   useMarkAsReadMutation,
   useMarkAllAsReadMutation,
+  useDeleteNotificationMutation,
+  useDeleteAllNotificationsMutation,
 } from "@/queries/useNotification";
 import { NotificationType } from "@/schemaValidations/notification.schema";
 import { cn } from "@/lib/utils";
+import { NotificationAvatar } from "@/components/organisms/NotificationAvatar";
 
 export default function NotificationsPage() {
   const t = useTranslations("Notification");
@@ -55,6 +70,8 @@ export default function NotificationsPage() {
   // Mutations
   const markAsReadMutation = useMarkAsReadMutation();
   const markAllAsReadMutation = useMarkAllAsReadMutation();
+  const deleteNotificationMutation = useDeleteNotificationMutation();
+  const deleteAllNotificationsMutation = useDeleteAllNotificationsMutation();
 
   // Format time
   const formatTimeAgo = (dateString: string) => {
@@ -78,51 +95,22 @@ export default function NotificationsPage() {
     }
   };
 
-  // Get notification style based on type
-  const getNotificationStyle = (type: string) => {
+  // Human-readable label per notification type (color/icon come from the
+  // shared getNotificationStyle so they stay consistent with the dropdown).
+  const getTypeLabel = (type: string) => {
     switch (type) {
       case "ACCOUNT":
-        return {
-          bgColor: "bg-blue-100 dark:bg-blue-900/30",
-          textColor: "text-blue-600 dark:text-blue-400",
-          icon: "👤",
-          label: t("typeAccount") || "Account",
-        };
+        return t("typeAccount") || "Account";
       case "BLOG":
-        return {
-          bgColor: "bg-green-100 dark:bg-green-900/30",
-          textColor: "text-green-600 dark:text-green-400",
-          icon: "📝",
-          label: t("typeBlog") || "Blog",
-        };
+        return t("typeBlog") || "Blog";
       case "PROGRESS":
-        return {
-          bgColor: "bg-primary/10",
-          textColor: "text-primary",
-          icon: "📊",
-          label: t("typeProgress") || "Progress",
-        };
+        return t("typeProgress") || "Progress";
       case "COMMENT":
-        return {
-          bgColor: "bg-yellow-100 dark:bg-yellow-900/30",
-          textColor: "text-yellow-600 dark:text-yellow-400",
-          icon: "💬",
-          label: t("typeComment") || "Comment",
-        };
+        return t("typeComment") || "Comment";
       case "SYSTEM":
-        return {
-          bgColor: "bg-gray-100 dark:bg-gray-800",
-          textColor: "text-gray-600 dark:text-gray-400",
-          icon: "⚙️",
-          label: t("typeSystem") || "System",
-        };
+        return t("typeSystem") || "System";
       default:
-        return {
-          bgColor: "bg-gray-100 dark:bg-gray-800",
-          textColor: "text-gray-600 dark:text-gray-400",
-          icon: "🔔",
-          label: t("typeOther") || "Other",
-        };
+        return t("typeOther") || "Other";
     }
   };
 
@@ -149,6 +137,12 @@ export default function NotificationsPage() {
     markAllAsReadMutation.mutate();
   };
 
+  // Handle soft-delete a notification (does not navigate)
+  const handleDelete = (e: React.MouseEvent, notificationId: string) => {
+    e.stopPropagation();
+    deleteNotificationMutation.mutate(notificationId);
+  };
+
   // Handle pagination
   const goToPage = (page: number) => {
     setCurrentPage(page);
@@ -169,20 +163,66 @@ export default function NotificationsPage() {
           </p>
         </div>
 
-        {/* Mark all as read button */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleMarkAllAsRead}
-          disabled={markAllAsReadMutation.isPending || notifications.length === 0}
-        >
-          {markAllAsReadMutation.isPending ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <CheckCheck className="h-4 w-4 mr-2" />
-          )}
-          {t("markAllRead") || "Mark all as read"}
-        </Button>
+        {/* Header actions */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleMarkAllAsRead}
+            disabled={markAllAsReadMutation.isPending || notifications.length === 0}
+          >
+            {markAllAsReadMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <CheckCheck className="h-4 w-4 mr-2" />
+            )}
+            {t("markAllRead") || "Mark all as read"}
+          </Button>
+
+          {/* Delete all (with confirmation) */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                disabled={
+                  deleteAllNotificationsMutation.isPending ||
+                  notifications.length === 0
+                }
+              >
+                {deleteAllNotificationsMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                {t("deleteAll") || "Delete all"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t("deleteAllConfirmTitle") || "Delete all notifications?"}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t("deleteAllConfirmDesc") ||
+                    "This will remove all your notifications. You can't undo this."}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>
+                  {t("cancel") || "Cancel"}
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => deleteAllNotificationsMutation.mutate()}
+                >
+                  {t("deleteAll") || "Delete all"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
 
       {/* Filter Tabs */}
@@ -240,25 +280,22 @@ export default function NotificationsPage() {
             // Notifications list
             <div className="divide-y">
               {notifications.map((notification: NotificationType) => {
-                const style = getNotificationStyle(notification.type);
                 return (
                   <div
                     key={notification.id}
                     className={cn(
-                      "flex gap-4 p-4 cursor-pointer transition-colors hover:bg-accent/50",
-                      !notification.read && "bg-accent/30"
+                      "relative flex gap-4 p-4 cursor-pointer transition-colors hover:bg-accent/50",
+                      !notification.read && "bg-primary/[0.05]"
                     )}
                     onClick={() => handleNotificationClick(notification)}
                   >
-                    {/* Icon */}
-                    <div
-                      className={cn(
-                        "flex-shrink-0 h-12 w-12 rounded-full flex items-center justify-center text-xl",
-                        style.bgColor
-                      )}
-                    >
-                      {style.icon}
-                    </div>
+                    {/* Unread accent bar */}
+                    {!notification.read && (
+                      <span className="absolute left-0 top-0 h-full w-1 bg-primary" />
+                    )}
+
+                    {/* Avatar: course thumbnail or type icon */}
+                    <NotificationAvatar notification={notification} size={52} />
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
@@ -266,7 +303,7 @@ export default function NotificationsPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <Badge variant="secondary" className="text-xs">
-                              {style.label}
+                              {getTypeLabel(notification.type)}
                             </Badge>
                             {!notification.read && (
                               <Badge variant="default" className="text-xs">
@@ -282,21 +319,44 @@ export default function NotificationsPage() {
                           </p>
                         </div>
 
-                        {/* Mark as read button */}
-                        {!notification.read && (
+                        {/* Row actions: mark as read + delete */}
+                        <div className="flex flex-shrink-0 items-center gap-1">
+                          {!notification.read && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title={t("markRead") || "Mark as read"}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markAsReadMutation.mutate(notification.id);
+                              }}
+                              disabled={markAsReadMutation.isPending}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 flex-shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              markAsReadMutation.mutate(notification.id);
-                            }}
-                            disabled={markAsReadMutation.isPending}
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            title={t("delete") || "Delete"}
+                            onClick={(e) => handleDelete(e, notification.id)}
+                            disabled={
+                              deleteNotificationMutation.isPending &&
+                              deleteNotificationMutation.variables ===
+                                notification.id
+                            }
                           >
-                            <Check className="h-4 w-4" />
+                            {deleteNotificationMutation.isPending &&
+                            deleteNotificationMutation.variables ===
+                              notification.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </Button>
-                        )}
+                        </div>
                       </div>
 
                       {/* Time */}

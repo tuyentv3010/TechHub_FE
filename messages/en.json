@@ -2559,7 +2559,13 @@
     "typeProgress": "Progress",
     "typeComment": "Comment",
     "typeSystem": "System",
-    "typeOther": "Other"
+    "typeOther": "Other",
+    "markRead": "Mark as read",
+    "delete": "Delete",
+    "deleteAll": "Delete all",
+    "deleteAllConfirmTitle": "Delete all notifications?",
+    "deleteAllConfirmDesc": "This will remove all your notifications. You can't undo this.",
+    "cancel": "Cancel"
   },
   "ContactPage": {
     "heroTitle": "Get In Touch",

@@ -28,7 +28,7 @@ export function RevenueLineChart({ revenueByDate }: RevenueLineChartProps) {
     <div className="h-[320px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={revenueByDate} margin={{ top: 10, right: 8, left: 8, bottom: 4 }}>
-          <CartesianGrid stroke="rgba(173, 198, 255, 0.08)" vertical={false} />
+          <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.55} vertical={false} />
           <XAxis
             dataKey="date"
             tickMargin={10}
@@ -52,15 +52,15 @@ export function RevenueLineChart({ revenueByDate }: RevenueLineChartProps) {
             cursor={{ stroke: "rgba(148,163,184,0.4)", strokeDasharray: "5 5" }}
             contentStyle={{
               borderRadius: 12,
-              border: "1px solid rgba(173,198,255,0.12)",
-              background: "rgba(10,14,26,0.96)",
-              color: "#dfe2f3",
+              border: "1px solid hsl(var(--border))",
+              background: "hsl(var(--popover))",
+              color: "hsl(var(--popover-foreground))",
             }}
             formatter={(value: number, name: string) => [formatCurrency(Number(value)), name]}
           />
-          <Line type="monotone" dataKey="gross" name="Gross" stroke="#adc6ff" strokeWidth={3} dot={false} />
-          <Line type="monotone" dataKey="instructor" name="Instructor" stroke="#4edea3" strokeWidth={2.2} dot={false} />
-          <Line type="monotone" dataKey="admin" name="System" stroke="#ffb95f" strokeWidth={2.2} dot={false} />
+          <Line type="monotone" dataKey="gross" name="Gross" stroke="hsl(var(--primary))" strokeWidth={3} dot={false} />
+          <Line type="monotone" dataKey="instructor" name="Instructor" stroke="hsl(var(--accent-foreground))" strokeWidth={2.2} dot={false} />
+          <Line type="monotone" dataKey="admin" name="System" stroke="hsl(var(--secondary-foreground))" strokeWidth={2.2} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>

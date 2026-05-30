@@ -5,6 +5,7 @@ import {
   UpdateCourseBodyType,
 } from "@/schemaValidations/course.schema";
 import { CoursesResponse, transformApiCourse } from "@/types/course";
+import { normalizePublicMediaUrl } from "@/lib/file-media";
 
 // Get instructor's own courses for Manage page (all statuses including DRAFT)
 export const useGetMyCourses = (params?: {
@@ -97,6 +98,28 @@ export const useGetCourseById = (id: string) => {
     queryFn: () => courseApiRequest.getCourseById(id),
     enabled: !!id,
   });
+};
+
+// Lightweight hook to resolve a course thumbnail URL by courseId.
+// Used by notifications to show the related course's image. Shares the
+// React Query cache so multiple notifications for the same course only
+// trigger one fetch, and is cached generously since thumbnails rarely change.
+export const useCourseThumbnail = (courseId?: string | null) => {
+  const { data, isLoading } = useQuery({
+    queryKey: ["course", courseId],
+    queryFn: () => courseApiRequest.getCourseById(courseId as string),
+    enabled: !!courseId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: false,
+  });
+
+  const thumbnail = data?.payload?.data?.summary?.thumbnail;
+  const thumbnailUrl = normalizePublicMediaUrl(
+    thumbnail?.secureUrl || thumbnail?.url
+  );
+
+  return { thumbnailUrl, isLoading };
 };
 
 // Create course mutation

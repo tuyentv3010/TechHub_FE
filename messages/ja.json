@@ -2339,7 +2339,13 @@
     "typeProgress": "進捗",
     "typeComment": "コメント",
     "typeSystem": "システム",
-    "typeOther": "その他"
+    "typeOther": "その他",
+    "markRead": "既読にする",
+    "delete": "削除",
+    "deleteAll": "すべて削除",
+    "deleteAllConfirmTitle": "すべての通知を削除しますか？",
+    "deleteAllConfirmDesc": "すべての通知が削除されます。この操作は元に戻せません。",
+    "cancel": "キャンセル"
   },
   "ContactPage": {
     "heroTitle": "お問い合わせ",

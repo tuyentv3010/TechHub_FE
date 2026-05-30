@@ -132,6 +132,9 @@ const AssetTypeIcon = ({ type }: { type: string }) => {
   return icons[type as keyof typeof icons] || <Paperclip className="h-3 w-3" />;
 };
 
+const isCorrectChoice = (choice: any) =>
+  choice?.isCorrect === true || choice?.correct === true;
+
 // Curriculum Studio content-type chip (Video=red, Text=blue, Quiz=orange, Coding=green)
 const TypeChip = ({ type }: { type: string }) => {
   const map: Record<string, { cls: string; Icon: any }> = {
@@ -265,11 +268,11 @@ const ExerciseDisplay = ({
                     {exercise.options.choices.map((choice: any, idx: number) => (
                       <div
                         key={choice.id || idx}
-                        className={`opt${choice.isCorrect ? " is-correct" : ""}`}
+                        className={`opt${isCorrectChoice(choice) ? " is-correct" : ""}`}
                       >
                         <span className="opt-key">{String.fromCharCode(65 + idx)}</span>
                         <span style={{ flex: 1 }}>{choice.text}</span>
-                        {choice.isCorrect && (
+                        {isCorrectChoice(choice) && (
                           <span className="opt-correct-mark">
                             <Check />
                           </span>
@@ -2804,8 +2807,8 @@ function AssetDialog({
   mode: 'create' | 'edit';
   data?: any;
   onClose: () => void;
-  onCreate: (data: CreateAssetBodyType) => void;
-  onUpdate: (data: UpdateAssetBodyType) => void;
+  onCreate: (data: CreateAssetBodyType) => Promise<void>;
+  onUpdate: (data: UpdateAssetBodyType) => Promise<void>;
 }) {
   const t = useTranslations("ManageCourse");
   const { data: profileData } = useAccountProfile();
@@ -2942,7 +2945,7 @@ function AssetDialog({
     });
   };
 
-  const onSubmit = (formData: CreateAssetBodyType | UpdateAssetBodyType) => {
+  const onSubmit = async (formData: CreateAssetBodyType | UpdateAssetBodyType) => {
     const normalizedFormData = {
       ...formData,
       externalUrl:
@@ -2951,9 +2954,9 @@ function AssetDialog({
     };
 
     if (mode === 'create') {
-      onCreate(normalizedFormData as CreateAssetBodyType);
+      await onCreate(normalizedFormData as CreateAssetBodyType);
     } else {
-      onUpdate(normalizedFormData as UpdateAssetBodyType);
+      await onUpdate(normalizedFormData as UpdateAssetBodyType);
     }
   };
 
@@ -3113,7 +3116,7 @@ function AssetDialog({
             <Button type="button" variant="outline" onClick={onClose}>
               {t("Cancel")}
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || isUploading}>
               {isSubmitting ? t(mode === 'create' ? "Creating" : "Updating") : t(mode === 'create' ? "Create" : "Update")}
             </Button>
           </DialogFooter>

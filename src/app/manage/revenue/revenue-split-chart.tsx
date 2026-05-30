@@ -37,12 +37,12 @@ export function RevenueSplitChart({
       : 0;
   const chartData = hasPolicyRates
     ? [
-        { name: "Instructor", value: instructorPercent, fill: "#adc6ff" },
-        { name: "System", value: systemPercent, fill: "#ffb95f" },
+        { name: "Instructor", value: instructorPercent, fill: "hsl(var(--primary))" },
+        { name: "System", value: systemPercent, fill: "hsl(var(--accent-foreground))" },
       ]
     : [
-        { name: "Instructor", value: instructor, fill: "#adc6ff" },
-        { name: "System", value: admin, fill: "#ffb95f" },
+        { name: "Instructor", value: instructor, fill: "hsl(var(--primary))" },
+        { name: "System", value: admin, fill: "hsl(var(--accent-foreground))" },
       ];
 
   return (
@@ -72,7 +72,7 @@ export function RevenueSplitChart({
               nameKey="name"
               innerRadius={62}
               outerRadius={84}
-              stroke="rgba(27,31,44,1)"
+              stroke="hsl(var(--card))"
               strokeWidth={4}
               paddingAngle={1}
             >
@@ -83,9 +83,9 @@ export function RevenueSplitChart({
             <Tooltip
               contentStyle={{
                 borderRadius: 12,
-                border: "1px solid rgba(173,198,255,0.12)",
-                background: "rgba(10,14,26,0.96)",
-                color: "#dfe2f3",
+                border: "1px solid hsl(var(--border))",
+                background: "hsl(var(--popover))",
+                color: "hsl(var(--popover-foreground))",
               }}
               formatter={(value: number, name: string) =>
                 hasPolicyRates ? [`${Number(value)}%`, name] : [formatCurrency(Number(value)), name]
@@ -104,14 +104,14 @@ export function RevenueSplitChart({
       <div className="grid gap-2">
         <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2 text-sm text-foreground">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#adc6ff] shadow-[0_0_12px_rgba(173,198,255,0.6)]" />
+            <span className="h-2 w-2 rounded-full bg-primary" />
             Instructor ({instructorPercent}%)
           </span>
           <span>{formatCurrency(instructor)}</span>
         </div>
         <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2 text-sm text-foreground">
           <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#ffb95f] shadow-[0_0_12px_rgba(255,185,95,0.5)]" />
+            <span className="h-2 w-2 rounded-full bg-accent-foreground" />
             System ({systemPercent}%)
           </span>
           <span>{formatCurrency(admin)}</span>

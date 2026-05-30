@@ -264,7 +264,10 @@ export default function RevenueDashboardPage() {
     isFetching: isActivePolicyFetching,
     refetch: refetchActivePolicy,
   } = useActiveRevenuePolicy(dashboardRole, {
-    instructorId: dashboardRole === "ADMIN" ? adminInstructorId || undefined : undefined,
+    instructorId:
+      dashboardRole === "ADMIN"
+        ? adminInstructorId || undefined
+        : currentUserId || undefined,
   });
   const {
     data: policyRows = [],
@@ -838,8 +841,8 @@ export default function RevenueDashboardPage() {
           </Card>
         </section>
       )}
-      <div className="grid gap-6 xl:grid-cols-5">
-        <Card className="manage-finance-surface xl:col-span-3 shadow-sm">
+      <div className="space-y-6">
+        <Card className="manage-finance-surface shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
               <TrendingUp className="h-4 w-4" /> {t("RevenueByDayTitle")}
@@ -928,7 +931,16 @@ export default function RevenueDashboardPage() {
                 transactions.map((row: NormalizedTransaction, index) => (
                   <div
                     key={`mobile-${row.id || row.transactionId}`}
-                    className="space-y-3 rounded-2xl border border-blue-100 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/40"
+                    role="button"
+                    tabIndex={0}
+                    className="cursor-pointer space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:bg-accent/40"
+                    onClick={() => setSelectedTransactionId(row.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedTransactionId(row.id);
+                      }
+                    }}
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
@@ -982,7 +994,10 @@ export default function RevenueDashboardPage() {
                       size="sm"
                       variant="ghost"
                       className="manage-finance-secondary w-full justify-center"
-                      onClick={() => setSelectedTransactionId(row.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedTransactionId(row.id);
+                      }}
                     >
                       {t("View")}
                       <ArrowUpRight className="ml-2 h-3.5 w-3.5" />
@@ -1024,7 +1039,18 @@ export default function RevenueDashboardPage() {
 
                   {!isHistoryLoading &&
                     transactions.map((row: NormalizedTransaction, index) => (
-                      <tr key={row.id || row.transactionId} className="hover:bg-slate-100 dark:hover:bg-slate-900/70">
+                      <tr
+                        key={row.id || row.transactionId}
+                        tabIndex={0}
+                        className="cursor-pointer hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                        onClick={() => setSelectedTransactionId(row.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedTransactionId(row.id);
+                          }
+                        }}
+                      >
                         <td className="px-4 py-3 font-medium">#{transactionPage * transactionPageSize + index + 1}</td>
                         <td className="px-4 py-3">{row.userLabel}</td>
                         <td className="px-4 py-3">{row.courseLabel}</td>
@@ -1056,7 +1082,10 @@ export default function RevenueDashboardPage() {
                             size="sm"
                             variant="ghost"
                             className="h-8 gap-1 text-slate-700 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
-                            onClick={() => setSelectedTransactionId(row.id)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedTransactionId(row.id);
+                            }}
                           >
                             {t("View")}
                             <ArrowUpRight className="h-3.5 w-3.5" />

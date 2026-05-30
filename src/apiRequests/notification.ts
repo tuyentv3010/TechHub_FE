@@ -69,6 +69,34 @@ const notificationApiRequest = {
     }
   },
 
+  // Soft-delete a single notification
+  deleteNotification: async (notificationId: string) => {
+    const url = `/app/api/proxy/notifications/${notificationId}`;
+    console.log("🔔 [NOTIFICATION API] deleteNotification - URL:", url);
+    try {
+      const response = await http.delete<NotificationResType>(url);
+      console.log("🔔 [NOTIFICATION API] deleteNotification - Response:", response);
+      return response;
+    } catch (error) {
+      console.error("🔔 [NOTIFICATION API] deleteNotification - Error:", error);
+      throw error;
+    }
+  },
+
+  // Soft-delete all notifications for the current user
+  deleteAllNotifications: async () => {
+    const url = `/app/api/proxy/notifications`;
+    console.log("🔔 [NOTIFICATION API] deleteAllNotifications - URL:", url);
+    try {
+      const response = await http.delete<void>(url);
+      console.log("🔔 [NOTIFICATION API] deleteAllNotifications - Response:", response);
+      return response;
+    } catch (error) {
+      console.error("🔔 [NOTIFICATION API] deleteAllNotifications - Error:", error);
+      throw error;
+    }
+  },
+
   // Mark all notifications as read
   markAllAsRead: async () => {
     const url = `/app/api/proxy/notifications/read`;

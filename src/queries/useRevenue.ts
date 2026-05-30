@@ -46,7 +46,7 @@ export const useActiveRevenuePolicy = (
       const response = await revenueApiRequest.getActiveRevenuePolicy(params);
       return response.payload?.data;
     },
-    enabled: role === "ADMIN",
+    enabled: !!role,
   });
 };
 

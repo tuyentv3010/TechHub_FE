@@ -99,3 +99,33 @@ export const useMarkAllAsReadMutation = () => {
     },
   });
 };
+
+// Soft-delete a single notification
+export const useDeleteNotificationMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (notificationId: string) =>
+      notificationApiRequest.deleteNotification(notificationId),
+    onSuccess: () => {
+      // Invalidate all notification queries to refetch (list + unread count)
+      queryClient.invalidateQueries({
+        queryKey: NOTIFICATION_QUERY_KEYS.all,
+      });
+    },
+  });
+};
+
+// Soft-delete all notifications for the current user
+export const useDeleteAllNotificationsMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => notificationApiRequest.deleteAllNotifications(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: NOTIFICATION_QUERY_KEYS.all,
+      });
+    },
+  });
+};

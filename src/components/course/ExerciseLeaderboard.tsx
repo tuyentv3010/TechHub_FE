@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Share2, RotateCcw, CheckCircle } from "lucide-react";
+import { Share2, RotateCcw, CheckCircle, RefreshCcw } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import envConfig from "@/config";
@@ -292,28 +292,40 @@ export default function ExerciseLeaderboard({
 }: ExerciseLeaderboardProps) {
   const [fetched, setFetched] = useState<LeaderboardPlayer[] | null>(null);
   const [loading, setLoading] = useState<boolean>(!!(courseId && lessonId) && !playersProp);
+  const [fetchError, setFetchError] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (playersProp || !courseId || !lessonId) return;
     let cancelled = false;
+    const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
+
     (async () => {
       try {
         setLoading(true);
-        const res: any = await courseApiRequest.getLessonLeaderboard(courseId, lessonId, 10);
-        const rows = res?.payload?.data || res?.payload || [];
-        if (cancelled) return;
-        const mapped: LeaderboardPlayer[] = (Array.isArray(rows) ? rows : []).map((r: any, i: number) => ({
-          id: r.userId || String(i),
-          rank: r.rank ?? i + 1,
-          name: r.username || "Người dùng",
-          avatar: r.avatar || `/exercise/exercise-${(i % 6) + 1}.png`,
-          score: Math.round(r.score || 0),
-          totalQuestions,
-        }));
-        setFetched(mapped);
+        setFetchError(false);
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+          const res: any = await courseApiRequest.getLessonLeaderboard(courseId, lessonId, 10);
+          const rows = res?.payload?.data || res?.payload || [];
+          if (cancelled) return;
+          const mapped: LeaderboardPlayer[] = (Array.isArray(rows) ? rows : []).map((r: any, i: number) => ({
+            id: r.userId || String(i),
+            rank: r.rank ?? i + 1,
+            name: r.username || "Người dùng",
+            avatar: r.avatar || `/exercise/exercise-${(i % 6) + 1}.png`,
+            score: Math.round(r.score || 0),
+            totalQuestions,
+          }));
+          setFetched(mapped);
+          if (mapped.length > 0 || attempt === 3) return;
+          await wait(750);
+        }
       } catch (e) {
         console.error("[Leaderboard] fetch failed", e);
-        if (!cancelled) setFetched([]);
+        if (!cancelled) {
+          setFetched([]);
+          setFetchError(true);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -321,7 +333,7 @@ export default function ExerciseLeaderboard({
     return () => {
       cancelled = true;
     };
-  }, [courseId, lessonId, playersProp, totalQuestions]);
+  }, [courseId, lessonId, playersProp, refreshKey, totalQuestions]);
 
   // Có courseId+lessonId → bám data thật, kể cả khi rỗng (KHÔNG fallback mockData).
   // Không có (preview / design) → dùng mockData để UI không trống.
@@ -383,6 +395,24 @@ export default function ExerciseLeaderboard({
     );
   }
 
+  if (usingRealApi && fetchError) {
+    return (
+      <div
+        className="relative flex min-h-[600px] w-full items-center justify-center rounded-2xl p-6"
+        style={{ backgroundColor: "#FFF8DD" }}
+      >
+        <div className="max-w-sm text-center">
+          <h3 className="mb-2 text-xl font-bold text-orange-900">Không tải được bảng xếp hạng</h3>
+          <p className="mb-5 text-sm text-orange-900/70">Vui lòng thử tải lại bảng xếp hạng.</p>
+          <Button onClick={() => setRefreshKey(key => key + 1)} className="rounded-full px-5 py-2.5 font-semibold">
+            <RefreshCcw className="h-4 w-4" />
+            Tải lại
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (players.length === 0) {
     return (
       <div
@@ -402,7 +432,7 @@ export default function ExerciseLeaderboard({
           />
           <h3 className="text-xl font-bold text-orange-900 mb-2">Chưa có bảng xếp hạng</h3>
           <p className="text-sm text-orange-900/70 mb-6 max-w-xs">
-            Bạn là người đầu tiên hoàn thành bài này. Hoàn thành để giữ vị trí top 1!
+            Chưa có lượt trả lời nào được ghi nhận. Hãy làm bài tập để xuất hiện trên bảng xếp hạng.
           </p>
           <div className="flex items-center gap-3">
             <Button

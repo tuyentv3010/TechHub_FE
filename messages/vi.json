@@ -2593,7 +2593,13 @@
     "typeProgress": "Tiến độ",
     "typeComment": "Bình luận",
     "typeSystem": "Hệ thống",
-    "typeOther": "Khác"
+    "typeOther": "Khác",
+    "markRead": "Đánh dấu đã đọc",
+    "delete": "Xóa thông báo",
+    "deleteAll": "Xóa tất cả",
+    "deleteAllConfirmTitle": "Xóa tất cả thông báo?",
+    "deleteAllConfirmDesc": "Thao tác này sẽ xóa toàn bộ thông báo của bạn và không thể hoàn tác.",
+    "cancel": "Hủy"
   },
   "ContactPage": {
     "heroTitle": "Liên Hệ Với Chúng Tôi",

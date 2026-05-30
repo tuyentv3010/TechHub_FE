@@ -772,6 +772,7 @@ export default function ExercisePlayer({
   const [submissionMeta, setSubmissionMeta] = useState<{ grade?: number | null; status?: string }>({});
   const feedbackRef = useRef<QuizFeedback | null>(null);
   const submissionMetaRef = useRef<{ grade?: number | null; status?: string }>({});
+  const submissionStartedForExerciseRef = useRef<string | null>(null);
 
   useEffect(() => {
     feedbackRef.current = currentFeedback;
@@ -889,6 +890,7 @@ export default function ExercisePlayer({
           setCurrentFeedback(null);
           setSubmissionMeta({});
           setFeedbackLoading(false);
+          submissionStartedForExerciseRef.current = null;
         }
         
         clearInterval(interval);
@@ -926,6 +928,7 @@ export default function ExercisePlayer({
     setCurrentFeedback(null);
     setSubmissionMeta({});
     setFeedbackLoading(false);
+    submissionStartedForExerciseRef.current = null;
   };
 
   const submitCurrentAnswer = useCallback(async (
@@ -934,6 +937,8 @@ export default function ExercisePlayer({
     correct: boolean
   ) => {
     if (!courseId || !lessonId || !exercise?.id) return;
+    if (submissionStartedForExerciseRef.current === exercise.id) return;
+    submissionStartedForExerciseRef.current = exercise.id;
 
     setFeedbackLoading(true);
     setCurrentFeedback(null);
@@ -963,6 +968,11 @@ export default function ExercisePlayer({
       setFeedbackLoading(false);
     }
   }, [courseId, lessonId, timeSpent]);
+
+  useEffect(() => {
+    if (gameState !== 'playing' || !submitted || countdown !== 0 || !currentExercise) return;
+    void submitCurrentAnswer(currentExercise, [], false);
+  }, [countdown, currentExercise, gameState, submitCurrentAnswer, submitted]);
 
   // Handle answer - auto submit on click
   const handleAnswer = useCallback((answers: string[]) => {
@@ -1026,6 +1036,7 @@ export default function ExercisePlayer({
       setCurrentFeedback(null);
       setSubmissionMeta({});
       setFeedbackLoading(false);
+      submissionStartedForExerciseRef.current = null;
     } else {
       setGameState('result');
       onComplete?.([...results, result]);
@@ -1065,6 +1076,7 @@ export default function ExercisePlayer({
     setCurrentFeedback(null);
     setSubmissionMeta({});
     setFeedbackLoading(false);
+    submissionStartedForExerciseRef.current = null;
     setGameState('start');
   };
 
