@@ -37,11 +37,49 @@ export type LearningPathDraftData = {
   nodes: LearningPathDraftNode[];
 };
 
+export type LearningPathDraftCoursePosition = {
+  courseId: string;
+  positionX: number;
+  positionY: number;
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
 const toStringArray = (value: unknown): string[] =>
-  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
+  Array.isArray(value)
+    ? value
+        .map((item) => String(item ?? "").trim())
+        .filter((item) => item.length > 0)
+    : [];
+
+const toOptionalNumber = (value: unknown): number | undefined => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+};
+
+const toOptionalString = (value: unknown): string | undefined => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const parseJsonString = (value: string): unknown => {
+  const trimmed = value.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  return JSON.parse(fenced?.[1] ?? trimmed);
+};
 
 const normalizeEdges = (value: unknown): LearningPathDraftEdge[] => {
   if (!Array.isArray(value)) {
@@ -68,10 +106,10 @@ const normalizeNodes = (value: unknown): LearningPathDraftNode[] => {
       id: typeof node.id === "string" ? node.id : "",
       data: isRecord(node.data)
         ? {
-            label: typeof node.data.label === "string" ? node.data.label : undefined,
-            title: typeof node.data.title === "string" ? node.data.title : undefined,
-            description: typeof node.data.description === "string" ? node.data.description : undefined,
-            thumbnail: typeof node.data.thumbnail === "string" ? node.data.thumbnail : undefined,
+            label: toOptionalString(node.data.label),
+            title: toOptionalString(node.data.title),
+            description: toOptionalString(node.data.description),
+            thumbnail: toOptionalString(node.data.thumbnail),
           }
         : undefined,
     }))
@@ -86,14 +124,19 @@ const normalizeCourses = (value: unknown): LearningPathDraftCourse[] => {
   return value
     .filter((course): course is Record<string, unknown> => isRecord(course))
     .map((course) => ({
-      courseId: typeof course.courseId === "string" ? course.courseId : "",
-      title: typeof course.title === "string" ? course.title : undefined,
-      description: typeof course.description === "string" ? course.description : undefined,
-      order: typeof course.order === "number" ? course.order : undefined,
-      positionX: typeof course.positionX === "number" ? course.positionX : undefined,
-      positionY: typeof course.positionY === "number" ? course.positionY : undefined,
-      isOptional: typeof course.isOptional === "string" ? course.isOptional : undefined,
-      thumbnail: typeof course.thumbnail === "string" ? course.thumbnail : undefined,
+      courseId: toOptionalString(course.courseId) ?? toOptionalString(course.id) ?? "",
+      title: toOptionalString(course.title) ?? toOptionalString(course.courseTitle),
+      description: toOptionalString(course.description),
+      order: toOptionalNumber(course.order),
+      positionX: toOptionalNumber(course.positionX),
+      positionY: toOptionalNumber(course.positionY),
+      isOptional:
+        typeof course.isOptional === "boolean"
+          ? course.isOptional
+            ? "Y"
+            : "N"
+          : toOptionalString(course.isOptional),
+      thumbnail: toOptionalString(course.thumbnail),
     }))
     .filter((course) => course.courseId);
 };
@@ -110,11 +153,15 @@ const parseLearningPathPayload = (input: unknown): Record<string, unknown> => {
   const payload = extractPayload(input);
 
   if (typeof payload === "string") {
-    return parseLearningPathPayload(JSON.parse(payload));
+    return parseLearningPathPayload(parseJsonString(payload));
   }
 
   if (!isRecord(payload)) {
     throw new Error("Invalid learning path draft payload.");
+  }
+
+  if (isRecord(payload.path)) {
+    return parseLearningPathPayload(payload.path);
   }
 
   if (isRecord(payload.learningPathData)) {
@@ -137,13 +184,14 @@ const parseLearningPathPayload = (input: unknown): Record<string, unknown> => {
 
 export const extractLearningPathDraftData = (input: unknown): LearningPathDraftData => {
   const parsed = parseLearningPathPayload(input);
+  const layoutEdges = normalizeEdges(parsed.layoutEdges);
 
   return {
     title: typeof parsed.title === "string" ? parsed.title : "Untitled learning path",
     description: typeof parsed.description === "string" ? parsed.description : "",
     skills: toStringArray(parsed.skills),
     courses: normalizeCourses(parsed.courses),
-    layoutEdges: normalizeEdges(parsed.layoutEdges),
+    layoutEdges: layoutEdges.length > 0 ? layoutEdges : normalizeEdges(parsed.edges),
     nodes: normalizeNodes(parsed.nodes),
   };
 };
@@ -157,9 +205,13 @@ export class LearningPathDraftPublishError extends Error {
 
 const createLearningPathFromDraft = async (
   draftData: LearningPathDraftData,
-  layoutEdges?: LearningPathDraftEdge[]
+  layoutEdges?: LearningPathDraftEdge[],
+  coursePositions?: LearningPathDraftCoursePosition[]
 ) => {
   const normalizedEdges = layoutEdges ?? draftData.layoutEdges;
+  const positionMap = new Map(
+    (coursePositions ?? []).map((position) => [position.courseId, position])
+  );
   const createResponse = await learningPathApiRequest.createLearningPath({
     title: draftData.title,
     description: draftData.description,
@@ -175,8 +227,8 @@ const createLearningPathFromDraft = async (
       courses: draftData.courses.map((course, index) => ({
         courseId: course.courseId,
         order: course.order ?? index + 1,
-        positionX: course.positionX,
-        positionY: course.positionY,
+        positionX: positionMap.get(course.courseId)?.positionX ?? course.positionX,
+        positionY: positionMap.get(course.courseId)?.positionY ?? course.positionY,
         isOptional: course.isOptional ?? "N",
       })),
     });
@@ -189,14 +241,16 @@ export const publishLearningPathDraft = async ({
   taskId,
   draft,
   layoutEdges,
+  coursePositions,
 }: {
   taskId: string;
   draft?: DraftItemType;
   layoutEdges?: LearningPathDraftEdge[];
+  coursePositions?: LearningPathDraftCoursePosition[];
 }) => {
   const draftSource = draft ?? (await aiApiRequest.getDraftById(taskId)).payload.data;
   const draftData = extractLearningPathDraftData(draftSource);
-  const pathId = await createLearningPathFromDraft(draftData, layoutEdges);
+  const pathId = await createLearningPathFromDraft(draftData, layoutEdges, coursePositions);
 
   try {
     await aiApiRequest.approveLearningPathDraft(taskId);

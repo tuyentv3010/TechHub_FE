@@ -131,6 +131,9 @@ type LedgerRow = {
   amount: number;
   status: string;
   timestamp: string;
+  // Source ids so a ledger row can open the related request detail.
+  requestId?: string | null;
+  invoiceId?: string | null;
 };
 
 const formatDateTime = (value?: string | null) => {
@@ -380,6 +383,8 @@ export default function PayoutManagementPage() {
           amount: request.amount,
           status: request.status,
           timestamp: request.created || request.updated || "",
+          requestId: request.id,
+          invoiceId: request.invoiceId,
         },
       ];
 
@@ -391,6 +396,8 @@ export default function PayoutManagementPage() {
           amount: request.amount,
           status: "APPROVED",
           timestamp: request.approvedAt,
+          requestId: request.id,
+          invoiceId: request.invoiceId,
         });
       }
 
@@ -404,6 +411,8 @@ export default function PayoutManagementPage() {
           amount: request.amount,
           status: "PAID",
           timestamp: request.markedPaidAt,
+          requestId: request.id,
+          invoiceId: request.invoiceId,
         });
       }
 
@@ -434,6 +443,12 @@ export default function PayoutManagementPage() {
     setDetailSheetOpen(true);
     setReviewNote("");
     setPaymentReference("");
+  };
+
+  // Open detail from a ledger row. BATCH rows have no request detail.
+  const openLedgerDetail = (row: LedgerRow) => {
+    if (!row.requestId) return;
+    openRequestDetail(row.requestId, row.invoiceId);
   };
 
   const refreshAll = async () => {
@@ -1311,7 +1326,8 @@ export default function PayoutManagementPage() {
               {ledgerRows.map((row) => (
                 <div
                   key={`mobile-ledger-${row.type}-${row.ref}-${row.timestamp}`}
-                  className="space-y-3 rounded-2xl border border-border bg-muted p-4"
+                  className={`space-y-3 rounded-2xl border border-border bg-muted p-4 ${row.requestId ? "cursor-pointer transition hover:border-[#adc6ff]/30 hover:bg-accent" : ""}`}
+                  onClick={() => openLedgerDetail(row)}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
@@ -1361,7 +1377,11 @@ export default function PayoutManagementPage() {
                 </thead>
                 <tbody className="divide-y divide-border text-foreground/80">
                   {ledgerRows.map((row) => (
-                    <tr key={`${row.type}-${row.ref}-${row.timestamp}`} className="hover:bg-muted/60">
+                    <tr
+                      key={`${row.type}-${row.ref}-${row.timestamp}`}
+                      className={`hover:bg-muted/60 ${row.requestId ? "cursor-pointer" : ""}`}
+                      onClick={() => openLedgerDetail(row)}
+                    >
                       <td className="px-4 py-4 font-mono text-xs text-muted-foreground">{row.ref}</td>
                       <td className="px-4 py-4">
                         <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${typeTone[row.type] || typeTone.BATCH}`}>

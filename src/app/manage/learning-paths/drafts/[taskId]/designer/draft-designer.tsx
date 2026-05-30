@@ -20,10 +20,9 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { useCallback, useEffect, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Check, Loader2, Route, X } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, LayoutGrid, Loader2, Route, X } from "lucide-react";
 
 import aiApiRequest from "@/apiRequests/ai";
 import {
@@ -42,6 +41,14 @@ import type { DraftItemType } from "@/schemaValidations/ai.schema";
 interface DraftDesignerProps {
   taskId: string;
 }
+
+const ROOT_NODE_ID = "root-learning-path";
+const COURSE_NODE_WIDTH = 320;
+const COURSE_NODE_HEIGHT = 230;
+const COURSE_COLUMN_GAP = 96;
+const COURSE_ROW_GAP = 120;
+const COURSE_START_Y = 310;
+const MAX_COLUMNS = 4;
 
 const RootNode = ({
   data,
@@ -69,6 +76,53 @@ const RootNode = ({
   );
 };
 
+const normalizeDraftThumbnail = (value: unknown): string | undefined => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  if (
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("data:image/")
+  ) {
+    return trimmed;
+  }
+
+  return undefined;
+};
+
+function DraftCourseThumbnail({ src, title }: { src?: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+  const imageSrc = normalizeDraftThumbnail(src);
+
+  if (!imageSrc || failed) {
+    return (
+      <div className="flex h-32 w-full items-center justify-center rounded-md bg-muted">
+        <BookOpen className="h-8 w-8 text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative h-32 w-full overflow-hidden rounded-md bg-muted">
+      <img
+        src={imageSrc}
+        alt={title}
+        className="h-full w-full object-cover"
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
+}
+
 const CourseNode = ({
   data,
 }: {
@@ -86,17 +140,7 @@ const CourseNode = ({
 
       <Card className="min-w-[280px] max-w-[320px] border-2 p-3 shadow-md">
         <div className="flex flex-col gap-2">
-          {data.thumbnail ? (
-            <div className="relative h-32 w-full overflow-hidden rounded-md bg-muted">
-              <Image
-                src={data.thumbnail}
-                alt={data.title || "Course"}
-                fill
-                className="object-cover"
-                sizes="320px"
-              />
-            </div>
-          ) : null}
+          <DraftCourseThumbnail src={data.thumbnail} title={data.title || "Course"} />
 
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
@@ -133,6 +177,133 @@ const nodeTypes = {
   course: CourseNode,
 };
 
+const getAutoLayoutPosition = (index: number, total: number) => {
+  const columns = Math.min(MAX_COLUMNS, Math.max(1, total));
+  const row = Math.floor(index / columns);
+  const column = index % columns;
+  const itemsInRow = Math.min(columns, total - row * columns);
+  const rowWidth =
+    itemsInRow * COURSE_NODE_WIDTH + Math.max(0, itemsInRow - 1) * COURSE_COLUMN_GAP;
+  const startX = -rowWidth / 2;
+
+  return {
+    x: startX + column * (COURSE_NODE_WIDTH + COURSE_COLUMN_GAP),
+    y: COURSE_START_Y + row * (COURSE_NODE_HEIGHT + COURSE_ROW_GAP),
+  };
+};
+
+const createSequentialEdges = (courses: LearningPathDraftData["courses"]): Edge[] =>
+  courses.slice(1).map((course, index) => {
+    const source = courses[index].courseId;
+    const target = course.courseId;
+
+    return {
+      id: `edge-${source}-${target}-${index}`,
+      source,
+      target,
+      animated: true,
+      type: "smoothstep",
+    };
+  });
+
+const createRootEdge = (courses: LearningPathDraftData["courses"]): Edge | null => {
+  const firstCourseId = courses[0]?.courseId;
+  if (!firstCourseId) {
+    return null;
+  }
+
+  return {
+    id: `edge-${ROOT_NODE_ID}-${firstCourseId}`,
+    source: ROOT_NODE_ID,
+    target: firstCourseId,
+    animated: true,
+    type: "smoothstep",
+  };
+};
+
+const normalizeDraftEdges = (
+  draftEdges: LearningPathDraftData["layoutEdges"],
+  courses: LearningPathDraftData["courses"]
+): Edge[] => {
+  const courseIds = new Set(courses.map((course) => course.courseId));
+  const validIds = new Set([ROOT_NODE_ID, ...courseIds]);
+  const seen = new Set<string>();
+  const edges = draftEdges
+    .filter((edge) => {
+      const key = `${edge.source}->${edge.target}`;
+      if (
+        !validIds.has(edge.source) ||
+        !courseIds.has(edge.target) ||
+        edge.source === edge.target ||
+        seen.has(key)
+      ) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    })
+    .map((edge, index) => ({
+      id: `edge-${edge.source}-${edge.target}-${index}`,
+      source: edge.source,
+      target: edge.target,
+      animated: true,
+      type: "smoothstep",
+    }));
+
+  const hasRootEdge = edges.some((edge) => edge.source === ROOT_NODE_ID);
+  const rootEdge = hasRootEdge ? null : createRootEdge(courses);
+  const courseEdges = edges.some((edge) => edge.source !== ROOT_NODE_ID)
+    ? edges
+    : createSequentialEdges(courses);
+
+  return [rootEdge, ...courseEdges].filter((edge): edge is Edge => Boolean(edge));
+};
+
+const createRootNode = (pathData: LearningPathDraftData): Node => ({
+  id: ROOT_NODE_ID,
+  type: "root",
+  position: { x: -150, y: 40 },
+  data: {
+    title: pathData.title,
+    description: pathData.description,
+    totalCourses: pathData.courses.length,
+  },
+});
+
+const createCourseNodes = (pathData: LearningPathDraftData): Node[] => {
+  const nodeDataMap = new Map<string, { title?: string; description?: string; thumbnail?: string }>();
+  pathData.nodes.forEach((node) => {
+    if (!node.id || !node.data) {
+      return;
+    }
+
+    nodeDataMap.set(node.id, {
+      title: node.data.label || node.data.title,
+      description: node.data.description,
+      thumbnail: node.data.thumbnail,
+    });
+  });
+
+  return pathData.courses.map((course, index) => {
+    const nodeData = nodeDataMap.get(course.courseId);
+
+    return {
+      id: course.courseId,
+      type: "course",
+      position: getAutoLayoutPosition(index, pathData.courses.length),
+      data: {
+        courseId: course.courseId,
+        title: nodeData?.title || course.title || `Course ${index + 1}`,
+        description: nodeData?.description || course.description || "",
+        order: course.order ?? index + 1,
+        isOptional: course.isOptional === "Y",
+        thumbnail: nodeData?.thumbnail || course.thumbnail,
+      },
+    };
+  });
+};
+
 export default function DraftDesigner({ taskId }: DraftDesignerProps) {
   const tCommon = useTranslations("common");
   const { toast } = useToast();
@@ -152,6 +323,22 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
     [setEdges]
   );
 
+  const handleAutoFormat = useCallback(() => {
+    if (!pathData) {
+      return;
+    }
+
+    setNodes([createRootNode(pathData), ...createCourseNodes(pathData)]);
+    setEdges((currentEdges) => {
+      const layoutEdges = currentEdges.map((edge) => ({
+        source: edge.source,
+        target: edge.target,
+      }));
+
+      return normalizeDraftEdges(layoutEdges, pathData.courses);
+    });
+  }, [pathData, setEdges, setNodes]);
+
   useEffect(() => {
     const loadDraftData = async () => {
       try {
@@ -163,61 +350,8 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
         setDraftData(draft);
         setPathData(parsedPathData);
 
-        const nodeDataMap = new Map<string, { title?: string; description?: string; thumbnail?: string }>();
-        parsedPathData.nodes.forEach((node) => {
-          if (!node.id || !node.data) {
-            return;
-          }
-
-          nodeDataMap.set(node.id, {
-            title: node.data.label || node.data.title,
-            description: node.data.description,
-            thumbnail: node.data.thumbnail,
-          });
-        });
-
-        const rootNode: Node = {
-          id: "root",
-          type: "root",
-          position: { x: 400, y: 50 },
-          data: {
-            title: parsedPathData.title,
-            description: parsedPathData.description,
-            totalCourses: parsedPathData.courses.length,
-          },
-        };
-
-        const courseNodes: Node[] = parsedPathData.courses.map((course, index) => {
-          const nodeData = nodeDataMap.get(course.courseId);
-
-          return {
-            id: course.courseId,
-            type: "course",
-            position: {
-              x: course.positionX ?? 50 + (index % 3) * 350,
-              y: course.positionY ?? 200 + Math.floor(index / 3) * 250,
-            },
-            data: {
-              courseId: course.courseId,
-              title: nodeData?.title || course.title || `Course ${index + 1}`,
-              description: nodeData?.description || course.description || "",
-              order: course.order,
-              isOptional: course.isOptional === "Y",
-              thumbnail: nodeData?.thumbnail || course.thumbnail,
-            },
-          };
-        });
-
-        const pathEdges: Edge[] = parsedPathData.layoutEdges.map((edge, index) => ({
-          id: `edge-${index}`,
-          source: edge.source,
-          target: edge.target,
-          animated: true,
-          type: "smoothstep",
-        }));
-
-        setNodes([rootNode, ...courseNodes]);
-        setEdges(pathEdges);
+        setNodes([createRootNode(parsedPathData), ...createCourseNodes(parsedPathData)]);
+        setEdges(normalizeDraftEdges(parsedPathData.layoutEdges, parsedPathData.courses));
       } catch (error) {
         toast({
           title: tCommon("error"),
@@ -252,6 +386,13 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
           source: edge.source,
           target: edge.target,
         })),
+        coursePositions: nodes
+          .filter((node) => node.id !== ROOT_NODE_ID)
+          .map((node) => ({
+            courseId: node.id,
+            positionX: Math.round(node.position.x),
+            positionY: Math.round(node.position.y),
+          })),
       });
 
       toast({
@@ -341,10 +482,14 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
           </Card>
         </Panel>
 
-        <Panel position="top-right" className="space-x-2">
+        <Panel position="top-right" className="flex flex-wrap justify-end gap-2">
           <Button onClick={() => router.back()} variant="ghost" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
+          </Button>
+          <Button onClick={handleAutoFormat} variant="outline">
+            <LayoutGrid className="mr-2 h-4 w-4" />
+            Auto format
           </Button>
           <Button onClick={handleReject} variant="outline" disabled={rejectMutation.isPending}>
             {rejectMutation.isPending ? (
