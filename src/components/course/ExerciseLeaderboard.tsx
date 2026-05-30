@@ -306,7 +306,11 @@ export default function ExerciseLeaderboard({
         setFetchError(false);
         for (let attempt = 0; attempt < 4; attempt += 1) {
           const res: any = await courseApiRequest.getLessonLeaderboard(courseId, lessonId, 10);
-          const rows = res?.payload?.data || res?.payload || [];
+          const rows =
+            res?.payload?.data
+            ?? res?.payload?.payload?.data
+            ?? res?.payload
+            ?? [];
           if (cancelled) return;
           const mapped: LeaderboardPlayer[] = (Array.isArray(rows) ? rows : []).map((r: any, i: number) => ({
             id: r.userId || String(i),
