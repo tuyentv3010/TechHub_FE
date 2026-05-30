@@ -160,6 +160,14 @@ const aiApiRequest = {
           }
         }
 
+        if (eventType === "error") {
+          const message =
+            parsedData && typeof parsedData === "object"
+              ? parsedData.message || parsedData.detail || parsedData.error
+              : parsedData;
+          throw new Error(String(message || "Streaming error"));
+        }
+
         if (eventType === "message") {
           const content =
             parsedData && typeof parsedData === "object" && "content" in parsedData

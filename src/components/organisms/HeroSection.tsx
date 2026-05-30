@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 interface Instructor {
@@ -54,17 +55,12 @@ export function HeroSection({
             
             {/* CTA Button with decorative arrow */}
             <div className="relative">
-            <Link 
-            href="/courses"
-            className="
-              inline-flex items-center justify-center
-              rounded-lg bg-primary px-7 py-3.5 text-base font-semibold text-primary-foreground
-              shadow-sm transition-colors hover:bg-primary/90
-            "
-          >
-            {buttonText}
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Link>
+            <Button asChild size="lg">
+              <Link href="/courses">
+                {buttonText}
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
             </div>
           </div>
           
@@ -87,7 +83,7 @@ export function HeroSection({
                   {instructors.length > 0 ? (
                     <>
                       {instructors.slice(0, 4).map((instructor, index) => (
-                        <Avatar key={instructor.id} className="w-10 h-10 border-2 border-white dark:border-gray-800">
+                        <Avatar key={instructor.id} className="w-10 h-10 border-2 border-background">
                           <AvatarImage 
                             src={instructor.avatar || "/instructors/Square.png"} 
                             alt={instructor.username}
@@ -99,25 +95,25 @@ export function HeroSection({
                         </Avatar>
                       ))}
                       {instructors.length > 4 && (
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-primary dark:border-gray-800">
-                          <span className="text-sm font-semibold text-white">+{instructors.length - 4}</span>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-background bg-primary">
+                          <span className="text-sm font-semibold text-primary-foreground">+{instructors.length - 4}</span>
                         </div>
                       )}
                     </>
                   ) : (
                     // Fallback avatars when no data
                     <>
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-primary text-primary-foreground dark:border-gray-800">
-                        <span className="text-white text-sm font-semibold">A</span>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground">
+                        <span className="text-primary-foreground text-sm font-semibold">A</span>
                       </div>
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-learning text-learning-foreground dark:border-gray-800">
-                        <span className="text-white text-sm font-semibold">B</span>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-background bg-learning text-learning-foreground">
+                        <span className="text-learning-foreground text-sm font-semibold">B</span>
                       </div>
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-muted text-foreground dark:border-gray-800">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-background bg-muted text-foreground">
                         <span className="text-sm font-semibold">C</span>
                       </div>
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-[hsl(var(--warning))] text-white dark:border-gray-800">
-                        <span className="text-white text-sm font-semibold">D</span>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-background bg-[hsl(var(--warning))] text-primary-foreground">
+                        <span className="text-primary-foreground text-sm font-semibold">D</span>
                       </div>
                     </>
                   )}
@@ -128,7 +124,7 @@ export function HeroSection({
             {/* Main hero image */}
             <div className="relative h-[420px] w-full overflow-hidden rounded-xl border border-border bg-muted shadow-sm lg:h-[560px]">
               <Image
-                src="/hero/hero.png"
+                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1400&q=80"
                 alt="Students in library"
                 fill
                 className="object-cover"

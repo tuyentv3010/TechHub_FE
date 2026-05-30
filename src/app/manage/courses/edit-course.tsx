@@ -332,7 +332,7 @@ export default function EditCourse({
                 {...form.register("title")}
               />
               {form.formState.errors.title && (
-                <p className="text-sm text-red-500">
+                <p className="text-sm text-destructive">
                   {form.formState.errors.title.message}
                 </p>
               )}

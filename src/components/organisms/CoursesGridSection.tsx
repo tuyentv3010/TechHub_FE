@@ -105,7 +105,7 @@ export function CoursesGridSection({
               {title}
             </h2>
           </div>
-          <Button asChild variant="outline" className="h-10 shrink-0 rounded-full px-5">
+          <Button asChild variant="outline" className="shrink-0">
             <Link href="/courses" className="inline-flex items-center gap-2">
               {viewAllText}
               <ArrowRight className="h-4 w-4" />

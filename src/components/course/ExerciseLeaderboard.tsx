@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Share2, RotateCcw, CheckCircle } from "lucide-react";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 import envConfig from "@/config";
 import courseApiRequest from "@/apiRequests/course";
 
@@ -404,20 +405,21 @@ export default function ExerciseLeaderboard({
             Bạn là người đầu tiên hoàn thành bài này. Hoàn thành để giữ vị trí top 1!
           </p>
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              variant="outline"
               onClick={handleRetry}
-              className="flex items-center gap-2 rounded-full border-2 border-orange-300 bg-white px-5 py-2.5 font-semibold text-orange-900 hover:bg-orange-50"
+              className="rounded-full px-5 py-2.5 font-semibold"
             >
               <RotateCcw className="w-4 h-4" />
               Làm lại
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleComplete}
-              className="flex items-center gap-2 rounded-full bg-green-500 px-5 py-2.5 font-semibold text-white shadow-md hover:bg-green-600"
+              className="rounded-full px-5 py-2.5 font-semibold shadow-md"
             >
               <CheckCircle className="w-4 h-4" />
               Hoàn thành
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -454,27 +456,29 @@ export default function ExerciseLeaderboard({
 
         {/* Action buttons */}
         <div className="flex justify-center gap-3 mt-6">
-          <button
+          <Button
+            variant="outline"
             onClick={handleRetry}
-            className="px-5 py-2.5 bg-white border-2 border-[#8B7355] text-[#8B7355] font-semibold rounded-lg hover:bg-[#8B7355] hover:text-white transition-colors flex items-center gap-2"
+            className="px-5 py-2.5 font-semibold"
           >
             <RotateCcw className="w-4 h-4" />
             Làm lại
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleComplete}
-            className="px-5 py-2.5 bg-[#22C55E] text-white font-semibold rounded-lg hover:bg-[#16A34A] transition-colors flex items-center gap-2"
+            className="px-5 py-2.5 font-semibold"
           >
             <CheckCircle className="w-4 h-4" />
             Hoàn thành
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
             onClick={handleShare}
-            className="px-5 py-2.5 bg-[#8B7355] text-white font-semibold rounded-lg hover:bg-[#7A6548] transition-colors flex items-center gap-2"
+            className="px-5 py-2.5 font-semibold"
           >
             <Share2 className="w-4 h-4" />
             Chia sẻ
-          </button>
+          </Button>
         </div>
       </div>
     </div>

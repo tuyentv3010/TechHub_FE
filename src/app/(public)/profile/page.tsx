@@ -21,7 +21,7 @@ import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useTranslations } from "next-intl";
-import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
+import { normalizePersistedMediaUrl, resolvePersistentFileUrl } from "@/lib/file-media";
 
 export default function ProfilePage() {
   const t = useTranslations("ProfilePage");
@@ -104,7 +104,7 @@ export default function ProfilePage() {
       const response = await fileApiRequest.uploadFile(formData);
       
       const avatarUrl = response.payload?.data
-        ? resolveManagedFileUrl(response.payload.data, userId, "thumbnail")
+        ? resolvePersistentFileUrl(response.payload.data, "thumbnail")
         : null;
 
       if (avatarUrl) {
@@ -295,7 +295,7 @@ export default function ProfilePage() {
                       {account?.roles?.map((role: string) => (
                         <span
                           key={role} 
-                          className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/20 px-3 py-1 text-sm font-medium text-blue-700 dark:text-blue-300"
+                          className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
                         >
                           {role}
                         </span>
@@ -432,7 +432,7 @@ export default function ProfilePage() {
         open={showAvatarLibrary}
         onOpenChange={setShowAvatarLibrary}
         onSelectFile={(file) => {
-          const avatarUrl = resolveManagedFileUrl(file, userId, "thumbnail");
+          const avatarUrl = resolvePersistentFileUrl(file, "thumbnail");
           if (avatarUrl) {
             profileForm.setValue('avatar', avatarUrl);
           }

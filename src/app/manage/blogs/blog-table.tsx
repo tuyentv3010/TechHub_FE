@@ -338,7 +338,7 @@ export default function BlogTable() {
         {blogListQuery.isLoading ? (
           <TableSkeleton />
         ) : blogListQuery.error ? (
-          <div className="text-red-500">
+          <div className="text-destructive">
             {t("Error")}: {(blogListQuery.error as any).message}
           </div>
         ) : (

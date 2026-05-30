@@ -281,7 +281,7 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
                   <FormItem>
                     <FormLabel>{t("Tags")}</FormLabel>
                     <div className="flex items-center gap-2">
-                      <Button type="button" variant="ghost" onClick={() => setShowTagManager(true)} className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700">
+                      <Button type="button" onClick={() => setShowTagManager(true)} className="ml-2">
                         {t("ManageTags") || "Manage tags"}
                       </Button>
                     </div>

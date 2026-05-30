@@ -828,7 +828,7 @@ export default function CourseLearningLayout({
                           size="sm"
                           onClick={(e) => handleDownloadAsset(e, assetUrl, asset.title)}
                           title="Tải xuống"
-                          className="text-blue-500 hover:text-blue-600"
+                          className="text-primary hover:text-primary/80"
                         >
                           <Download className="h-4 w-4" />
                         </Button>
@@ -883,7 +883,7 @@ export default function CourseLearningLayout({
                   <Button
                     onClick={handleMarkComplete}
                     disabled={markCompleteMutation.isPending}
-                    className="rounded-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/30 font-semibold px-5"
+                    className="rounded-full font-semibold px-5 shadow-lg"
                   >
                     <CheckCircle2 className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Hoàn thành</span>
@@ -894,7 +894,7 @@ export default function CourseLearningLayout({
                 <Button
                   onClick={() => setShowCommentModal(true)}
                   size="icon"
-                  className="h-10 w-10 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/30"
+                  className="h-10 w-10 rounded-full shadow-md"
                   id="qa-button"
                   title={commentT("openDiscussion")}
                 >

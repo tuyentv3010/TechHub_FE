@@ -192,7 +192,7 @@ export default function MediaLibraryDialog({
             ) : (
               <div className="w-5" />
             )}
-            <Folder className="h-4 w-4 text-blue-500" />
+            <Folder className="h-4 w-4 text-primary" />
             <span
               className="flex-1 truncate text-sm"
               onClick={() => {
@@ -388,7 +388,7 @@ export default function MediaLibraryDialog({
                   setSelectedLibraryFolder(null);
                 }}
               >
-                <Folder className="h-4 w-4 text-gray-500" />
+                <Folder className="h-4 w-4 text-muted-foreground" />
                 <span className="flex-1 text-sm">All Media</span>
               </div>
             </div>

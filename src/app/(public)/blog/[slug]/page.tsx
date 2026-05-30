@@ -35,6 +35,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import {
   useAddBlogCommentMutation,
@@ -166,6 +173,13 @@ const CommentItem = ({
   const [showReplies, setShowReplies] = useState(true);
   const hasReplies = comment.replies && comment.replies.length > 0;
   const isReplying = activeReplyId === comment.id;
+  const { data: commentUserResponse } = useGetAccount({
+    id: comment.userId,
+    enabled: !!comment.userId,
+  });
+  const displayName =
+    commentUserResponse?.payload?.data?.username ||
+    `@${comment.userId.slice(0, 8)}`;
   return (
     <div className="space-y-3">
       <div className={`flex gap-3 ${depth > 0 ? "ml-12" : ""}`}>
@@ -179,7 +193,7 @@ const CommentItem = ({
           {/* Username & Time */}
           <div className="flex items-center gap-2 text-xs">
             <span className="font-medium text-foreground">
-              @{comment.userId.slice(0, 8)}
+              {displayName}
             </span>
             <span className="text-muted-foreground">
               {format(new Date(comment.created), "dd/MM/yyyy")}
@@ -751,47 +765,55 @@ export default function BlogDetailPage() {
             <section className="space-y-6 rounded-2xl border border-muted/40 bg-card/60 p-6">
               {/* Header with count and sort */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-lg font-semibold">
-                  <MessageCircle className="h-5 w-5" />
+                <div className="flex items-center gap-2 text-base font-semibold">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <MessageCircle className="h-4 w-4" />
+                  </span>
                   <span>{totalCommentCount} Bình luận</span>
                 </div>
-                <select
+                <Select
                   value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
-                  className="text-sm rounded-lg border border-muted bg-background px-3 py-1.5 text-muted-foreground hover:bg-muted/50 transition"
+                  onValueChange={(value) => setSortOrder(value as "newest" | "oldest")}
                 >
-                  <option value="newest">Mới nhất</option>
-                  <option value="oldest">Cũ nhất</option>
-                </select>
+                  <SelectTrigger
+                    aria-label="Comment sort order"
+                    className="h-9 w-[140px] rounded-lg text-sm"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Mới nhất</SelectItem>
+                    <SelectItem value="oldest">Cũ nhất</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* New Comment Input */}
-              <div className="space-y-3">
-                <div className="relative">
-                  <Textarea
-                    placeholder="Chia sẻ cảm nhận của bạn..."
-                    value={commentContent}
-                    onChange={(event) => setCommentContent(event.target.value)}
-                    rows={3}
-                    ref={mainTextareaRef}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowEmojiPickerMain((s) => !s)}
-                    className="absolute right-2 bottom-2 inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:text-foreground"
-                    title="Chèn emoji"
-                  >
-                    <Smile className="h-5 w-5" />
-                  </button>
-
-                  {showEmojiPickerMain && (
-                    <div className="absolute right-0 bottom-12 z-50">
-                      <EmojiPicker onEmojiClick={(e: any) => { insertEmojiAtCursor(mainTextareaRef.current, e.emoji, setCommentContent); setShowEmojiPickerMain(false); }} />
-                    </div>
-                  )}
-                </div>
-                <div className="flex justify-end">
+              <div className="rounded-xl border bg-background transition focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring/30">
+                <Textarea
+                  placeholder="Chia sẻ cảm nhận của bạn..."
+                  value={commentContent}
+                  onChange={(event) => setCommentContent(event.target.value)}
+                  rows={3}
+                  ref={mainTextareaRef}
+                  className="min-h-[92px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
+                />
+                <div className="flex items-center justify-between border-t border-border/60 px-3 py-2">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPickerMain((s) => !s)}
+                      className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                      title="Chèn emoji"
+                    >
+                      <Smile className="h-5 w-5" />
+                    </button>
+                    {showEmojiPickerMain && (
+                      <div className="absolute bottom-full left-0 z-50 mb-2">
+                        <EmojiPicker onEmojiClick={(e: any) => { insertEmojiAtCursor(mainTextareaRef.current, e.emoji, setCommentContent); setShowEmojiPickerMain(false); }} />
+                      </div>
+                    )}
+                  </div>
                   <Button
                     onClick={handleSubmitComment}
                     disabled={addCommentMutation.isPending || !commentContent.trim()}
@@ -815,9 +837,10 @@ export default function BlogDetailPage() {
                     ))}
                   </div>
                 ) : sortedComments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    Hãy là người đầu tiên chia sẻ cảm nghĩ của bạn.
-                  </p>
+                  <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-10 text-center text-sm text-muted-foreground">
+                    <MessageCircle className="h-6 w-6 opacity-40" />
+                    <span>Hãy là người đầu tiên chia sẻ cảm nghĩ của bạn.</span>
+                  </div>
                 ) : (
                   sortedComments.map((comment: BlogComment) => (
                     <CommentItem

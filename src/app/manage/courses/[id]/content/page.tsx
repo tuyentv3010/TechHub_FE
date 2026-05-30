@@ -1,5 +1,7 @@
 "use client";
 
+import "./curriculum-studio.css";
+
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
@@ -198,10 +200,10 @@ const ExerciseDisplay = ({
           {t("Exercise")}
         </span>
         {onCreate && (
-          <button type="button" className="btn btn-outline btn-sm" onClick={onCreate}>
+          <Button type="button" variant="outline" size="sm" onClick={onCreate}>
             <Plus />
             {t("AddExercise")}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -227,26 +229,30 @@ const ExerciseDisplay = ({
                   </span>
                   <div className="row-actions" style={{ opacity: 1, transform: "none" }}>
                     {onEdit && (
-                      <button
+                      <Button
                         type="button"
-                        className="icon-btn is-edit tip"
+                        variant="ghost"
+                        size="icon"
+                        className="tip"
                         data-tip={t("Edit")}
                         aria-label={t("Edit")}
                         onClick={() => onEdit(exercise)}
                       >
                         <Edit2 />
-                      </button>
+                      </Button>
                     )}
                     {onDelete && (
-                      <button
+                      <Button
                         type="button"
-                        className="icon-btn is-danger tip"
+                        variant="ghost"
+                        size="icon"
+                        className="tip text-destructive hover:text-destructive"
                         data-tip={t("Delete")}
                         aria-label={t("Delete")}
                         onClick={() => onDelete(exercise)}
                       >
                         <Trash2 />
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -1139,14 +1145,13 @@ export default function CourseContentManagementPage() {
               <h1 className="ch-title">{course.title}</h1>
               <p className="ch-desc">{course.description}</p>
             </div>
-            <button
+            <Button
               type="button"
-              className="btn btn-primary"
               onClick={() => setChapterDialog({ open: true, mode: 'create' })}
             >
               <Plus />
               {t("AddChapter")}
-            </button>
+            </Button>
           </div>
 
           <div className="stat-grid">
@@ -1208,14 +1213,13 @@ export default function CourseContentManagementPage() {
               icon={Layers}
               text={t("NoChaptersYet")}
               action={
-                <button
+                <Button
                   type="button"
-                  className="btn btn-primary"
                   onClick={() => setChapterDialog({ open: true, mode: 'create' })}
                 >
                   <Plus />
                   {t("AddChapter")}
-                </button>
+                </Button>
               }
             />
           ) : (
@@ -1288,9 +1292,11 @@ export default function CourseContentManagementPage() {
                               </div>
 
                               <div className="row-actions">
-                                <button
+                                <Button
                                   type="button"
-                                  className="icon-btn is-add tip"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="tip"
                                   data-tip={t("AddLesson")}
                                   aria-label={t("AddLesson")}
                                   onClick={() => setLessonDialog({
@@ -1300,10 +1306,12 @@ export default function CourseContentManagementPage() {
                                   })}
                                 >
                                   <Plus />
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                   type="button"
-                                  className="icon-btn is-edit tip"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="tip"
                                   data-tip={t("EditChapter")}
                                   aria-label={t("EditChapter")}
                                   onClick={() => setChapterDialog({
@@ -1313,17 +1321,19 @@ export default function CourseContentManagementPage() {
                                   })}
                                 >
                                   <Edit2 />
-                                </button>
+                                </Button>
                                 <span className="action-sep" />
-                                <button
+                                <Button
                                   type="button"
-                                  className="icon-btn is-danger tip"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="tip text-destructive hover:text-destructive"
                                   data-tip={t("DeleteChapter")}
                                   aria-label={t("DeleteChapter")}
                                   onClick={() => handleDeleteChapter(chapter.id, chapter.title)}
                                 >
                                   <Trash2 />
-                                </button>
+                                </Button>
                               </div>
                             </div>
 
@@ -1336,9 +1346,10 @@ export default function CourseContentManagementPage() {
                                       icon={FileText}
                                       text={t("NoLessons")}
                                       action={
-                                        <button
+                                        <Button
                                           type="button"
-                                          className="btn btn-outline btn-sm"
+                                          variant="outline"
+                                          size="sm"
                                           onClick={() => setLessonDialog({
                                             open: true,
                                             mode: 'create',
@@ -1347,7 +1358,7 @@ export default function CourseContentManagementPage() {
                                         >
                                           <Plus />
                                           {t("AddLesson")}
-                                        </button>
+                                        </Button>
                                       }
                                     />
                                   </div>
@@ -1430,9 +1441,11 @@ export default function CourseContentManagementPage() {
                                                   </div>
 
                                                   <div className="row-actions">
-                                                    <button
+                                                    <Button
                                                       type="button"
-                                                      className="icon-btn is-add tip"
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="tip"
                                                       data-tip={t("AddAsset")}
                                                       aria-label={t("AddAsset")}
                                                       onClick={() => setAssetDialog({
@@ -1443,10 +1456,12 @@ export default function CourseContentManagementPage() {
                                                       })}
                                                     >
                                                       <Plus />
-                                                    </button>
-                                                    <button
+                                                    </Button>
+                                                    <Button
                                                       type="button"
-                                                      className="icon-btn is-edit tip"
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="tip"
                                                       data-tip={t("EditLesson")}
                                                       aria-label={t("EditLesson")}
                                                       onClick={() => setLessonDialog({
@@ -1458,11 +1473,13 @@ export default function CourseContentManagementPage() {
                                                       })}
                                                     >
                                                       <Edit2 />
-                                                    </button>
+                                                    </Button>
                                                     <span className="action-sep" />
-                                                    <button
+                                                    <Button
                                                       type="button"
-                                                      className="icon-btn is-danger tip"
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="tip text-destructive hover:text-destructive"
                                                       data-tip={t("DeleteLesson")}
                                                       aria-label={t("DeleteLesson")}
                                                       onClick={() => handleDeleteLesson(
@@ -1472,7 +1489,7 @@ export default function CourseContentManagementPage() {
                                                       )}
                                                     >
                                                       <Trash2 />
-                                                    </button>
+                                                    </Button>
                                                   </div>
                                                 </div>
 
@@ -1509,9 +1526,10 @@ export default function CourseContentManagementPage() {
                                                           {t("Assets")}
                                                         </span>
                                                         {lesson.assets && lesson.assets.length > 0 && (
-                                                          <button
+                                                          <Button
                                                             type="button"
-                                                            className="btn btn-outline btn-sm"
+                                                            variant="outline"
+                                                            size="sm"
                                                             onClick={() => setAssetDialog({
                                                               open: true,
                                                               mode: 'create',
@@ -1521,7 +1539,7 @@ export default function CourseContentManagementPage() {
                                                           >
                                                             <Plus />
                                                             {t("AddAsset")}
-                                                          </button>
+                                                          </Button>
                                                         )}
                                                       </div>
                                                       {(!lesson.assets || lesson.assets.length === 0) ? (
@@ -1530,9 +1548,10 @@ export default function CourseContentManagementPage() {
                                                           icon={Paperclip}
                                                           text={t("NoAssets")}
                                                           action={
-                                                            <button
+                                                            <Button
                                                               type="button"
-                                                              className="btn btn-outline btn-sm"
+                                                              variant="outline"
+                                                              size="sm"
                                                               onClick={() => setAssetDialog({
                                                                 open: true,
                                                                 mode: 'create',
@@ -1542,7 +1561,7 @@ export default function CourseContentManagementPage() {
                                                             >
                                                               <Plus />
                                                               {t("AddAsset")}
-                                                            </button>
+                                                            </Button>
                                                           }
                                                         />
                                                       ) : (
@@ -1567,19 +1586,23 @@ export default function CourseContentManagementPage() {
                                                                 )}
                                                               </div>
                                                               {asset.assetType === 'DOCUMENT' && asset.externalUrl && (
-                                                                <button
+                                                                <Button
                                                                   type="button"
-                                                                  className="icon-btn tip"
+                                                                  variant="ghost"
+                                                                  size="icon"
+                                                                  className="tip"
                                                                   data-tip={t("Download")}
                                                                   aria-label={t("Download")}
                                                                   onClick={() => handleDownloadAsset(asset.externalUrl, asset.title)}
                                                                 >
                                                                   <Download />
-                                                                </button>
+                                                                </Button>
                                                               )}
-                                                              <button
+                                                              <Button
                                                                 type="button"
-                                                                className="icon-btn is-edit tip"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="tip"
                                                                 data-tip={t("Edit")}
                                                                 aria-label={t("Edit")}
                                                                 onClick={() => setAssetDialog({
@@ -1591,10 +1614,12 @@ export default function CourseContentManagementPage() {
                                                                 })}
                                                               >
                                                                 <Edit2 />
-                                                              </button>
-                                                              <button
+                                                              </Button>
+                                                              <Button
                                                                 type="button"
-                                                                className="icon-btn is-danger tip"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="tip text-destructive hover:text-destructive"
                                                                 data-tip={t("Delete")}
                                                                 aria-label={t("Delete")}
                                                                 onClick={() => handleDeleteAsset(
@@ -1605,7 +1630,7 @@ export default function CourseContentManagementPage() {
                                                                 )}
                                                               >
                                                                 <Trash2 />
-                                                              </button>
+                                                              </Button>
                                                             </div>
                                                           ))}
                                                         </div>
@@ -3026,7 +3051,7 @@ function AssetDialog({
                     href={externalUrl} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-sm text-blue-500 hover:underline flex items-center gap-2"
+                    className="text-sm text-primary hover:underline flex items-center gap-2"
                   >
                     <File className="h-4 w-4" />
                     {externalUrl.split('/').pop() || 'Document'}

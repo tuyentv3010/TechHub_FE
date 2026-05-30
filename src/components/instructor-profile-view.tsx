@@ -31,7 +31,7 @@ function JsonList({ data }: { data: any }) {
     return (
       <div className="flex flex-wrap gap-2">
         {data.map((s, i) => (
-          <span key={i} className="rounded bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800">
+          <span key={i} className="rounded bg-muted px-2 py-1 text-xs">
             {s}
           </span>
         ))}
@@ -39,7 +39,7 @@ function JsonList({ data }: { data: any }) {
     );
   }
   return (
-    <pre className="max-h-[260px] overflow-auto rounded bg-slate-100 p-3 text-xs dark:bg-slate-900">
+    <pre className="max-h-[260px] overflow-auto rounded bg-muted p-3 text-xs">
       {JSON.stringify(data, null, 2)}
     </pre>
   );

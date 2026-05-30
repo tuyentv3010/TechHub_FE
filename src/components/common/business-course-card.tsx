@@ -285,7 +285,7 @@ export function BusinessCourseCard({
             </p>
           </div>
           {promoLabel ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/25">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary ring-1 ring-primary/25">
               <Clock className="h-3 w-3" />
               {t("discountUntil", { date: promoLabel })}
             </span>

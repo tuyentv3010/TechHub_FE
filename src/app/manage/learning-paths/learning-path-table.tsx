@@ -238,7 +238,7 @@ export default function LearningPathTable() {
                 <Edit className="mr-2 h-4 w-4" />
                 {t("Edit")}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDelete(path.id)} className="text-red-600">
+              <DropdownMenuItem onClick={() => handleDelete(path.id)} className="text-destructive">
                 <Trash className="mr-2 h-4 w-4" />
                 {t("Delete")}
               </DropdownMenuItem>

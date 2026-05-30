@@ -83,7 +83,7 @@ const CourseNode = ({ data }: any) => {
       <Handle
         type="target"
         position={Position.Top}
-        className="w-4 h-4 !bg-blue-500"
+        className="w-4 h-4 !bg-primary"
       />
       
       <Card className="p-3 min-w-[280px] max-w-[320px] border-2 shadow-md">
@@ -135,7 +135,7 @@ const CourseNode = ({ data }: any) => {
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-4 h-4 !bg-blue-500"
+        className="w-4 h-4 !bg-primary"
       />
     </>
   );
@@ -275,7 +275,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
             target: edge.target,
             animated: true,
             type: 'smoothstep',
-            style: { stroke: '#3b82f6', strokeWidth: 2 },
+            style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
           }));
           
           console.log('🔗 Restored edges:', restoredEdges);
@@ -300,7 +300,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
         animated: true,
         type: "smoothstep",
         style: { 
-          stroke: "#3b82f6",
+          stroke: "hsl(var(--primary))",
           strokeWidth: 2,
         },
       };
@@ -506,9 +506,9 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
         defaultEdgeOptions={{
           animated: true,
           type: 'smoothstep',
-          style: { strokeWidth: 2, stroke: '#3b82f6' },
+          style: { strokeWidth: 2, stroke: 'hsl(var(--primary))' },
         }}
-        connectionLineStyle={{ strokeWidth: 2, stroke: '#3b82f6' }}
+        connectionLineStyle={{ strokeWidth: 2, stroke: 'hsl(var(--primary))' }}
         connectionLineType={ConnectionLineType.SmoothStep}
       >
         <Panel position="top-left" className="space-y-2">

@@ -269,8 +269,8 @@ export default function PaymentPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
-                        <Wallet className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+                      <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-primary/10">
+                        <Wallet className="h-7 w-7 text-primary" />
                       </div>
                       <div>
                         <h3 className="mb-1 font-semibold">VNPay</h3>

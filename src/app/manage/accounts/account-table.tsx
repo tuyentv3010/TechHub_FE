@@ -373,7 +373,7 @@ export default function AccountTable() {
         {accountListQuery.isLoading || isPermissionsLoading ? (
           <TableSkeleton />
         ) : accountListQuery.error ? (
-          <div className="text-red-500">
+          <div className="text-destructive">
             {t("Error")}: {accountListQuery.error.message}
           </div>
         ) : (

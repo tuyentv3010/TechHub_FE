@@ -32,43 +32,55 @@ type CommentItemProps = {
   onCancelReply: () => void;
 };
 
-const CommentUserInfo = ({ userId }: { userId: string }) => {
-  const t = useTranslations("CourseComments");
-  const canFetchUser = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Resolve the commenter's account (avatar + display name) from their userId.
+ * The comment API only returns `userId`, so we look the account up once and
+ * reuse it for both the avatar and the name.
+ */
+const useCommentUser = (userId: string) => {
+  const canFetchUser = UUID_RE.test(userId);
   const { data: userResponse, isLoading } = useGetAccount({
     id: userId,
     enabled: canFetchUser,
   });
   const user = userResponse?.payload?.data;
+  return {
+    user,
+    isLoading: canFetchUser && isLoading,
+    displayName: user?.username || `@${userId.slice(0, 8)}`,
+  };
+};
 
-  // Loading state
+const CommentAvatar = ({
+  isLoading,
+  avatar,
+  fallback,
+  alt,
+}: {
+  isLoading: boolean;
+  avatar?: string;
+  fallback: string;
+  alt: string;
+}) => {
   if (isLoading) {
     return <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />;
   }
-
-  // Fallback nếu không load được user
-  if (!user) {
+  if (avatar) {
     return (
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold uppercase text-primary">
-        {userId.slice(0, 2)}
-      </div>
+      <img
+        src={avatar}
+        alt={alt}
+        className="h-10 w-10 rounded-full object-cover"
+      />
     );
   }
-
   return (
-    <>
-      {user.avatar ? (
-        <img
-          src={user.avatar}
-          alt={user.username || t("userAvatarAlt")}
-          className="h-10 w-10 rounded-full object-cover"
-        />
-      ) : (
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold uppercase text-primary">
-          {user.username?.slice(0, 2).toUpperCase() || "U"}
-        </div>
-      )}
-    </>
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold uppercase text-primary">
+      {fallback.slice(0, 2).toUpperCase()}
+    </div>
   );
 };
 
@@ -87,6 +99,9 @@ export function CourseCommentItem({
   const localReplyRef = useRef<HTMLTextAreaElement | null>(null);
   const [showLocalEmoji, setShowLocalEmoji] = useState(false);
   const [showReplies, setShowReplies] = useState(true);
+  const { user, isLoading: isUserLoading, displayName } = useCommentUser(
+    comment.userId
+  );
 
   const insertEmojiToLocalReply = (emoji: string) => {
     const ref = localReplyRef.current;
@@ -114,7 +129,12 @@ export function CourseCommentItem({
       <div className={cn("flex gap-3", depth > 0 && "ml-8 border-l pl-4 sm:ml-12")}>
         {/* Avatar */}
         <div className="flex-shrink-0">
-          <CommentUserInfo userId={comment.userId} />
+          <CommentAvatar
+            isLoading={isUserLoading}
+            avatar={user?.avatar}
+            fallback={user?.username || comment.userId}
+            alt={displayName}
+          />
         </div>
 
         {/* Comment Content */}
@@ -128,7 +148,7 @@ export function CourseCommentItem({
           >
             <div className="mb-1 flex flex-wrap items-center gap-2 text-xs">
               <span className="font-medium text-foreground">
-                @{comment.userId.slice(0, 8)}
+                {displayName}
               </span>
               <span className="text-muted-foreground">
                 {format(new Date(comment.created), "dd/MM/yyyy HH:mm")}

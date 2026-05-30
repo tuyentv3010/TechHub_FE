@@ -12,11 +12,11 @@ const TableSkeleton = () => {
     <div className="w-full">
       {/* Skeleton for Filters */}
       <div className="flex items-center py-4 gap-5">
-        <div className="h-10 w-[150px] bg-gray-200 animate-pulse rounded" />
-        <div className="h-10 w-[150px] bg-gray-200 animate-pulse rounded" />
-        <div className="h-10 w-[150px] bg-gray-200 animate-pulse rounded" />
-        <div className="h-10 w-[150px] bg-gray-200 animate-pulse rounded" />
-        <div className="ml-auto h-10 w-[100px] bg-gray-200 animate-pulse rounded" />
+        <div className="h-10 w-[150px] bg-muted animate-pulse rounded" />
+        <div className="h-10 w-[150px] bg-muted animate-pulse rounded" />
+        <div className="h-10 w-[150px] bg-muted animate-pulse rounded" />
+        <div className="h-10 w-[150px] bg-muted animate-pulse rounded" />
+        <div className="ml-auto h-10 w-[100px] bg-muted animate-pulse rounded" />
       </div>
       {/* Skeleton for Table */}
       <div className="rounded-md border">
@@ -27,7 +27,7 @@ const TableSkeleton = () => {
                 .fill(0)
                 .map((_, index) => (
                   <TableHead key={index}>
-                    <div className="h-6 w-20 bg-gray-200 animate-pulse rounded" />
+                    <div className="h-6 w-20 bg-muted animate-pulse rounded" />
                   </TableHead>
                 ))}
             </TableRow>
@@ -41,7 +41,7 @@ const TableSkeleton = () => {
                     .fill(0)
                     .map((_, cellIndex) => (
                       <TableCell key={cellIndex}>
-                        <div className="h-6 w-full bg-gray-200 animate-pulse rounded" />
+                        <div className="h-6 w-full bg-muted animate-pulse rounded" />
                       </TableCell>
                     ))}
                 </TableRow>
@@ -51,12 +51,12 @@ const TableSkeleton = () => {
       </div>
       {/* Skeleton for Pagination */}
       <div className="flex items-center justify-between py-4">
-        <div className="h-4 w-40 bg-gray-200 animate-pulse rounded" />
+        <div className="h-4 w-40 bg-muted animate-pulse rounded" />
         <div className="flex items-center gap-2">
-          <div className="h-8 w-20 bg-gray-200 animate-pulse rounded" />
-          <div className="h-4 w-20 bg-gray-200 animate-pulse rounded" />
-          <div className="h-8 w-20 bg-gray-200 animate-pulse rounded" />
-          <div className="h-8 w-[100px] bg-gray-200 animate-pulse rounded" />
+          <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+          <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+          <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+          <div className="h-8 w-[100px] bg-muted animate-pulse rounded" />
         </div>
       </div>
     </div>

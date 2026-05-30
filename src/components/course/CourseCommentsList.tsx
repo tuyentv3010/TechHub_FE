@@ -9,6 +9,13 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CourseCommentItem } from "./CourseCommentItem";
 import type { CourseComment } from "@/types/course-comment.types";
 
@@ -120,58 +127,64 @@ export function CourseCommentsList({
     <section className="space-y-5 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
       {/* Header with count and sort */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-lg font-semibold">
-          <MessageCircle className="h-5 w-5" />
+        <div className="flex items-center gap-2 text-base font-semibold">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <MessageCircle className="h-4 w-4" />
+          </span>
           <span>{t("count", { count: totalCommentCount })}</span>
         </div>
-        <select
+        <Select
           value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
-          aria-label="Comment sort order"
-          className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-muted-foreground transition hover:bg-muted/50"
+          onValueChange={(value) => setSortOrder(value as "newest" | "oldest")}
         >
-          <option value="newest">{t("sortNewest")}</option>
-          <option value="oldest">{t("sortOldest")}</option>
-        </select>
+          <SelectTrigger
+            aria-label="Comment sort order"
+            className="h-9 w-[140px] rounded-lg text-sm"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">{t("sortNewest")}</SelectItem>
+            <SelectItem value="oldest">{t("sortOldest")}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* New Comment Input */}
-      <div className="rounded-lg border bg-background p-3">
-        <div className="relative">
-          <Textarea
-            placeholder={t("commentPlaceholder")}
-            value={commentContent}
-            onChange={(event) => setCommentContent(event.target.value)}
-            rows={3}
-            ref={mainTextareaRef}
-            className="min-h-[92px] resize-none border-0 pr-10 shadow-none focus-visible:ring-0"
-          />
-
-          <button
-            type="button"
-            onClick={() => setShowEmojiPickerMain((s) => !s)}
-            className="absolute right-2 bottom-2 inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:text-foreground"
-            title={t("insertEmoji")}
-          >
-            <Smile className="h-5 w-5" />
-          </button>
-
-          {showEmojiPickerMain && (
-            <div className="absolute right-0 bottom-12 z-50">
-              <EmojiPicker
-                onEmojiClick={(e: any) => {
-                  insertEmojiAtCursor(
-                    mainTextareaRef.current,
-                    e.emoji,
-                    setCommentContent
-                  );
-                  setShowEmojiPickerMain(false);
-                }}
-              />
-            </div>
-          )}
-        </div>
-        <div className="mt-3 flex justify-end">
+      <div className="rounded-xl border bg-background transition focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring/30">
+        <Textarea
+          placeholder={t("commentPlaceholder")}
+          value={commentContent}
+          onChange={(event) => setCommentContent(event.target.value)}
+          rows={3}
+          ref={mainTextareaRef}
+          className="min-h-[92px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
+        />
+        <div className="flex items-center justify-between border-t border-border/60 px-3 py-2">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowEmojiPickerMain((s) => !s)}
+              className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              title={t("insertEmoji")}
+            >
+              <Smile className="h-5 w-5" />
+            </button>
+            {showEmojiPickerMain && (
+              <div className="absolute bottom-full left-0 z-50 mb-2">
+                <EmojiPicker
+                  onEmojiClick={(e: any) => {
+                    insertEmojiAtCursor(
+                      mainTextareaRef.current,
+                      e.emoji,
+                      setCommentContent
+                    );
+                    setShowEmojiPickerMain(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
           <Button
             onClick={handleSubmitComment}
             disabled={isSubmitting || !commentContent.trim()}
@@ -195,9 +208,10 @@ export function CourseCommentsList({
             ))}
           </div>
         ) : sortedComments.length === 0 ? (
-          <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-            {t("empty")}
-          </p>
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-10 text-center text-sm text-muted-foreground">
+            <MessageCircle className="h-6 w-6 opacity-40" />
+            <span>{t("empty")}</span>
+          </div>
         ) : (
           sortedComments.map((comment: CourseComment) => (
             <CourseCommentItem

@@ -231,8 +231,8 @@ export default function PaymentResultPage() {
             )}
 
             {/* Support Notice */}
-            <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
-              <p className="text-sm text-blue-900 dark:text-blue-100">
+            <div className="rounded-lg border border-border bg-muted p-4">
+              <p className="text-sm text-foreground">
                 <strong>Lưu ý:</strong> Nếu bạn có bất kỳ thắc mắc nào về giao dịch,
                 vui lòng liên hệ với bộ phận hỗ trợ của chúng tôi với mã giao dịch{" "}
                 <span className="font-mono font-semibold">{txnRef}</span>.

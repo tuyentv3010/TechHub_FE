@@ -31,11 +31,11 @@ export function CourseReviews({
               {[1, 2, 3].map((i) => (
                 <div key={i} className="animate-pulse">
                   <div className="flex gap-4">
-                    <div className="h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700" />
+                    <div className="h-12 w-12 rounded-full bg-muted" />
                     <div className="flex-1 space-y-2">
-                      <div className="h-4 w-32 rounded bg-gray-200 dark:bg-gray-700" />
-                      <div className="h-3 w-24 rounded bg-gray-200 dark:bg-gray-700" />
-                      <div className="h-16 w-full rounded bg-gray-200 dark:bg-gray-700" />
+                      <div className="h-4 w-32 rounded bg-muted" />
+                      <div className="h-3 w-24 rounded bg-muted" />
+                      <div className="h-16 w-full rounded bg-muted" />
                     </div>
                   </div>
                 </div>
@@ -53,7 +53,7 @@ export function CourseReviews({
         <CardContent className="p-8">
           <h2 className="mb-6 text-2xl font-bold">Reviews</h2>
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Star className="mb-4 h-12 w-12 text-gray-300 dark:text-gray-600" />
+            <Star className="mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-lg font-medium text-muted-foreground">
               No reviews yet
             </p>
@@ -104,7 +104,7 @@ export function CourseReviews({
                         className={`h-4 w-4 ${
                           index < review.rating
                             ? "fill-yellow-400 text-yellow-400"
-                            : "fill-transparent text-gray-300 dark:text-gray-600"
+                            : "fill-transparent text-muted-foreground"
                         }`}
                       />
                     ))}

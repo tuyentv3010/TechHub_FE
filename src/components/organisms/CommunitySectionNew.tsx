@@ -50,10 +50,10 @@ export function CommunitySection({ title, stats }: CommunitySectionProps) {
           <div className="relative">
             <div className="relative h-[420px] w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm">
               <Image
-                src="/community-learning.png"
+                src="https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1000&q=80"
                 alt="Learning community"
                 fill
-                className="object-contain p-8"
+                className="object-cover"
               />
             </div>
           </div>

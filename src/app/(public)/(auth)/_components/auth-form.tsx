@@ -28,12 +28,14 @@ import { motion, AnimatePresence } from "framer-motion";
 
 type AuthMode = "login" | "register";
 
+// High-resolution Unsplash imagery (tech / learning themed). The
+// images.unsplash.com domain is already allowlisted in next.config.ts.
 const CAROUSEL_IMAGES = [
-  "/hero/new-login-image-1.png",
-  "/hero/new-login-image-2.png",
-  "/hero/new-login-image-3.png",
-  "/hero/new-login-image-4.png",
-  "/hero/new-login-image-5.png",
+  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1280&q=80",
+  "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1280&q=80",
+  "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1280&q=80",
+  "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1280&q=80",
+  "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1280&q=80",
 ];
 
 const CAROUSEL_INTERVAL = 5000;
@@ -51,7 +53,7 @@ const carouselVariants = {
 };
 
 const INPUT_CLASS =
-  "w-full h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 transition-all duration-200";
+  "w-full h-12 px-4 rounded-xl border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 transition-all duration-200";
 
 const formVariants = {
   enter: (direction: number) => ({
@@ -171,11 +173,10 @@ export default function AuthForm({
       if (email) loginForm.setValue("email", email);
     }
 
+    // Toggle purely via local state — no URL navigation. This keeps the
+    // component mounted (smooth framer-motion transition, no remount jank) and
+    // avoids touching the Next.js router/history at all.
     setMode(newMode);
-    // Sync URL without full page reload
-    router.replace(newMode === "login" ? "/login" : "/register", {
-      scroll: false,
-    });
   };
 
   // ── Login submit ──
@@ -270,7 +271,7 @@ export default function AuthForm({
         {/* TechHub brand mark */}
         <div className="relative px-10 pt-8 flex-shrink-0">
           <span className="text-white font-bold text-xl tracking-tight">
-            Tech<span className="text-blue-300 dark:text-blue-400">Hub</span>
+            Tech<span className="text-primary-foreground/80">Hub</span>
           </span>
         </div>
 
@@ -315,7 +316,7 @@ export default function AuthForm({
         <div className="relative px-10 pb-10 flex-shrink-0">
           <div className="rounded-xl border border-white/10 bg-white/10 p-5">
             <svg
-              className="w-6 h-6 text-blue-300 mb-2 opacity-80"
+              className="w-6 h-6 text-primary-foreground/70 mb-2"
               fill="currentColor"
               viewBox="0 0 24 24"
             >
@@ -341,12 +342,12 @@ export default function AuthForm({
       </div>
 
       {/* ── Right Panel: Form ── */}
-      <div className="w-full lg:w-[48%] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 px-8 sm:px-14 overflow-y-auto">
+      <div className="w-full lg:w-[48%] flex flex-col items-center justify-center bg-muted/30 px-8 sm:px-14 overflow-y-auto">
         <div className="w-full max-w-[420px] py-6">
           {/* Mobile brand */}
           <div className="lg:hidden text-center mb-6">
-            <span className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">
-              Tech<span className="text-blue-500">Hub</span>
+            <span className="text-foreground font-bold text-xl tracking-tight">
+              Tech<span className="text-primary">Hub</span>
             </span>
           </div>
 
@@ -362,20 +363,20 @@ export default function AuthForm({
               transition={{ duration: 0.2, ease: "easeInOut" }}
               className="mb-5"
             >
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight mb-1">
+              <h1 className="text-2xl font-bold text-foreground leading-tight mb-1">
                 {isLogin ? tLogin("title") : tRegister("title")}
               </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 {isLogin ? tLogin("description") : tRegister("description")}
               </p>
             </motion.div>
           </AnimatePresence>
 
           {/* Tab toggle */}
-          <div className="flex bg-gray-200 dark:bg-gray-800 rounded-xl p-1 mb-5 relative">
+          <div className="flex bg-muted rounded-xl p-1 mb-5 relative">
             {/* Sliding indicator */}
             <motion.div
-              className="absolute top-1 bottom-1 rounded-lg bg-white dark:bg-gray-700 shadow-sm"
+              className="absolute top-1 bottom-1 rounded-lg bg-background shadow-sm"
               layout
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
               style={{
@@ -388,8 +389,8 @@ export default function AuthForm({
               onClick={() => switchMode("register")}
               className={`flex-1 relative z-10 text-center py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 cursor-pointer select-none ${
                 !isLogin
-                  ? "text-gray-900 dark:text-white font-semibold"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {tLogin("Register")}
@@ -399,8 +400,8 @@ export default function AuthForm({
               onClick={() => switchMode("login")}
               className={`flex-1 relative z-10 text-center py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 cursor-pointer select-none ${
                 isLogin
-                  ? "text-gray-900 dark:text-white font-semibold"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {tLogin("signIn")}
@@ -432,7 +433,7 @@ export default function AuthForm({
                         <FormItem className="space-y-1.5">
                           <label
                             htmlFor="login-email"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                            className="block text-sm font-medium text-foreground"
                           >
                             {tLogin("email")}
                           </label>
@@ -444,7 +445,7 @@ export default function AuthForm({
                             className={INPUT_CLASS}
                             {...field}
                           />
-                          <FormMessage className="text-xs text-red-500 px-1">
+                          <FormMessage className="text-xs text-destructive px-1">
                             {errors.email?.message &&
                               errorMessageT(errors.email.message as any)}
                           </FormMessage>
@@ -461,13 +462,13 @@ export default function AuthForm({
                           <div className="flex items-center justify-between">
                             <label
                               htmlFor="login-password"
-                              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                              className="block text-sm font-medium text-foreground"
                             >
                               {tLogin("password")}
                             </label>
                             <Link
                               href="/forgot-password"
-                              className="text-xs font-medium text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors duration-150 cursor-pointer"
+                              className="text-xs font-medium text-primary hover:text-primary/80 transition-colors duration-150 cursor-pointer"
                               tabIndex={-1}
                             >
                               {tLogin("forgotPassword")}
@@ -485,7 +486,7 @@ export default function AuthForm({
                             <button
                               type="button"
                               onClick={() => setShowPassword((v) => !v)}
-                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150 cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-150 cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-ring/40"
                               aria-label={
                                 showPassword ? "Hide password" : "Show password"
                               }
@@ -497,7 +498,7 @@ export default function AuthForm({
                               )}
                             </button>
                           </div>
-                          <FormMessage className="text-xs text-red-500 px-1">
+                          <FormMessage className="text-xs text-destructive px-1">
                             {errors.password?.message &&
                               errorMessageT(errors.password.message as any)}
                           </FormMessage>
@@ -512,11 +513,11 @@ export default function AuthForm({
                         id="remember"
                         checked={staySignedIn}
                         onChange={(event) => setStaySignedIn(event.target.checked)}
-                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+                        className="h-4 w-4 rounded border-input text-primary focus:ring-ring focus:ring-offset-0 cursor-pointer"
                       />
                       <label
                         htmlFor="remember"
-                        className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none"
+                        className="text-sm text-muted-foreground cursor-pointer select-none"
                       >
                         Stay signed in
                       </label>
@@ -526,7 +527,7 @@ export default function AuthForm({
                     <button
                       type="submit"
                       disabled={loginMutation.isPending}
-                      className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold shadow-sm transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                      className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold shadow-sm transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
                     >
                       {loginMutation.isPending && (
                         <LoaderCircle className="animate-spin" size={15} />
@@ -565,7 +566,7 @@ export default function AuthForm({
                         <FormItem className="space-y-1.5">
                           <label
                             htmlFor="reg-username"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                            className="block text-sm font-medium text-foreground"
                           >
                             {tRegister("username")}
                           </label>
@@ -577,7 +578,7 @@ export default function AuthForm({
                             className={INPUT_CLASS}
                             {...field}
                           />
-                          <FormMessage className="text-xs text-red-500 px-1">
+                          <FormMessage className="text-xs text-destructive px-1">
                             {errors.username?.message &&
                               errorMessageT(errors.username.message as any)}
                           </FormMessage>
@@ -593,7 +594,7 @@ export default function AuthForm({
                         <FormItem className="space-y-1.5">
                           <label
                             htmlFor="reg-email"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                            className="block text-sm font-medium text-foreground"
                           >
                             {tRegister("email")}
                           </label>
@@ -605,7 +606,7 @@ export default function AuthForm({
                             className={INPUT_CLASS}
                             {...field}
                           />
-                          <FormMessage className="text-xs text-red-500 px-1">
+                          <FormMessage className="text-xs text-destructive px-1">
                             {errors.email?.message &&
                               errorMessageT(errors.email.message as any)}
                           </FormMessage>
@@ -621,7 +622,7 @@ export default function AuthForm({
                         <FormItem className="space-y-1.5">
                           <label
                             htmlFor="reg-password"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                            className="block text-sm font-medium text-foreground"
                           >
                             {tRegister("password")}
                           </label>
@@ -637,7 +638,7 @@ export default function AuthForm({
                             <button
                               type="button"
                               onClick={() => setShowPassword((v) => !v)}
-                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150 cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-150 cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-ring/40"
                               aria-label={
                                 showPassword ? "Hide password" : "Show password"
                               }
@@ -649,7 +650,7 @@ export default function AuthForm({
                               )}
                             </button>
                           </div>
-                          <FormMessage className="text-xs text-red-500 px-1">
+                          <FormMessage className="text-xs text-destructive px-1">
                             {errors.password?.message &&
                               errorMessageT(errors.password.message as any)}
                           </FormMessage>
@@ -665,7 +666,7 @@ export default function AuthForm({
                         <FormItem className="space-y-1.5">
                           <label
                             htmlFor="reg-confirm-password"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                            className="block text-sm font-medium text-foreground"
                           >
                             {tRegister("confirmPassword")}
                           </label>
@@ -681,7 +682,7 @@ export default function AuthForm({
                             <button
                               type="button"
                               onClick={() => setShowConfirmPassword((v) => !v)}
-                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150 cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-150 cursor-pointer p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-ring/40"
                               aria-label={
                                 showConfirmPassword
                                   ? "Hide password"
@@ -695,7 +696,7 @@ export default function AuthForm({
                               )}
                             </button>
                           </div>
-                          <FormMessage className="text-xs text-red-500 px-1">
+                          <FormMessage className="text-xs text-destructive px-1">
                             {errors.confirmPassword?.message &&
                               errorMessageT(
                                 errors.confirmPassword.message as any
@@ -709,7 +710,7 @@ export default function AuthForm({
                     <button
                       type="submit"
                       disabled={registerMutation.isPending}
-                      className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold shadow-sm transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+                      className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold shadow-sm transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
                     >
                       {registerMutation.isPending && (
                         <LoaderCircle className="animate-spin" size={15} />
@@ -736,17 +737,17 @@ function OAuthSection() {
   return (
     <>
       <div className="relative flex items-center gap-3">
-        <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-        <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
           Or continue with
         </span>
-        <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+        <div className="flex-1 h-px bg-border" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <Link
           href={authApiRequest.getGoogleOAuthUrl()}
-          className="flex items-center justify-center gap-2.5 h-11 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/80 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          className="flex items-center justify-center gap-2.5 h-11 rounded-xl border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
         >
           <svg
             className="flex-shrink-0"
@@ -770,24 +771,24 @@ function OAuthSection() {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
             />
           </svg>
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <span className="text-sm font-medium text-foreground">
             Google
           </span>
         </Link>
 
         <Link
           href={authApiRequest.getGithubOAuthUrl()}
-          className="flex items-center justify-center gap-2.5 h-11 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/80 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          className="flex items-center justify-center gap-2.5 h-11 rounded-xl border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
         >
           <svg
-            className="text-gray-800 dark:text-white flex-shrink-0"
+            className="text-foreground flex-shrink-0"
             viewBox="0 0 24 24"
             fill="currentColor"
             style={{ width: 18, height: 18 }}
           >
             <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
           </svg>
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <span className="text-sm font-medium text-foreground">
             GitHub
           </span>
         </Link>
@@ -800,18 +801,18 @@ function FinePrint() {
   const t = useTranslations("Legal.finePrint");
 
   return (
-    <p className="text-center text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
+    <p className="text-center text-xs text-muted-foreground leading-relaxed">
       {t("prefix")}{" "}
       <Link
         href="/terms"
-        className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150"
+        className="underline underline-offset-2 hover:text-foreground transition-colors duration-150"
       >
         {t("termsOfService")}
       </Link>{" "}
       {t("and")}{" "}
       <Link
         href="/privacy"
-        className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150"
+        className="underline underline-offset-2 hover:text-foreground transition-colors duration-150"
       >
         {t("privacyPolicy")}
       </Link>

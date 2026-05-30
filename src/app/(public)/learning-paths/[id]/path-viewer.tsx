@@ -73,7 +73,7 @@ const CourseNode = ({ data }: any) => {
       <Handle
         type="target"
         position={Position.Top}
-        className="w-4 h-4 !bg-blue-500"
+        className="w-4 h-4 !bg-primary"
       />
       
       <Card 
@@ -137,7 +137,7 @@ const CourseNode = ({ data }: any) => {
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-4 h-4 !bg-blue-500"
+        className="w-4 h-4 !bg-primary"
       />
     </>
   );

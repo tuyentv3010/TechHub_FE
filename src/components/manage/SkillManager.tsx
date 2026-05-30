@@ -13,15 +13,24 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { ImageIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useGetSkills, useCreateSkillMutation, useUpdateSkillMutation, useDeleteSkillMutation } from "@/queries/useCourse";
-import courseApiRequest from "@/apiRequests/course";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { useAccountProfile } from "@/queries/useAccount";
 import fileApiRequest from "@/apiRequests/file";
-import { Badge } from "@/components/ui/badge";
-import { resolveManagedFileUrl } from "@/lib/file-media";
+import { resolvePersistentFileUrl, normalizePublicMediaUrl } from "@/lib/file-media";
+import { cn } from "@/lib/utils";
 
 type Skill = { id: string; name: string; thumbnail?: string; category?: string };
+
+const CATEGORY_BADGE: Record<string, string> = {
+  LANGUAGE: "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  FRAMEWORK: "border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  TOOL: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  CONCEPT: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  OTHER: "border-border bg-muted text-muted-foreground",
+};
 
 export default function SkillManager({
   open,
@@ -38,13 +47,11 @@ export default function SkillManager({
 }) {
   const { data: skillsData } = useGetSkills();
   const skills = skillsData?.payload?.data ?? [];
-  console.log("[SkillManager] skillsData:", skillsData);
 
   const createSkill = useCreateSkillMutation();
   const updateSkill = useUpdateSkillMutation();
   const deleteSkill = useDeleteSkillMutation();
   const queryClient = useQueryClient();
-  const [isLoadingSkill, setIsLoadingSkill] = useState(false);
 
   const { data: profileData } = useAccountProfile();
   const userId = profileData?.payload?.data?.id || "";
@@ -54,52 +61,59 @@ export default function SkillManager({
   const [editingCategory, setEditingCategory] = useState<string | undefined>(undefined);
   const [editingThumbnail, setEditingThumbnail] = useState<string | undefined>(undefined);
   const [showMedia, setShowMedia] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
 
+  const resetForm = () => {
+    setEditingId(null);
+    setEditingName("");
+    setEditingCategory(undefined);
+    setEditingThumbnail(undefined);
+  };
+
   const handleAddOrUpdate = async () => {
     if (!editingName?.trim()) return;
     const body: any = { name: editingName.trim(), thumbnail: editingThumbnail, category: editingCategory };
-    console.log("[SkillManager] handleAddOrUpdate body:", { editingId, body });
-    if (editingId) {
-      try {
-        setIsSaving(true);
-        const res = await updateSkill.mutateAsync({ id: editingId, body: { id: editingId, ...body } });
-        console.log("[SkillManager] updateSkill response:", res);
-        // ensure fresh data
-        await queryClient.invalidateQueries({ queryKey: ["skills"] });
-      } finally {
-        setIsSaving(false);
-        setEditingId(null);
-        setEditingName("");
-        setEditingCategory(undefined);
-        setEditingThumbnail(undefined);
+    try {
+      setIsSaving(true);
+      if (editingId) {
+        await updateSkill.mutateAsync({ id: editingId, body: { id: editingId, ...body } });
+      } else {
+        await createSkill.mutateAsync(body);
       }
-    } else {
-      try {
-        setIsSaving(true);
-        const res = await createSkill.mutateAsync(body);
-        console.log("[SkillManager] createSkill response:", res);
-        // ensure fresh data
-        await queryClient.invalidateQueries({ queryKey: ["skills"] });
-      } finally {
-        setIsSaving(false);
-        setEditingName("");
-        setEditingCategory(undefined);
-        setEditingThumbnail(undefined);
-      }
+      await queryClient.invalidateQueries({ queryKey: ["skills"] });
+      resetForm();
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleSelectFile = (file: any) => {
-    const thumbnailUrl = file?.payload?.data
-      ? resolveManagedFileUrl(file.payload.data, userId, "thumbnail")
-      : resolveManagedFileUrl(file, userId, "thumbnail");
+  const startEdit = (s: Skill) => {
+    setEditingId(s.id);
+    setEditingName(s.name);
+    setEditingCategory(s.category);
+    setEditingThumbnail(s.thumbnail);
+  };
 
-    if (thumbnailUrl) {
-      setEditingThumbnail(thumbnailUrl);
+  const handleDelete = async (id: string) => {
+    try {
+      setDeletingId(id);
+      await deleteSkill.mutateAsync(id);
+      await queryClient.invalidateQueries({ queryKey: ["skills"] });
+    } finally {
+      setDeletingId(null);
     }
+  };
+
+  // Persist the PUBLIC MinIO url (not the internal /api/proxy/... url) so the
+  // thumbnail renders for everyone without an auth cookie — matching how course
+  // thumbnails are stored (resolvePersistentFileUrl).
+  const handleSelectFile = (file: any) => {
+    const data = file?.payload?.data ?? file;
+    const thumbnailUrl = resolvePersistentFileUrl(data, "thumbnail");
+    if (thumbnailUrl) setEditingThumbnail(thumbnailUrl);
     setShowMedia(false);
   };
 
@@ -113,185 +127,179 @@ export default function SkillManager({
     try {
       const response = await fileApiRequest.uploadFile(formData);
       const thumbnailUrl = response.payload?.data
-        ? resolveManagedFileUrl(response.payload.data, userId, "thumbnail")
+        ? resolvePersistentFileUrl(response.payload.data, "thumbnail")
         : null;
-
-      if (thumbnailUrl) {
-        setEditingThumbnail(thumbnailUrl);
-      }
+      if (thumbnailUrl) setEditingThumbnail(thumbnailUrl);
     } catch (err) {
       console.error("Upload failed", err);
     }
   };
 
+  const previewThumbnail = normalizePublicMediaUrl(editingThumbnail);
+
   const body = (
     <>
-          <div className="grid grid-cols-12 gap-6">
-            {/* Left: Form */}
-            <div className="col-span-5 p-4 border rounded-lg">
-              <div className="flex flex-col gap-4">
-                <div className="flex gap-3">
-                  <Input
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    placeholder="Skill name"
-                    className="flex-1"
-                  />
-                  <div className="w-48">
-                    <Select
-                      value={editingCategory ?? ""}
-                      onValueChange={(v: string) => setEditingCategory(v || undefined)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="LANGUAGE">Language</SelectItem>
-                        <SelectItem value="FRAMEWORK">Framework</SelectItem>
-                        <SelectItem value="TOOL">Tool</SelectItem>
-                        <SelectItem value="CONCEPT">Concept</SelectItem>
-                        <SelectItem value="OTHER">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* Left: Form */}
+        <div className="lg:col-span-5 rounded-xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Input
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                placeholder="Tên kỹ năng"
+                className="flex-1"
+              />
+              <div className="sm:w-44">
+                <Select
+                  value={editingCategory ?? ""}
+                  onValueChange={(v: string) => setEditingCategory(v || undefined)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Phân loại" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LANGUAGE">Language</SelectItem>
+                    <SelectItem value="FRAMEWORK">Framework</SelectItem>
+                    <SelectItem value="TOOL">Tool</SelectItem>
+                    <SelectItem value="CONCEPT">Concept</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Label className="font-medium">Thumbnail</Label>
-                      <span className="text-xs text-muted-foreground">(optional)</span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label className="font-medium">Thumbnail</Label>
+                  <span className="text-xs text-muted-foreground">(tùy chọn)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleUpload(e.target.files?.[0] ?? null)}
+                  />
+                  <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    Tải lên
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowMedia(true)}>
+                    Thư viện
+                  </Button>
+                </div>
+              </div>
+              <div className="flex h-40 w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-border bg-muted/40">
+                {previewThumbnail ? (
+                  <img src={previewThumbnail} alt="thumbnail" className="max-h-36 object-contain" />
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                    <ImageIcon className="h-6 w-6 opacity-40" />
+                    Chưa chọn ảnh
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button onClick={handleAddOrUpdate} disabled={isSaving || !editingName.trim()}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {editingId ? "Cập nhật" : "Thêm kỹ năng"}
+              </Button>
+              {editingId && (
+                <Button variant="outline" onClick={resetForm}>
+                  Hủy
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: List */}
+        <div className="lg:col-span-7 max-h-[60vh] space-y-3 overflow-auto rounded-xl border border-border bg-card p-4 shadow-sm">
+          {skills.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-10 text-center text-sm text-muted-foreground">
+              <ImageIcon className="h-6 w-6 opacity-40" />
+              Chưa có kỹ năng nào.
+            </div>
+          ) : (
+            skills.map((s: Skill) => {
+              const thumb = normalizePublicMediaUrl(s.thumbnail);
+              const isSelected = (selectedItems || []).includes(s.name);
+              return (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background p-3 transition hover:bg-muted/40"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+                      {thumb ? (
+                        <img src={thumb} alt={s.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <ImageIcon className="h-5 w-5 text-muted-foreground/40" />
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleUpload(e.target.files?.[0] ?? null)}
-                      />
-                      <Button variant="outline" onClick={() => fileInputRef.current?.click()}>Upload</Button>
-                      <Button variant="ghost" onClick={() => setShowMedia(true)}>Choose from library</Button>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-foreground">{s.name}</div>
+                      {s.category && (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "mt-1 text-[10px] font-medium uppercase tracking-wide",
+                            CATEGORY_BADGE[s.category] || CATEGORY_BADGE.OTHER
+                          )}
+                        >
+                          {s.category}
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                  <div className="w-full h-40 border rounded flex items-center justify-center bg-muted">
-                    {editingThumbnail ? (
-                      <img src={editingThumbnail} alt="thumb" className="max-h-36 object-contain" />
-                    ) : (
-                      <div className="text-sm text-muted-foreground">No thumbnail selected</div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <Button size="sm" variant="outline" onClick={() => startEdit(s)}>
+                      <Pencil className="h-3.5 w-3.5 sm:mr-1.5" />
+                      <span className="hidden sm:inline">Sửa</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      disabled={deletingId === s.id}
+                      onClick={() => handleDelete(s.id)}
+                    >
+                      {deletingId === s.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    {onSelect && (
+                      <Button
+                        size="sm"
+                        variant={isSelected ? "secondary" : "default"}
+                        onClick={() => onSelect(s)}
+                        disabled={isSelected}
+                      >
+                        {isSelected ? "Đã chọn" : "Chọn"}
+                      </Button>
                     )}
                   </div>
                 </div>
+              );
+            })
+          )}
+        </div>
+      </div>
 
-                <div className="flex gap-2 justify-end">
-                  <Button onClick={handleAddOrUpdate} disabled={isSaving}>{editingId ? "Update" : "Add skill"}</Button>
-                  {editingId && (
-                    <Button variant="outline" onClick={() => { setEditingId(null); setEditingName(""); setEditingCategory(undefined); setEditingThumbnail(undefined); }}>
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Right: List */}
-            <div className="col-span-7 p-4 border rounded-lg max-h-[60vh] overflow-auto">
-              <div className="space-y-3">
-                {skills.map((s: Skill) => (
-                  <div key={s.id} className="flex items-center justify-between gap-4 p-3 border rounded-lg hover:shadow-sm">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-muted rounded overflow-hidden flex items-center justify-center">
-                        {s.thumbnail ? (
-                          <img src={s.thumbnail} alt={s.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-10 h-10 bg-muted-foreground/20 rounded" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-sm">{s.name}</div>
-                        <div className="text-xs text-muted-foreground mt-1">{s.category}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={async () => {
-                          try {
-                            setIsLoadingSkill(true);
-                            const res = await courseApiRequest.getSkill(s.id);
-                            console.log("[SkillManager] getSkill response:", res);
-                            const payload = res.payload?.data ?? res.payload ?? null;
-                            if (payload) {
-                              setEditingId(payload.id);
-                              setEditingName(payload.name ?? "");
-                              setEditingCategory(payload.category ?? undefined);
-                              setEditingThumbnail(payload.thumbnail ?? undefined);
-                            } else {
-                              // fallback to local value
-                              setEditingId(s.id);
-                              setEditingName(s.name);
-                              setEditingCategory(s.category);
-                              setEditingThumbnail(s.thumbnail);
-                            }
-                          } catch (err) {
-                            console.error("Failed to load skill", err);
-                            // fallback
-                            setEditingId(s.id);
-                            setEditingName(s.name);
-                            setEditingCategory(s.category);
-                            setEditingThumbnail(s.thumbnail);
-                          } finally {
-                            setIsLoadingSkill(false);
-                          }
-                        }}
-                      >
-                        {isLoadingSkill ? "Loading..." : "Edit"}
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={async () => {
-                        try {
-                          console.log("[SkillManager] deleteSkill id:", s.id);
-                          const res = await deleteSkill.mutateAsync(s.id);
-                          console.log("[SkillManager] deleteSkill response:", res);
-                          await queryClient.invalidateQueries({ queryKey: ["skills"] });
-                        } catch (err) {
-                          console.error("[SkillManager] deleteSkill error:", err);
-                        }
-                      }}>
-                        Delete
-                      </Button>
-                            {onSelect && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                  console.log("[SkillManager] Select button clicked for skill:", s);
-                                  console.log("[SkillManager] Skill name:", s.name);
-                                  console.log("[SkillManager] Current selectedItems:", selectedItems);
-                                  console.log("[SkillManager] Calling onSelect with skill:", s);
-                                  onSelect(s);
-                                  console.log("[SkillManager] onSelect called");
-                                }}
-                                className={`${(selectedItems || []).includes(s.name) ? 'opacity-60 bg-gray-200 text-gray-700' : ''}`}
-                              >
-                                { (selectedItems || []).includes(s.name) ? 'Selected' : 'Select' }
-                              </Button>
-                            )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-        <MediaLibraryDialog
-          open={showMedia}
-          onOpenChange={setShowMedia}
-          onSelectFile={handleSelectFile}
-          userId={String(userId)}
-          mediaType="IMAGE"
-          title="Select image"
-        />
+      <MediaLibraryDialog
+        open={showMedia}
+        onOpenChange={setShowMedia}
+        onSelectFile={handleSelectFile}
+        userId={String(userId)}
+        mediaType="IMAGE"
+        title="Chọn ảnh"
+      />
     </>
   );
 
@@ -303,7 +311,7 @@ export default function SkillManager({
     <Dialog open={!!open} onOpenChange={onOpenChange ?? (() => {})}>
       <DialogContent className="max-w-5xl">
         <DialogHeader>
-          <DialogTitle>Manage skills</DialogTitle>
+          <DialogTitle>Quản lý kỹ năng</DialogTitle>
         </DialogHeader>
         {body}
       </DialogContent>

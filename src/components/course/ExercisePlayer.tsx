@@ -18,6 +18,7 @@ import {
   Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import confetti from "canvas-confetti";
 import ExerciseLeaderboard from "./ExerciseLeaderboard";
 import courseApiRequest from "@/apiRequests/course";
@@ -675,15 +676,15 @@ function HelpModal({
 
         {/* Side buttons */}
         <div className="absolute right-4 top-24 flex flex-col gap-2">
-          <button className="w-12 h-12 rounded-xl bg-[#FDDF2F] shadow-lg flex items-center justify-center">
-            <Clock className="w-6 h-6 text-gray-700" />
-          </button>
-          <button className="w-12 h-12 rounded-xl bg-[#4A90D9] shadow-lg flex items-center justify-center text-white">
+          <Button size="icon" className="w-12 h-12 rounded-xl shadow-lg">
+            <Clock className="w-6 h-6" />
+          </Button>
+          <Button size="icon" className="w-12 h-12 rounded-xl shadow-lg">
             <Volume2 className="w-6 h-6" />
-          </button>
-          <button className="w-12 h-12 rounded-xl bg-[#4A90D9] shadow-lg flex items-center justify-center text-white">
+          </Button>
+          <Button size="icon" className="w-12 h-12 rounded-xl shadow-lg">
             <Music className="w-6 h-6" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>

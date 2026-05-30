@@ -239,7 +239,7 @@ export default function InstructorApplicationPage() {
               <h1 className="bg-gradient-to-r from-primary to-primary bg-clip-text text-4xl font-extrabold tracking-tight text-transparent md:text-5xl">
                 Trở thành Giảng viên TechHub
               </h1>
-              <p className="max-w-2xl text-base text-slate-600 dark:text-slate-300 md:text-lg">
+              <p className="max-w-2xl text-base text-muted-foreground md:text-lg">
                 Chia sẻ kiến thức, tạo thu nhập từ khóa học của bạn. Tham gia cộng đồng chuyên gia
                 công nghệ hàng đầu.
               </p>
@@ -264,7 +264,7 @@ export default function InstructorApplicationPage() {
                 action={
                   <a
                     href="/manage/courses"
-                    className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                    className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                   >
                     Tạo khóa học
                   </a>
@@ -314,13 +314,13 @@ export default function InstructorApplicationPage() {
             {/* UPLOAD CARD */}
             {canApply && (
               <GlassCard>
-                <div className="flex items-center gap-4 border-b border-slate-200 pb-5 dark:border-slate-700">
+                <div className="flex items-center gap-4 border-b border-border pb-5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                     1
                   </span>
                   <div>
                     <h3 className="text-xl font-bold">Tải lên hồ sơ của bạn</h3>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       CV và CCCD là bắt buộc. Chứng chỉ giúp được duyệt nhanh hơn.
                     </p>
                   </div>
@@ -344,16 +344,16 @@ export default function InstructorApplicationPage() {
                         className={`group cursor-pointer rounded-xl border-2 border-dashed p-10 text-center transition-all ${
                           dragOver === "cv"
                             ? "border-primary bg-primary/5"
-                            : "border-slate-300 bg-slate-50 hover:border-primary/70 hover:bg-primary/5 dark:border-slate-700 dark:bg-slate-800/30"
+                            : "border-input bg-muted hover:border-primary/70 hover:bg-primary/5"
                         }`}
                       >
                         <div className="flex flex-col items-center gap-3">
-                          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-white text-primary shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm">
                             <CloudUpload className="h-7 w-7" />
                           </div>
                           <div>
                             <p className="text-base font-semibold">Kéo thả CV vào đây</p>
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 text-xs text-muted-foreground">
                               hoặc click để chọn file (PDF, DOC, JPG, PNG · tối đa 10MB)
                             </p>
                           </div>
@@ -460,7 +460,7 @@ export default function InstructorApplicationPage() {
                     <button
                       type="button"
                       onClick={() => certInputRef.current?.click()}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-transparent py-3 text-sm font-semibold text-primary transition-all hover:border-primary/70 hover:bg-primary/5 dark:border-slate-700"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-input bg-transparent py-3 text-sm font-semibold text-primary transition-all hover:border-primary/70 hover:bg-primary/5"
                     >
                       <span className="text-base leading-none">+</span>
                       Thêm chứng chỉ
@@ -478,15 +478,15 @@ export default function InstructorApplicationPage() {
                     />
                   </SubSection>
 
-                  <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-6 dark:border-slate-700">
-                    <p className="flex items-center gap-2 text-xs italic text-slate-500">
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
+                    <p className="flex items-center gap-2 text-xs italic text-muted-foreground">
                       <ShieldCheck className="h-4 w-4" />
                       Thông tin của bạn được bảo mật theo tiêu chuẩn TechHub
                     </p>
                     <button
                       onClick={handleSubmit}
                       disabled={uploading || submitting || !file || !cccdFront || !cccdBack}
-                      className="flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-primary px-7 py-3.5 font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:-translate-y-0.5 hover:shadow-xl active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
+                      className="flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-primary px-7 py-3.5 font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:-translate-y-0.5 hover:shadow-xl active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0"
                     >
                       {uploading || submitting ? "Đang xử lý..." : "Gửi đơn ứng tuyển"}
                       <ArrowRight className="h-4 w-4" />
@@ -500,10 +500,10 @@ export default function InstructorApplicationPage() {
             {latest && aiData?.data && (
               <GlassCard className="overflow-hidden p-0">
                 <div className="relative h-28 bg-gradient-to-r from-primary to-primary">
-                  <div className="absolute -bottom-5 left-6 flex items-center gap-3 rounded-xl border bg-white p-3 shadow-lg dark:bg-slate-800">
+                  <div className="absolute -bottom-5 left-6 flex items-center gap-3 rounded-xl border bg-card p-3 shadow-lg">
                     <FileText className="h-7 w-7 text-primary" />
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                         Hồ sơ đã tải
                       </p>
                       <p className="font-semibold">
@@ -514,7 +514,7 @@ export default function InstructorApplicationPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-6 p-8 pt-12 md:grid-cols-2">
                   <div className="space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       Thông tin cá nhân
                     </p>
                     <Row label="Họ và tên" value={aiData.data.fullName} />
@@ -527,7 +527,7 @@ export default function InstructorApplicationPage() {
                     />
                   </div>
                   <div className="space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       AI Insights
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -541,7 +541,7 @@ export default function InstructorApplicationPage() {
                       ))}
                     </div>
                     {aiData.data.summary && (
-                      <p className="rounded-lg bg-slate-100 p-3 text-xs italic leading-relaxed text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                      <p className="rounded-lg bg-muted p-3 text-xs italic leading-relaxed text-muted-foreground">
                         "{aiData.data.summary}"
                       </p>
                     )}
@@ -552,12 +552,12 @@ export default function InstructorApplicationPage() {
 
             {/* EMPTY STATE */}
             {!latest && !loading && (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-10 text-center dark:border-slate-700 dark:bg-slate-900/30">
-                <Brain className="mx-auto mb-3 h-12 w-12 text-slate-400" />
-                <p className="text-lg font-semibold text-slate-600 dark:text-slate-400">
+              <div className="rounded-xl border border-dashed border-input bg-muted p-10 text-center">
+                <Brain className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
+                <p className="text-lg font-semibold text-muted-foreground">
                   Chưa có đơn ứng tuyển nào
                 </p>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   Sau khi gửi CV, bạn có thể theo dõi tiến trình duyệt tại đây.
                 </p>
               </div>
@@ -569,11 +569,11 @@ export default function InstructorApplicationPage() {
             {/* TIMELINE (chỉ khi có application) */}
             {latest && (
               <GlassCard>
-                <h4 className="mb-6 border-b border-slate-200 pb-4 text-lg font-bold dark:border-slate-700">
+                <h4 className="mb-6 border-b border-border pb-4 text-lg font-bold">
                   Tiến trình hồ sơ
                 </h4>
                 <div className="relative space-y-0">
-                  <div className="absolute bottom-4 left-[19px] top-4 w-0.5 bg-slate-200 dark:bg-slate-700" />
+                  <div className="absolute bottom-4 left-[19px] top-4 w-0.5 bg-border" />
                   <Step
                     icon={<CheckCircle2 className="h-5 w-5" />}
                     title="Đã tải CV"
@@ -606,7 +606,7 @@ export default function InstructorApplicationPage() {
 
             {/* WHY US */}
             <GlassCard>
-              <h4 className="mb-6 border-b border-slate-200 pb-4 text-lg font-bold dark:border-slate-700">
+              <h4 className="mb-6 border-b border-border pb-4 text-lg font-bold">
                 Tại sao trở thành giảng viên?
               </h4>
               <ul className="space-y-5">
@@ -617,7 +617,7 @@ export default function InstructorApplicationPage() {
                       <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                       <div>
                         <p className="text-sm font-semibold">{w.title}</p>
-                        <p className="text-xs text-slate-500">{w.desc}</p>
+                        <p className="text-xs text-muted-foreground">{w.desc}</p>
                       </div>
                     </li>
                   );
@@ -649,7 +649,7 @@ export default function InstructorApplicationPage() {
 
 function Badge({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <span className="flex items-center gap-2 rounded-full border border-primary/30 bg-white px-4 py-1.5 text-sm font-medium text-primary dark:bg-slate-900">
+    <span className="flex items-center gap-2 rounded-full border border-primary/30 bg-card px-4 py-1.5 text-sm font-medium text-primary">
       {icon}
       {text}
     </span>
@@ -659,7 +659,7 @@ function Badge({ icon, text }: { icon: React.ReactNode; text: string }) {
 function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`rounded-xl border border-slate-200 bg-white/70 p-6 shadow-sm backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/60 md:p-8 ${className}`}
+      className={`rounded-xl border border-border bg-card/70 p-6 shadow-sm backdrop-blur-md md:p-8 ${className}`}
     >
       {children}
     </div>
@@ -686,7 +686,7 @@ function Banner({
       "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100",
     rose: "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-100",
     amber: "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100",
-    blue: "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100",
+    blue: "border-border bg-muted text-foreground",
   };
   return (
     <div
@@ -725,7 +725,7 @@ function SubSection({
   return (
     <section>
       <div className="mb-4 flex items-start gap-3">
-        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
           {num}
         </span>
         <div>
@@ -733,7 +733,7 @@ function SubSection({
             {title}
             {required && <span className="ml-1 text-rose-500">*</span>}
           </p>
-          {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
+          {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
         </div>
       </div>
       {children}
@@ -773,7 +773,7 @@ function FileChip({
       <button
         type="button"
         onClick={onRemove}
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:border-rose-300 hover:text-rose-500 dark:border-slate-700 dark:bg-slate-900"
+        className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:border-destructive/40 hover:text-destructive"
         aria-label="Xoá"
       >
         <X className="h-4 w-4" />
@@ -804,12 +804,12 @@ function CccdTile({
   const previewUrl = file ? URL.createObjectURL(file) : null;
   return (
     <div className="relative">
-      <span className="absolute left-3 top-3 z-10 rounded-full border border-slate-200 bg-white/95 px-2.5 py-1 text-[10px] font-bold tracking-wider text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-300">
+      <span className="absolute left-3 top-3 z-10 rounded-full border border-border bg-card/95 px-2.5 py-1 text-[10px] font-bold tracking-wider text-muted-foreground shadow-sm">
         {side}
       </span>
 
       {file && previewUrl ? (
-        <div className="relative aspect-[1.586/1] overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+        <div className="relative aspect-[1.586/1] overflow-hidden rounded-xl border border-border">
           <img src={previewUrl} alt={side} className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           <button
@@ -837,7 +837,7 @@ function CccdTile({
           className={`relative grid aspect-[1.586/1] cursor-pointer place-items-center rounded-xl border-2 border-dashed p-4 text-center transition-all ${
             active
               ? "border-primary bg-primary/5"
-              : "border-slate-300 bg-slate-50 hover:border-primary/70 hover:bg-primary/5 dark:border-slate-700 dark:bg-slate-800/30"
+              : "border-input bg-muted hover:border-primary/70 hover:bg-primary/5"
           }`}
         >
           <span className="pointer-events-none absolute left-3 top-3 h-5 w-5 border-l-2 border-t-2 border-primary" />
@@ -847,7 +847,7 @@ function CccdTile({
           <div className="flex flex-col items-center gap-2">
             <CloudUpload className="h-7 w-7 text-primary" />
             <p className="text-xs font-semibold">Click hoặc kéo thả ảnh CCCD</p>
-            <p className="text-[11px] text-slate-500">JPG / PNG · ≤ 10MB</p>
+            <p className="text-[11px] text-muted-foreground">JPG / PNG · ≤ 10MB</p>
           </div>
         </div>
       )}
@@ -857,8 +857,8 @@ function CccdTile({
 
 function Row({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="flex justify-between border-b border-slate-200 pb-1.5 text-sm dark:border-slate-700">
-      <span className="text-slate-500">{label}</span>
+    <div className="flex justify-between border-b border-border pb-1.5 text-sm">
+      <span className="text-muted-foreground">{label}</span>
       <span className="font-medium">{value || "-"}</span>
     </div>
   );
@@ -884,13 +884,13 @@ function Step({
       ? "bg-emerald-500 text-white"
       : state === "current"
       ? "bg-gradient-to-br from-primary to-primary text-white shadow-lg shadow-primary/30 animate-pulse"
-      : "bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500";
+      : "bg-muted text-muted-foreground";
   const text =
     state === "current"
       ? "text-primary"
       : state === "done"
-      ? "text-slate-900 dark:text-slate-100"
-      : "text-slate-400";
+      ? "text-foreground"
+      : "text-muted-foreground";
   return (
     <div className={`relative flex gap-5 ${last ? "" : "pb-8"}`}>
       <div
@@ -900,8 +900,8 @@ function Step({
       </div>
       <div>
         <h5 className={`font-semibold ${text}`}>{title}</h5>
-        {desc && <p className="text-xs text-slate-500">{desc}</p>}
-        {time && <p className="mt-0.5 text-[11px] font-medium text-slate-400">{time}</p>}
+        {desc && <p className="text-xs text-muted-foreground">{desc}</p>}
+        {time && <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">{time}</p>}
       </div>
     </div>
   );

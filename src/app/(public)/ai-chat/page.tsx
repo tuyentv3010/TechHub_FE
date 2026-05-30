@@ -3204,14 +3204,14 @@ export default function AiChatPage() {
                   </div>
                   <div className="hidden space-y-2">
                     <div className="space-y-1.5">
-                      <Label htmlFor="assistant-perspective" className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                      <Label htmlFor="assistant-perspective" className="text-[11px] font-medium text-muted-foreground">
                         {t("sidebar.answerRole")}
                       </Label>
                       <Select
                         value={assistantPerspective}
                         onValueChange={(value: "learner" | "instructor" | "analyst") => setAssistantPerspective(value)}
                       >
-                        <SelectTrigger id="assistant-perspective" className="h-9 rounded-xl border-slate-200 bg-white/90 text-xs dark:border-neutral-800 dark:bg-neutral-950/70">
+                        <SelectTrigger id="assistant-perspective" className="h-9 rounded-xl border-border bg-card text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -3222,14 +3222,14 @@ export default function AiChatPage() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="response-depth" className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                      <Label htmlFor="response-depth" className="text-[11px] font-medium text-muted-foreground">
                         {t("sidebar.responseDepth")}
                       </Label>
                       <Select
                         value={responseDepth}
                         onValueChange={(value: "concise" | "balanced" | "detailed") => setResponseDepth(value)}
                       >
-                        <SelectTrigger id="response-depth" className="h-9 rounded-xl border-slate-200 bg-white/90 text-xs dark:border-neutral-800 dark:bg-neutral-950/70">
+                        <SelectTrigger id="response-depth" className="h-9 rounded-xl border-border bg-card text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -3351,14 +3351,14 @@ export default function AiChatPage() {
                     {Array.from({ length: 4 }).map((_, index) => (
                       <div
                         key={`session-skeleton-${index}`}
-                        className="h-12 animate-pulse rounded-xl bg-slate-100 dark:bg-neutral-800"
+                        className="h-12 animate-pulse rounded-xl bg-muted"
                       />
                     ))}
                   </div>
                 )}
 
                 {sessions.length === 0 && !isSessionsLoading && !isSessionsFetching && (
-                  <div className="text-center py-10 text-slate-400 text-xs">
+                  <div className="text-center py-10 text-muted-foreground text-xs">
                     {t("noConversations") || "No conversations yet"}
                   </div>
                 )}
@@ -3461,7 +3461,7 @@ export default function AiChatPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 lg:hidden text-slate-600"
+              className="h-8 w-8 lg:hidden text-muted-foreground"
               onClick={() => setSidebarOpen(true)}
             >
               <Menu className="h-4 w-4" />
@@ -3471,7 +3471,7 @@ export default function AiChatPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 hidden lg:inline-flex text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
+                className="h-8 w-8 hidden lg:inline-flex text-muted-foreground hover:text-foreground"
                 onClick={() => setSidebarCollapsed(false)}
                 title={t("sidebar.expand")}
               >
@@ -3550,7 +3550,7 @@ export default function AiChatPage() {
           <div className="mx-auto w-full max-w-4xl space-y-8">
             {isSessionTransitioning && messages.length > 0 ? (
               <div className="sticky top-0 z-10 flex items-center justify-center">
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90 dark:text-slate-300">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   {t("messageLabels.loadingConversation")}
                 </div>
@@ -3563,15 +3563,15 @@ export default function AiChatPage() {
                     <div
                       key={`message-skeleton-${index}`}
                       className={cn(
-                        "animate-pulse rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/70",
+                        "animate-pulse rounded-[28px] border border-border bg-card p-5 shadow-sm",
                         index % 2 === 0 ? "mr-16" : "ml-16"
                       )}
                     >
-                      <div className="h-3 w-24 rounded-full bg-slate-200 dark:bg-neutral-800" />
+                      <div className="h-3 w-24 rounded-full bg-muted" />
                       <div className="mt-4 space-y-2">
-                        <div className="h-3 rounded-full bg-slate-200 dark:bg-neutral-800" />
-                        <div className="h-3 w-5/6 rounded-full bg-slate-200 dark:bg-neutral-800" />
-                        <div className="h-3 w-2/3 rounded-full bg-slate-200 dark:bg-neutral-800" />
+                        <div className="h-3 rounded-full bg-muted" />
+                        <div className="h-3 w-5/6 rounded-full bg-muted" />
+                        <div className="h-3 w-2/3 rounded-full bg-muted" />
                       </div>
                     </div>
                   ))}
@@ -3823,12 +3823,12 @@ export default function AiChatPage() {
                     return (
                       <div
                         key={`claude-style-${file.id}`}
-                        className="group relative flex w-[220px] items-center gap-3 rounded-2xl border border-slate-200 bg-white/92 p-2.5 shadow-sm transition-colors hover:border-slate-300 dark:border-neutral-800 dark:bg-neutral-900/85 dark:hover:border-neutral-700"
+                        className="group relative flex w-[220px] items-center gap-3 rounded-2xl border border-border bg-card p-2.5 shadow-sm transition-colors hover:border-border"
                       >
                         <button
                           type="button"
                           onClick={() => setPreviewAttachment(file)}
-                          className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-left dark:border-neutral-800 dark:bg-neutral-800"
+                          className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl border border-border bg-muted text-left"
                           title={t("composer.previewAttachment")}
                         >
                           {isImage ? (
@@ -3848,7 +3848,7 @@ export default function AiChatPage() {
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center text-slate-500 dark:text-slate-300">
+                            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                               <FileText className="h-4 w-4" />
                             </div>
                           )}
@@ -3857,15 +3857,15 @@ export default function AiChatPage() {
                           <button
                             type="button"
                             onClick={() => setPreviewAttachment(file)}
-                            className="block w-full truncate text-left text-sm font-medium text-slate-800 hover:text-primary dark:text-slate-100"
+                            className="block w-full truncate text-left text-sm font-medium text-foreground hover:text-primary"
                             title={t("composer.previewAttachment")}
                           >
                             {file.name}
                           </button>
-                          <div className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
+                          <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
                             {file.mimeType || file.fileType || t("attachedFile")}
                           </div>
-                          <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500">
+                          <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
                             <span>{file.processingStatus || t("ready")}</span>
                             <button
                               type="button"
@@ -4325,7 +4325,7 @@ function AttachmentMediaPreview({
   }
 
   return (
-    <div className={cn("flex h-full w-full items-center justify-center text-slate-500 dark:text-slate-300", fallbackClassName)}>
+    <div className={cn("flex h-full w-full items-center justify-center text-muted-foreground", fallbackClassName)}>
       {failedProxy ? <FileText className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
     </div>
   );

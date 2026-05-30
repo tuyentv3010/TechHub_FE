@@ -24,43 +24,43 @@ export default function UnauthorizedAccess({
         <div className="mb-8 flex justify-center">
           <div className="relative">
             <div className="relative rounded-lg border border-border bg-card p-6 shadow-sm">
-              <ShieldX className="w-24 h-24 text-red-500" strokeWidth={1.5} />
+              <ShieldX className="w-24 h-24 text-destructive" strokeWidth={1.5} />
             </div>
           </div>
         </div>
 
         {/* Error Code */}
         <div className="mb-6">
-          <h1 className="text-8xl font-bold text-red-500 mb-2">403</h1>
+          <h1 className="text-8xl font-bold text-destructive mb-2">403</h1>
           <div className="mx-auto h-1 w-32 rounded-full bg-destructive"></div>
         </div>
 
         {/* Title */}
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+        <h2 className="text-3xl font-bold text-foreground mb-4">
           {title}
         </h2>
 
         {/* Description */}
-        <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+        <p className="text-lg text-muted-foreground mb-8 max-w-md mx-auto">
           {description}
         </p>
 
         {/* Additional Info */}
         <div className="mb-8 rounded-lg border border-border bg-card p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          <h3 className="text-sm font-semibold text-foreground mb-3">
             Có thể do các lý do sau:
           </h3>
-          <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2 text-left max-w-md mx-auto">
+          <ul className="text-sm text-muted-foreground space-y-2 text-left max-w-md mx-auto">
             <li className="flex items-start">
-              <span className="inline-block w-1.5 h-1.5 bg-red-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+              <span className="inline-block w-1.5 h-1.5 bg-destructive rounded-full mt-2 mr-2 flex-shrink-0"></span>
               <span>Tài khoản của bạn chưa được cấp quyền truy cập</span>
             </li>
             <li className="flex items-start">
-              <span className="inline-block w-1.5 h-1.5 bg-red-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+              <span className="inline-block w-1.5 h-1.5 bg-destructive rounded-full mt-2 mr-2 flex-shrink-0"></span>
               <span>Vai trò của bạn không có quyền xem tài nguyên này</span>
             </li>
             <li className="flex items-start">
-              <span className="inline-block w-1.5 h-1.5 bg-red-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+              <span className="inline-block w-1.5 h-1.5 bg-destructive rounded-full mt-2 mr-2 flex-shrink-0"></span>
               <span>Tài nguyên yêu cầu quyền đặc biệt từ quản trị viên</span>
             </li>
           </ul>
@@ -96,10 +96,10 @@ export default function UnauthorizedAccess({
         </div>
 
         {/* Contact Info */}
-        <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-gray-500 dark:text-gray-500">
+        <div className="mt-12 pt-8 border-t border-border">
+          <p className="text-sm text-muted-foreground">
             Cần trợ giúp?{" "}
-            <span className="text-red-500 hover:text-red-600 font-semibold cursor-pointer">
+            <span className="text-destructive hover:text-destructive/80 font-semibold cursor-pointer">
               Liên hệ bộ phận hỗ trợ
             </span>
           </p>

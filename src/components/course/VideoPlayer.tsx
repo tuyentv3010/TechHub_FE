@@ -377,7 +377,7 @@ export default function VideoPlayer({
       {/* Buffering Indicator */}
       {isBuffering && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-          <div className="w-12 h-12 border-4 border-white/30 border-t-orange-500 rounded-full animate-spin" />
+          <div className="w-12 h-12 border-4 border-white/30 border-t-primary rounded-full animate-spin" />
         </div>
       )}
 
@@ -420,11 +420,11 @@ export default function VideoPlayer({
 
           {/* Progress */}
           <div
-            className="absolute inset-y-0 left-0 bg-orange-500 rounded-full transition-all"
+            className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all"
             style={{ width: `${progressPercent}%` }}
           >
             {/* Thumb */}
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-orange-500 rounded-full opacity-0 group-hover/progress:opacity-100 transition-opacity shadow-lg" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-primary rounded-full opacity-0 group-hover/progress:opacity-100 transition-opacity shadow-lg" />
           </div>
 
           {/* Hover Time Tooltip */}
@@ -607,12 +607,12 @@ export default function VideoPlayer({
                       onClick={() => changeSpeed(speed)}
                       className={cn(
                         "w-full px-4 py-2.5 text-left text-sm hover:bg-white/10 flex items-center justify-between",
-                        playbackSpeed === speed ? "text-orange-500" : "text-white"
+                        playbackSpeed === speed ? "text-primary" : "text-white"
                       )}
                     >
                       <span>{speed === 1 ? "Normal" : `${speed}x`}</span>
                       {playbackSpeed === speed && (
-                        <div className="w-2 h-2 bg-orange-500 rounded-full" />
+                        <div className="w-2 h-2 bg-primary rounded-full" />
                       )}
                     </button>
                   ))}

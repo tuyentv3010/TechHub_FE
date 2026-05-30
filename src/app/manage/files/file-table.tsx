@@ -711,7 +711,7 @@ export default function FileTable() {
           {[
             { label: t('TotalFiles'), value: statistics.totalFiles, icon: File, tone: 'text-muted-foreground' },
             { label: t('TotalSize'), value: formatFileSize(statistics.totalSize), icon: Upload, tone: 'text-muted-foreground' },
-            { label: t('Images'), value: statistics.byType.IMAGE?.count || 0, icon: ImageIcon, tone: 'text-blue-500' },
+            { label: t('Images'), value: statistics.byType.IMAGE?.count || 0, icon: ImageIcon, tone: 'text-primary' },
             { label: t('Videos'), value: statistics.byType.VIDEO?.count || 0, icon: Video, tone: 'text-primary' },
           ].map((item) => (
             <div key={item.label} className="manage-kpi-card">
@@ -784,7 +784,7 @@ export default function FileTable() {
               filteredFiles.map((file) => (
                 <TableRow key={file.id}>
                   <TableCell>
-                    <div className="relative h-20 w-20 overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/10 dark:bg-slate-900/80">
+                    <div className="relative h-20 w-20 overflow-hidden rounded-xl border border-border bg-card">
                       {renderFilePreview(file, 'h-7 w-7', 'object-contain')}
                     </div>
                   </TableCell>
@@ -803,7 +803,7 @@ export default function FileTable() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="border-slate-200 bg-white/70 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-100">
+                    <Badge variant="outline" className="border-border bg-card text-muted-foreground">
                       <FileTypeIcon type={file.fileType} />
                       <span className="ml-1">{getFileTypeLabel(file.fileType)}</span>
                     </Badge>
@@ -811,7 +811,7 @@ export default function FileTable() {
                   <TableCell className="manage-table-number-cell">{formatFileSize(file.fileSize)}</TableCell>
                   <TableCell>
                     {file.folderName ? (
-                      <Badge variant="secondary" className="bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-100">
+                      <Badge variant="secondary" className="bg-muted text-muted-foreground">
                         {file.folderName}
                       </Badge>
                     ) : (
@@ -838,7 +838,7 @@ export default function FileTable() {
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-slate-600 hover:bg-slate-900/5 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white">
+                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -956,12 +956,12 @@ export default function FileTable() {
             </DialogHeader>
             <div className="space-y-4">
               {previewFile.fileType === 'IMAGE' && (
-                <div className="relative h-[400px] w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 dark:border-white/10 dark:bg-slate-900/80">
+                <div className="relative h-[400px] w-full overflow-hidden rounded-2xl border border-border bg-muted">
                   {renderFilePreview(previewFile, 'h-12 w-12', 'object-contain', 'content')}
                 </div>
               )}
               {previewFile.fileType === 'VIDEO' && (
-                <div className="relative w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 dark:border-white/10 dark:bg-slate-900/80">
+                <div className="relative w-full overflow-hidden rounded-2xl border border-border bg-muted">
                   <video
                     src={getActiveSourceUrl(previewFile) || getFileSourceUrl(previewFile)}
                     controls
@@ -973,7 +973,7 @@ export default function FileTable() {
                 </div>
               )}
               {previewFile.fileType === 'AUDIO' && (
-                <div className="relative w-full rounded-2xl border border-slate-200/80 bg-slate-100 p-4 dark:border-white/10 dark:bg-slate-900/80">
+                <div className="relative w-full rounded-2xl border border-border bg-muted p-4">
                   <audio
                     src={getActiveSourceUrl(previewFile) || getFileSourceUrl(previewFile)}
                     controls
@@ -985,12 +985,12 @@ export default function FileTable() {
                 </div>
               )}
               {(previewFile.fileType === 'DOCUMENT' || previewFile.fileType === 'OTHER') && (
-                <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl border border-slate-200/80 bg-slate-100 px-6 py-8 text-center dark:border-white/10 dark:bg-slate-900/80">
+                <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-muted px-6 py-8 text-center">
                   <div className={cn('flex h-20 w-20 items-center justify-center rounded-xl', FILE_TYPE_COLORS[previewFile.fileType])}>
                     <FileTypeIcon type={previewFile.fileType} className="h-10 w-10" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-base font-semibold text-slate-900 dark:text-slate-50">
+                    <p className="text-base font-semibold text-foreground">
                       {previewFile.fileType === 'DOCUMENT' ? t('DocumentLabel') : t('AttachmentLabel')}
                     </p>
                     <p className="text-sm text-muted-foreground">{t('DocumentPreviewHint')}</p>

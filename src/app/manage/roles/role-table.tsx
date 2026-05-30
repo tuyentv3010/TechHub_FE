@@ -478,7 +478,7 @@ export default function RoleTable() {
         {isLoading ? (
           <TableSkeleton />
         ) : error ? (
-          <div className="text-red-500">
+          <div className="text-destructive">
             {t("ErrorLabel")}: {error.message}
           </div>
         ) : (
@@ -538,7 +538,7 @@ export default function RoleTable() {
                             >
                               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div className="min-w-0">
-                                  <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                                  <div className="text-base font-semibold text-foreground">
                                     {role.name}
                                   </div>
                                   <div className="mt-1 text-sm text-muted-foreground">
@@ -550,7 +550,7 @@ export default function RoleTable() {
                                 </Badge>
                               </div>
 
-                              <div className="grid gap-2 rounded-xl bg-slate-50/70 p-3 text-sm dark:bg-slate-950/40">
+                              <div className="grid gap-2 rounded-xl bg-muted p-3 text-sm">
                                 <div className="flex items-center justify-between gap-3">
                                   <span className="text-muted-foreground">{t("PermissionCountColumn")}</span>
                                   <Badge variant="outline">

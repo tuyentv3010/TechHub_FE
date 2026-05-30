@@ -51,7 +51,7 @@ export function SkillsSection({
             <div className="grid grid-cols-2 gap-4">
               <div className="relative h-48 overflow-hidden rounded-xl border border-border bg-card">
                 <Image
-                  src="/skills/instructor-office.png"
+                  src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=800&q=80"
                   alt="TechHub instructor"
                   fill
                   className="object-cover"
@@ -60,7 +60,7 @@ export function SkillsSection({
 
               <div className="relative h-48 overflow-hidden rounded-xl border border-border bg-card">
                 <Image
-                  src="/skills/building-exterior.png"
+                  src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80"
                   alt="TechHub workspace"
                   fill
                   className="object-cover"
@@ -69,7 +69,7 @@ export function SkillsSection({
 
               <div className="relative col-span-2 h-56 overflow-hidden rounded-xl border border-border bg-card">
                 <Image
-                  src="/skills/team-meeting.png"
+                  src="https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1000&q=80"
                   alt="TechHub learning team"
                   fill
                   className="object-cover"

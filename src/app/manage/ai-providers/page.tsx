@@ -445,7 +445,7 @@ export default function AiProvidersPage() {
                         return (
                           <TableRow
                             key={`${provider}-${model.id}`}
-                            className={isActive ? "bg-blue-50 dark:bg-blue-950/20" : ""}
+                            className={isActive ? "bg-accent" : ""}
                           >
                             <TableCell className="text-sm font-medium">{model.name || model.id}</TableCell>
                             <TableCell className="capitalize">{provider}</TableCell>

@@ -124,7 +124,7 @@ export default function EditPermission({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {t("NameLabel")} <span className="text-red-500">*</span>
+                      {t("NameLabel")} <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input placeholder={t("NamePlaceholder")} {...field} />
@@ -153,7 +153,7 @@ export default function EditPermission({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        {t("MethodLabel")} <span className="text-red-500">*</span>
+                        {t("MethodLabel")} <span className="text-destructive">*</span>
                       </FormLabel>
                       <Select
                         onValueChange={field.onChange}
@@ -183,7 +183,7 @@ export default function EditPermission({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        {t("ResourceLabel")} <span className="text-red-500">*</span>
+                        {t("ResourceLabel")} <span className="text-destructive">*</span>
                       </FormLabel>
                       <Select
                         onValueChange={field.onChange}
@@ -214,7 +214,7 @@ export default function EditPermission({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {t("UrlLabel")} <span className="text-red-500">*</span>
+                      {t("UrlLabel")} <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input placeholder={t("UrlPlaceholder")} {...field} />

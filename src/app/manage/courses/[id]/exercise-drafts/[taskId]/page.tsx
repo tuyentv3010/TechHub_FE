@@ -379,7 +379,7 @@ export default function ExerciseDraftDetailPage() {
         <div className="text-center space-y-4">
           <p className="text-muted-foreground">{t("noDraftFound") || "Không tìm thấy draft này"}</p>
           {error && (
-            <div className="text-xs text-red-500">
+            <div className="text-xs text-destructive">
               <p>Error: {JSON.stringify(error)}</p>
             </div>
           )}

@@ -267,7 +267,7 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
                   !(userInfo?.roles || account?.roles)?.includes("INSTRUCTOR") &&
                   !(userInfo?.roles || account?.roles)?.includes("ADMIN") && (
                   <DropdownMenuItem asChild>
-                    <Link href="/account/instructor-application" className="cursor-pointer text-purple-600 dark:text-purple-400 font-medium">
+                    <Link href="/account/instructor-application" className="cursor-pointer text-primary font-medium">
                       <GraduationCap className="mr-2 h-4 w-4" />
                       Trở thành Giảng viên
                     </Link>
@@ -294,7 +294,7 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={handleLogout} 
-                  className="cursor-pointer text-red-600 dark:text-red-400"
+                  className="cursor-pointer text-destructive"
                   disabled={logoutMutation.isPending}
                 >
                   <LogOut className="mr-2 h-4 w-4" />

@@ -69,8 +69,8 @@ export function NotificationBell({ className }: NotificationBellProps) {
     switch (type) {
       case "ACCOUNT":
         return {
-          bgColor: "bg-blue-100 dark:bg-blue-900/30",
-          textColor: "text-blue-600 dark:text-blue-400",
+          bgColor: "bg-primary/10",
+          textColor: "text-primary",
           icon: "👤",
         };
       case "BLOG":
@@ -93,14 +93,14 @@ export function NotificationBell({ className }: NotificationBellProps) {
         };
       case "SYSTEM":
         return {
-          bgColor: "bg-gray-100 dark:bg-gray-800",
-          textColor: "text-gray-600 dark:text-gray-400",
+          bgColor: "bg-muted",
+          textColor: "text-muted-foreground",
           icon: "⚙️",
         };
       default:
         return {
-          bgColor: "bg-gray-100 dark:bg-gray-800",
-          textColor: "text-gray-600 dark:text-gray-400",
+          bgColor: "bg-muted",
+          textColor: "text-muted-foreground",
           icon: "🔔",
         };
     }

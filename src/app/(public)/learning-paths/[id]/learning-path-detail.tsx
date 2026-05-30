@@ -118,7 +118,7 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
       case "BEGINNER":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       case "INTERMEDIATE":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+        return "bg-primary/10 text-primary";
       case "ADVANCED":
         return "bg-primary/10 text-primary";
       default:

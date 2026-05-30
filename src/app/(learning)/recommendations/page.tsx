@@ -385,8 +385,8 @@ export default function RecommendationsPage() {
                                     </Badge>
                                   ))}
                                 </div>
-                                <div className="bg-blue-50 p-3 rounded-md text-sm">
-                                  <p className="text-blue-900">
+                                <div className="bg-muted p-3 rounded-md text-sm">
+                                  <p className="text-foreground">
                                     <strong>{t("reasonForRecommendation")}</strong> {rec.reason}
                                   </p>
                                 </div>

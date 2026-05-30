@@ -523,7 +523,7 @@ export default function CourseDetailPage() {
                         const finalPrice = courseSummary.discountPrice ?? courseSummary.price ?? 0;
                         if (finalPrice === 0) {
                           return (
-                            <div className="text-3xl font-bold text-[#3dcbb1]">
+                            <div className="text-3xl font-bold text-primary">
                               {t("free")}
                             </div>
                           );
@@ -532,21 +532,21 @@ export default function CourseDetailPage() {
                           return (
                             <>
                               <div className="flex items-baseline gap-2">
-                                <span className="text-3xl font-bold text-[#3dcbb1]">
+                                <span className="text-3xl font-bold text-primary">
                                   {formatPrice(courseSummary.discountPrice, courseSummary.currency)}
                                 </span>
                                 <span className="text-lg text-muted-foreground line-through">
                                   {formatPrice(courseSummary.price, courseSummary.currency)}
                                 </span>
                               </div>
-                              <Badge className="mt-2 bg-[#3dcbb1] text-white hover:bg-[#35b5a0]">
+                              <Badge className="mt-2 bg-primary text-primary-foreground hover:bg-primary/90">
                                 {discountPercentage}% {t("off")}
                               </Badge>
                             </>
                           );
                         }
                         return (
-                          <div className="text-3xl font-bold text-[#3dcbb1]">
+                          <div className="text-3xl font-bold text-primary">
                             {formatPrice(courseSummary.price, courseSummary.currency)}
                           </div>
                         );
@@ -563,7 +563,7 @@ export default function CourseDetailPage() {
                         }
                       }}
                       disabled={enrollMutation.isPending}
-                      className="mb-3 w-full rounded-full bg-[#3dcbb1] py-6 text-lg font-semibold text-white hover:bg-[#35b5a0]"
+                      className="mb-3 w-full rounded-full bg-primary py-6 text-lg font-semibold text-primary-foreground hover:bg-primary/90"
                     >
                       {course.enrolled 
                         ? t("enterToLearn") 

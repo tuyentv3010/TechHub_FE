@@ -1248,27 +1248,31 @@ export default function RevenueDashboardPage() {
                       {detailStatus}
                     </span>
                   </div>
-                  <h2 className="text-2xl font-semibold tracking-tight text-[#dfe2f3]">
+                  <h2 className="text-2xl font-semibold tracking-tight text-foreground">
                     {selectedTransactionId ? `TXN-${selectedTransactionId.slice(0, 10)}` : notAvailable}
                   </h2>
                 </div>
                 <div className="flex items-center gap-2 text-slate-300">
-                  <button
+                  <Button
                     type="button"
-                    className="rounded-full p-2 transition-colors hover:bg-white/5"
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
                       title={t("CopyTransactionIdTitle")}
                     onClick={() => navigator.clipboard.writeText(detailTransactionId)}
                   >
                     <Copy className="h-4 w-4" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    className="rounded-full p-2 transition-colors hover:bg-white/5"
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
                       title={t("CopyPayloadTitle")}
                     onClick={() => navigator.clipboard.writeText(JSON.stringify(detailPayload ?? {}, null, 2))}
                   >
                     <FileJson2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1297,7 +1301,7 @@ export default function RevenueDashboardPage() {
                       <Clock3 className="h-4 w-4" /> {t("EventTimelineTitle")}
                     </h3>
                     <div className="relative flex justify-between gap-4">
-                      <div className="absolute left-0 top-4 h-[2px] w-full bg-[#313442]" />
+                      <div className="absolute left-0 top-4 h-[2px] w-full bg-card" />
                       <div className="absolute left-0 top-4 h-[2px] w-[100%] bg-[#4edea3] shadow-[0_0_8px_rgba(78,222,163,0.45)]" />
 
                       {[
@@ -1312,7 +1316,7 @@ export default function RevenueDashboardPage() {
                               <StepIcon className="h-4 w-4" />
                             </div>
                             <div>
-                              <p className="text-xs font-semibold text-[#dfe2f3]">{step.label}</p>
+                              <p className="text-xs font-semibold text-foreground">{step.label}</p>
                               <p className="text-[10px] text-slate-400">{step.time}</p>
                             </div>
                           </div>
@@ -1322,21 +1326,21 @@ export default function RevenueDashboardPage() {
                   </section>
 
                   <section className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-4 rounded-2xl bg-[#313442] p-5">
+                    <div className="space-y-4 rounded-2xl bg-card p-5">
                       <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">{t("PaymentMethodLabel")}</p>
                       <div className="flex items-center gap-4">
-                        <div className="flex h-8 w-12 items-center justify-center rounded-md border border-white/5 bg-[#262a37]">
+                        <div className="flex h-8 w-12 items-center justify-center rounded-md border border-border bg-muted">
                           <span className="text-[10px] font-black italic text-slate-300">{detailMethod}</span>
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-[#dfe2f3]">{detailMethod}</p>
+                          <p className="text-sm font-semibold text-foreground">{detailMethod}</p>
                           <p className="text-xs italic text-slate-400">{detailStatus}</p>
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-1 rounded-2xl bg-[#313442] p-5">
+                    <div className="space-y-1 rounded-2xl bg-card p-5">
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">{t("TotalAmountLabel")}</p>
-                      <p className="text-3xl font-extrabold tracking-tight text-[#dfe2f3]">{fmtMoney(detailAmount, detailCurrency)}</p>
+                      <p className="text-3xl font-extrabold tracking-tight text-foreground">{fmtMoney(detailAmount, detailCurrency)}</p>
                       <p className="text-xs text-slate-400">{altMoney(detailAmount, detailCurrency)}</p>
                       <p className="text-xs text-[#6ffbbe]">{t("NetAmountHint")}</p>
                       {detailCreatedAt && (
@@ -1347,14 +1351,14 @@ export default function RevenueDashboardPage() {
                     </div>
                   </section>
 
-                  <section className="rounded-2xl bg-[#262a37]/60 p-6">
+                  <section className="rounded-2xl bg-muted/60 p-6">
                     <h3 className="mb-4 text-sm font-semibold text-slate-300">{t("BuyerInfoTitle")}</h3>
                     <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#313442] text-slate-200">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-card text-slate-200">
                         <UserRound className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-base font-semibold text-[#dfe2f3]">
+                        <p className="truncate text-base font-semibold text-foreground">
                           {buyerInfo.name || buyerInfo.email || detailUserLabel}
                         </p>
                         <p className="truncate text-sm text-slate-400">
@@ -1375,7 +1379,7 @@ export default function RevenueDashboardPage() {
                     <h3 className="mb-4 text-sm font-semibold text-slate-300">{t("PurchasedItemsTitle")}</h3>
                     <div className="overflow-hidden rounded-xl border border-border bg-card">
                       <table className="w-full border-collapse text-left">
-                        <thead className="bg-[#262a37]">
+                        <thead className="bg-muted">
                           <tr>
                             <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">{t("ItemTitleColumn")}</th>
                             <th className="px-6 py-4 text-right text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">{t("GrossPriceColumn")}</th>
@@ -1391,10 +1395,10 @@ export default function RevenueDashboardPage() {
                                     <div className="flex h-10 w-10 items-center justify-center rounded bg-[#ffb95f]/10 text-[#ffb95f]">
                                       <ItemIcon className="h-4 w-4" />
                                     </div>
-                                    <span className="text-sm font-medium text-[#dfe2f3]">{item.title}</span>
+                                    <span className="text-sm font-medium text-foreground">{item.title}</span>
                                   </div>
                                 </td>
-                                <td className="px-6 py-4 text-right font-mono text-sm text-[#dfe2f3]">
+                                <td className="px-6 py-4 text-right font-mono text-sm text-foreground">
                                   <div>{fmtMoney(item.price, detailCurrency)}</div>
                                   <div className="text-[11px] text-slate-400">{altMoney(item.price, detailCurrency)}</div>
                                 </td>
@@ -1409,32 +1413,32 @@ export default function RevenueDashboardPage() {
                   <section>
                     <h3 className="mb-4 text-sm font-semibold text-slate-300">{t("RevenueSplitBreakdownTitle")}</h3>
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between rounded-xl bg-[#313442] p-4">
+                      <div className="flex items-center justify-between rounded-xl bg-card p-4">
                         <div className="flex items-center gap-3">
                           <div className="h-2 w-2 rounded-full bg-[#adc6ff]" />
-                          <span className="text-sm text-[#dfe2f3]">
+                          <span className="text-sm text-foreground">
                             {t("InstructorEarnings", {
                               rate: Math.round(Number(activePolicy?.instructorRate ?? 0) * 100) || 0,
                             })}
                           </span>
                         </div>
-                        <span className="text-sm font-bold text-[#dfe2f3]">{fmtMoney(detailInstructorAmount, detailCurrency)}</span>
+                        <span className="text-sm font-bold text-foreground">{fmtMoney(detailInstructorAmount, detailCurrency)}</span>
                       </div>
-                      <div className="flex items-center justify-between rounded-xl bg-[#313442] p-4">
+                      <div className="flex items-center justify-between rounded-xl bg-card p-4">
                         <div className="flex items-center gap-3">
                           <div className="h-2 w-2 rounded-full bg-[#4edea3]" />
-                          <span className="text-sm text-[#dfe2f3]">
+                          <span className="text-sm text-foreground">
                             {t("PlatformFee", {
                               rate: Math.round(Number(activePolicy?.adminRate ?? 0) * 100) || 0,
                             })}
                           </span>
                         </div>
-                        <span className="text-sm font-bold text-[#dfe2f3]">{fmtMoney(detailAdminAmount, detailCurrency)}</span>
+                        <span className="text-sm font-bold text-foreground">{fmtMoney(detailAdminAmount, detailCurrency)}</span>
                       </div>
-                      <div className="flex items-center justify-between rounded-xl bg-[#313442] p-4">
+                      <div className="flex items-center justify-between rounded-xl bg-card p-4">
                         <div className="flex items-center gap-3">
                           <div className="h-2 w-2 rounded-full bg-rose-400" />
-                          <span className="text-sm text-[#dfe2f3]">{t("SplitSourceLabel")}</span>
+                          <span className="text-sm text-foreground">{t("SplitSourceLabel")}</span>
                         </div>
                         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{detailSplitSource}</span>
                       </div>
@@ -1443,7 +1447,7 @@ export default function RevenueDashboardPage() {
 
                   <section>
                     <h3 className="mb-4 text-sm font-semibold text-slate-300">{t("RawPayloadTitle")}</h3>
-                    <pre className="max-h-[320px] overflow-auto rounded-2xl border border-white/5 bg-[#0a0e1a] p-4 text-xs leading-6 text-slate-300">
+                    <pre className="max-h-[320px] overflow-auto rounded-2xl border border-border bg-muted p-4 text-xs leading-6 text-slate-300">
                       {JSON.stringify(detailPayload ?? {}, null, 2)}
                     </pre>
                   </section>
@@ -1457,7 +1461,7 @@ export default function RevenueDashboardPage() {
                     </Button>
                     <Button
                       variant="outline"
-                      className="flex-1 rounded-full border-white/10 bg-[#313442] py-6 font-bold text-[#dfe2f3] hover:bg-[#3a3f4e]"
+                      className="flex-1 rounded-full border-border bg-card py-6 font-bold text-foreground hover:bg-accent"
                       onClick={() => window.open("/manage/revenue", "_blank")}
                     >
                       <ExternalLink className="mr-2 h-4 w-4" /> {t("OpenRevenuePage")}

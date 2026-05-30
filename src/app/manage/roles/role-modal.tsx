@@ -214,7 +214,7 @@ export default function RoleModal({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          {t("NameLabel")} <span className="text-red-500">*</span>
+                          {t("NameLabel")} <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input placeholder={t("NamePlaceholder")} {...field} />

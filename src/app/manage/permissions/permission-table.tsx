@@ -521,7 +521,7 @@ export default function PermissionTable() {
         {isLoading ? (
           <TableSkeleton />
         ) : error ? (
-          <div className="text-red-500">
+          <div className="text-destructive">
             {t("ErrorLabel")}: {error.message}
           </div>
         ) : (

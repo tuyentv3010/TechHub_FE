@@ -93,7 +93,7 @@ export default function LearningPathsClient({
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
-            src="/learningPath/Background.png"
+            src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1920&q=80"
             alt="Background"
             fill
             className="object-cover"
@@ -126,7 +126,7 @@ export default function LearningPathsClient({
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="h-12 pl-10 border-gray-200 bg-gray-50 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600"
+                  className="h-12 pl-10 border-input bg-muted"
                 />
               </div>
 

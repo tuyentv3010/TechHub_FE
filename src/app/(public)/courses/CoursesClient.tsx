@@ -542,13 +542,13 @@ export default function CoursesClient({
       <section className="relative min-h-[390px] overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="/courses/courses.png"
+            src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1920&q=80"
             alt=""
             fill
             className="object-cover"
             priority
           />
-          <div className="absolute inset-0 bg-black/58" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/70 to-black/85" />
         </div>
 
         <div className="relative z-10 flex min-h-[390px] flex-col items-center justify-center px-4 py-16 text-center">

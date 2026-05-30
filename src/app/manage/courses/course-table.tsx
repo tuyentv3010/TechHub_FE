@@ -419,7 +419,7 @@ export default function CourseTable() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setCourseDelete(course)}
-                  className="text-red-600"
+                  className="text-destructive"
                 >
                   {t("Delete")}
                 </DropdownMenuItem>

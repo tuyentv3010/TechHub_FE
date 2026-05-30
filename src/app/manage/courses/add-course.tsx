@@ -350,7 +350,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
                 {...form.register("title")}
               />
               {form.formState.errors.title && (
-                <p className="text-sm text-red-500">
+                <p className="text-sm text-destructive">
                   {String((form.formState.errors.title as any).message)}
                 </p>
               )}
@@ -384,7 +384,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               {...form.register("description")}
             />
             {form.formState.errors.description && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-destructive">
                 {String((form.formState.errors.description as any).message)}
               </p>
             )}
@@ -408,7 +408,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
                 )}
               />
               {form.formState.errors.price && (
-                <p className="text-sm text-red-500">
+                <p className="text-sm text-destructive">
                   {String((form.formState.errors.price as any).message)}
                 </p>
               )}

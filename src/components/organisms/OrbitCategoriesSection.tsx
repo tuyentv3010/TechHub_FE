@@ -220,9 +220,9 @@ function LoadingSkeleton() {
   return (
     <section className="overflow-hidden bg-background py-16 md:py-20">
       <div className="container mx-auto px-4">
-        <div className="mx-auto mb-10 h-10 w-64 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700" />
+        <div className="mx-auto mb-10 h-10 w-64 animate-pulse rounded-lg bg-muted" />
         <div className="relative mx-auto h-[420px] max-w-[1120px] overflow-hidden">
-          <div className="absolute bottom-[-36px] left-1/2 h-[780px] w-[780px] -translate-x-1/2 rounded-full border-2 border-dashed border-gray-200 dark:border-gray-700" />
+          <div className="absolute bottom-[-36px] left-1/2 h-[780px] w-[780px] -translate-x-1/2 rounded-full border-2 border-dashed border-border" />
         </div>
       </div>
     </section>
@@ -244,7 +244,7 @@ function MobileOrbit({ skills, title }: { skills: Skill[]; title?: string }) {
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="mb-5 text-center text-2xl font-bold text-gray-900 dark:text-white"
+            className="mb-5 text-center text-2xl font-bold text-foreground"
           >
             {title}
           </motion.h2>
@@ -361,7 +361,7 @@ export function OrbitCategoriesSection({ title }: OrbitCategoriesSectionProps) {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="mb-8 text-center text-3xl font-bold text-gray-900 dark:text-white md:text-4xl lg:text-5xl"
+              className="mb-8 text-center text-3xl font-bold text-foreground md:text-4xl lg:text-5xl"
             >
               {title}
             </motion.h2>

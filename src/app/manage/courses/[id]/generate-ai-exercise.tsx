@@ -196,7 +196,7 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
           {/* Chapter Selection */}
           <div className="space-y-2">
             <Label htmlFor="chapter">
-              {t("selectChapter")} <span className="text-red-500">*</span>
+              {t("selectChapter")} <span className="text-destructive">*</span>
             </Label>
             <Select value={selectedChapter} onValueChange={(value) => {
               setSelectedChapter(value);
@@ -221,7 +221,7 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
           {/* Lesson Selection */}
           <div className="space-y-2">
             <Label htmlFor="lesson">
-              {t("selectLesson")} <span className="text-red-500">*</span>
+              {t("selectLesson")} <span className="text-destructive">*</span>
             </Label>
             <Select
               value={selectedLesson}
@@ -244,15 +244,15 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
           </div>
 
           {selectedLessonData && (
-            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900/60">
-              <p className="font-medium text-slate-800 dark:text-slate-100">{selectedLessonData.title}</p>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600 dark:text-slate-300">
+            <div className="rounded-lg border border-dashed border-border bg-muted p-3 text-sm">
+              <p className="font-medium text-foreground">{selectedLessonData.title}</p>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <Badge variant="outline">{selectedLessonData.contentType || "TEXT"}</Badge>
                 {selectedLessonData.estimatedDuration ? (
                   <Badge variant="secondary">{selectedLessonData.estimatedDuration}s</Badge>
                 ) : null}
               </div>
-              <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+              <p className="mt-2 text-xs text-muted-foreground">
                 AI se uu tien format phu hop voi lesson da chon. Ban van co the dieu chinh thu cong neu can.
               </p>
             </div>
@@ -395,7 +395,7 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
           </div>
 
           {/* Info */}
-          <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-900">
+          <div className="bg-accent p-3 rounded-lg text-sm text-accent-foreground">
             <p className="font-medium mb-1">💡 {tCommon("note")}:</p>
             <ul className="list-disc list-inside space-y-1 text-xs">
               <li>{t("note1")}</li>

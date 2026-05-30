@@ -10,6 +10,12 @@ const privatePaths = [...managePaths, ...guestPaths];
 const pathStartsWith = (pathname: string, paths: string[]) =>
   paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 
+// Only genuinely private areas require login. Public browsing (home, course
+// listing, learning paths, blog, about/contact, legal) stays open for SEO,
+// sharing and the sign-up funnel. Personalised pages stay gated:
+//   - /manage, /guest (role areas)
+//   - /courses/{id}/learn (actual lesson content)
+//   - /my-learning, /recommendations (per-user)
 const isAuthRequiredPath = (pathname: string) =>
   pathStartsWith(pathname, privatePaths) ||
   /^\/courses\/[^/]+\/learn(?:\/.*)?$/.test(pathname) ||

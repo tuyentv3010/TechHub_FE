@@ -321,7 +321,7 @@ export default function ManageInstructorApplicationsPage() {
   const StatusBadge = ({ value }: { value?: string | null }) => {
     const normalized = String(value || "").toUpperCase();
     return (
-      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${STATUS_TONE[normalized] || "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"}`}>
+      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${STATUS_TONE[normalized] || "border-border bg-muted text-muted-foreground"}`}>
         {getStatusLabel(value)}
       </span>
     );
@@ -372,8 +372,8 @@ export default function ManageInstructorApplicationsPage() {
     }
 
     return (
-      <div className="overflow-hidden rounded-lg border bg-white shadow-sm dark:bg-slate-950">
-        <div className="flex h-[520px] items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
+        <div className="flex h-[520px] items-center justify-center bg-muted">
           {isImage(url) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={url} alt={label} className="h-full w-full object-contain p-2" />
@@ -391,7 +391,7 @@ export default function ManageInstructorApplicationsPage() {
             <button
               type="button"
               onClick={() => setPreview({ url, label })}
-              className="inline-flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700"
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
             >
               <Eye className="h-3.5 w-3.5" />
               Xem lớn
@@ -400,7 +400,7 @@ export default function ManageInstructorApplicationsPage() {
               href={url}
               target="_blank"
               rel="noreferrer"
-              className="text-xs font-medium text-slate-600 underline underline-offset-2 dark:text-slate-300"
+              className="text-xs font-medium text-muted-foreground underline underline-offset-2"
             >
               Mở tab
             </a>
@@ -431,10 +431,10 @@ export default function ManageInstructorApplicationsPage() {
   }) => {
     const needsReview = status && status !== "PROCESSED";
     return (
-      <section className="rounded-xl border bg-white p-4 shadow-sm dark:bg-slate-950">
+      <section className="rounded-xl border bg-card p-4 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
               {icon}
             </div>
             <div>
@@ -469,15 +469,15 @@ export default function ManageInstructorApplicationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-6 dark:bg-slate-950 sm:px-6">
+    <div className="min-h-screen bg-background px-4 py-6 sm:px-6">
       <div className="mx-auto max-w-7xl space-y-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               Admin Instructor Review
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
               {t("Title")}
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
@@ -500,7 +500,7 @@ export default function ManageInstructorApplicationsPage() {
           <Metric label="AI lỗi" value={counts.failed} icon={<AlertTriangle className="h-4 w-4" />} />
         </div>
 
-        <div className="rounded-xl border bg-white shadow-sm dark:bg-slate-950">
+        <div className="rounded-xl border bg-card shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
             <div className="relative w-full sm:max-w-sm">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -508,7 +508,7 @@ export default function ManageInstructorApplicationsPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Tìm theo tên hoặc email..."
-                className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+                className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
               />
             </div>
             <StatusTabs
@@ -526,7 +526,7 @@ export default function ManageInstructorApplicationsPage() {
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted-foreground dark:bg-slate-900/70">
+              <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
                 <tr className="text-left">
                   <th className="px-4 py-3">{t("ApplicantColumn")}</th>
                   <th className="px-4 py-3">{t("EmailColumn")}</th>
@@ -548,8 +548,8 @@ export default function ManageInstructorApplicationsPage() {
                 {!loading && filteredItems.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
-                      <Inbox className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-                      <p className="font-medium text-slate-700 dark:text-slate-200">{t("NoApplications")}</p>
+                      <Inbox className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+                      <p className="font-medium text-foreground">{t("NoApplications")}</p>
                       <p className="text-xs">Không có hồ sơ khớp bộ lọc hiện tại.</p>
                     </td>
                   </tr>
@@ -557,16 +557,16 @@ export default function ManageInstructorApplicationsPage() {
                 {filteredItems.map((item) => (
                   <tr
                     key={item.id}
-                    className="cursor-pointer transition hover:bg-orange-50/60 dark:hover:bg-orange-500/5"
+                    className="cursor-pointer transition hover:bg-muted/50"
                     onClick={() => openDetail(item.id)}
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white dark:bg-slate-100 dark:text-slate-900">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                           {getInitials(item.userName || item.userEmail)}
                         </div>
                         <div>
-                          <p className="font-medium text-slate-950 dark:text-white">
+                          <p className="font-medium text-foreground">
                             {item.userName || item.userEmail || item.userId?.slice(0, 8) || t("NotAvailable")}
                           </p>
                           <p className="text-xs text-muted-foreground">ID: {item.id.slice(0, 8)}</p>
@@ -601,7 +601,7 @@ export default function ManageInstructorApplicationsPage() {
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(1120px,calc(100vw-32px))]">
-          <SheetHeader className="border-b bg-white px-5 py-4 dark:bg-slate-950">
+          <SheetHeader className="border-b bg-card px-5 py-4">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <SheetTitle>{t("DetailTitle")}</SheetTitle>
@@ -649,7 +649,7 @@ export default function ManageInstructorApplicationsPage() {
               </div>
             </div>
             {detail ? (
-              <div className="mt-4 grid gap-2 rounded-xl border bg-slate-50 p-3 text-xs dark:bg-slate-900 sm:grid-cols-3">
+              <div className="mt-4 grid gap-2 rounded-xl border bg-muted p-3 text-xs sm:grid-cols-3">
                 <div className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-emerald-600" />
                   <span>{aiSummary.processed}/{aiSummary.total} đã xử lý</span>
@@ -666,7 +666,7 @@ export default function ManageInstructorApplicationsPage() {
             ) : null}
           </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto bg-slate-50 p-5 dark:bg-slate-950">
+          <div className="flex-1 overflow-y-auto bg-muted/30 p-5">
             {!detail ? (
               <div className="flex h-64 items-center justify-center text-muted-foreground">
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -732,9 +732,9 @@ export default function ManageInstructorApplicationsPage() {
                 )}
 
                 {detail.certificates?.length ? (
-                  <section className="rounded-xl border bg-white p-4 shadow-sm dark:bg-slate-950">
+                  <section className="rounded-xl border bg-card p-4 shadow-sm">
                     <div className="mb-4 flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <Award className="h-4 w-4" />
                       </div>
                       <div>
@@ -759,7 +759,7 @@ export default function ManageInstructorApplicationsPage() {
                 ) : null}
 
                 {detail.adminStatus === "APPROVED" && profile && (
-                  <section className="rounded-xl border bg-white p-4 shadow-sm dark:bg-slate-950">
+                  <section className="rounded-xl border bg-card p-4 shadow-sm">
                     <h3 className="mb-3 font-semibold">Hồ sơ giảng viên đã đồng bộ</h3>
                     <InstructorProfileView profile={profile} variant="full" />
                   </section>
@@ -769,7 +769,7 @@ export default function ManageInstructorApplicationsPage() {
           </div>
 
           {detail ? (
-            <div className="border-t bg-white p-4 dark:bg-slate-950">
+            <div className="border-t bg-card p-4">
               {detail.adminStatus === "PENDING" ? (
                 <div className="space-y-3">
                   {detail.aiStatus !== "PROCESSED" && (
@@ -800,7 +800,7 @@ export default function ManageInstructorApplicationsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-lg border bg-slate-50 px-3 py-2 text-sm text-muted-foreground dark:bg-slate-900">
+                <div className="rounded-lg border bg-muted px-3 py-2 text-sm text-muted-foreground">
                   {t("AlreadyProcessed", {
                     status: getStatusLabel(detail.adminStatus),
                     note: detail.adminNote || t("NoNote"),
@@ -818,7 +818,7 @@ export default function ManageInstructorApplicationsPage() {
             <DialogTitle>{preview?.label}</DialogTitle>
           </DialogHeader>
           {preview?.url ? (
-            <div className="max-h-[75vh] overflow-auto rounded-lg border bg-slate-50 dark:bg-slate-900">
+            <div className="max-h-[75vh] overflow-auto rounded-lg border bg-muted">
               {isImage(preview.url) ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={preview.url} alt={preview.label} className="mx-auto max-h-[72vh] object-contain" />
@@ -832,7 +832,7 @@ export default function ManageInstructorApplicationsPage() {
               href={preview.url}
               target="_blank"
               rel="noreferrer"
-              className="text-sm font-medium text-orange-600 underline"
+              className="text-sm font-medium text-primary underline"
             >
               Mở file trong tab mới
             </a>
@@ -853,10 +853,10 @@ function Metric({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border bg-white p-4 shadow-sm dark:bg-slate-950">
+    <div className="rounded-xl border bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">{label}</p>
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
           {icon}
         </div>
       </div>
@@ -879,7 +879,7 @@ function StatusTabs({
   const tabs: StatusFilter[] = ["ALL", "PENDING", "APPROVED", "REJECTED"];
 
   return (
-    <div className="inline-flex h-12 items-center gap-1 rounded-xl border bg-slate-100 p-1 dark:bg-slate-900">
+    <div className="inline-flex h-12 items-center gap-1 rounded-xl border border-border bg-muted p-1">
       {tabs.map((tab) => {
         const active = value === tab;
         return (
@@ -889,8 +889,8 @@ function StatusTabs({
             onClick={() => onChange(tab)}
             className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition ${
               active
-                ? "bg-white text-slate-950 shadow-sm dark:bg-slate-800 dark:text-white"
-                : "text-slate-600 hover:bg-white/70 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-background hover:text-foreground"
             }`}
           >
             {tab === "ALL" ? "Tất cả" : getStatusLabel(tab)}
@@ -898,7 +898,7 @@ function StatusTabs({
               className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs ${
                 active && tab === "PENDING"
                   ? "bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300"
-                  : "bg-white text-slate-500 dark:bg-slate-700 dark:text-slate-200"
+                  : "bg-background text-muted-foreground"
               }`}
             >
               {counts[tab]}
@@ -925,7 +925,7 @@ function AiDataPanel({ data }: { data?: unknown }) {
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-slate-950 dark:text-white">Dữ liệu AI trích xuất</h4>
+            <h4 className="text-sm font-semibold text-foreground">Dữ liệu AI trích xuất</h4>
             <p className="text-xs text-muted-foreground">
               {entries.length > 0 ? `${entries.length} trường dữ liệu được nhận diện` : "Chưa có dữ liệu AI"}
             </p>

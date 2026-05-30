@@ -116,7 +116,7 @@ export default function EditLearningPath({
               {...register("title")}
             />
             {errors.title && (
-              <p className="text-sm text-red-500">{errors.title.message}</p>
+              <p className="text-sm text-destructive">{errors.title.message}</p>
             )}
           </div>
 
@@ -130,7 +130,7 @@ export default function EditLearningPath({
               {...register("description")}
             />
             {errors.description && (
-              <p className="text-sm text-red-500">{errors.description.message}</p>
+              <p className="text-sm text-destructive">{errors.description.message}</p>
             )}
           </div>
 
@@ -154,7 +154,7 @@ export default function EditLearningPath({
                     <button
                       type="button"
                       onClick={() => handleRemoveSkill(skill)}
-                      className="ml-2 hover:text-red-500"
+                      className="ml-2 hover:text-destructive"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -163,7 +163,7 @@ export default function EditLearningPath({
               </div>
             )}
             {errors.skills && (
-              <p className="text-sm text-red-500">{errors.skills.message}</p>
+              <p className="text-sm text-destructive">{errors.skills.message}</p>
             )}
           </div>
 

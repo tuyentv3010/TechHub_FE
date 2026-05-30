@@ -413,9 +413,9 @@ export default function ExerciseDisplay({ exercise, onComplete }: ExerciseDispla
                 Làm lại
               </Button>
               {isCorrect && (
-                <Button 
+                <Button
                   onClick={() => setShowLeaderboard(true)}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  className="flex-1"
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   Xem bảng xếp hạng

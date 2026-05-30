@@ -82,7 +82,7 @@ const CourseNode = ({
 }) => {
   return (
     <>
-      <Handle type="target" position={Position.Top} className="!bg-blue-500 h-4 w-4" />
+      <Handle type="target" position={Position.Top} className="!bg-primary h-4 w-4" />
 
       <Card className="min-w-[280px] max-w-[320px] border-2 p-3 shadow-md">
         <div className="flex flex-col gap-2">
@@ -123,7 +123,7 @@ const CourseNode = ({
         </div>
       </Card>
 
-      <Handle type="source" position={Position.Bottom} className="!bg-blue-500 h-4 w-4" />
+      <Handle type="source" position={Position.Bottom} className="!bg-primary h-4 w-4" />
     </>
   );
 };
@@ -322,9 +322,9 @@ export default function DraftDesigner({ taskId }: DraftDesignerProps) {
         defaultEdgeOptions={{
           animated: true,
           type: "smoothstep",
-          style: { strokeWidth: 2, stroke: "#3b82f6" },
+          style: { strokeWidth: 2, stroke: "hsl(var(--primary))" },
         }}
-        connectionLineStyle={{ strokeWidth: 2, stroke: "#3b82f6" }}
+        connectionLineStyle={{ strokeWidth: 2, stroke: "hsl(var(--primary))" }}
         connectionLineType={ConnectionLineType.SmoothStep}
       >
         <Panel position="top-left" className="space-y-2">

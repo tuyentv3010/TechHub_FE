@@ -30,7 +30,7 @@ import { handleErrorApi } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import fileApiRequest from "@/apiRequests/file";
-import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
+import { normalizePersistedMediaUrl, resolvePersistentFileUrl } from "@/lib/file-media";
 
 export default function AddEmployee() {
   const t = useTranslations("ManageAccount");
@@ -186,7 +186,7 @@ export default function AddEmployee() {
       const response = await fileApiRequest.uploadFile(formData);
       
       const avatarUrl = response.payload?.data
-        ? resolveManagedFileUrl(response.payload.data, userId, "thumbnail")
+        ? resolvePersistentFileUrl(response.payload.data, "thumbnail")
         : null;
 
       if (avatarUrl) {
@@ -272,7 +272,7 @@ export default function AddEmployee() {
                         className="hidden"
                       />
                       <button
-                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed"
+                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed border-input"
                         type="button"
                         onClick={() => {
                           console.log("Avatar upload button clicked");
@@ -284,7 +284,7 @@ export default function AddEmployee() {
                         <span className="sr-only">Upload</span>
                       </button>
                       <button
-                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed"
+                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed border-input"
                         type="button"
                         onClick={() => setShowAvatarLibrary(true)}
                         disabled={isUploading}
@@ -419,7 +419,7 @@ export default function AddEmployee() {
         open={showAvatarLibrary}
         onOpenChange={setShowAvatarLibrary}
         onSelectFile={(file) => {
-          const avatarUrl = resolveManagedFileUrl(file, userId, "thumbnail");
+          const avatarUrl = resolvePersistentFileUrl(file, "thumbnail");
           if (avatarUrl) {
             form.setValue('avatar', avatarUrl);
           }

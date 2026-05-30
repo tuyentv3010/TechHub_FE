@@ -123,25 +123,25 @@ export const ResizableMedia = ({ node, updateAttributes, mediaType }: ResizableM
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           {/* Southeast handle */}
           <div
-            className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-se-resize pointer-events-auto"
+            className="absolute bottom-0 right-0 w-4 h-4 bg-primary cursor-se-resize pointer-events-auto"
             onMouseDown={(e) => handleMouseDown(e, 'se')}
           />
           
           {/* Southwest handle */}
           <div
-            className="absolute bottom-0 left-0 w-4 h-4 bg-blue-500 cursor-sw-resize pointer-events-auto"
+            className="absolute bottom-0 left-0 w-4 h-4 bg-primary cursor-sw-resize pointer-events-auto"
             onMouseDown={(e) => handleMouseDown(e, 'sw')}
           />
           
           {/* Northeast handle */}
           <div
-            className="absolute top-0 right-0 w-4 h-4 bg-blue-500 cursor-ne-resize pointer-events-auto"
+            className="absolute top-0 right-0 w-4 h-4 bg-primary cursor-ne-resize pointer-events-auto"
             onMouseDown={(e) => handleMouseDown(e, 'ne')}
           />
           
           {/* Northwest handle */}
           <div
-            className="absolute top-0 left-0 w-4 h-4 bg-blue-500 cursor-nw-resize pointer-events-auto"
+            className="absolute top-0 left-0 w-4 h-4 bg-primary cursor-nw-resize pointer-events-auto"
             onMouseDown={(e) => handleMouseDown(e, 'nw')}
           />
         </div>
