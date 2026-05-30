@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Hash, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useGetTags, useCreateTagMutation, useUpdateTagMutation, useDeleteTagMutation } from "@/queries/useCourse";
+import { useAccountProfile } from "@/queries/useAccount";
 
-type Tag = { id: string; name: string };
+type Tag = { id: string; name: string; createdBy?: string | null };
 
 export default function TagManager({
   open,
@@ -28,6 +29,10 @@ export default function TagManager({
   const createTag = useCreateTagMutation();
   const updateTag = useUpdateTagMutation();
   const deleteTag = useDeleteTagMutation();
+  const { data: profileData } = useAccountProfile();
+  const userId = profileData?.payload?.data?.id || "";
+  const roles: string[] = profileData?.payload?.data?.roles ?? [];
+  const isAdmin = roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
@@ -99,6 +104,7 @@ export default function TagManager({
         ) : (
           tags.map((s: Tag) => {
             const isSelected = (selectedItems || []).includes(s.name);
+            const canManage = isAdmin || (!!userId && s.createdBy === userId);
             return (
               <div
                 key={s.id}
@@ -112,6 +118,7 @@ export default function TagManager({
                   <Button
                     size="sm"
                     variant="outline"
+                    className={canManage ? undefined : "hidden"}
                     onClick={() => {
                       setEditingId(s.id);
                       setEditingValue(s.name);
@@ -123,7 +130,7 @@ export default function TagManager({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className={`${canManage ? "" : "hidden "}text-destructive hover:bg-destructive/10 hover:text-destructive`}
                     disabled={deletingId === s.id}
                     onClick={() => handleDelete(s.id)}
                   >

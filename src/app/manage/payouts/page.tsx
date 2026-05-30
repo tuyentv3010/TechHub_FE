@@ -51,9 +51,9 @@ import {
   usePayoutBatches,
   usePayoutInvoiceDetail,
   usePayoutInvoices,
+  usePayoutOperationsSummary,
   usePayoutRequestDetail,
   usePayoutRequests,
-  useSettleApprovedPayoutRequest,
   useRejectPayoutRequest,
 } from "@/queries/usePayment";
 import type {
@@ -205,7 +205,7 @@ export default function PayoutManagementPage() {
   const locale = useLocale();
   const t = useTranslations("ManagePayout");
   const notAvailable = t("NotAvailable");
-  const issueAndTransferLabel = t("IssueInvoiceAndTransfer");
+  const approveLabel = t("Approve");
   const dashboardRole: "ADMIN" | "INSTRUCTOR" | null =
     role === "ADMIN" || role === "SUPER_ADMIN" ? "ADMIN" : role === "INSTRUCTOR" ? "INSTRUCTOR" : null;
 
@@ -282,6 +282,7 @@ export default function PayoutManagementPage() {
     balanceQueryEnabled ? balanceQueryInstructorId : undefined
   );
   const { data: requests = [], isFetching: isRequestsFetching, refetch: refetchRequests } = usePayoutRequests();
+  const { data: operationsSummary, refetch: refetchOperationsSummary } = usePayoutOperationsSummary();
   const { data: batches = [], isFetching: isBatchesFetching, refetch: refetchBatches } = usePayoutBatches(isAdminView);
   const { data: invoices = [], isFetching: isInvoicesFetching, refetch: refetchInvoices } = usePayoutInvoices(
     isAdminView ? selectedInstructorId.trim() || undefined : undefined
@@ -293,7 +294,6 @@ export default function PayoutManagementPage() {
 
   const createRequestMutation = useCreatePayoutRequest();
   const approveRequestMutation = useApprovePayoutRequest();
-  const settleApprovedRequestMutation = useSettleApprovedPayoutRequest();
   const rejectRequestMutation = useRejectPayoutRequest();
   const markPaidMutation = useMarkPayoutRequestPaid();
   const createMonthlyBatchMutation = useCreateMonthlyPayoutBatch();
@@ -329,9 +329,9 @@ export default function PayoutManagementPage() {
         ? normalizedRequests
         : normalizedRequests.filter((request) => request.instructorId === currentUserId);
     if (queueFilter === "PENDING") {
-      return source.filter((request) => ["REQUESTED", "PENDING"].includes(request.status));
+      return source.filter((request) => request.status === "REQUESTED");
     }
-    return source;
+    return source.filter((request) => ["REQUESTED", "APPROVED"].includes(request.status));
   }, [currentUserId, dashboardRole, normalizedRequests, queueFilter]);
 
   const getBatchDisplayId = (batchId?: string | null) => {
@@ -341,7 +341,7 @@ export default function PayoutManagementPage() {
   };
 
   const isReviewableRequest = (status: string) => status === "REQUESTED";
-  const canIssueInvoiceAndTransfer = (status: string) => ["REQUESTED", "APPROVED"].includes(status);
+  const canApproveRequest = (status: string) => status === "REQUESTED";
 
   const summary = useMemo(() => {
     const totalEarned = toNumber(balance?.totalEarned);
@@ -351,9 +351,9 @@ export default function PayoutManagementPage() {
     const pendingAmountUsd = toNumber((balance as any)?.pendingAmountUsd);
     const availableAmountUsd = toNumber((balance as any)?.availableAmountUsd);
     const usdRate = toNumber((balance as any)?.usdRate);
-    const totalRequested = visibleRequests.reduce((acc, request) => acc + request.amount, 0);
-    const pendingRequests = visibleRequests.filter((request) => ["REQUESTED", "PENDING"].includes(request.status)).length;
-    const approvedRequests = visibleRequests.filter((request) => request.status === "APPROVED").length;
+    const totalRequested = toNumber(operationsSummary?.totalRequested);
+    const pendingRequests = visibleRequests.filter((request) => request.status === "REQUESTED").length;
+    const approvedRequests = toNumber(operationsSummary?.approvedRequests);
     return {
       totalEarned,
       pendingAmount,
@@ -365,8 +365,10 @@ export default function PayoutManagementPage() {
       totalRequested,
       pendingRequests,
       approvedRequests,
+      loadedRequests: toNumber(operationsSummary?.loadedRequests),
+      batchCount: toNumber(operationsSummary?.batchCount),
     };
-  }, [balance, visibleRequests]);
+  }, [balance, operationsSummary, visibleRequests]);
 
   const ledgerRows = useMemo<LedgerRow[]>(() => {
     const requestRows: LedgerRow[] = normalizedRequests.flatMap((request, requestIndex) => {
@@ -439,6 +441,7 @@ export default function PayoutManagementPage() {
       await Promise.all([
         refetchBalance(),
         refetchRequests(),
+        refetchOperationsSummary(),
         refetchInvoices(),
         ...(isAdminView ? [refetchBatches()] : []),
         refetchDetail(),
@@ -498,14 +501,10 @@ export default function PayoutManagementPage() {
     requestId = selectedRequestId,
     requestStatus = detail?.status || "REQUESTED"
   ) => {
-    if (!requestId) return;
+    if (!requestId || requestStatus !== "REQUESTED") return;
     try {
       const payload = { note: reviewNote.trim() || undefined };
-      if (requestStatus === "APPROVED") {
-        await settleApprovedRequestMutation.mutateAsync({ requestId, payload });
-      } else {
-        await approveRequestMutation.mutateAsync({ requestId, payload });
-      }
+      await approveRequestMutation.mutateAsync({ requestId, payload });
       toast({ title: t("ApproveSuccessTitle") });
       await refreshAll();
       setDetailSheetOpen(false);
@@ -650,7 +649,7 @@ export default function PayoutManagementPage() {
     return (
       <main className="manage-finance-root manage-payout-root min-h-screen bg-background p-4 text-foreground sm:px-6 sm:py-4 md:p-8">
         <Card className="border border-border bg-card">
-          <CardContent className="p-6 text-sm text-white/70">
+          <CardContent className="p-6 text-sm text-muted-foreground">
             {t("Unauthenticated")}
           </CardContent>
         </Card>
@@ -669,7 +668,7 @@ export default function PayoutManagementPage() {
             </div>
             <div className="space-y-1">
               <h1 className="text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">{t("Title")}</h1>
-              <p className="max-w-2xl text-sm text-white/65 md:text-base">
+              <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
                 {t("Description")}
               </p>
             </div>
@@ -702,22 +701,22 @@ export default function PayoutManagementPage() {
           { title: t("SummaryTotalEarned"), value: formatCurrency(summary.totalEarned), sub: summary.totalEarnedUsd > 0 ? `≈ $${summary.totalEarnedUsd.toFixed(2)} USD` : "", icon: CircleDollarSign, accent: "text-[#adc6ff]" },
           { title: t("SummaryPendingPayout"), value: formatCurrency(summary.pendingAmount), sub: summary.pendingAmountUsd > 0 ? `≈ $${summary.pendingAmountUsd.toFixed(2)} USD` : "", icon: WalletCards, accent: "text-[#ffddb8]" },
           { title: t("SummaryAvailableBalance"), value: formatCurrency(summary.availableAmount), sub: summary.availableAmountUsd > 0 ? `≈ $${summary.availableAmountUsd.toFixed(2)} USD` : "", icon: CheckCircle2, accent: "text-[#4edea3]" },
-          { title: t("SummaryOpenRequests"), value: String(summary.pendingRequests), sub: "", icon: Layers3, accent: "text-white/70" },
+          { title: t("SummaryOpenRequests"), value: String(summary.pendingRequests), sub: "", icon: Layers3, accent: "text-muted-foreground" },
         ].map((card) => {
           const Icon = card.icon;
           return (
             <Card key={card.title} className="relative overflow-hidden border border-border bg-card shadow-sm">
               <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-[#adc6ff]/8 blur-2xl" />
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
-                <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-white/45">{card.title}</CardTitle>
-                <div className={`rounded-xl bg-white/5 p-2 ${card.accent}`}>
+                <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{card.title}</CardTitle>
+                <div className={`rounded-xl bg-muted/60 p-2 ${card.accent}`}>
                   <Icon className="h-4 w-4" />
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">{card.value}</div>
                 {card.sub && <div className="mt-1 text-xs text-muted-foreground">{card.sub}</div>}
-                <div className="mt-2 text-[11px] text-white/45">{t("UpdatedProjection")}</div>
+                <div className="mt-2 text-[11px] text-muted-foreground">{t("UpdatedProjection")}</div>
               </CardContent>
             </Card>
           );
@@ -731,7 +730,7 @@ export default function PayoutManagementPage() {
               <div className="flex h-16 w-16 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 text-emerald-200">
                 <WalletCards className="h-7 w-7" />
               </div>
-              <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-[#0a0e1a] bg-emerald-400 text-[#0a0e1a]">
+              <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-background bg-emerald-400 text-[#0a0e1a]">
                 <CheckCircle2 className="h-3.5 w-3.5" />
               </div>
             </div>
@@ -745,7 +744,7 @@ export default function PayoutManagementPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-full text-white/60 hover:bg-white/5 hover:text-white"
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => handleCopyRequestId(balanceQueryInstructorId)}
                 >
                   <Copy className="h-4 w-4" />
@@ -760,21 +759,21 @@ export default function PayoutManagementPage() {
           </div>
 
           <div className="grid w-full gap-3 sm:grid-cols-3 xl:w-auto 2xl:w-[48rem]">
-            <div className="rounded-2xl border border-border bg-white/5 p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("LifetimeEarned")}</div>
+            <div className="rounded-2xl border border-border bg-muted/60 p-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{t("LifetimeEarned")}</div>
               <div className="mt-2 text-2xl font-bold text-foreground">{formatCurrency(summary.totalEarned)}</div>
               {summary.totalEarnedUsd > 0 && (
-                <div className="text-xs text-white/50">≈ ${summary.totalEarnedUsd.toFixed(2)} USD</div>
+                <div className="text-xs text-muted-foreground">≈ ${summary.totalEarnedUsd.toFixed(2)} USD</div>
               )}
             </div>
-            <div className="rounded-2xl border border-border bg-white/5 p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("CurrentPending")}</div>
+            <div className="rounded-2xl border border-border bg-muted/60 p-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{t("CurrentPending")}</div>
               <div className="mt-2 text-2xl font-bold text-[#ffddb8]">{formatCurrency(summary.pendingAmount)}</div>
               {summary.pendingAmountUsd > 0 && (
-                <div className="text-xs text-white/50">≈ ${summary.pendingAmountUsd.toFixed(2)} USD</div>
+                <div className="text-xs text-muted-foreground">≈ ${summary.pendingAmountUsd.toFixed(2)} USD</div>
               )}
             </div>
-            <div className="rounded-2xl border border-border bg-white/5 p-4">
+            <div className="rounded-2xl border border-border bg-muted/60 p-4">
               <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-300">
                 {t("Available")} <span className="h-2 w-2 rounded-full bg-emerald-400" />
               </div>
@@ -820,7 +819,7 @@ export default function PayoutManagementPage() {
             <select
               value={requestCurrency}
               onChange={(e) => setRequestCurrency(e.target.value as "VND" | "USD")}
-              className="manage-finance-input h-12 rounded-md border border-white/10 bg-white/5 px-3 text-sm text-white"
+              className="manage-finance-input h-12 rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground"
             >
               <option value="VND">VNĐ</option>
               <option value="USD">USD</option>
@@ -849,12 +848,12 @@ export default function PayoutManagementPage() {
           <CardHeader className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle className="text-foreground">{t("BatchManagementTitle")}</CardTitle>
-              <CardDescription className="text-white/50">{t("BatchManagementDescription")}</CardDescription>
+              <CardDescription className="text-muted-foreground">{t("BatchManagementDescription")}</CardDescription>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full text-white/60 hover:bg-white/5 hover:text-white"
+              className="h-8 w-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
               onClick={() => setBatchSheetOpen(true)}
             >
               <PlusCircle className="h-4 w-4" />
@@ -863,7 +862,7 @@ export default function PayoutManagementPage() {
           <CardContent className="space-y-3 pt-5">
             {isBatchesFetching &&
               Array.from({ length: 2 }).map((_, index) => (
-                <Skeleton key={index} className="h-28 rounded-2xl bg-white/5" />
+                <Skeleton key={index} className="h-28 rounded-2xl bg-muted/60" />
               ))}
 
             {!isBatchesFetching &&
@@ -882,17 +881,17 @@ export default function PayoutManagementPage() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="text-sm font-semibold text-foreground">{batch.batchName}</div>
-                      <div className="mt-1 text-[11px] text-white/45">ID: {index + 1}</div>
+                      <div className="mt-1 text-[11px] text-muted-foreground">ID: {index + 1}</div>
                     </div>
                     <Badge className={`w-fit border px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${statusTone[batch.status] || statusTone.DRAFT}`}>
                       {batch.status}
                     </Badge>
                   </div>
-                  <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-white/60">
+                  <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     <div className="flex -space-x-2">
-                      <div className="h-6 w-6 rounded-full border border-[#0a0e1a] bg-[#adc6ff]/20" />
-                      <div className="h-6 w-6 rounded-full border border-[#0a0e1a] bg-[#4edea3]/20" />
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full border border-[#0a0e1a] bg-white/10 text-[10px] text-white/70">
+                      <div className="h-6 w-6 rounded-full border border-background bg-[#adc6ff]/20" />
+                      <div className="h-6 w-6 rounded-full border border-background bg-[#4edea3]/20" />
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full border border-background bg-muted/60 text-[10px] text-muted-foreground">
                         +{Math.max(batch.totalRequests - 2, 0)}
                       </div>
                     </div>
@@ -904,7 +903,7 @@ export default function PayoutManagementPage() {
               ))}
 
             {!isBatchesFetching && normalizedBatches.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-border bg-muted p-5 text-sm text-white/45">
+              <div className="rounded-2xl border border-dashed border-border bg-muted p-5 text-sm text-muted-foreground">
                 Chưa có payout batch nào.
               </div>
             )}
@@ -922,7 +921,7 @@ export default function PayoutManagementPage() {
                 <AlertTriangle className="h-4 w-4" />
                 {t("AttentionRequired")}
               </div>
-              <p className="text-sm leading-6 text-white/75">
+              <p className="text-sm leading-6 text-foreground/80">
                 {summary.pendingRequests} payout request(s) are pending review. Please process manually to avoid instructor friction.
               </p>
             </div>
@@ -934,7 +933,7 @@ export default function PayoutManagementPage() {
           <CardHeader className="flex flex-col gap-4 border-b border-border md:flex-row md:items-center md:justify-between">
             <div>
               <CardTitle className="text-foreground">{t("QueueTitle")}</CardTitle>
-              <CardDescription className="text-white/50">{t("QueueDescription")}</CardDescription>
+              <CardDescription className="text-muted-foreground">{t("QueueDescription")}</CardDescription>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <Button
@@ -966,12 +965,12 @@ export default function PayoutManagementPage() {
               {isRequestsFetching &&
                 Array.from({ length: 3 }).map((_, index) => (
                   <div key={`request-card-${index}`} className="rounded-2xl border border-border bg-muted p-4">
-                    <Skeleton className="h-24 rounded-2xl bg-white/5" />
+                    <Skeleton className="h-24 rounded-2xl bg-muted/60" />
                   </div>
                 ))}
 
               {!isRequestsFetching && visibleRequests.length === 0 && (
-                <div className="rounded-2xl border border-border bg-muted p-4 text-center text-sm text-white/45">
+                <div className="rounded-2xl border border-border bg-muted p-4 text-center text-sm text-muted-foreground">
                   {t("NoRequests")}
                 </div>
               )}
@@ -984,31 +983,31 @@ export default function PayoutManagementPage() {
                         <div className="font-semibold text-foreground">
                           {t("BalanceTitleAdmin", { id: String(index + 1) })}
                         </div>
-                        <div className="mt-1 text-xs text-white/45">{request.note || t("NoNoteProvided")}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">{request.note || t("NoNoteProvided")}</div>
                       </div>
                       <Badge className={`w-fit border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[request.status] || statusTone.REQUESTED}`}>
                         {request.status.replaceAll("_", " ")}
                       </Badge>
                     </div>
 
-                    <div className="grid gap-2 rounded-2xl bg-white/[0.03] p-3 text-sm">
+                    <div className="grid gap-2 rounded-2xl bg-muted/60 p-3 text-sm">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-white/50">Requested</span>
+                        <span className="text-muted-foreground">Requested</span>
                         <span className="font-semibold text-foreground">{formatCurrency(request.amount)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-white/50">Batch</span>
-                        <span className="text-right text-white/75">
+                        <span className="text-muted-foreground">Batch</span>
+                        <span className="text-right text-foreground/80">
                           {getBatchDisplayId(request.batchId)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-white/50">Invoice</span>
-                        <span className="text-right text-white/75">{request.invoiceNumber || notAvailable}</span>
+                        <span className="text-muted-foreground">Invoice</span>
+                        <span className="text-right text-foreground/80">{request.invoiceNumber || notAvailable}</span>
                       </div>
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-white/50">Date</span>
-                        <span className="text-right text-white/75">{formatDateShortValue(request.created || request.updated)}</span>
+                        <span className="text-muted-foreground">Date</span>
+                        <span className="text-right text-foreground/80">{formatDateShortValue(request.created || request.updated)}</span>
                       </div>
                     </div>
 
@@ -1033,7 +1032,7 @@ export default function PayoutManagementPage() {
                       </Button>
                     </div>
 
-                    {dashboardRole === "ADMIN" && isReviewableRequest(request.status) && (
+                    {dashboardRole === "ADMIN" && canApproveRequest(request.status) && (
                       <div className="grid grid-cols-2 gap-2">
                         <Button
                           size="sm"
@@ -1049,10 +1048,10 @@ export default function PayoutManagementPage() {
                           size="sm"
                           className="manage-finance-primary justify-center"
                           onClick={() => handleIssueInvoiceAndTransfer(request.id, request.status)}
-                          disabled={approveRequestMutation.isPending || settleApprovedRequestMutation.isPending}
+                          disabled={approveRequestMutation.isPending}
                         >
                           <FileText className="mr-2 h-4 w-4" />
-                          {issueAndTransferLabel}
+                          {approveLabel}
                         </Button>
                       </div>
                     )}
@@ -1062,7 +1061,7 @@ export default function PayoutManagementPage() {
 
             <div className="hidden overflow-x-auto rounded-2xl border border-border md:block">
               <table className="min-w-full text-left text-sm">
-                <thead className="bg-muted text-[10px] uppercase tracking-[0.22em] text-white/40">
+                <thead className="bg-muted text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                   <tr>
                     <th className="px-4 py-4 font-semibold">Instructor</th>
                     <th className="px-4 py-4 font-semibold">Requested</th>
@@ -1073,19 +1072,19 @@ export default function PayoutManagementPage() {
                     <th className="px-4 py-4 text-right font-semibold">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/8 text-white/75">
+                <tbody className="divide-y divide-border text-foreground/80">
                   {isRequestsFetching &&
                     Array.from({ length: 4 }).map((_, index) => (
                       <tr key={index}>
                         <td colSpan={7} className="px-4 py-4">
-                          <Skeleton className="h-7 rounded-full bg-white/5" />
+                          <Skeleton className="h-7 rounded-full bg-muted/60" />
                         </td>
                       </tr>
                     ))}
 
                   {!isRequestsFetching && visibleRequests.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-white/45">
+                      <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
                         {t("NoRequests")}
                       </td>
                     </tr>
@@ -1093,22 +1092,22 @@ export default function PayoutManagementPage() {
 
                   {!isRequestsFetching &&
                     visibleRequests.map((request, index) => (
-                      <tr key={request.id} className="group hover:bg-white/[0.03]">
+                      <tr key={request.id} className="group hover:bg-muted/60">
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-white/5 text-xs font-bold text-[#adc6ff]">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted/60 text-xs font-bold text-[#adc6ff]">
                               {String(index + 1).padStart(2, "0")}
                             </div>
                             <div>
                               <div className="font-semibold text-foreground">{t("BalanceTitleAdmin", { id: String(index + 1) })}</div>
-                              <div className="text-[11px] text-white/45">{request.note || t("NoNoteProvided")}</div>
+                              <div className="text-[11px] text-muted-foreground">{request.note || t("NoNoteProvided")}</div>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-4 font-semibold text-foreground">{formatCurrency(request.amount)}</td>
-                        <td className="px-4 py-4 text-white/50">{request.invoiceNumber || notAvailable}</td>
-                        <td className="px-4 py-4 text-white/50">{getBatchDisplayId(request.batchId)}</td>
-                        <td className="px-4 py-4 text-white/50">{formatDateShortValue(request.created || request.updated)}</td>
+                        <td className="px-4 py-4 text-muted-foreground">{request.invoiceNumber || notAvailable}</td>
+                        <td className="px-4 py-4 text-muted-foreground">{getBatchDisplayId(request.batchId)}</td>
+                        <td className="px-4 py-4 text-muted-foreground">{formatDateShortValue(request.created || request.updated)}</td>
                         <td className="px-4 py-4">
                           <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[request.status] || statusTone.REQUESTED}`}>
                             {request.status.replaceAll("_", " ")}
@@ -1116,12 +1115,12 @@ export default function PayoutManagementPage() {
                         </td>
                         <td className="px-4 py-4 text-right">
                           <div className="flex justify-end gap-2 opacity-90 transition group-hover:opacity-100">
-                            {dashboardRole === "ADMIN" && canIssueInvoiceAndTransfer(request.status) && (
+                            {dashboardRole === "ADMIN" && canApproveRequest(request.status) && (
                               <>
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-8 rounded-full border-white/10 px-3 text-xs text-white/75 hover:bg-white/5 hover:text-white"
+                                  className="h-8 rounded-full border-border px-3 text-xs text-foreground/80 hover:bg-accent hover:text-foreground"
                                   onClick={() => handleReject(request.id)}
                                   disabled={rejectRequestMutation.isPending}
                                 >
@@ -1132,17 +1131,17 @@ export default function PayoutManagementPage() {
                                   size="sm"
                                   className="h-8 rounded-full bg-primary px-3 text-xs text-primary-foreground hover:bg-primary/90"
                                   onClick={() => handleIssueInvoiceAndTransfer(request.id, request.status)}
-                                  disabled={approveRequestMutation.isPending || settleApprovedRequestMutation.isPending}
+                                  disabled={approveRequestMutation.isPending}
                                 >
                                   <FileText className="mr-1.5 h-3.5 w-3.5" />
-                                  {issueAndTransferLabel}
+                                  {approveLabel}
                                 </Button>
                               </>
                             )}
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 rounded-full text-muted-foreground hover:bg-white/5 hover:text-white"
+                              className="h-8 w-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
                               onClick={() => openRequestDetail(request.id, request.invoiceId)}
                             >
                               <Eye className="h-4 w-4" />
@@ -1150,7 +1149,7 @@ export default function PayoutManagementPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 rounded-full text-muted-foreground hover:bg-white/5 hover:text-white"
+                              className="h-8 w-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
                               onClick={() => handleCopyRequestId(request.id)}
                             >
                               <Copy className="h-4 w-4" />
@@ -1174,21 +1173,21 @@ export default function PayoutManagementPage() {
                 <FileText className="h-4 w-4 text-[#adc6ff]" />
                 {t("InvoiceListTitle")}
               </CardTitle>
-              <CardDescription className="text-white/50">{t("InvoiceListDescription")}</CardDescription>
+              <CardDescription className="text-muted-foreground">{t("InvoiceListDescription")}</CardDescription>
             </div>
-            <div className="text-xs text-white/50">{normalizedInvoices.length} invoice(s)</div>
+            <div className="text-xs text-muted-foreground">{normalizedInvoices.length} invoice(s)</div>
           </CardHeader>
           <CardContent className="pt-5">
             <div className="space-y-3 md:hidden">
               {isInvoicesFetching &&
                 Array.from({ length: 2 }).map((_, index) => (
                   <div key={`invoice-card-${index}`} className="rounded-2xl border border-border bg-muted p-4">
-                    <Skeleton className="h-20 rounded-2xl bg-white/5" />
+                    <Skeleton className="h-20 rounded-2xl bg-muted/60" />
                   </div>
                 ))}
 
               {!isInvoicesFetching && normalizedInvoices.length === 0 && (
-                <div className="rounded-2xl border border-border bg-muted p-4 text-center text-sm text-white/45">
+                <div className="rounded-2xl border border-border bg-muted p-4 text-center text-sm text-muted-foreground">
                   {t("NoInvoices")}
                 </div>
               )}
@@ -1198,17 +1197,17 @@ export default function PayoutManagementPage() {
                   <div key={`invoice-mobile-${invoice.id}`} className="rounded-2xl border border-border bg-muted p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-xs text-white/50">{invoice.invoiceNumber}</p>
-                        <p className="mt-1 text-sm font-semibold text-[#f0f4ff]">{formatCurrency(invoice.amount)}</p>
+                        <p className="text-xs text-muted-foreground">{invoice.invoiceNumber}</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">{formatCurrency(invoice.amount)}</p>
                       </div>
                       <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[invoice.status] || statusTone.DRAFT}`}>
                         {invoice.status}
                       </Badge>
                     </div>
-                    <div className="mt-3 text-xs text-white/60">
+                    <div className="mt-3 text-xs text-muted-foreground">
                       {t("PaymentReferenceLabel")}: {invoice.transferReference || notAvailable}
                     </div>
-                    <div className="mt-1 text-xs text-white/50">{formatDateTimeValue(invoice.created || invoice.updated)}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{formatDateTimeValue(invoice.created || invoice.updated)}</div>
                     <Button
                       size="sm"
                       variant="outline"
@@ -1225,7 +1224,7 @@ export default function PayoutManagementPage() {
 
             <div className="hidden overflow-x-auto rounded-2xl border border-border md:block">
               <table className="min-w-full text-left text-sm">
-                <thead className="bg-muted text-[10px] uppercase tracking-[0.22em] text-white/40">
+                <thead className="bg-muted text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                   <tr>
                     <th className="px-4 py-4 font-semibold">Invoice</th>
                     <th className="px-4 py-4 font-semibold">Instructor</th>
@@ -1236,19 +1235,19 @@ export default function PayoutManagementPage() {
                     <th className="px-4 py-4 text-right font-semibold">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/8 text-white/75">
+                <tbody className="divide-y divide-border text-foreground/80">
                   {isInvoicesFetching &&
                     Array.from({ length: 3 }).map((_, index) => (
                       <tr key={`invoice-row-${index}`}>
                         <td colSpan={7} className="px-4 py-4">
-                          <Skeleton className="h-7 rounded-full bg-white/5" />
+                          <Skeleton className="h-7 rounded-full bg-muted/60" />
                         </td>
                       </tr>
                     ))}
 
                   {!isInvoicesFetching && normalizedInvoices.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-white/45">
+                      <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
                         {t("NoInvoices")}
                       </td>
                     </tr>
@@ -1256,11 +1255,11 @@ export default function PayoutManagementPage() {
 
                   {!isInvoicesFetching &&
                     normalizedInvoices.map((invoice) => (
-                      <tr key={invoice.id} className="hover:bg-white/[0.03]">
+                      <tr key={invoice.id} className="hover:bg-muted/60">
                         <td className="px-4 py-4 font-mono text-xs text-[#adc6ff]">{invoice.invoiceNumber}</td>
                         <td className="px-4 py-4">{shortIdValue(invoice.instructorId)}</td>
-                        <td className="px-4 py-4 font-semibold text-[#f0f4ff]">{formatCurrency(invoice.amount)}</td>
-                        <td className="px-4 py-4 font-mono text-xs text-white/60">{invoice.transferReference || notAvailable}</td>
+                        <td className="px-4 py-4 font-semibold text-foreground">{formatCurrency(invoice.amount)}</td>
+                        <td className="px-4 py-4 font-mono text-xs text-muted-foreground">{invoice.transferReference || notAvailable}</td>
                         <td className="px-4 py-4">
                           <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[invoice.status] || statusTone.DRAFT}`}>
                             {invoice.status}
@@ -1292,11 +1291,11 @@ export default function PayoutManagementPage() {
         <Card className="xl:col-span-12 border border-border bg-card shadow-[0_12px_40px_rgba(0,0,0,0.22)]">
           <CardHeader className="flex flex-col gap-3 border-b border-border md:flex-row md:items-center md:justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-[#f0f4ff]">
+              <CardTitle className="flex items-center gap-2 text-foreground">
                 <FileText className="h-4 w-4 text-[#adc6ff]" />
                 {t("LedgerTitle")}
               </CardTitle>
-              <CardDescription className="text-white/50">{t("LedgerDescription")}</CardDescription>
+              <CardDescription className="text-muted-foreground">{t("LedgerDescription")}</CardDescription>
             </div>
             <Button
               variant="ghost"
@@ -1317,32 +1316,32 @@ export default function PayoutManagementPage() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <div className="break-all font-mono text-xs text-muted-foreground">{row.ref}</div>
-                      <div className="mt-1 text-sm text-white/75">{row.description}</div>
+                      <div className="mt-1 text-sm text-foreground/80">{row.description}</div>
                     </div>
                     <Badge className={`w-fit border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${typeTone[row.type] || typeTone.BATCH}`}>
                       {row.type}
                     </Badge>
                   </div>
 
-                  <div className="grid gap-2 rounded-2xl bg-white/[0.03] p-3 text-sm">
+                  <div className="grid gap-2 rounded-2xl bg-muted/60 p-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-white/50">{t("AmountColumn")}</span>
+                      <span className="text-muted-foreground">{t("AmountColumn")}</span>
                       <span className="font-semibold text-foreground">{formatCurrency(row.amount)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-white/50">Status</span>
+                      <span className="text-muted-foreground">Status</span>
                       <span className="text-right text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{row.status}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-white/50">Timestamp</span>
-                      <span className="text-right font-mono text-xs text-white/60">{formatDateTimeValue(row.timestamp)}</span>
+                      <span className="text-muted-foreground">Timestamp</span>
+                      <span className="text-right font-mono text-xs text-muted-foreground">{formatDateTimeValue(row.timestamp)}</span>
                     </div>
                   </div>
                 </div>
               ))}
 
               {ledgerRows.length === 0 && (
-                <div className="rounded-2xl border border-border bg-muted p-4 text-center text-sm text-white/45">
+                <div className="rounded-2xl border border-border bg-muted p-4 text-center text-sm text-muted-foreground">
                   {t("NoLedgerRows")}
                 </div>
               )}
@@ -1350,7 +1349,7 @@ export default function PayoutManagementPage() {
 
             <div className="hidden overflow-x-auto rounded-2xl border border-border md:block">
               <table className="min-w-full text-left text-sm">
-                <thead className="bg-muted text-[10px] uppercase tracking-[0.22em] text-white/40">
+                <thead className="bg-muted text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                   <tr>
                     <th className="px-4 py-4 font-semibold">Ref</th>
                     <th className="px-4 py-4 font-semibold">{t("TypeColumn")}</th>
@@ -1360,25 +1359,25 @@ export default function PayoutManagementPage() {
                     <th className="px-4 py-4 text-right font-semibold">Timestamp</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/8 text-white/75">
+                <tbody className="divide-y divide-border text-foreground/80">
                   {ledgerRows.map((row) => (
-                    <tr key={`${row.type}-${row.ref}-${row.timestamp}`} className="hover:bg-white/[0.03]">
+                    <tr key={`${row.type}-${row.ref}-${row.timestamp}`} className="hover:bg-muted/60">
                       <td className="px-4 py-4 font-mono text-xs text-muted-foreground">{row.ref}</td>
                       <td className="px-4 py-4">
                         <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${typeTone[row.type] || typeTone.BATCH}`}>
                           {row.type}
                         </Badge>
                       </td>
-                      <td className="px-4 py-4 text-white/75">{row.description}</td>
+                      <td className="px-4 py-4 text-foreground/80">{row.description}</td>
                       <td className="px-4 py-4 font-semibold text-foreground">{formatCurrency(row.amount)}</td>
-                      <td className="px-4 py-4 text-[11px] uppercase tracking-[0.2em] text-white/45">{row.status}</td>
-                      <td className="px-4 py-4 text-right font-mono text-xs text-white/50">{formatDateTimeValue(row.timestamp)}</td>
+                      <td className="px-4 py-4 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{row.status}</td>
+                      <td className="px-4 py-4 text-right font-mono text-xs text-muted-foreground">{formatDateTimeValue(row.timestamp)}</td>
                     </tr>
                   ))}
 
                   {ledgerRows.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-white/45">
+                      <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
                         {t("NoLedgerRows")}
                       </td>
                     </tr>
@@ -1404,10 +1403,10 @@ export default function PayoutManagementPage() {
             <Card className="border border-border bg-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm text-foreground">{t("MonthlyBatchTitle")}</CardTitle>
-                <CardDescription className="text-white/50">{t("MonthlyBatchDescription")}</CardDescription>
+                <CardDescription className="text-muted-foreground">{t("MonthlyBatchDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="rounded-2xl border border-border bg-muted p-4 text-sm text-white/70">
+                <div className="rounded-2xl border border-border bg-muted p-4 text-sm text-muted-foreground">
                   {t("PeriodLabel")}: <span className="font-semibold text-foreground">{format(new Date(), "yyyy-MM")}</span>
                 </div>
                 <Button
@@ -1424,7 +1423,7 @@ export default function PayoutManagementPage() {
             <Card className="border border-border bg-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm text-foreground">{t("ManualBatchTitle")}</CardTitle>
-                <CardDescription className="text-white/50">{t("ManualBatchDescription")}</CardDescription>
+                <CardDescription className="text-muted-foreground">{t("ManualBatchDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Input
@@ -1481,7 +1480,7 @@ export default function PayoutManagementPage() {
                 {(detail?.status || "REQUESTED").replaceAll("_", " ")}
               </Badge>
               <button
-                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:bg-white/5 hover:text-white"
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:bg-accent hover:text-foreground"
                 onClick={() => handleCopyRequestId(detail?.id)}
               >
                 {shortIdValue(detail?.id)}
@@ -1499,15 +1498,15 @@ export default function PayoutManagementPage() {
               <CardContent className="space-y-4 p-5">
                 <div className="grid gap-3 text-center text-xs sm:grid-cols-3">
                   <div className="rounded-2xl border border-border bg-muted p-3">
-                    <div className="text-white/45">{t("CreatedLabel")}</div>
+                    <div className="text-muted-foreground">{t("CreatedLabel")}</div>
                     <div className="mt-1 font-semibold text-foreground">{formatDateTimeValue(detail?.created)}</div>
                   </div>
                   <div className="rounded-2xl border border-border bg-muted p-3">
-                    <div className="text-white/45">{t("ApprovedLabel")}</div>
+                    <div className="text-muted-foreground">{t("ApprovedLabel")}</div>
                     <div className="mt-1 font-semibold text-foreground">{formatDateTimeValue(detail?.approvedAt)}</div>
                   </div>
                   <div className="rounded-2xl border border-border bg-muted p-3">
-                    <div className="text-white/45">{t("PaidLabel")}</div>
+                    <div className="text-muted-foreground">{t("PaidLabel")}</div>
                     <div className="mt-1 font-semibold text-foreground">{formatDateTimeValue(detail?.markedPaidAt)}</div>
                   </div>
                 </div>
@@ -1515,34 +1514,34 @@ export default function PayoutManagementPage() {
                 <div className="rounded-xl border border-border bg-muted p-4">
                   <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("MethodLabel")}</div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{t("MethodLabel")}</div>
                       <div className="mt-1 flex items-center gap-2 text-foreground"><Landmark className="h-4 w-4 text-[#4edea3]" />{t("AutoTransferMode")}</div>
                     </div>
                     <div className="text-left sm:text-right">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("TypeLabel")}</div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{t("TypeLabel")}</div>
                       <div className="mt-1 text-foreground">{t("InvoiceDrivenSettlement")}</div>
                     </div>
                   </div>
                   <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
-                    <div className="flex flex-col gap-1 text-white/60 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-1 text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                       <span>{t("RequestedAmountLabel")}</span>
                       <span className="font-semibold text-foreground">{formatCurrency(detail?.amount || 0)}</span>
                     </div>
-                    <div className="flex items-center justify-between text-white/60">
+                    <div className="flex items-center justify-between text-muted-foreground">
                       <span>{t("ReviewNoteLabel")}</span>
-                      <span className="max-w-full text-left text-white/75 sm:max-w-[70%] sm:text-right">{detail?.reviewNote || t("NoReviewNote")}</span>
+                      <span className="max-w-full text-left text-foreground/80 sm:max-w-[70%] sm:text-right">{detail?.reviewNote || t("NoReviewNote")}</span>
                     </div>
-                    <div className="flex items-center justify-between text-white/60">
+                    <div className="flex items-center justify-between text-muted-foreground">
                       <span>{t("PaymentReferenceLabel")}</span>
-                      <span className="max-w-[70%] text-right font-mono text-white/75">{detail?.paymentReference || "—"}</span>
+                      <span className="max-w-[70%] text-right font-mono text-foreground/80">{detail?.paymentReference || "—"}</span>
                     </div>
-                    <div className="flex items-center justify-between text-white/60">
+                    <div className="flex items-center justify-between text-muted-foreground">
                       <span>{t("InvoiceLabel")}</span>
-                      <span className="max-w-[70%] text-right font-mono text-white/75">{detail?.invoiceNumber || detailInvoice?.invoiceNumber || "—"}</span>
+                      <span className="max-w-[70%] text-right font-mono text-foreground/80">{detail?.invoiceNumber || detailInvoice?.invoiceNumber || "—"}</span>
                     </div>
-                    <div className="flex items-center justify-between text-white/60">
+                    <div className="flex items-center justify-between text-muted-foreground">
                       <span>{t("InvoiceStatusLabel")}</span>
-                      <span className="max-w-[70%] text-right text-white/75">{detailInvoice?.status || "—"}</span>
+                      <span className="max-w-[70%] text-right text-foreground/80">{detailInvoice?.status || "—"}</span>
                     </div>
                   </div>
                 </div>
@@ -1552,10 +1551,10 @@ export default function PayoutManagementPage() {
             <Card className="border border-border bg-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm text-foreground">{t("RequestNotesTitle")}</CardTitle>
-                <CardDescription className="text-white/50">{t("RequestNotesDescription")}</CardDescription>
+                <CardDescription className="text-muted-foreground">{t("RequestNotesDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="rounded-2xl border border-border bg-muted p-4 text-sm text-white/75">
+                <div className="rounded-2xl border border-border bg-muted p-4 text-sm text-foreground/80">
                   {detail?.note || t("NoRequestNote")}
                 </div>
                 <Input
@@ -1589,11 +1588,11 @@ export default function PayoutManagementPage() {
                 variant="outline"
                 className="manage-finance-secondary"
                 onClick={() => handleIssueInvoiceAndTransfer()}
-                disabled={approveRequestMutation.isPending || settleApprovedRequestMutation.isPending}
-                hidden={dashboardRole !== "ADMIN" || !detail || !canIssueInvoiceAndTransfer(detail.status)}
+                disabled={approveRequestMutation.isPending}
+                hidden={dashboardRole !== "ADMIN" || !detail || !canApproveRequest(detail.status)}
               >
               <FileText className="mr-2 h-4 w-4" />
-              {issueAndTransferLabel}
+              {approveLabel}
             </Button>
             <Button
               className="manage-finance-primary"
@@ -1613,31 +1612,31 @@ export default function PayoutManagementPage() {
           <CardHeader className="flex flex-col gap-3 border-b border-border md:flex-row md:items-center md:justify-between">
             <div>
               <CardTitle className="text-foreground">{t("OverviewStatsTitle")}</CardTitle>
-              <CardDescription className="text-white/50">{t("OverviewStatsDescription")}</CardDescription>
+              <CardDescription className="text-muted-foreground">{t("OverviewStatsDescription")}</CardDescription>
             </div>
-            <div className="flex items-center gap-2 text-xs text-white/50">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <MessageSquareText className="h-4 w-4 text-[#adc6ff]" />
               {t("ApprovedRequestsCount", { count: summary.approvedRequests })}
             </div>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-border bg-muted p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("RequestedSum")}</div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{t("RequestedSum")}</div>
               <div className="mt-2 text-2xl font-bold text-foreground">{formatCurrency(summary.totalRequested)}</div>
             </div>
             <div className="rounded-2xl border border-border bg-muted p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("LoadedRequests")}</div>
-              <div className="mt-2 text-2xl font-bold text-foreground">{visibleRequests.length}</div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{t("LoadedRequests")}</div>
+              <div className="mt-2 text-2xl font-bold text-foreground">{summary.loadedRequests}</div>
             </div>
             <div className="rounded-2xl border border-border bg-muted p-4">
-              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/45">{t("BatchCount")}</div>
-              <div className="mt-2 text-2xl font-bold text-foreground">{normalizedBatches.length}</div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{t("BatchCount")}</div>
+              <div className="mt-2 text-2xl font-bold text-foreground">{summary.batchCount}</div>
             </div>
           </CardContent>
         </Card>
       </section>
 
-      <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <ChevronRight className="h-4 w-4 text-[#adc6ff]" />
           {t("FooterBanner")}

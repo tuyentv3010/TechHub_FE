@@ -1,5 +1,6 @@
 import http from "@/lib/http";
 import envConfig from "@/config";
+import { getAccessTokenFromLocalStorage } from "@/lib/utils";
 
 export type FxRateResponse = {
   from: string;
@@ -152,6 +153,13 @@ export type PayoutBatchResponse = {
   created?: string | null;
 };
 
+export type PayoutOperationsSummaryResponse = {
+  approvedRequests: number;
+  totalRequested: number;
+  loadedRequests: number;
+  batchCount: number;
+};
+
 export type ReviewPayoutRequestPayload = {
   note?: string;
 };
@@ -213,6 +221,9 @@ const paymentApiRequest = {
   listPayoutRequests: () =>
     http.get<GlobalResponse<PayoutRequestResponse[]>>("/app/api/proxy/payments/payouts/requests"),
 
+  getPayoutOperationsSummary: () =>
+    http.get<GlobalResponse<PayoutOperationsSummaryResponse>>("/app/api/proxy/payments/payouts/summary"),
+
   getPayoutRequest: (requestId: string) =>
     http.get<GlobalResponse<PayoutRequestResponse>>(`/app/api/proxy/payments/payouts/requests/${requestId}`),
 
@@ -252,7 +263,7 @@ const paymentApiRequest = {
     http.get<GlobalResponse<PayoutInvoiceResponse>>(`/app/api/proxy/payments/payouts/invoices/${invoiceId}`),
 
   downloadPayoutInvoicePdf: async (invoiceId: string) => {
-    const accessToken = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const accessToken = getAccessTokenFromLocalStorage();
     const res = await fetch(
       `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/app/api/proxy/payments/payouts/invoices/${invoiceId}/pdf`,
       {

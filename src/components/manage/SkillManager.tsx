@@ -22,7 +22,7 @@ import fileApiRequest from "@/apiRequests/file";
 import { resolvePersistentFileUrl, normalizePublicMediaUrl } from "@/lib/file-media";
 import { cn } from "@/lib/utils";
 
-type Skill = { id: string; name: string; thumbnail?: string; category?: string };
+type Skill = { id: string; name: string; thumbnail?: string; category?: string; createdBy?: string | null };
 
 const CATEGORY_BADGE: Record<string, string> = {
   LANGUAGE: "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
@@ -55,6 +55,8 @@ export default function SkillManager({
 
   const { data: profileData } = useAccountProfile();
   const userId = profileData?.payload?.data?.id || "";
+  const roles: string[] = profileData?.payload?.data?.roles ?? [];
+  const isAdmin = roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -228,6 +230,7 @@ export default function SkillManager({
             skills.map((s: Skill) => {
               const thumb = normalizePublicMediaUrl(s.thumbnail);
               const isSelected = (selectedItems || []).includes(s.name);
+              const canManage = isAdmin || (!!userId && s.createdBy === userId);
               return (
                 <div
                   key={s.id}
@@ -257,14 +260,19 @@ export default function SkillManager({
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
-                    <Button size="sm" variant="outline" onClick={() => startEdit(s)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={canManage ? undefined : "hidden"}
+                      onClick={() => startEdit(s)}
+                    >
                       <Pencil className="h-3.5 w-3.5 sm:mr-1.5" />
                       <span className="hidden sm:inline">Sửa</span>
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      className={cn(!canManage && "hidden", "text-destructive hover:bg-destructive/10 hover:text-destructive")}
                       disabled={deletingId === s.id}
                       onClick={() => handleDelete(s.id)}
                     >
