@@ -20,7 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  useGetUnreadNotifications,
+  useGetNotifications,
   useGetUnreadCount,
   useMarkAsReadMutation,
   useMarkAllAsReadMutation,
@@ -43,12 +43,12 @@ export function NotificationBell({ className }: NotificationBellProps) {
   // Fetch unread count
   const { data: unreadCount = 0, isLoading: isLoadingCount } = useGetUnreadCount();
 
-  // Fetch unread notifications (limit to 5 for dropdown)
+  // Keep recent notifications visible after they are marked as read.
   const { data: notificationsData, isLoading: isLoadingNotifications } =
-    useGetUnreadNotifications(0, 5, isOpen);
+    useGetNotifications(0, 5, undefined, isOpen);
 
   const notifications: NotificationType[] = notificationsData?.payload?.data || [];
-  const totalUnread = notificationsData?.payload?.pagination?.totalElements || unreadCount;
+  const totalUnread = unreadCount;
 
   // Mutations
   const markAsReadMutation = useMarkAsReadMutation();

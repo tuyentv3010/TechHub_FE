@@ -1734,6 +1734,7 @@
     "learningPaths": "Lộ Trình Học Tập",
     "courses": "khóa học",
     "hours": "giờ",
+    "levelLabel": "Cấp độ",
     "level": {
       "BEGINNER": "Sơ cấp",
       "INTERMEDIATE": "Trung cấp",

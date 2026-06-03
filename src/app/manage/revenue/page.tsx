@@ -74,6 +74,25 @@ type NormalizedTransaction = {
   createdAt: string;
 };
 
+const resolveDashboardRole = (
+  contextRole: string | null | undefined,
+  tokenRoles: string[]
+): "ADMIN" | "INSTRUCTOR" | null => {
+  const roles = new Set(
+    [contextRole, ...tokenRoles]
+      .filter(Boolean)
+      .map((item) => String(item).toUpperCase())
+  );
+
+  if (roles.has("SUPER_ADMIN") || roles.has("ADMIN")) {
+    return "ADMIN";
+  }
+  if (roles.has("INSTRUCTOR")) {
+    return "INSTRUCTOR";
+  }
+  return null;
+};
+
 const statusTone: Record<string, string> = {
   COMPLETED:
     "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-400/40",
@@ -170,12 +189,8 @@ export default function RevenueDashboardPage() {
         return status || notAvailable;
     }
   };
-  const dashboardRole: "ADMIN" | "INSTRUCTOR" | null =
-    role === "ADMIN" || role === "SUPER_ADMIN"
-      ? "ADMIN"
-      : role === "INSTRUCTOR"
-        ? "INSTRUCTOR"
-        : null;
+  const [tokenRoles, setTokenRoles] = useState<string[]>([]);
+  const dashboardRole = useMemo(() => resolveDashboardRole(role, tokenRoles), [role, tokenRoles]);
 
   useEffect(() => {
     document.body.classList.add("manage-revenue-page");
@@ -241,6 +256,12 @@ export default function RevenueDashboardPage() {
     try {
       const decoded = decodeToken(token);
       const userId = (decoded as any)?.userId || (decoded as any)?.user?.id;
+      const decodedRoles = Array.isArray((decoded as any)?.roles)
+        ? (decoded as any).roles.map(String)
+        : (decoded as any)?.role
+          ? [String((decoded as any).role)]
+          : [];
+      setTokenRoles(decodedRoles);
       if (userId) {
         setCurrentUserId(String(userId));
       }
@@ -348,10 +369,32 @@ export default function RevenueDashboardPage() {
   const totalElements = historyPageData?.totalElements ?? transactions.length;
   const isLastPage = historyPageData?.last ?? transactions.length < transactionPageSize;
 
-  const topTrends = useMemo(
-    () => [...chartData].sort((a, b) => b.gross - a.gross).slice(0, 3),
-    [chartData]
-  );
+  const topTrends = useMemo<RevenueChartRow[]>(() => {
+    // Prefer the backend daily trends when available.
+    if (chartData.length > 0) {
+      return [...chartData].sort((a, b) => b.gross - a.gross).slice(0, 3);
+    }
+    // Fallback: derive the top revenue days from the loaded transactions so the
+    // panel is not empty when the backend trends aggregation returns nothing.
+    const byDate = new Map<string, RevenueChartRow>();
+    transactions.forEach((tx) => {
+      if (tx.status !== "SUCCESS") return;
+      const parsed = new Date(tx.createdAt);
+      const key = Number.isNaN(parsed.getTime())
+        ? (tx.createdAt || "").slice(0, 10)
+        : parsed.toISOString().slice(0, 10);
+      if (!key) return;
+      const entry = byDate.get(key) ?? { date: key, gross: 0, instructor: 0, admin: 0, orders: 0 };
+      entry.gross += tx.gross || 0;
+      entry.instructor += tx.instructor || 0;
+      entry.admin += tx.admin || 0;
+      entry.orders += 1;
+      byDate.set(key, entry);
+    });
+    return Array.from(byDate.values())
+      .sort((a, b) => b.gross - a.gross)
+      .slice(0, 3);
+  }, [chartData, transactions]);
 
   const detailPayload = detailResponse?.payload?.data ?? detailResponse?.payload;
   const detailAmount = Number(detailPayload?.amount ?? detailPayload?.grossAmount ?? 0);
@@ -878,8 +921,8 @@ export default function RevenueDashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-5">
-        <Card className="manage-finance-surface xl:col-span-3 shadow-sm">
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card className="manage-finance-surface xl:col-span-2 shadow-sm">
           <CardHeader>
             <CardTitle className="text-slate-900 dark:text-slate-100">{t("RecentTransactionsTitle")}</CardTitle>
             <CardDescription>{t("RecentTransactionsDescription")}</CardDescription>
@@ -1145,7 +1188,7 @@ export default function RevenueDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="manage-finance-surface xl:col-span-2 shadow-sm">
+        <Card className="manage-finance-surface xl:col-span-1 shadow-sm">
           <CardHeader>
             <CardTitle className="text-slate-900 dark:text-slate-100">{t("TopPerformersTitle")}</CardTitle>
             <CardDescription>{t("TopPerformersDescription")}</CardDescription>

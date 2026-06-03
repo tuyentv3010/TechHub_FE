@@ -45,6 +45,9 @@ export const LearningPathItem = z.object({
   createdAt: z.string().optional(), // Alias for created
   courses: z.array(CourseInPath).optional(),
   totalCourses: z.number().optional(),
+  // Not currently returned by the backend; derived on the client from member courses.
+  level: z.string().nullable().optional(),
+  estimatedDuration: z.number().nullable().optional(),
   layoutEdges: z.array(z.object({
     source: z.string(),
     target: z.string(),

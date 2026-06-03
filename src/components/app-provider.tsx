@@ -33,6 +33,32 @@ type AppContextType = {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const ROLE_PRIORITY: RoleType[] = [
+  "SUPER_ADMIN",
+  "ADMIN",
+  "INSTRUCTOR",
+  "STAFF",
+  "LEARNER",
+  "CUSTOMER",
+  "GUEST",
+];
+
+const resolvePrimaryRole = (roles?: unknown): RoleType | null => {
+  const roleList = Array.isArray(roles)
+    ? roles.map((item) => String(item).toUpperCase())
+    : roles
+      ? [String(roles).toUpperCase()]
+      : [];
+
+  for (const role of ROLE_PRIORITY) {
+    if (roleList.includes(role)) {
+      return role;
+    }
+  }
+
+  return (roleList[0] as RoleType | undefined) ?? null;
+};
+
 const isTokenFresh = (token: string) => {
   try {
     const decoded = decodeToken(token);
@@ -79,10 +105,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             redirectOnUnauthorized: false,
           });
           const profile = profileResponse?.payload?.data;
-          const primaryRole = profile?.roles?.[0] || null;
+          const primaryRole = resolvePrimaryRole(profile?.roles);
 
           if (isMounted) {
-            setRole(primaryRole as RoleType | null);
+            setRole(primaryRole);
             if (profile) {
               setUserInfoToAuthStorage(profile);
             }
@@ -103,7 +129,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           try {
             const decoded = decodeToken(token);
             if (isMounted) {
-              setRole(decoded?.role || null);
+              setRole(resolvePrimaryRole(decoded?.roles ?? decoded?.role));
             }
           } catch (decodeError) {
             console.error("Failed to decode token:", decodeError);

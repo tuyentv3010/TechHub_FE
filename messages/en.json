@@ -1735,6 +1735,7 @@
     "learningPaths": "Learning Paths",
     "courses": "courses",
     "hours": "hours",
+    "levelLabel": "Level",
     "level": {
       "BEGINNER": "Beginner",
       "INTERMEDIATE": "Intermediate",

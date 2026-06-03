@@ -41,6 +41,7 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
   const t = useTranslations("LearningPathDetail");
   const { data, isLoading } = useGetLearningPathById(pathId);
   const [courseDetailsMap, setCourseDetailsMap] = useState<Map<string, CourseItemResType>>(new Map());
+  const [courseDurationsMap, setCourseDurationsMap] = useState<Map<string, number>>(new Map());
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [viewMode, setViewMode] = useState<"diagram" | "list">("diagram");
   const [copied, setCopied] = useState(false);
@@ -66,7 +67,8 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
       const fetchCourseDetails = async () => {
         setLoadingCourses(true);
         const detailsMap = new Map<string, CourseItemResType>();
-        
+        const durationsMap = new Map<string, number>();
+
         await Promise.all(
           courses.map(async (course: CourseInPathType) => {
             try {
@@ -74,13 +76,17 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
               if (response.payload?.data?.summary) {
                 detailsMap.set(course.courseId, response.payload.data.summary);
               }
+              if (response.payload?.data?.totalEstimatedDurationMinutes != null) {
+                durationsMap.set(course.courseId, response.payload.data.totalEstimatedDurationMinutes);
+              }
             } catch (error) {
               console.error(`Failed to fetch course ${course.courseId}:`, error);
             }
           })
         );
-        
+
         setCourseDetailsMap(detailsMap);
+        setCourseDurationsMap(durationsMap);
         setLoadingCourses(false);
       };
       
@@ -113,6 +119,31 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
     );
   }
 
+  const firstCourse = path.courses
+    ?.slice()
+    .sort((a: CourseInPathType, b: CourseInPathType) => a.order - b.order)[0];
+
+  // Learning path level/duration are not stored on the backend; derive them from the
+  // member courses. Level = highest level among courses; duration = sum of course
+  // durations (minutes) rounded to hours.
+  const LEVEL_ORDER = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
+  let highestLevelIdx = -1;
+  courseDetailsMap.forEach((c) => {
+    const idx = LEVEL_ORDER.indexOf(c.level);
+    if (idx > highestLevelIdx) highestLevelIdx = idx;
+  });
+  const computedLevel = highestLevelIdx >= 0 ? LEVEL_ORDER[highestLevelIdx] : "";
+
+  const totalDurationMinutes = Array.from(courseDurationsMap.values()).reduce(
+    (sum, minutes) => sum + (minutes || 0),
+    0
+  );
+  const computedDurationHours = Math.round(totalDurationMinutes / 60);
+
+  // Prefer backend value when present, otherwise fall back to the computed one.
+  const displayLevel = path.level || computedLevel;
+  const displayDuration = path.estimatedDuration || computedDurationHours;
+
   const getLevelColor = (level: string) => {
     switch (level) {
       case "BEGINNER":
@@ -140,8 +171,8 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
 
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Badge className={getLevelColor(path.level || "")}>
-              {t(`level.${path.level || "undefined"}`)}
+            <Badge className={getLevelColor(displayLevel)}>
+              {t(`level.${displayLevel || "undefined"}`)}
             </Badge>
             <Badge variant="outline">
               <BookOpen className="h-3 w-3 mr-1" />
@@ -149,7 +180,7 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
             </Badge>
             <Badge variant="outline">
               <Clock className="h-3 w-3 mr-1" />
-              {path.estimatedDuration || 0} {t("hours")}
+              {displayDuration} {t("hours")}
             </Badge>
           </div>
 
@@ -328,7 +359,7 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
                 <div>
                   <p className="font-medium">{t("duration")}</p>
                   <p className="text-muted-foreground">
-                    {path.estimatedDuration || 0} {t("hours")}
+                    {displayDuration} {t("hours")}
                   </p>
                 </div>
               </div>
@@ -338,9 +369,9 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
               <div className="flex items-center gap-3 text-sm">
                 <Target className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="font-medium">{t("level")}</p>
+                  <p className="font-medium">{t("levelLabel")}</p>
                   <p className="text-muted-foreground">
-                    {t(`level.${path.level || "undefined"}`)}
+                    {t(`level.${displayLevel || "undefined"}`)}
                   </p>
                 </div>
               </div>
@@ -371,10 +402,19 @@ export default function LearningPathDetail({ pathId }: LearningPathDetailProps) 
 
               <Separator />
 
-              <Button className="w-full" size="lg">
-                {t("startLearning")}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              {firstCourse ? (
+                <Button className="w-full" size="lg" asChild>
+                  <Link href={`/courses/${firstCourse.courseId}`}>
+                    {t("startLearning")}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              ) : (
+                <Button className="w-full" size="lg" disabled>
+                  {t("startLearning")}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              )}
             </CardContent>
           </Card>
 

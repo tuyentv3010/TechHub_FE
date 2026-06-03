@@ -305,27 +305,35 @@ export default function ExerciseLeaderboard({
         setLoading(true);
         setFetchError(false);
         for (let attempt = 0; attempt < 4; attempt += 1) {
-          const res: any = await courseApiRequest.getLessonLeaderboard(courseId, lessonId, 10);
-          const rows =
-            res?.payload?.data
-            ?? res?.payload?.payload?.data
-            ?? res?.payload
-            ?? [];
-          if (cancelled) return;
-          const mapped: LeaderboardPlayer[] = (Array.isArray(rows) ? rows : []).map((r: any, i: number) => ({
-            id: r.userId || String(i),
-            rank: r.rank ?? i + 1,
-            name: r.username || "Người dùng",
-            avatar: r.avatar || `/exercise/exercise-${(i % 6) + 1}.png`,
-            score: Math.round(r.score || 0),
-            totalQuestions,
-          }));
-          setFetched(mapped);
-          if (mapped.length > 0 || attempt === 3) return;
+          try {
+            const res: any = await courseApiRequest.getLessonLeaderboard(courseId, lessonId, 10);
+            const rows =
+              res?.payload?.data
+              ?? res?.payload?.payload?.data
+              ?? res?.payload
+              ?? [];
+            if (cancelled) return;
+            const mapped: LeaderboardPlayer[] = (Array.isArray(rows) ? rows : []).map((r: any, i: number) => ({
+              id: r.userId || String(i),
+              rank: r.rank ?? i + 1,
+              name: r.username || "Người dùng",
+              avatar: r.avatar || `/exercise/exercise-${(i % 6) + 1}.png`,
+              score: Math.round(r.score || 0),
+              totalQuestions,
+            }));
+            setFetched(mapped);
+            if (mapped.length > 0 || attempt === 3) return;
+          } catch (error) {
+            if (attempt === 3) throw error;
+          }
           await wait(750);
         }
       } catch (e) {
-        console.error("[Leaderboard] fetch failed", e);
+        console.error("[Leaderboard] fetch failed", {
+          error: e,
+          status: (e as any)?.status,
+          payload: (e as any)?.payload,
+        });
         if (!cancelled) {
           setFetched([]);
           setFetchError(true);

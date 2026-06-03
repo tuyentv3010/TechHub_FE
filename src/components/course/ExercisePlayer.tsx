@@ -15,7 +15,8 @@ import {
   XCircle,
   Lightbulb,
   BookOpenCheck,
-  Loader2
+  Loader2,
+  RefreshCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -206,8 +207,6 @@ const ANSWER_COLORS = [
 ];
 
 const TIME_LIMIT = 10; // 10 seconds per question
-const SHOW_ANSWER_DURATION = 8; // Leave room for feedback after grading.
-
 // Question Screen Component
 function QuestionScreen({
   exercise,
@@ -226,11 +225,12 @@ function QuestionScreen({
   submitted,
   selectedAnswers,
   isCorrect,
-  showAnswerCountdown,
   userAvatar,
   lessonTitle,
   feedback,
   feedbackLoading,
+  feedbackError,
+  onRetryFeedback,
 }: {
   exercise: Exercise;
   questionNumber: number;
@@ -248,11 +248,12 @@ function QuestionScreen({
   submitted: boolean;
   selectedAnswers: string[];
   isCorrect: boolean;
-  showAnswerCountdown: number;
   userAvatar?: string;
   lessonTitle?: string;
   feedback?: QuizFeedback | null;
   feedbackLoading?: boolean;
+  feedbackError?: string | null;
+  onRetryFeedback: () => void;
 }) {
   const choices = parseChoices(exercise.options);
   const correctCount = choices.filter(c => c.isCorrect).length;
@@ -399,7 +400,11 @@ function QuestionScreen({
                 ? "bg-red-500 text-white animate-pulse" 
                 : "bg-white text-gray-800"
           )}>
-            {submitted ? showAnswerCountdown : countdown}
+            {submitted
+              ? feedbackLoading
+                ? <Loader2 className="h-5 w-5 animate-spin" />
+                : <CheckCircle2 className="h-6 w-6" />
+              : countdown}
           </div>
         </div>
       </div>
@@ -544,6 +549,19 @@ function QuestionScreen({
                 Đang tạo giải thích...
               </div>
             )}
+            {feedbackError && !feedbackLoading && !feedback && (
+              <div className="mt-3 rounded-lg bg-white/20 px-3 py-2 text-sm text-white">
+                <p>{feedbackError}</p>
+                <Button
+                  className="mt-2 bg-white text-gray-900 hover:bg-white/90"
+                  onClick={onRetryFeedback}
+                  size="sm"
+                >
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Thử lại giải thích
+                </Button>
+              </div>
+            )}
             {feedback && (
               <div className="mt-4 rounded-xl bg-white p-4 text-left text-gray-800 shadow-sm">
                 <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-700">
@@ -577,9 +595,20 @@ function QuestionScreen({
                 )}
               </div>
             )}
-            <p className="text-xs text-white mt-2">
-              Tự động chuyển sau {showAnswerCountdown}s...
-            </p>
+            <Button
+              className="mt-4 w-full bg-white text-gray-900 hover:bg-white/90"
+              onClick={onNextQuestion}
+              disabled={feedbackLoading || !feedback}
+            >
+              {feedbackLoading
+                ? "Đang tạo giải thích..."
+                : !feedback
+                  ? "Chờ giải thích để tiếp tục"
+                : questionNumber >= totalQuestions
+                  ? "Xem kết quả"
+                  : "Câu tiếp theo"}
+              {!feedbackLoading && feedback && <ChevronRight className="ml-2 h-4 w-4" />}
+            </Button>
           </div>
         </div>
       )}
@@ -765,10 +794,10 @@ export default function ExercisePlayer({
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
   const [isCorrect, setIsCorrect] = useState(false);
   const [countdown, setCountdown] = useState(TIME_LIMIT);
-  const [showAnswerCountdown, setShowAnswerCountdown] = useState(SHOW_ANSWER_DURATION);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState<QuizFeedback | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [submissionMeta, setSubmissionMeta] = useState<{ grade?: number | null; status?: string }>({});
   const feedbackRef = useRef<QuizFeedback | null>(null);
   const submissionMetaRef = useRef<{ grade?: number | null; status?: string }>({});
@@ -795,20 +824,16 @@ export default function ExercisePlayer({
   const multipleChoiceExercises = exercises.filter(e => e.type === 'MULTIPLE_CHOICE');
   const currentExercise = multipleChoiceExercises[currentIndex];
 
-  // Use ref to track if we're transitioning to prevent double execution
-  const isTransitioning = useRef(false);
-
   // Debug log
   useEffect(() => {
     console.log('[ExercisePlayer] State:', { 
       currentIndex, 
       submitted, 
       countdown, 
-      showAnswerCountdown,
       gameState,
       exerciseId: currentExercise?.id 
     });
-  }, [currentIndex, submitted, countdown, showAnswerCountdown, gameState, currentExercise?.id]);
+  }, [currentIndex, submitted, countdown, gameState, currentExercise?.id]);
 
   // Countdown timer for answering (10s)
   useEffect(() => {
@@ -839,70 +864,6 @@ export default function ExercisePlayer({
     };
   }, [gameState, submitted, currentIndex]);
 
-  // Show answer countdown (5s) then auto-next
-  useEffect(() => {
-    if (gameState !== 'playing' || !submitted) return;
-    
-    console.log('[ShowAnswer] Starting show answer countdown for question', currentIndex + 1);
-    isTransitioning.current = false;
-    let localCountdown = SHOW_ANSWER_DURATION;
-    setShowAnswerCountdown(SHOW_ANSWER_DURATION);
-    
-    const interval = setInterval(() => {
-      localCountdown -= 1;
-      console.log('[ShowAnswer] Countdown:', localCountdown);
-      setShowAnswerCountdown(localCountdown);
-      
-      if (localCountdown <= 0 && !isTransitioning.current) {
-        isTransitioning.current = true;
-        console.log('[ShowAnswer] Moving to next question. Current:', currentIndex + 1, 'Total:', multipleChoiceExercises.length);
-        
-        // Save result
-        const result: ExerciseResult = {
-          exerciseId: currentExercise?.id || '',
-          isCorrect,
-          selectedAnswers,
-          timeSpent,
-          feedback: feedbackRef.current,
-          grade: submissionMetaRef.current.grade,
-          status: submissionMetaRef.current.status,
-        };
-        
-        setResults(prev => [...prev, result]);
-        
-        // Check if last question
-        if (currentIndex >= multipleChoiceExercises.length - 1) {
-          console.log('[ShowAnswer] Last question - showing results');
-          setResults(prev => {
-            onComplete?.(prev);
-            return prev;
-          });
-          setGameState('result');
-        } else {
-          // Move to next question
-          console.log('[ShowAnswer] Moving to question', currentIndex + 2);
-          setCurrentIndex(currentIndex + 1);
-          setSubmitted(false);
-          setSelectedAnswers([]);
-          setIsCorrect(false);
-          setTimeSpent(0);
-          setCountdown(TIME_LIMIT);
-          setCurrentFeedback(null);
-          setSubmissionMeta({});
-          setFeedbackLoading(false);
-          submissionStartedForExerciseRef.current = null;
-        }
-        
-        clearInterval(interval);
-      }
-    }, 1000);
-    
-    return () => {
-      console.log('[ShowAnswer] Clearing show answer interval');
-      clearInterval(interval);
-    };
-  }, [submitted, currentIndex, gameState]);
-
   // Handle timeout - auto submit as fail
   const handleTimeOut = useCallback(() => {
     if (submitted) return;
@@ -912,6 +873,7 @@ export default function ExercisePlayer({
     setCurrentFeedback(null);
     setSubmissionMeta({});
     setFeedbackLoading(false);
+    setFeedbackError(null);
   }, [submitted]);
 
   // Start game
@@ -924,10 +886,10 @@ export default function ExercisePlayer({
     setSubmitted(false);
     setSelectedAnswers([]);
     setCountdown(TIME_LIMIT);
-    setShowAnswerCountdown(SHOW_ANSWER_DURATION);
     setCurrentFeedback(null);
     setSubmissionMeta({});
     setFeedbackLoading(false);
+    setFeedbackError(null);
     submissionStartedForExerciseRef.current = null;
   };
 
@@ -941,6 +903,7 @@ export default function ExercisePlayer({
     submissionStartedForExerciseRef.current = exercise.id;
 
     setFeedbackLoading(true);
+    setFeedbackError(null);
     setCurrentFeedback(null);
     setSubmissionMeta({});
 
@@ -955,19 +918,31 @@ export default function ExercisePlayer({
         },
       });
       const submission = response?.payload?.data;
-      setCurrentFeedback(submission?.feedback ?? null);
+      const feedback = submission?.feedback ?? null;
+      if (!feedback) {
+        throw new Error('Không nhận được giải thích cho đáp án.');
+      }
+      feedbackRef.current = feedback;
+      setCurrentFeedback(feedback);
       setSubmissionMeta({
         grade: submission?.grade ?? null,
         status: submission?.status,
       });
     } catch (error) {
       console.error('[ExercisePlayer] Failed to submit exercise answer:', error);
+      submissionStartedForExerciseRef.current = null;
       setCurrentFeedback(null);
       setSubmissionMeta({});
+      setFeedbackError('Không tải được giải thích đáp án. Vui lòng thử lại.');
     } finally {
       setFeedbackLoading(false);
     }
   }, [courseId, lessonId, timeSpent]);
+
+  const handleRetryFeedback = useCallback(() => {
+    if (!currentExercise || feedbackLoading) return;
+    void submitCurrentAnswer(currentExercise, selectedAnswers, isCorrect);
+  }, [currentExercise, feedbackLoading, isCorrect, selectedAnswers, submitCurrentAnswer]);
 
   useEffect(() => {
     if (gameState !== 'playing' || !submitted || countdown !== 0 || !currentExercise) return;
@@ -997,7 +972,6 @@ export default function ExercisePlayer({
     setSelectedAnswers(answers);
     setIsCorrect(correct);
     setSubmitted(true);
-    setShowAnswerCountdown(SHOW_ANSWER_DURATION);
     void submitCurrentAnswer(currentExercise, answers, correct);
 
     // Trigger confetti for correct answer
@@ -1012,6 +986,8 @@ export default function ExercisePlayer({
 
   // Go to next question
   const handleNextQuestion = useCallback(() => {
+    if (feedbackLoading || !currentFeedback) return;
+
     // Save result
     const result: ExerciseResult = {
       exerciseId: currentExercise.id,
@@ -1032,16 +1008,16 @@ export default function ExercisePlayer({
       setIsCorrect(false);
       setTimeSpent(0);
       setCountdown(TIME_LIMIT);
-      setShowAnswerCountdown(SHOW_ANSWER_DURATION);
       setCurrentFeedback(null);
       setSubmissionMeta({});
       setFeedbackLoading(false);
+      setFeedbackError(null);
       submissionStartedForExerciseRef.current = null;
     } else {
       setGameState('result');
       onComplete?.([...results, result]);
     }
-  }, [currentExercise, isCorrect, selectedAnswers, timeSpent, currentIndex, multipleChoiceExercises.length, results, onComplete]);
+  }, [currentExercise, currentFeedback, feedbackLoading, isCorrect, selectedAnswers, timeSpent, currentIndex, multipleChoiceExercises.length, results, onComplete]);
 
   // Fullscreen
   const handleFullscreen = async () => {
@@ -1072,10 +1048,10 @@ export default function ExercisePlayer({
     setSubmitted(false);
     setSelectedAnswers([]);
     setCountdown(TIME_LIMIT);
-    setShowAnswerCountdown(SHOW_ANSWER_DURATION);
     setCurrentFeedback(null);
     setSubmissionMeta({});
     setFeedbackLoading(false);
+    setFeedbackError(null);
     submissionStartedForExerciseRef.current = null;
     setGameState('start');
   };
@@ -1131,11 +1107,12 @@ export default function ExercisePlayer({
             submitted={submitted}
             selectedAnswers={selectedAnswers}
             isCorrect={isCorrect}
-            showAnswerCountdown={showAnswerCountdown}
             userAvatar={userAvatar}
             lessonTitle={lessonTitle}
             feedback={currentFeedback}
             feedbackLoading={feedbackLoading}
+            feedbackError={feedbackError}
+            onRetryFeedback={handleRetryFeedback}
           />
           <HelpModal
             isOpen={showHelp}
