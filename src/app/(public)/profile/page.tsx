@@ -21,7 +21,7 @@ import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useTranslations } from "next-intl";
-import { normalizePersistedMediaUrl, resolvePersistentFileUrl } from "@/lib/file-media";
+import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
 
 export default function ProfilePage() {
   const t = useTranslations("ProfilePage");
@@ -103,8 +103,10 @@ export default function ProfilePage() {
 
       const response = await fileApiRequest.uploadFile(formData);
       
+      // Use the authenticated proxy URL (the minio bucket is not public, so a direct
+      // minio URL would 403). resolveManagedFileUrl prefers /api/proxy/files/{id}/...
       const avatarUrl = response.payload?.data
-        ? resolvePersistentFileUrl(response.payload.data, "thumbnail")
+        ? resolveManagedFileUrl(response.payload.data, userId, "thumbnail")
         : null;
 
       if (avatarUrl) {
@@ -432,7 +434,7 @@ export default function ProfilePage() {
         open={showAvatarLibrary}
         onOpenChange={setShowAvatarLibrary}
         onSelectFile={(file) => {
-          const avatarUrl = resolvePersistentFileUrl(file, "thumbnail");
+          const avatarUrl = resolveManagedFileUrl(file, userId, "thumbnail");
           if (avatarUrl) {
             profileForm.setValue('avatar', avatarUrl);
           }

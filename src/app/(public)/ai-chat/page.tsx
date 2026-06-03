@@ -3418,7 +3418,7 @@ export default function AiChatPage() {
           <div className={`flex items-center gap-2 p-2 rounded-sm ${sidebarCollapsed ? 'justify-center' : ''}`}>
             <Avatar className="h-7 w-7 flex-shrink-0 rounded-sm">
               <AvatarImage
-                src={userProfile?.avatar || "/avatars/default.png"}
+                src={userProfile?.avatar || "/avatars/default-avatar.svg"}
                 alt={userProfile?.fullName || userProfile?.username || "User"}
               />
               <AvatarFallback className="rounded-sm bg-primary text-primary-foreground text-[11px] font-medium tabular-nums">

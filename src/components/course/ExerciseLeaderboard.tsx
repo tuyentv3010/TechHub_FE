@@ -103,7 +103,7 @@ function TopThreePodium({
               height={80}
               className="w-full h-full object-cover"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = '/avatars/default.png';
+                (e.target as HTMLImageElement).src = '/avatars/default-avatar.svg';
               }}
             />
           </div>
@@ -257,7 +257,7 @@ function LeaderboardItem({ player }: { player: LeaderboardPlayer }) {
             height={40}
             className="w-full h-full object-cover"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = '/avatars/default.png';
+              (e.target as HTMLImageElement).src = '/avatars/default-avatar.svg';
             }}
           />
         </div>

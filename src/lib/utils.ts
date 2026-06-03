@@ -229,14 +229,21 @@ export const checkAndRefreshToken = async (param?: {
     force: param?.force
   });
   
-  // Chua dang nhap thi cung khong cho chay
-  if (!refreshToken || (!accessToken && !param?.force)) {
+  // Chua dang nhap thi cung khong cho chay. When force=true, allow the
+  // Next.js refresh API to use httpOnly cookies even if storage is empty
+  // (for example opening a protected URL in a new tab).
+  if (!refreshToken && !param?.force) {
+    console.log('[checkAndRefreshToken] No refresh token found, skipping');
+    return;
+  }
+
+  if (!accessToken && !param?.force) {
     console.log('[checkAndRefreshToken] No tokens found, skipping');
     return;
   }
   
   const decodedAccessToken = accessToken ? decodeToken(accessToken) : null;
-  const decodedRefreshToken = decodeToken(refreshToken);
+  const decodedRefreshToken = refreshToken ? decodeToken(refreshToken) : null;
   //Thoi diem het han cua token tinh theo epoch time(s)
   // Con khi cac ban dung cu phap new Date().getTime() thi no se tra ve epoch time (ms)
   const now = Math.round(new Date().getTime() / 1000);
@@ -246,16 +253,16 @@ export const checkAndRefreshToken = async (param?: {
   
   console.log('[checkAndRefreshToken] Token status:', {
     accessTokenExp: decodedAccessToken ? new Date(decodedAccessToken.exp * 1000).toLocaleTimeString() : null,
-    refreshTokenExp: new Date(decodedRefreshToken.exp * 1000).toLocaleTimeString(),
+    refreshTokenExp: decodedRefreshToken ? new Date(decodedRefreshToken.exp * 1000).toLocaleTimeString() : null,
     now: new Date(now * 1000).toLocaleTimeString(),
     isAccessTokenExpired,
-    isRefreshTokenExpired: decodedRefreshToken.exp <= now,
+    isRefreshTokenExpired: decodedRefreshToken ? decodedRefreshToken.exp <= now : null,
     timeUntilAccessExpiry: decodedAccessToken ? decodedAccessToken.exp - now : null,
-    timeUntilRefreshExpiry: decodedRefreshToken.exp - now
+    timeUntilRefreshExpiry: decodedRefreshToken ? decodedRefreshToken.exp - now : null
   });
   
   // Truong hop refresh token het han thi khong xu li nua
-  if (decodedRefreshToken.exp <= now) {
+  if (decodedRefreshToken && decodedRefreshToken.exp <= now) {
     console.log('[checkAndRefreshToken] Refresh token expired, logging out');
     removeTokenFromLocalStorage();
     param?.onError?.();

@@ -326,7 +326,7 @@ function QuestionScreen({
             {/* User Avatar */}
             <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden shadow-md flex-shrink-0">
               <img 
-                src={userAvatar || "/avatars/default-avatar.png"}
+                src={userAvatar || "/avatars/default-avatar.svg"}
                 alt="Avatar"
                 className="w-full h-full object-cover"
                 onError={(e) => {

@@ -26,7 +26,7 @@ import { useAccountProfile } from "@/queries/useAccount";
 import manageMenuItems, { canAccessMenuItem } from "@/app/manage/menuItems";
 import { usePermissions } from "@/hooks/usePermissions";
 import { getUserInfoFromStorage, removeTokenFromLocalStorage } from "@/lib/utils";
-import { normalizePublicMediaUrl } from "@/lib/file-media";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 interface MenuItem {
   title: string;
@@ -146,9 +146,11 @@ export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
     }
   };
 
+  // Accept both public URLs and internal proxy URLs (the minio bucket is private,
+  // so avatars are served through /api/proxy/files/...).
   const avatarUrl =
-    normalizePublicMediaUrl(userInfo?.avatar) ||
-    normalizePublicMediaUrl(account?.avatar) ||
+    normalizePersistedMediaUrl(userInfo?.avatar) ||
+    normalizePersistedMediaUrl(account?.avatar) ||
     undefined;
 
   return (

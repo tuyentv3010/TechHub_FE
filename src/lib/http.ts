@@ -319,15 +319,6 @@ const refreshToken = async (redirectOnFailure = true) => {
     return refreshTokenRequest;
   }
 
-  const refreshToken = getRefreshTokenFromLocalStorage();
-  if (!refreshToken) {
-    throw new HttpError({
-      status: 401,
-      payload: null,
-      message: "No refresh token available",
-    });
-  }
-
   refreshTokenRequest = (async () => {
     try {
     // Use Next.js API route instead of direct backend call
