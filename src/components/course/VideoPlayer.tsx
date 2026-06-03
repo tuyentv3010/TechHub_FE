@@ -23,6 +23,8 @@ interface VideoPlayerProps {
   subtitle?: string;
   onTimeUpdate?: (currentTime: number, duration: number) => void;
   onEnded?: () => void;
+  preventForwardSeek?: boolean;
+  onSeekBlocked?: () => void;
   className?: string;
 }
 
@@ -35,6 +37,8 @@ export default function VideoPlayer({
   subtitle,
   onTimeUpdate,
   onEnded,
+  preventForwardSeek = false,
+  onSeekBlocked,
   className,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -42,6 +46,8 @@ export default function VideoPlayer({
   const progressRef = useRef<HTMLDivElement>(null);
   const volumeRef = useRef<HTMLDivElement>(null);
   const hideControlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const maxWatchedTimeRef = useRef(0);
+  const lastSafeTimeRef = useRef(0);
 
   // State
   const [isPlaying, setIsPlaying] = useState(false);
@@ -92,6 +98,18 @@ export default function VideoPlayer({
     const video = videoRef.current;
     if (!video) return;
 
+    if (
+      preventForwardSeek &&
+      video.currentTime > maxWatchedTimeRef.current + 1.5 &&
+      maxWatchedTimeRef.current > 0
+    ) {
+      video.currentTime = lastSafeTimeRef.current;
+      onSeekBlocked?.();
+      return;
+    }
+
+    maxWatchedTimeRef.current = Math.max(maxWatchedTimeRef.current, video.currentTime);
+    lastSafeTimeRef.current = video.currentTime;
     setCurrentTime(video.currentTime);
     onTimeUpdate?.(video.currentTime, video.duration);
 
@@ -107,12 +125,28 @@ export default function VideoPlayer({
     const video = videoRef.current;
     if (!video) return;
     setDuration(video.duration);
+    maxWatchedTimeRef.current = 0;
+    lastSafeTimeRef.current = 0;
   };
 
   // Handle video end
   const handleEnded = () => {
     setIsPlaying(false);
     onEnded?.();
+  };
+
+  const seekTo = (targetTime: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const safeTarget = Math.max(0, Math.min(video.duration || 0, targetTime));
+    if (preventForwardSeek && safeTarget > maxWatchedTimeRef.current + 1) {
+      video.currentTime = lastSafeTimeRef.current;
+      onSeekBlocked?.();
+      return;
+    }
+
+    video.currentTime = safeTarget;
   };
 
   // Seek video
@@ -123,7 +157,7 @@ export default function VideoPlayer({
 
     const rect = progressBar.getBoundingClientRect();
     const pos = (e.clientX - rect.left) / rect.width;
-    video.currentTime = pos * video.duration;
+    seekTo(pos * video.duration);
   };
 
   // Handle progress drag
@@ -144,7 +178,7 @@ export default function VideoPlayer({
     if (isDraggingProgress) {
       const video = videoRef.current;
       if (video) {
-        video.currentTime = pos * video.duration;
+        seekTo(pos * video.duration);
       }
     }
   };
@@ -196,8 +230,16 @@ export default function VideoPlayer({
   const skip = (seconds: number) => {
     const video = videoRef.current;
     if (!video) return;
-    video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + seconds));
+    seekTo(video.currentTime + seconds);
   };
+
+  useEffect(() => {
+    maxWatchedTimeRef.current = 0;
+    lastSafeTimeRef.current = 0;
+    setCurrentTime(0);
+    setDuration(0);
+    setBuffered(0);
+  }, [src]);
 
   // Fullscreen
   const toggleFullscreen = useCallback(async () => {

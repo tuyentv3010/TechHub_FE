@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import envConfig from "@/config";
 import courseApiRequest from "@/apiRequests/course";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 // Types
 interface LeaderboardPlayer {
@@ -317,7 +318,7 @@ export default function ExerciseLeaderboard({
               id: r.userId || String(i),
               rank: r.rank ?? i + 1,
               name: r.username || "Người dùng",
-              avatar: r.avatar || `/exercise/exercise-${(i % 6) + 1}.png`,
+              avatar: normalizePersistedMediaUrl(r.avatar) || `/exercise/exercise-${(i % 6) + 1}.png`,
               score: Math.round(r.score || 0),
               totalQuestions,
             }));

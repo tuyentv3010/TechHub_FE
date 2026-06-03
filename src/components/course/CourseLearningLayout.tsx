@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
@@ -31,6 +31,7 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,7 +39,11 @@ import {
   useLessonComments, 
   useAddLessonCommentMutation 
 } from "@/queries/useCourseComments";
-import { useCourseProgress, useMarkLessonCompleteMutation } from "@/queries/useCourseProgress";
+import {
+  useCourseProgress,
+  useMarkLessonCompleteMutation,
+  useUpdateLessonProgressMutation,
+} from "@/queries/useCourseProgress";
 import { useGetExercises } from "@/queries/useCourse";
 import { useAccountProfile } from "@/queries/useAccount";
 import { CourseCommentsList } from "./CourseCommentsList";
@@ -68,6 +73,9 @@ export default function CourseLearningLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [showContentDescription, setShowContentDescription] = useState(true);
+  const [videoProgressByLesson, setVideoProgressByLesson] = useState<
+    Record<string, { maxWatchedSeconds: number; duration: number }>
+  >({});
   
   // Fetch user profile for avatar
   const { data: profileData } = useAccountProfile();
@@ -92,7 +100,53 @@ export default function CourseLearningLayout({
 
   const currentLesson = allLessons[currentLessonIndex];
   const currentLessonVideoUrl = normalizePersistedMediaUrl(currentLesson?.videoUrl);
-  console.log("dasasdasdas asd asd as", currentLesson);
+  const currentLessonAssets = currentLesson?.assets || [];
+
+  // --- Video watch gating: phải xem đủ 50% (không tính phần tua) mới cho hoàn thành ---
+  // Cộng dồn thời gian xem THỰC SỰ theo từng bài vào videoProgressByLesson,
+  // bỏ qua các bước nhảy (tua) bằng cách chỉ cộng các delta nhỏ của playback.
+  const lastVideoTimeRef = useRef(0);
+
+  // Reset mốc thời gian khi chuyển bài (bộ đếm theo bài được giữ trong state).
+  useEffect(() => {
+    lastVideoTimeRef.current = 0;
+  }, [currentLessonIndex]);
+
+  const handleVideoTimeUpdate = (currentTime: number, duration: number) => {
+    const lessonId = currentLesson?.id;
+    if (!lessonId) return;
+    const delta = currentTime - lastVideoTimeRef.current;
+    lastVideoTimeRef.current = currentTime;
+    const increment = delta > 0 && delta <= 1.5 ? delta : 0; // bỏ qua tua
+    setVideoProgressByLesson((prev) => {
+      const prevEntry = prev[lessonId] || { maxWatchedSeconds: 0, duration };
+      return {
+        ...prev,
+        [lessonId]: {
+          maxWatchedSeconds: prevEntry.maxWatchedSeconds + increment,
+          duration: duration || prevEntry.duration,
+        },
+      };
+    });
+  };
+
+  // Đánh dấu đã xem hết khi video kết thúc.
+  const handleVideoEnded = () => {
+    const lessonId = currentLesson?.id;
+    if (!lessonId) return;
+    setVideoProgressByLesson((prev) => {
+      const prevEntry = prev[lessonId];
+      const dur = prevEntry?.duration || 0;
+      return {
+        ...prev,
+        [lessonId]: {
+          maxWatchedSeconds: dur || prevEntry?.maxWatchedSeconds || 0,
+          duration: dur,
+        },
+      };
+    });
+  };
+
   // Fetch exercises for current lesson
   const { data: exercisesResponse } = useGetExercises(
     courseSummary?.id, 
@@ -144,6 +198,7 @@ export default function CourseLearningLayout({
 
   // Mark lesson complete mutation
   const markCompleteMutation = useMarkLessonCompleteMutation();
+  const updateProgressMutation = useUpdateLessonProgressMutation();
 
   // Fetch lesson comments
   const { data: commentsResponse, isLoading: isLoadingComments } = useLessonComments(
@@ -246,6 +301,39 @@ export default function CourseLearningLayout({
     return false;
   };
 
+  const isLessonAccessible = (lessonIndex: number) => {
+    if (lessonIndex <= 0) return true;
+    const previousLesson = allLessons[lessonIndex - 1];
+    return previousLesson ? isLessonCompleted(previousLesson.id) : false;
+  };
+
+  const currentLessonCompleted = currentLesson?.id ? isLessonCompleted(currentLesson.id) : false;
+  const currentLessonHasVideo = Boolean(currentLessonVideoUrl);
+  const currentVideoProgress = currentLesson?.id ? videoProgressByLesson[currentLesson.id] : undefined;
+  const currentVideoWatchRatio =
+    currentVideoProgress?.duration && currentVideoProgress.duration > 0
+      ? Math.min(1, currentVideoProgress.maxWatchedSeconds / currentVideoProgress.duration)
+      : 0;
+  const canCompleteCurrentLesson =
+    currentLessonCompleted || !currentLessonHasVideo || currentVideoWatchRatio >= 0.5;
+
+  const showVideoGateToast = () => {
+    toast({
+      title: "Chua du dieu kien",
+      description: "Ban can xem toi thieu 50% video va khong tua de mo bai tiep theo.",
+      variant: "destructive",
+    });
+  };
+
+  useEffect(() => {
+    if (!progressData || currentLessonIndex <= 0 || isLessonAccessible(currentLessonIndex)) {
+      return;
+    }
+
+    const firstLockedIndex = allLessons.findIndex((_, index) => !isLessonAccessible(index));
+    onLessonChange(firstLockedIndex > 0 ? firstLockedIndex - 1 : 0);
+  }, [progressData, currentLessonIndex]);
+
   // Fireworks effect
   const triggerFireworks = () => {
     const duration = 3000;
@@ -281,9 +369,14 @@ export default function CourseLearningLayout({
   };
 
   // Handle mark lesson complete
-  const handleMarkComplete = () => {
+  const handleMarkComplete = (options?: { onSuccess?: () => void }) => {
     if (!courseSummary?.id || !currentLesson?.id) {
       console.log('[handleMarkComplete] Missing courseId or lessonId');
+      return;
+    }
+
+    if (!canCompleteCurrentLesson) {
+      showVideoGateToast();
       return;
     }
     
@@ -301,19 +394,20 @@ export default function CourseLearningLayout({
       {
         onSuccess: (response) => {
           console.log('[handleMarkComplete] ✓ Success:', response);
-          
+
           // Invalidate and refetch progress data
-          queryClient.invalidateQueries({ 
-            queryKey: ['course-progress', courseSummary.id] 
+          queryClient.invalidateQueries({
+            queryKey: ['course-progress', courseSummary.id]
           });
-          
+
           // Trigger fireworks after successful API call
           triggerFireworks();
-          
+
           toast({
             title: "🎉 Chúc mừng!",
             description: "Bạn đã hoàn thành bài học này!",
           });
+          options?.onSuccess?.();
         },
         onError: (error) => {
           console.error('[handleMarkComplete] ✗ Error:', error);
@@ -612,7 +706,10 @@ export default function CourseLearningLayout({
                       src={currentLessonVideoUrl}
                       title={currentLesson?.title}
                       subtitle={courseSummary?.instructorName}
-                      onEnded={() => console.log("Video ended")}
+                      onTimeUpdate={handleVideoTimeUpdate}
+                      onEnded={handleVideoEnded}
+                      preventForwardSeek={!currentLessonCompleted}
+                      onSeekBlocked={showVideoGateToast}
                     />
                   </div>
                 )}
@@ -661,7 +758,7 @@ export default function CourseLearningLayout({
 
                 {/* Lesson Article Body */}
                 {currentLesson?.content && (
-                  <div className="px-6 md:px-10 pb-8 max-w-[820px] mx-auto w-full">
+                  <div className="px-6 md:px-10 pb-8 max-w-[860px] mx-auto w-full">
                     <button
                       onClick={() => setShowContentDescription(!showContentDescription)}
                       className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
@@ -679,11 +776,11 @@ export default function CourseLearningLayout({
                           prose-headings:tracking-tight prose-headings:font-bold
                           prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-2xl
                           prose-h3:mt-6 prose-h3:text-xl
-                          prose-p:leading-[1.75] prose-p:text-[17px]
+                          prose-p:leading-[1.75] prose-p:text-[18px]
                           prose-a:text-primary prose-a:no-underline hover:prose-a:underline
                           prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:not-italic
                           prose-code:bg-primary/10 prose-code:text-primary prose-code:rounded prose-code:px-1.5 prose-code:py-0.5 prose-code:font-medium prose-code:before:content-none prose-code:after:content-none
-                          prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-xl prose-pre:shadow-lg
+                          prose-pre:bg-slate-950 prose-pre:text-slate-100 prose-pre:rounded-xl prose-pre:shadow-lg
                           prose-img:rounded-xl prose-img:shadow-md
                           prose-hr:border-border"
                         dangerouslySetInnerHTML={{ __html: currentLesson.content }}
@@ -918,10 +1015,22 @@ export default function CourseLearningLayout({
                 </Button>
               </div>
 
-              {/* Bài tiếp theo */}
+              {/* Bài tiếp theo - chỉ mở khi đã đủ điều kiện hoàn thành bài hiện tại */}
               <Button
                 disabled={currentLessonIndex >= allLessons.length - 1}
-                onClick={() => onLessonChange(currentLessonIndex + 1)}
+                onClick={() => {
+                  // Phải hoàn thành (xem đủ 50% video, không tua) bài hiện tại mới qua bài sau.
+                  if (!canCompleteCurrentLesson) {
+                    showVideoGateToast();
+                    return;
+                  }
+                  if (!currentLessonCompleted) {
+                    // Tự đánh dấu hoàn thành rồi chuyển bài.
+                    handleMarkComplete({ onSuccess: () => onLessonChange(currentLessonIndex + 1) });
+                    return;
+                  }
+                  onLessonChange(currentLessonIndex + 1);
+                }}
                 className="flex-shrink-0 rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:opacity-90 font-semibold shadow-md shadow-primary/30 disabled:opacity-30"
               >
                 BÀI TIẾP THEO
@@ -1051,8 +1160,10 @@ export default function CourseLearningLayout({
                           {chapterLessons.map((lesson: any, lessonIndex: number) => {
                             const globalIndex = allLessons.findIndex((l) => l.id === lesson.id);
                             const isCompleted = isLessonCompleted(lesson.id);
-                            const isLocked = !isCompleted && globalIndex > currentLessonIndex + 1;
                             const isCurrent = globalIndex === currentLessonIndex;
+                            // Khóa bài chưa học: chỉ mở bài đầu, bài đang học, bài đã hoàn thành,
+                            // hoặc bài có bài trước đã hoàn thành (học tuần tự).
+                            const isLocked = !isCurrent && !isCompleted && !isLessonAccessible(globalIndex);
                             const isFirstLesson = globalIndex === 0;
 
                             const typeMeta: Record<string, { label: string; chip: string; Icon: any }> = {

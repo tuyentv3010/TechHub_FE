@@ -609,6 +609,19 @@ function QuestionScreen({
                   : "Câu tiếp theo"}
               {!feedbackLoading && feedback && <ChevronRight className="ml-2 h-4 w-4" />}
             </Button>
+            {/* Cho phép bỏ qua khi AI chưa tạo xong giải thích, nếu không muốn chờ. */}
+            {(feedbackLoading || !feedback) && (
+              <Button
+                variant="ghost"
+                className="mt-2 w-full text-white hover:bg-white/20"
+                onClick={onNextQuestion}
+              >
+                {questionNumber >= totalQuestions
+                  ? "Bỏ qua, xem kết quả"
+                  : "Bỏ qua, câu tiếp theo"}
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -986,7 +999,9 @@ export default function ExercisePlayer({
 
   // Go to next question
   const handleNextQuestion = useCallback(() => {
-    if (feedbackLoading || !currentFeedback) return;
+    // Require an answer to have been submitted, but allow skipping ahead even when
+    // the AI explanation is still loading (user opted not to wait).
+    if (!submitted) return;
 
     // Save result
     const result: ExerciseResult = {
@@ -1017,7 +1032,7 @@ export default function ExercisePlayer({
       setGameState('result');
       onComplete?.([...results, result]);
     }
-  }, [currentExercise, currentFeedback, feedbackLoading, isCorrect, selectedAnswers, timeSpent, currentIndex, multipleChoiceExercises.length, results, onComplete]);
+  }, [submitted, currentExercise, isCorrect, selectedAnswers, timeSpent, currentIndex, multipleChoiceExercises.length, results, onComplete]);
 
   // Fullscreen
   const handleFullscreen = async () => {

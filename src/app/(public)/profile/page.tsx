@@ -106,7 +106,7 @@ export default function ProfilePage() {
       // Use the authenticated proxy URL (the minio bucket is not public, so a direct
       // minio URL would 403). resolveManagedFileUrl prefers /api/proxy/files/{id}/...
       const avatarUrl = response.payload?.data
-        ? resolveManagedFileUrl(response.payload.data, userId, "thumbnail")
+        ? resolveManagedFileUrl(response.payload.data, userId, "content")
         : null;
 
       if (avatarUrl) {
@@ -434,7 +434,7 @@ export default function ProfilePage() {
         open={showAvatarLibrary}
         onOpenChange={setShowAvatarLibrary}
         onSelectFile={(file) => {
-          const avatarUrl = resolveManagedFileUrl(file, userId, "thumbnail");
+          const avatarUrl = resolveManagedFileUrl(file, userId, "content");
           if (avatarUrl) {
             profileForm.setValue('avatar', avatarUrl);
           }
