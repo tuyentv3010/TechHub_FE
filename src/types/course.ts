@@ -104,22 +104,23 @@ export interface Course {
 export type CoursesResponse = ApiResponse<ApiCourse[]>;
 
 // Transform function to convert ApiCourse to Course
-export function transformApiCourse(apiCourse: ApiCourse, additionalData?: Partial<Course>): Course {
+export function transformApiCourse(apiCourse: ApiCourse, additionalData?: unknown): Course {
   // If we have additional data from your sample format, use it
-  if (additionalData) {
+  if (additionalData && typeof additionalData === "object") {
+    const data = additionalData as Partial<Course>;
     return {
-      id: additionalData.id,
-      title: additionalData.title,
-      instructor: additionalData.instructor,
-      image: additionalData.image,
-      rating: additionalData.rating,
-      reviews: additionalData.reviews,
-      price: additionalData.price,
-      badge: additionalData.badge,
-      hours: additionalData.hours,
-      lessons: additionalData.lessons,
-      students: additionalData.students,
-      instructorAvatar: additionalData.instructorAvatar,
+      id: data.id,
+      title: data.title ?? apiCourse.title,
+      instructor: data.instructor ?? "Instructor",
+      image: data.image ?? null,
+      rating: data.rating ?? 0,
+      reviews: data.reviews ?? 0,
+      price: data.price ?? 0,
+      badge: data.badge,
+      hours: data.hours,
+      lessons: data.lessons,
+      students: data.students,
+      instructorAvatar: data.instructorAvatar,
     };
   }
 
