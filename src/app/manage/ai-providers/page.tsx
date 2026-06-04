@@ -16,6 +16,7 @@ import {
   useGetProviderHealth,
   useGetQdrantStats,
   useReindexAllMutation,
+  useReindexBlogsMutation,
   useUpdateAiProviderConfigMutation,
 } from "@/queries/useAi";
 import { CheckCircle, Cpu, Database, Heart, Loader2, RefreshCw, Settings, Sparkles, XCircle } from "lucide-react";
@@ -33,6 +34,7 @@ export default function AiProvidersPage() {
     isFetching: qdrantStatsLoading,
   } = useGetQdrantStats();
   const updateMutation = useUpdateAiProviderConfigMutation();
+  const reindexBlogsMutation = useReindexBlogsMutation();
   const reindexAllMutation = useReindexAllMutation();
 
   const config = configRes?.payload?.data || {};
@@ -87,6 +89,25 @@ export default function AiProvidersPage() {
   const handleReindexAll = async () => {
     try {
       const response = await reindexAllMutation.mutateAsync();
+      const result = response.payload?.data || null;
+      setReindexResult(result);
+      await refetchQdrantStats();
+      toast({
+        title: t("toast.reindexSuccessTitle"),
+        description: result?.message || t("toast.reindexSuccessDescription"),
+      });
+    } catch (error: any) {
+      toast({
+        title: t("toast.reindexFailedTitle"),
+        description: error?.message || t("toast.reindexFailedDescription"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReindexBlogs = async () => {
+    try {
+      const response = await reindexBlogsMutation.mutateAsync();
       const result = response.payload?.data || null;
       setReindexResult(result);
       await refetchQdrantStats();
@@ -298,7 +319,7 @@ export default function AiProvidersPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => refetchQdrantStats()}
-                    disabled={qdrantStatsLoading || reindexAllMutation.isPending}
+                    disabled={qdrantStatsLoading || reindexAllMutation.isPending || reindexBlogsMutation.isPending}
                   >
                     {qdrantStatsLoading ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -309,9 +330,28 @@ export default function AiProvidersPage() {
                   </Button>
                   <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleReindexBlogs}
+                    disabled={reindexBlogsMutation.isPending || reindexAllMutation.isPending}
+                  >
+                    {reindexBlogsMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t("knowledgeIndex.reindexing")}
+                      </>
+                    ) : (
+                      <>
+                        <Database className="mr-2 h-4 w-4" />
+                        {t("knowledgeIndex.reindexBlogs")}
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
                     size="sm"
                     onClick={handleReindexAll}
-                    disabled={reindexAllMutation.isPending}
+                    disabled={reindexAllMutation.isPending || reindexBlogsMutation.isPending}
                   >
                     {reindexAllMutation.isPending ? (
                       <>

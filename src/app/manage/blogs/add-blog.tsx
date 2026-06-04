@@ -33,6 +33,7 @@ import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import fileApiRequest from "@/apiRequests/file";
 import { Upload } from "lucide-react";
 import { resolveManagedFileUrl } from "@/lib/file-media";
+import IntegratedBlogLinkPicker from "@/components/blog/integrated-blog-link-picker";
 
 const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"), {
   ssr: false,
@@ -57,6 +58,8 @@ export default function AddBlog() {
       thumbnail: null,
       status: "DRAFT",
       tags: [],
+      relatedCourseIds: [],
+      relatedLessonIds: [],
       attachments: [],
     },
   });
@@ -280,6 +283,27 @@ export default function AddBlog() {
                   </FormItem>
                 )}
               />
+              <FormItem>
+                <FormLabel>Integrated links</FormLabel>
+                <IntegratedBlogLinkPicker
+                  relatedCourseIds={form.watch("relatedCourseIds") || []}
+                  relatedLessonIds={form.watch("relatedLessonIds") || []}
+                  onRelatedCourseIdsChange={(ids) =>
+                    form.setValue("relatedCourseIds", ids, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    })
+                  }
+                  onRelatedLessonIdsChange={(ids) =>
+                    form.setValue("relatedLessonIds", ids, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    })
+                  }
+                />
+              </FormItem>
               <FormField
                 control={form.control}
                 name="content"

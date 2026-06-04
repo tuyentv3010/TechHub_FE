@@ -2375,6 +2375,7 @@
       "description": "Rebuild course and lesson vectors in Qdrant for AI search and chat retrieval.",
       "loadStats": "Load stats",
       "refreshStats": "Refresh stats",
+      "reindexBlogs": "Reindex Blogs",
       "reindexAll": "Reindex All",
       "reindexing": "Reindexing...",
       "health": "Qdrant health",

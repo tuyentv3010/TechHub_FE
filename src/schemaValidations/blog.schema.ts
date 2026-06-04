@@ -21,6 +21,8 @@ export const BlogSchema = z.object({
   thumbnail: z.string().nullable().optional(),
   status: BlogStatusEnum,
   tags: z.array(z.string()).default([]),
+  relatedCourseIds: z.array(z.string()).default([]),
+  relatedLessonIds: z.array(z.string()).default([]),
   attachments: z.array(BlogAttachmentSchema).default([]),
   authorId: z.string(),
   created: z.string(),
@@ -36,6 +38,8 @@ export const CreateBlogBody = z.object({
   thumbnail: z.string().nullable().optional(),
   status: BlogStatusEnum.default("DRAFT"),
   tags: z.array(z.string()).default([]),
+  relatedCourseIds: z.array(z.string()).default([]),
+  relatedLessonIds: z.array(z.string()).default([]),
   attachments: z.array(BlogAttachmentInputSchema).default([]),
 });
 
@@ -47,6 +51,8 @@ export const UpdateBlogBody = z.object({
   thumbnail: z.string().nullable().optional(),
   status: BlogStatusEnum,
   tags: z.array(z.string()).default([]),
+  relatedCourseIds: z.array(z.string()).default([]),
+  relatedLessonIds: z.array(z.string()).default([]),
   attachments: z.array(BlogAttachmentInputSchema).default([]),
 });
 
