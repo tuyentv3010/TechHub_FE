@@ -6,6 +6,9 @@
     "delete": "Xóa",
     "edit": "Chỉnh sửa",
     "done": "Xong",
+    "previous": "Trang trước",
+    "next": "Trang sau",
+    "page": "Trang",
     "search": "Tìm kiếm",
     "viewAll": "Xem tất cả",
     "learnNow": "Học ngay",
@@ -141,7 +144,9 @@
     },
     "instructors": {
       "title": "Popular Instructor",
-      "subtitle": "We know the best things for You. Top picks for You."
+      "subtitle": "We know the best things for You. Top picks for You.",
+      "viewAll": "Xem tất cả giảng viên",
+      "empty": "Chưa có giảng viên nào."
     },
     "blog": {
       "title": "Khám Phá Lợi Ích Của Bạn",
@@ -356,6 +361,27 @@
     "lessonDiscussionTitle": "Hỏi đáp - {title}",
     "openDiscussion": "Mở hỏi đáp",
     "userAvatarAlt": "Người dùng"
+  },
+  "VideoPlayer": {
+    "byInstructor": "bá»Ÿi {name}",
+    "playShortcut": "PhÃ¡t (K)",
+    "pauseShortcut": "Táº¡m dá»«ng (K)",
+    "rewind10": "Tua láº¡i 10 giÃ¢y",
+    "forward10": "Tua tá»›i 10 giÃ¢y",
+    "cannotSkipUnwatchedVideo": "KhÃ´ng thá»ƒ tua Ä‘áº¿n pháº§n chÆ°a xem",
+    "muteShortcut": "Táº¯t tiáº¿ng (M)",
+    "unmuteShortcut": "Báº­t tiáº¿ng (M)",
+    "quality": "Cháº¥t lÆ°á»£ng",
+    "captions": "Phá»¥ Ä‘á»",
+    "captionsShortcut": "Phá»¥ Ä‘á» (C)",
+    "settings": "CÃ i Ä‘áº·t",
+    "playbackSpeed": "Tá»‘c Ä‘á»™ phÃ¡t",
+    "speed": "Tá»‘c Ä‘á»™",
+    "normalSpeed": "BÃ¬nh thÆ°á»ng",
+    "on": "Báº­t",
+    "off": "Táº¯t",
+    "fullscreenShortcut": "ToÃ n mÃ n hÃ¬nh (F)",
+    "exitFullscreenShortcut": "ThoÃ¡t toÃ n mÃ n hÃ¬nh (F)"
   },
   "Footer": {
     "title": "TechHub",

@@ -165,6 +165,7 @@ export default function Home() {
           title={t("instructors.title")}
           subtitle={t("instructors.subtitle")}
           instructors={instructorsData?.payload?.data || []}
+          viewAllLabel={t("instructors.viewAll")}
         />
       )}
 

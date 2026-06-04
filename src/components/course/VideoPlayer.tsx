@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   Play,
   Pause,
@@ -12,7 +13,6 @@ import {
   RotateCcw,
   RotateCw,
   Subtitles,
-  Monitor,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +29,9 @@ interface VideoPlayerProps {
 }
 
 const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+const FORWARD_SEEK_GRACE_SECONDS = 1;
+const USER_SEEK_GRACE_SECONDS = 0.25;
+const NATURAL_PLAYBACK_GRACE_SECONDS = 2.5;
 
 export default function VideoPlayer({
   src,
@@ -41,6 +44,7 @@ export default function VideoPlayer({
   onSeekBlocked,
   className,
 }: VideoPlayerProps) {
+  const t = useTranslations("VideoPlayer");
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -48,6 +52,11 @@ export default function VideoPlayer({
   const hideControlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const maxWatchedTimeRef = useRef(0);
   const lastSafeTimeRef = useRef(0);
+  const previousTimeRef = useRef(0);
+  const lastTimeUpdateAtRef = useRef(0);
+  const isUserSeekingRef = useRef(false);
+  const isRollingBackSeekRef = useRef(false);
+  const lastSeekBlockedAtRef = useRef(0);
 
   // State
   const [isPlaying, setIsPlaying] = useState(false);
@@ -68,6 +77,7 @@ export default function VideoPlayer({
   const [isDraggingProgress, setIsDraggingProgress] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverPosition, setHoverPosition] = useState(0);
+  const [maxSeekableTime, setMaxSeekableTime] = useState(0);
 
   const readDuration = (video: HTMLVideoElement) =>
     Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
@@ -82,6 +92,35 @@ export default function VideoPlayer({
     }
     return nextDuration;
   };
+
+  const notifySeekBlocked = useCallback(() => {
+    const now = Date.now();
+    if (now - lastSeekBlockedAtRef.current < 1200) {
+      return;
+    }
+
+    lastSeekBlockedAtRef.current = now;
+    onSeekBlocked?.();
+  }, [onSeekBlocked]);
+
+  const rollbackForwardSeek = useCallback((video: HTMLVideoElement) => {
+    const rollbackTime = Math.max(0, Math.min(lastSafeTimeRef.current, maxWatchedTimeRef.current));
+    isRollingBackSeekRef.current = true;
+    video.currentTime = rollbackTime;
+    previousTimeRef.current = rollbackTime;
+    setCurrentTime(rollbackTime);
+    notifySeekBlocked();
+  }, [notifySeekBlocked]);
+
+  const canPlaybackAt = useCallback((targetTime: number) => (
+    !preventForwardSeek ||
+    targetTime <= maxWatchedTimeRef.current + FORWARD_SEEK_GRACE_SECONDS
+  ), [preventForwardSeek]);
+
+  const canUserSeekTo = useCallback((targetTime: number) => (
+    !preventForwardSeek ||
+    targetTime <= maxWatchedTimeRef.current + USER_SEEK_GRACE_SECONDS
+  ), [preventForwardSeek]);
 
   // Format time to MM:SS
   const formatTime = (time: number): string => {
@@ -112,18 +151,38 @@ export default function VideoPlayer({
     const video = videoRef.current;
     if (!video) return;
 
-    if (
-      preventForwardSeek &&
-      video.currentTime > maxWatchedTimeRef.current + 1.5 &&
-      maxWatchedTimeRef.current > 0
-    ) {
-      video.currentTime = lastSafeTimeRef.current;
-      onSeekBlocked?.();
+    const now = performance.now();
+    const elapsedSeconds = lastTimeUpdateAtRef.current
+      ? (now - lastTimeUpdateAtRef.current) / 1000
+      : 0;
+    lastTimeUpdateAtRef.current = now;
+
+    if (preventForwardSeek && !canPlaybackAt(video.currentTime)) {
+      rollbackForwardSeek(video);
       return;
     }
 
-    maxWatchedTimeRef.current = Math.max(maxWatchedTimeRef.current, video.currentTime);
+    const previousTime = previousTimeRef.current;
+    const delta = video.currentTime - previousTime;
+    const naturalAdvanceLimit = Math.max(
+      NATURAL_PLAYBACK_GRACE_SECONDS,
+      elapsedSeconds * Math.max(video.playbackRate || 1, 1) + FORWARD_SEEK_GRACE_SECONDS
+    );
+    const isNaturalPlaybackAdvance =
+      !isUserSeekingRef.current &&
+      !isRollingBackSeekRef.current &&
+      delta >= 0 &&
+      delta <= naturalAdvanceLimit;
+
+    if (!preventForwardSeek || isNaturalPlaybackAdvance) {
+      maxWatchedTimeRef.current = Math.max(maxWatchedTimeRef.current, video.currentTime);
+      setMaxSeekableTime(maxWatchedTimeRef.current);
+    }
+
     lastSafeTimeRef.current = video.currentTime;
+    previousTimeRef.current = video.currentTime;
+    isRollingBackSeekRef.current = false;
+
     const mediaDuration = syncDuration();
     const effectiveDuration = Math.max(mediaDuration, duration, video.currentTime);
     setCurrentTime(video.currentTime);
@@ -141,6 +200,11 @@ export default function VideoPlayer({
     syncDuration();
     maxWatchedTimeRef.current = 0;
     lastSafeTimeRef.current = 0;
+    previousTimeRef.current = 0;
+    lastTimeUpdateAtRef.current = 0;
+    isUserSeekingRef.current = false;
+    isRollingBackSeekRef.current = false;
+    setMaxSeekableTime(0);
   };
 
   // Handle video end
@@ -152,18 +216,47 @@ export default function VideoPlayer({
     onEnded?.(finalTime, Math.max(mediaDuration, duration, finalTime));
   };
 
-  const seekTo = (targetTime: number) => {
+  const seekTo = useCallback((targetTime: number) => {
     const video = videoRef.current;
     if (!video) return;
 
     const safeTarget = Math.max(0, Math.min(video.duration || 0, targetTime));
-    if (preventForwardSeek && safeTarget > maxWatchedTimeRef.current + 1) {
-      video.currentTime = lastSafeTimeRef.current;
-      onSeekBlocked?.();
+    if (!canUserSeekTo(safeTarget)) {
+      rollbackForwardSeek(video);
       return;
     }
 
+    isUserSeekingRef.current = true;
     video.currentTime = safeTarget;
+    previousTimeRef.current = safeTarget;
+    lastSafeTimeRef.current = safeTarget;
+    setCurrentTime(safeTarget);
+  }, [canUserSeekTo, rollbackForwardSeek]);
+
+  const handleSeeking = () => {
+    const video = videoRef.current;
+    if (!video || isRollingBackSeekRef.current) return;
+
+    isUserSeekingRef.current = true;
+    if (!canUserSeekTo(video.currentTime)) {
+      rollbackForwardSeek(video);
+    }
+  };
+
+  const handleSeeked = () => {
+    const video = videoRef.current;
+    isUserSeekingRef.current = false;
+    isRollingBackSeekRef.current = false;
+    if (!video) return;
+
+    if (!canUserSeekTo(video.currentTime)) {
+      rollbackForwardSeek(video);
+      return;
+    }
+
+    previousTimeRef.current = video.currentTime;
+    lastSafeTimeRef.current = video.currentTime;
+    setCurrentTime(video.currentTime);
   };
 
   // Seek video
@@ -217,7 +310,7 @@ export default function VideoPlayer({
     setIsMuted(pos === 0);
   };
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
 
@@ -230,7 +323,7 @@ export default function VideoPlayer({
       video.muted = true;
       setIsMuted(true);
     }
-  };
+  }, [isMuted, volume]);
 
   // Playback speed
   const changeSpeed = (speed: number) => {
@@ -244,18 +337,23 @@ export default function VideoPlayer({
   };
 
   // Skip forward/backward
-  const skip = (seconds: number) => {
+  const skip = useCallback((seconds: number) => {
     const video = videoRef.current;
     if (!video) return;
     seekTo(video.currentTime + seconds);
-  };
+  }, [seekTo]);
 
   useEffect(() => {
     maxWatchedTimeRef.current = 0;
     lastSafeTimeRef.current = 0;
+    previousTimeRef.current = 0;
+    lastTimeUpdateAtRef.current = 0;
+    isUserSeekingRef.current = false;
+    isRollingBackSeekRef.current = false;
     setCurrentTime(0);
     setDuration(0);
     setBuffered(0);
+    setMaxSeekableTime(0);
   }, [src]);
 
   // Fullscreen
@@ -383,7 +481,7 @@ export default function VideoPlayer({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [togglePlay, toggleFullscreen]);
+  }, [togglePlay, toggleFullscreen, skip, toggleMute]);
 
   // Buffering states
   const handleWaiting = () => setIsBuffering(true);
@@ -399,6 +497,11 @@ export default function VideoPlayer({
     setIsDraggingProgress(false);
     maxWatchedTimeRef.current = 0;
     lastSafeTimeRef.current = 0;
+    previousTimeRef.current = 0;
+    lastTimeUpdateAtRef.current = 0;
+    isUserSeekingRef.current = false;
+    isRollingBackSeekRef.current = false;
+    setMaxSeekableTime(0);
     if (video) {
       video.currentTime = 0;
       video.load();
@@ -409,6 +512,10 @@ export default function VideoPlayer({
   const progressPercent = displayDuration > 0
     ? Math.min(100, (currentTime / displayDuration) * 100)
     : 0;
+  const maxSeekablePercent = displayDuration > 0
+    ? Math.min(100, ((maxSeekableTime + USER_SEEK_GRACE_SECONDS) / displayDuration) * 100)
+    : 0;
+  const canSkipForward = !preventForwardSeek || currentTime + 10 <= maxSeekableTime + USER_SEEK_GRACE_SECONDS;
 
   return (
     <div
@@ -433,6 +540,8 @@ export default function VideoPlayer({
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onDurationChange={syncDuration}
+        onSeeking={handleSeeking}
+        onSeeked={handleSeeked}
         onEnded={handleEnded}
         onWaiting={handleWaiting}
         onCanPlay={handleCanPlay}
@@ -448,7 +557,9 @@ export default function VideoPlayer({
             </h2>
           )}
           {subtitle && (    
-            <p className="text-white/80 text-sm sm:text-base mt-1">by {subtitle}</p>
+            <p className="text-white/80 text-sm sm:text-base mt-1">
+              {t("byInstructor", { name: subtitle })}
+            </p>
           )}
         </div>
       )}
@@ -497,6 +608,13 @@ export default function VideoPlayer({
             style={{ width: `${buffered}%` }}
           />
 
+          {preventForwardSeek && (
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-white/20"
+              style={{ width: `${maxSeekablePercent}%` }}
+            />
+          )}
+
           {/* Progress */}
           <div
             className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all"
@@ -525,7 +643,7 @@ export default function VideoPlayer({
             <button
               onClick={togglePlay}
               className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full transition-colors"
-              title={isPlaying ? "Pause (K)" : "Play (K)"}
+              title={isPlaying ? t("pauseShortcut") : t("playShortcut")}
             >
               {isPlaying ? (
                 <Pause className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
@@ -538,7 +656,7 @@ export default function VideoPlayer({
             <button
               onClick={() => skip(-10)}
               className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full transition-colors"
-              title="Rewind 10s"
+              title={t("rewind10")}
             >
               <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </button>
@@ -546,8 +664,9 @@ export default function VideoPlayer({
             {/* Skip Forward */}
             <button
               onClick={() => skip(10)}
-              className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full transition-colors"
-              title="Forward 10s"
+              disabled={!canSkipForward}
+              className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+              title={canSkipForward ? t("forward10") : t("cannotSkipUnwatchedVideo")}
             >
               <RotateCw className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </button>
@@ -561,7 +680,7 @@ export default function VideoPlayer({
               <button
                 onClick={toggleMute}
                 className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full transition-colors"
-                title={isMuted ? "Unmute (M)" : "Mute (M)"}
+                title={isMuted ? t("unmuteShortcut") : t("muteShortcut")}
               >
                 {isMuted || volume === 0 ? (
                   <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
@@ -609,7 +728,7 @@ export default function VideoPlayer({
                   ? "text-white border-white bg-white/10"
                   : "text-white/50 border-white/50"
               )}
-              title="Quality"
+              title={t("quality")}
             >
               HD
             </button>
@@ -621,7 +740,7 @@ export default function VideoPlayer({
                 "p-1.5 sm:p-2 rounded-full transition-colors",
                 showCaptions ? "bg-white/20" : "hover:bg-white/10"
               )}
-              title="Captions (C)"
+              title={t("captionsShortcut")}
             >
               <Subtitles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </button>
@@ -634,7 +753,7 @@ export default function VideoPlayer({
                   setShowSpeedMenu(false);
                 }}
                 className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full transition-colors"
-                title="Settings"
+                title={t("settings")}
               >
                 <Settings className={cn("w-4 h-4 sm:w-5 sm:h-5 text-white transition-transform", showSettingsMenu && "rotate-45")} />
               </button>
@@ -650,7 +769,7 @@ export default function VideoPlayer({
                     }}
                     className="w-full px-4 py-3 text-left text-white text-sm hover:bg-white/10 flex items-center justify-between"
                   >
-                    <span>Playback Speed</span>
+                    <span>{t("playbackSpeed")}</span>
                     <span className="text-white/60">{playbackSpeed}x</span>
                   </button>
 
@@ -659,7 +778,7 @@ export default function VideoPlayer({
                     onClick={() => setQuality(quality === "HD" ? "SD" : "HD")}
                     className="w-full px-4 py-3 text-left text-white text-sm hover:bg-white/10 flex items-center justify-between"
                   >
-                    <span>Quality</span>
+                    <span>{t("quality")}</span>
                     <span className="text-white/60">{quality}</span>
                   </button>
 
@@ -668,8 +787,8 @@ export default function VideoPlayer({
                     onClick={() => setShowCaptions(!showCaptions)}
                     className="w-full px-4 py-3 text-left text-white text-sm hover:bg-white/10 flex items-center justify-between"
                   >
-                    <span>Captions</span>
-                    <span className="text-white/60">{showCaptions ? "On" : "Off"}</span>
+                    <span>{t("captions")}</span>
+                    <span className="text-white/60">{showCaptions ? t("on") : t("off")}</span>
                   </button>
                 </div>
               )}
@@ -678,7 +797,7 @@ export default function VideoPlayer({
               {showSpeedMenu && (
                 <div className="absolute bottom-full right-0 mb-2 min-w-[140px] overflow-hidden rounded-lg border border-white/10 bg-black/95 shadow-lg">
                   <div className="px-4 py-2 text-white/60 text-xs uppercase tracking-wider border-b border-white/10">
-                    Speed
+                    {t("speed")}
                   </div>
                   {PLAYBACK_SPEEDS.map((speed) => (
                     <button
@@ -689,7 +808,7 @@ export default function VideoPlayer({
                         playbackSpeed === speed ? "text-primary" : "text-white"
                       )}
                     >
-                      <span>{speed === 1 ? "Normal" : `${speed}x`}</span>
+                      <span>{speed === 1 ? t("normalSpeed") : `${speed}x`}</span>
                       {playbackSpeed === speed && (
                         <div className="w-2 h-2 bg-primary rounded-full" />
                       )}
@@ -703,7 +822,7 @@ export default function VideoPlayer({
             <button
               onClick={toggleFullscreen}
               className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full transition-colors"
-              title="Fullscreen (F)"
+              title={isFullscreen ? t("exitFullscreenShortcut") : t("fullscreenShortcut")}
             >
               {isFullscreen ? (
                 <Minimize className="w-4 h-4 sm:w-5 sm:h-5 text-white" />

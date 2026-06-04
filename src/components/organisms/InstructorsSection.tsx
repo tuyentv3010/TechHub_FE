@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 import { AppSurface, PageHeader } from "@/components/common";
+import { Button } from "@/components/ui/button";
 import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 const DEFAULT_AVATAR = "/avatars/default-avatar.svg";
@@ -19,6 +22,7 @@ interface InstructorsSectionProps {
   title: string;
   subtitle: string;
   instructors: Instructor[];
+  viewAllLabel?: string;
 }
 
 function InstructorAvatar({ instructor }: { instructor: Instructor }) {
@@ -36,7 +40,12 @@ function InstructorAvatar({ instructor }: { instructor: Instructor }) {
   );
 }
 
-export function InstructorsSection({ title, subtitle, instructors }: InstructorsSectionProps) {
+export function InstructorsSection({
+  title,
+  subtitle,
+  instructors,
+  viewAllLabel,
+}: InstructorsSectionProps) {
   const displayInstructors = instructors.slice(0, 4);
 
   if (displayInstructors.length === 0) return null;
@@ -53,25 +62,35 @@ export function InstructorsSection({ title, subtitle, instructors }: Instructors
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {displayInstructors.map((instructor) => (
-            <AppSurface
+            <Link
               key={instructor.id}
-              padding="none"
-              interactive
-              className="group overflow-hidden"
+              href={`/instructor/${instructor.id}`}
+              className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl"
             >
-              <div className="relative h-72 overflow-hidden bg-muted">
-                <InstructorAvatar instructor={instructor} />
-              </div>
-              <div className="p-5">
-                <h3 className="th-hover-title line-clamp-1 text-base font-semibold text-foreground">
-                  {instructor.username}
-                </h3>
-                <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
-                  {instructor.email}
-                </p>
-              </div>
-            </AppSurface>
+              <AppSurface padding="none" interactive className="group overflow-hidden">
+                <div className="relative h-72 overflow-hidden bg-muted">
+                  <InstructorAvatar instructor={instructor} />
+                </div>
+                <div className="p-5">
+                  <h3 className="th-hover-title line-clamp-1 text-base font-semibold text-foreground">
+                    {instructor.username}
+                  </h3>
+                  <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
+                    {instructor.email}
+                  </p>
+                </div>
+              </AppSurface>
+            </Link>
           ))}
+        </div>
+
+        <div className="mt-10 flex justify-center">
+          <Button asChild variant="outline" size="lg">
+            <Link href="/instructors">
+              {viewAllLabel || "Xem tất cả giảng viên"}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
         </div>
       </div>
     </section>

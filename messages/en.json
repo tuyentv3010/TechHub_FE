@@ -6,6 +6,9 @@
     "delete": "Delete",
     "edit": "Edit",
     "done": "Done",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page",
     "search": "Search",
     "viewAll": "View All",
     "learnNow": "Learn Now",
@@ -144,7 +147,9 @@
     },
     "instructors": {
       "title": "Popular Instructor",
-      "subtitle": "We know the best things for You. Top picks for You."
+      "subtitle": "We know the best things for You. Top picks for You.",
+      "viewAll": "View all instructors",
+      "empty": "No instructors yet."
     },
     "blog": {
       "title": "Discover Your Gain",
@@ -358,6 +363,27 @@
     "lessonDiscussionTitle": "Q&A - {title}",
     "openDiscussion": "Open Q&A",
     "userAvatarAlt": "User"
+  },
+  "VideoPlayer": {
+    "byInstructor": "by {name}",
+    "playShortcut": "Play (K)",
+    "pauseShortcut": "Pause (K)",
+    "rewind10": "Rewind 10s",
+    "forward10": "Forward 10s",
+    "cannotSkipUnwatchedVideo": "Cannot skip unwatched video",
+    "muteShortcut": "Mute (M)",
+    "unmuteShortcut": "Unmute (M)",
+    "quality": "Quality",
+    "captions": "Captions",
+    "captionsShortcut": "Captions (C)",
+    "settings": "Settings",
+    "playbackSpeed": "Playback speed",
+    "speed": "Speed",
+    "normalSpeed": "Normal",
+    "on": "On",
+    "off": "Off",
+    "fullscreenShortcut": "Fullscreen (F)",
+    "exitFullscreenShortcut": "Exit fullscreen (F)"
   },
   "Footer": {
     "title": "TechHub",

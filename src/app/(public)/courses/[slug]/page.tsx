@@ -43,7 +43,7 @@ import {
   formatTagLabel,
 } from "@/lib/course";
 import { useToast } from "@/hooks/use-toast";
-import { normalizePublicMediaUrl } from "@/lib/file-media";
+import { normalizePublicMediaUrl, normalizePersistedMediaUrl } from "@/lib/file-media";
 import { 
   useCourseComments, 
   useAddCourseCommentMutation 
@@ -288,7 +288,9 @@ export default function CourseDetailPage() {
     enabled: !!courseSummary?.instructorId,
   });
   const instructor = instructorResponse?.payload?.data;
-  const instructorAvatarUrl = normalizePublicMediaUrl(instructor?.avatar);
+  // Use normalizePersistedMediaUrl (not Public) so internal /api/proxy/files
+  // avatar URLs are kept; Public strips them and the avatar would never show.
+  const instructorAvatarUrl = normalizePersistedMediaUrl(instructor?.avatar);
 
   // Instructor profile (AI extracted)
   const [instructorProfile, setInstructorProfile] = useState<InstructorProfile | null>(null);
