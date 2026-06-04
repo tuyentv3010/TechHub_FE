@@ -199,6 +199,13 @@ export const useReindexLessonsMutation = () => {
   });
 };
 
+// Reindex blogs mutation
+export const useReindexBlogsMutation = () => {
+  return useMutation({
+    mutationFn: () => aiApiRequest.reindexBlogs(),
+  });
+};
+
 // Reindex all mutation
 export const useReindexAllMutation = () => {
   return useMutation({

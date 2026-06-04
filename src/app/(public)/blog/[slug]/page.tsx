@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, type MouseEvent } from "react";
 import { format } from "date-fns";
 import dynamic from "next/dynamic";
 import {
   ArrowUp,
+  ArrowRight,
+  BookOpen,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -50,6 +52,7 @@ import {
 } from "@/queries/useBlog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGetAccount } from "@/queries/useAccount";
+import { useGetCourseById } from "@/queries/useCourse";
 import {
   buildContentWithToc,
   estimateReadingTime,
@@ -57,6 +60,8 @@ import {
   parseMarkdownToHtml,
   extractIdFromSlug,
 } from "@/lib/blog";
+import { createCourseSlug, formatCourseLevel } from "@/lib/course";
+import { normalizePublicMediaUrl } from "@/lib/file-media";
 import type { Blog, BlogComment, TocItem, BlogAttachment } from "@/types/blog.types";
 
 type BlogCommentSocketEvent = {
@@ -210,6 +215,157 @@ const ShareButton = ({
     <button onClick={onClick} className={className} title={label}>
       <Icon className="h-5 w-5" />
     </button>
+  );
+};
+
+type BlogRelatedLesson = {
+  id: string;
+  title: string;
+  chapterTitle?: string;
+};
+
+const getRelatedLessons = (
+  chapters: unknown,
+  selectedLessonIds: string[]
+): BlogRelatedLesson[] => {
+  if (!Array.isArray(chapters) || selectedLessonIds.length === 0) {
+    return [];
+  }
+
+  const selected = new Set(selectedLessonIds);
+  return chapters.flatMap((chapter: any) => {
+    const lessons = Array.isArray(chapter?.lessons) ? chapter.lessons : [];
+    return lessons
+      .filter((lesson: any) => lesson?.id && selected.has(String(lesson.id)))
+      .map((lesson: any) => ({
+        id: String(lesson.id),
+        title: String(lesson.title),
+        chapterTitle: chapter?.title ? String(chapter.title) : undefined,
+      }));
+  });
+};
+
+const RelatedCourseCard = ({
+  courseId,
+  relatedLessonIds,
+}: {
+  courseId: string;
+  relatedLessonIds: string[];
+}) => {
+  const { data, isLoading } = useGetCourseById(courseId);
+  const courseDetail = data?.payload?.data;
+  const summary = courseDetail?.summary;
+  const lessons = getRelatedLessons(courseDetail?.chapters, relatedLessonIds);
+
+  if (isLoading) {
+    return <Skeleton className="h-32 w-full rounded-xl" />;
+  }
+
+  if (!summary) {
+    return null;
+  }
+
+  const courseSlug = createCourseSlug(summary.title, summary.id);
+  const thumbnailUrl = normalizePublicMediaUrl(
+    summary.thumbnail?.secureUrl || summary.thumbnail?.url
+  );
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
+      <div className="flex gap-4 p-4">
+        {thumbnailUrl ? (
+          <img
+            src={thumbnailUrl}
+            alt={summary.title}
+            className="h-20 w-28 shrink-0 rounded-lg object-cover"
+          />
+        ) : (
+          <div className="flex h-20 w-28 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <BookOpen className="h-6 w-6" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{formatCourseLevel(summary.level)}</Badge>
+            <Badge variant="secondary">{summary.language}</Badge>
+          </div>
+          <h3 className="mt-2 line-clamp-2 text-base font-semibold">
+            {summary.title}
+          </h3>
+          {summary.description && (
+            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+              {summary.description}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {lessons.length > 0 && (
+        <div className="border-t border-border/60 px-4 py-3">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Lessons mentioned
+          </div>
+          <div className="space-y-2">
+            {lessons.map((lesson) => (
+              <div key={lesson.id} className="flex items-start gap-2 text-sm">
+                <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div className="min-w-0">
+                  <div className="font-medium">{lesson.title}</div>
+                  {lesson.chapterTitle && (
+                    <div className="text-xs text-muted-foreground">
+                      {lesson.chapterTitle}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="border-t border-border/60 px-4 py-3">
+        <Button asChild size="sm" className="gap-2">
+          <Link href={`/courses/${courseSlug}`}>
+            Continue learning
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const RelatedLearningSection = ({ blog }: { blog: Blog }) => {
+  const relatedCourseIds = blog.relatedCourseIds || [];
+  const relatedLessonIds = blog.relatedLessonIds || [];
+
+  if (relatedCourseIds.length === 0 && relatedLessonIds.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-2xl border border-muted/40 bg-card/60 p-6">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <BookOpen className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="text-lg font-semibold">Continue learning</h2>
+          <p className="text-sm text-muted-foreground">
+            Courses and lessons connected to this article.
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-4">
+        {relatedCourseIds.map((courseId) => (
+          <RelatedCourseCard
+            key={courseId}
+            courseId={courseId}
+            relatedLessonIds={relatedLessonIds}
+          />
+        ))}
+      </div>
+    </section>
   );
 };
 
@@ -767,10 +923,20 @@ export default function BlogDetailPage() {
     return comments.reduce((total: number, comment: BlogComment) => total + countReplies(comment), 0);
   }, [comments]);
 
-  const handleScrollToHeading = (item: TocItem) => {
+  const handleScrollToHeading = (
+    event: MouseEvent<HTMLAnchorElement>,
+    item: TocItem
+  ) => {
+    event.preventDefault();
+
     const element = document.getElementById(item.id);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      const headerOffset = 96;
+      const top =
+        element.getBoundingClientRect().top + window.scrollY - headerOffset;
+
+      window.history.pushState(null, "", `#${item.id}`);
+      window.scrollTo({ top, behavior: "smooth" });
     }
   };
 
@@ -871,9 +1037,11 @@ export default function BlogDetailPage() {
             <div className="prose prose-lg max-w-none dark:prose-invert prose-headings:scroll-mt-24 prose-img:rounded-2xl">
               <div
                 dangerouslySetInnerHTML={{ __html: preparedContent.html }}
-                className="leading-relaxed text-muted-foreground"
+                className="leading-relaxed text-muted-foreground [&_.blog-heading-number]:mr-3 [&_.blog-heading-number]:inline-flex [&_.blog-heading-number]:h-8 [&_.blog-heading-number]:min-w-8 [&_.blog-heading-number]:items-center [&_.blog-heading-number]:justify-center [&_.blog-heading-number]:rounded-lg [&_.blog-heading-number]:bg-primary/10 [&_.blog-heading-number]:px-2 [&_.blog-heading-number]:text-sm [&_.blog-heading-number]:font-semibold [&_.blog-heading-number]:text-primary [&_figure]:my-8 [&_h2]:mt-12 [&_h2]:border-t [&_h2]:border-border/60 [&_h2]:pt-8 [&_h3]:mt-8 [&_p]:my-4"
               />
             </div>
+
+            <RelatedLearningSection blog={blog} />
 
             {/* Attachments */}
             {blog.attachments && blog.attachments.length > 0 && (
@@ -1032,18 +1200,17 @@ export default function BlogDetailPage() {
                       Bài viết chưa có cấu trúc tiêu đề rõ ràng.
                     </p>
                   ) : (
-                    preparedContent.toc.map((item) => (
-                      <button
+                    preparedContent.toc.map((item, index) => (
+                      <a
                         key={item.id}
-                        onClick={() => handleScrollToHeading(item)}
+                        href={`#${item.id}`}
+                        onClick={(event) => handleScrollToHeading(event, item)}
                         className="block w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-muted/60 hover:text-primary"
-                        style={{ paddingLeft: `${(item.level - 1) * 12 + 12}px` }}
+                        style={{ paddingLeft: `${Math.max(item.level - 2, 0) * 12 + 12}px` }}
                       >
-                        {item.level === 1 && "1. "}
-                        {item.level === 2 && "2. "}
-                        {item.level === 3 && "3. "}
+                        {item.number ?? `${index + 1}`}.{" "}
                         {item.text}
-                      </button>
+                      </a>
                     ))
                   )}
                 </div>

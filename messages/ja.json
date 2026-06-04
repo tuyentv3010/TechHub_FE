@@ -2227,6 +2227,7 @@
       "description": "AI検索とチャット検索用に、Qdrant のコースとレッスンベクトルを再構築します。",
       "loadStats": "統計を読み込む",
       "refreshStats": "統計を更新",
+      "reindexBlogs": "Reindex Blogs",
       "reindexAll": "Reindex All",
       "reindexing": "再インデックス中...",
       "health": "Qdrant状態",

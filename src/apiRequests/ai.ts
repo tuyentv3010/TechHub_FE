@@ -252,6 +252,13 @@ const aiApiRequest = {
       {}
     ),
 
+  // Reindex blogs
+  reindexBlogs: () =>
+    http.post<{ payload: { data: ReindexResponseType } }>(
+      "/app/api/proxy/ai/admin/reindex-blogs",
+      {}
+    ),
+
   // Reindex all
   reindexAll: () =>
     http.post<{ payload: { data: ReindexResponseType } }>(

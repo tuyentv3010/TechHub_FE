@@ -2493,6 +2493,7 @@
       "description": "Dựng lại vector khóa học và bài học trong Qdrant cho tìm kiếm AI và truy xuất ngữ cảnh chat.",
       "loadStats": "Tải thống kê",
       "refreshStats": "Làm mới thống kê",
+      "reindexBlogs": "Reindex Blogs",
       "reindexAll": "Reindex All",
       "reindexing": "Đang reindex...",
       "health": "Tình trạng Qdrant",
