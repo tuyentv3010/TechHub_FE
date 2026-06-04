@@ -79,6 +79,7 @@ export default function CourseLearningLayout({
   
   // Fetch user profile for avatar
   const { data: profileData } = useAccountProfile();
+  const currentUserId = profileData?.payload?.data?.id;
   const userAvatar = normalizePersistedMediaUrl(profileData?.payload?.data?.avatar) || undefined;
   
   const courseSummary = course.summary;
@@ -101,11 +102,13 @@ export default function CourseLearningLayout({
   const currentLesson = allLessons[currentLessonIndex];
   const currentLessonVideoUrl = normalizePersistedMediaUrl(currentLesson?.videoUrl);
   const currentLessonAssets = currentLesson?.assets || [];
+  const VIDEO_AUTO_COMPLETE_RATIO = 0.8;
 
-  // --- Video watch gating: phải xem đủ 50% (không tính phần tua) mới cho hoàn thành ---
+  // --- Video watch gating: phải xem đủ 80% (không tính phần tua) mới tự hoàn thành ---
   // Cộng dồn thời gian xem THỰC SỰ theo từng bài vào videoProgressByLesson,
   // bỏ qua các bước nhảy (tua) bằng cách chỉ cộng các delta nhỏ của playback.
   const lastVideoTimeRef = useRef(0);
+  const autoCompleteTriggeredRef = useRef<Set<string>>(new Set());
 
   // Reset mốc thời gian khi chuyển bài (bộ đếm theo bài được giữ trong state).
   useEffect(() => {
@@ -134,9 +137,12 @@ export default function CourseLearningLayout({
   const handleVideoEnded = () => {
     const lessonId = currentLesson?.id;
     if (!lessonId) return;
+    const videoDuration = Number.isFinite(currentVideoProgress?.duration)
+      ? currentVideoProgress?.duration || 0
+      : 0;
     setVideoProgressByLesson((prev) => {
       const prevEntry = prev[lessonId];
-      const dur = prevEntry?.duration || 0;
+      const dur = prevEntry?.duration || videoDuration;
       return {
         ...prev,
         [lessonId]: {
@@ -315,24 +321,29 @@ export default function CourseLearningLayout({
       ? Math.min(1, currentVideoProgress.maxWatchedSeconds / currentVideoProgress.duration)
       : 0;
   const canCompleteCurrentLesson =
-    currentLessonCompleted || !currentLessonHasVideo || currentVideoWatchRatio >= 0.5;
+    currentLessonCompleted || !currentLessonHasVideo || currentVideoWatchRatio >= VIDEO_AUTO_COMPLETE_RATIO;
 
   const showVideoGateToast = () => {
     toast({
       title: "Chua du dieu kien",
-      description: "Ban can xem toi thieu 50% video va khong tua de mo bai tiep theo.",
+      description: "Ban can xem toi thieu 80% video va khong tua de hoan thanh bai hoc.",
       variant: "destructive",
     });
   };
 
   useEffect(() => {
-    if (!progressData || currentLessonIndex <= 0 || isLessonAccessible(currentLessonIndex)) {
+    if (
+      !progressData ||
+      currentLessonIndex <= 0 ||
+      currentLessonCompleted ||
+      isLessonAccessible(currentLessonIndex)
+    ) {
       return;
     }
 
     const firstLockedIndex = allLessons.findIndex((_, index) => !isLessonAccessible(index));
     onLessonChange(firstLockedIndex > 0 ? firstLockedIndex - 1 : 0);
-  }, [progressData, currentLessonIndex]);
+  }, [progressData, currentLessonIndex, currentLessonCompleted]);
 
   // Fireworks effect
   const triggerFireworks = () => {
@@ -369,7 +380,7 @@ export default function CourseLearningLayout({
   };
 
   // Handle mark lesson complete
-  const handleMarkComplete = (options?: { onSuccess?: () => void }) => {
+  const handleMarkComplete = (options?: { onSuccess?: () => void; onError?: () => void }) => {
     if (!courseSummary?.id || !currentLesson?.id) {
       console.log('[handleMarkComplete] Missing courseId or lessonId');
       return;
@@ -417,9 +428,57 @@ export default function CourseLearningLayout({
             description: "Không thể đánh dấu hoàn thành bài học.",
             variant: "destructive",
           });
+          options?.onError?.();
         },
       }
     );
+  };
+
+  useEffect(() => {
+    const lessonId = currentLesson?.id;
+    if (
+      !lessonId ||
+      !currentLessonHasVideo ||
+      currentLessonCompleted ||
+      markCompleteMutation.isPending ||
+      currentVideoWatchRatio < VIDEO_AUTO_COMPLETE_RATIO ||
+      autoCompleteTriggeredRef.current.has(lessonId)
+    ) {
+      return;
+    }
+
+    autoCompleteTriggeredRef.current.add(lessonId);
+    handleMarkComplete({
+      onError: () => autoCompleteTriggeredRef.current.delete(lessonId),
+    });
+  }, [
+    currentLesson?.id,
+    currentLessonHasVideo,
+    currentLessonCompleted,
+    currentVideoWatchRatio,
+    markCompleteMutation.isPending,
+  ]);
+
+  const handleGoNextLesson = () => {
+    if (currentLessonIndex >= allLessons.length - 1) {
+      toast({
+        title: "Da hoan thanh",
+        description: "Ban dang o bai hoc cuoi cung cua khoa hoc.",
+      });
+      return;
+    }
+
+    if (!canCompleteCurrentLesson) {
+      showVideoGateToast();
+      return;
+    }
+
+    if (!currentLessonCompleted) {
+      handleMarkComplete({ onSuccess: () => onLessonChange(currentLessonIndex + 1) });
+      return;
+    }
+
+    onLessonChange(currentLessonIndex + 1);
   };
 
   const handleSubmitComment = (content: string) => {
@@ -847,6 +906,7 @@ export default function CourseLearningLayout({
                 }))}
                 lessonTitle={currentLesson?.title}
                 lessonSlug={courseSummary?.slug}
+                currentUserId={currentUserId}
                 userAvatar={userAvatar}
                 onComplete={(results) => {
                   console.log('All exercises completed:', results);
@@ -859,92 +919,98 @@ export default function CourseLearningLayout({
                     });
                   }
                 }}
-                onNextLesson={() => {
-                  handleMarkComplete();
-
-                  // Navigate to next lesson if available
-                  if (currentLessonIndex < allLessons.length - 1) {
-                    onLessonChange(currentLessonIndex + 1);
-                  } else {
-                    toast({
-                      title: "Da hoan thanh",
-                      description: "Ban dang o bai hoc cuoi cung cua khoa hoc.",
-                    });
-                  }
-                }}
+                onNextLesson={handleGoNextLesson}
               />
             )}
           </div>
 
-          {/* DEBUG: Check currentLesson data */}
-          {console.log('🔍 DEBUG currentLesson:', {
-            hasLesson: !!currentLesson,
-            lessonId: currentLesson?.id,
-            lessonTitle: currentLesson?.title,
-            hasAssets: !!currentLesson?.assets,
-            assetsLength: currentLesson?.assets?.length,
-            assets: currentLesson?.assets
-          })}
-
           {/* Lesson Assets/Resources */}
-          {currentLesson?.assets && currentLesson.assets.length > 0 && (
-            <div className="p-6 border-b">
-              <h3 className="font-semibold mb-3">Tài liệu & Link</h3>
-              <div className="space-y-2">
-                {currentLesson.assets.map((asset: any) => {
-                  const assetUrl = normalizePersistedMediaUrl(asset.externalUrl || asset.url);
-                  const isDocument = asset.assetType === 'DOCUMENT';
-                  
-                  // DEBUG: Log asset data
-                  console.log('🔍 Asset data:', {
-                    id: asset.id,
-                    title: asset.title,
-                    assetType: asset.assetType,
-                    url: asset.url,
-                    externalUrl: asset.externalUrl,
-                    resolvedUrl: assetUrl,
-                    allFields: Object.keys(asset)
-                  });
-                  
-                  return (
-                    <div
-                      key={asset.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted transition-colors"
+          {currentLessonAssets.length > 0 && (
+            <div className="border-b px-6 py-6">
+              <div className="mx-auto w-full max-w-[860px]">
+                <Tabs defaultValue="resources" className="w-full">
+                  <TabsList className="mb-5 h-auto w-full justify-start overflow-x-auto rounded-none border-b bg-transparent p-0">
+                    <TabsTrigger
+                      value="resources"
+                      className="mr-6 rounded-none border-b-2 border-transparent px-0 py-3 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                     >
-                      <div className="p-2 rounded bg-primary/10">
-                        {getAssetIcon(asset.assetType)}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{asset.title}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{asset.assetType}</p>
-                      </div>
-                      {/* Download button for DOCUMENT type */}
-                      {isDocument && assetUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handleDownloadAsset(e, assetUrl, asset.title)}
-                          title="Tải xuống"
-                          className="text-primary hover:text-primary/80"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {/* External link for non-document types */}
-                      {!isDocument && assetUrl && (
-                        <a
-                          href={assetUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Mở trong tab mới"
-                        >
-                          <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                        </a>
-                      )}
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Tai lieu ({currentLessonAssets.length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="discussion"
+                      className="rounded-none border-b-2 border-transparent px-0 py-3 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Thao luan
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="resources" className="mt-0">
+                    <div className="rounded-xl border bg-card p-2 shadow-sm">
+                      {currentLessonAssets.map((asset: any) => {
+                        const assetUrl = normalizePersistedMediaUrl(asset.externalUrl || asset.url);
+                        const isDocument = asset.assetType === "DOCUMENT";
+
+                        return (
+                          <div
+                            key={asset.id}
+                            className="flex items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-muted/60"
+                          >
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                              {getAssetIcon(asset.assetType)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">{asset.title}</p>
+                              <p className="text-xs text-muted-foreground capitalize">{asset.assetType}</p>
+                            </div>
+                            {isDocument && assetUrl && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => handleDownloadAsset(e, assetUrl, asset.title)}
+                                title="Tai xuong"
+                                className="rounded-full text-primary hover:text-primary/80"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {!isDocument && assetUrl && (
+                              <Button asChild variant="ghost" size="icon" className="rounded-full">
+                                <a
+                                  href={assetUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Mo trong tab moi"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  </TabsContent>
+
+                  <TabsContent value="discussion" className="mt-0">
+                    <div className="rounded-xl border bg-card p-5 shadow-sm">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="font-semibold">Thao luan bai hoc</h3>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Mo hoi dap de xem binh luan va trao doi voi hoc vien khac.
+                          </p>
+                        </div>
+                        <Button onClick={() => setShowCommentModal(true)} className="rounded-full">
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                          Mo thao luan
+                        </Button>
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             </div>
           )}
@@ -978,7 +1044,7 @@ export default function CourseLearningLayout({
                   </div>
                 ) : (
                   <Button
-                    onClick={handleMarkComplete}
+                    onClick={() => handleMarkComplete()}
                     disabled={markCompleteMutation.isPending}
                     className="rounded-full font-semibold px-5 shadow-lg"
                   >
@@ -1019,7 +1085,7 @@ export default function CourseLearningLayout({
               <Button
                 disabled={currentLessonIndex >= allLessons.length - 1}
                 onClick={() => {
-                  // Phải hoàn thành (xem đủ 50% video, không tua) bài hiện tại mới qua bài sau.
+                  // Phải hoàn thành (xem đủ 80% video, không tua) bài hiện tại mới qua bài sau.
                   if (!canCompleteCurrentLesson) {
                     showVideoGateToast();
                     return;

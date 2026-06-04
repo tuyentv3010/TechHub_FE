@@ -98,7 +98,6 @@ export default function PaymentPage() {
 
         // Gọi API để tạo payment URL với userId
         const response = await createVNPayPayment.mutateAsync({
-          bankCode: "NCB", // Mã ngân hàng mặc định, có thể để người dùng chọn
           userId: userProfile.id,
           courseId: courseId,
         });

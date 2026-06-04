@@ -47,6 +47,7 @@ interface ExercisePlayerProps {
   exercises: Exercise[];
   lessonTitle?: string;
   lessonSlug?: string;
+  currentUserId?: string;
   userAvatar?: string;
   onComplete?: (results: ExerciseResult[]) => void;
   onClose?: () => void;
@@ -740,18 +741,22 @@ function ResultScreen({
   onRetry,
   onComplete,
   lessonSlug,
+  currentUserId,
   courseId,
   lessonId,
   totalQuestions,
+  userAvatar,
 }: {
   results: ExerciseResult[];
   totalTime: number;
   onRetry: () => void;
   onComplete: () => void;
   lessonSlug?: string;
+  currentUserId?: string;
   courseId?: string;
   lessonId?: string;
   totalQuestions: number;
+  userAvatar?: string;
 }) {
   const correctCount = results.filter(r => r.isCorrect).length;
   const totalCount = results.length;
@@ -773,6 +778,8 @@ function ResultScreen({
       onRetry={onRetry}
       onComplete={onComplete}
       lessonSlug={lessonSlug}
+      currentUserId={currentUserId}
+      currentUserAvatar={userAvatar}
       courseId={courseId}
       lessonId={lessonId}
       totalQuestions={totalQuestions}
@@ -787,6 +794,7 @@ export default function ExercisePlayer({
   exercises,
   lessonTitle,
   lessonSlug,
+  currentUserId,
   userAvatar,
   onComplete,
   onClose,
@@ -1147,6 +1155,8 @@ export default function ExercisePlayer({
             onClose?.();
           }}
           lessonSlug={lessonSlug}
+          currentUserId={currentUserId}
+          userAvatar={userAvatar}
           courseId={courseId}
           lessonId={lessonId}
           totalQuestions={multipleChoiceExercises.length}
@@ -1161,6 +1171,8 @@ export default function ExercisePlayer({
             onClose?.();
           }}
           lessonSlug={lessonSlug}
+          currentUserId={currentUserId}
+          currentUserAvatar={userAvatar}
           courseId={courseId}
           lessonId={lessonId ?? undefined}
           totalQuestions={multipleChoiceExercises.length}

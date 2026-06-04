@@ -26,6 +26,8 @@ interface ExerciseLeaderboardProps {
   onComplete?: () => void;
   exerciseId?: string;
   lessonSlug?: string;
+  currentUserId?: string;
+  currentUserAvatar?: string;
   courseId?: string;
   lessonId?: string;
 }
@@ -288,6 +290,8 @@ export default function ExerciseLeaderboard({
   onComplete,
   exerciseId,
   lessonSlug,
+  currentUserId,
+  currentUserAvatar,
   courseId,
   lessonId,
 }: ExerciseLeaderboardProps) {
@@ -295,6 +299,15 @@ export default function ExerciseLeaderboard({
   const [loading, setLoading] = useState<boolean>(!!(courseId && lessonId) && !playersProp);
   const [fetchError, setFetchError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const normalizedCurrentAvatar = normalizePersistedMediaUrl(currentUserAvatar);
+
+  const resolveAvatar = (row: any) => {
+    const isCurrentUser = !!currentUserId && String(row.userId) === currentUserId;
+
+    return (isCurrentUser ? normalizedCurrentAvatar : undefined)
+      || normalizePersistedMediaUrl(row.avatar)
+      || "/avatars/default-avatar.svg";
+  };
 
   useEffect(() => {
     if (playersProp || !courseId || !lessonId) return;
@@ -318,7 +331,7 @@ export default function ExerciseLeaderboard({
               id: r.userId || String(i),
               rank: r.rank ?? i + 1,
               name: r.username || "Người dùng",
-              avatar: normalizePersistedMediaUrl(r.avatar) || `/exercise/exercise-${(i % 6) + 1}.png`,
+              avatar: resolveAvatar(r),
               score: Math.round(r.score || 0),
               totalQuestions,
             }));
@@ -346,7 +359,7 @@ export default function ExerciseLeaderboard({
     return () => {
       cancelled = true;
     };
-  }, [courseId, lessonId, playersProp, refreshKey, totalQuestions]);
+  }, [courseId, currentUserAvatar, currentUserId, lessonId, playersProp, refreshKey, totalQuestions]);
 
   // Có courseId+lessonId → bám data thật, kể cả khi rỗng (KHÔNG fallback mockData).
   // Không có (preview / design) → dùng mockData để UI không trống.
