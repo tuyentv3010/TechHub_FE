@@ -1,119 +1,138 @@
 "use client";
 
-import type { InstructorProfile } from "@/apiRequests/instructor-profile";
+import { useMemo } from "react";
+import { BookOpen, Users, Star, Briefcase } from "lucide-react";
+import { useTranslations } from "next-intl";
+import CourseCard from "@/components/molecules/CourseCard";
+import type { Course } from "@/types/course";
+import {
+  compactNumber,
+  type InstructorAccount,
+  type InstructorProfile,
+} from "@/types/instructor";
+import { InstructorHero, type HeroStat } from "@/components/instructor/InstructorHero";
+import { AboutSection } from "@/components/instructor/AboutSection";
+import { ProfileTabs, type ProfileTab } from "@/components/instructor/ProfileTabs";
+import { CvTimeline } from "@/components/instructor/CvTimeline";
+import { ProjectCard } from "@/components/instructor/ProjectCard";
+import { CertificateCard } from "@/components/instructor/CertificateCard";
+import { EmptyState, SectionShell, ProfileSkeleton } from "@/components/instructor/ProfileStates";
 
-type Variant = "full" | "public";
-
-function Row({ label, value }: { label: string; value?: string | number | null }) {
-  if (value === null || value === undefined || value === "") return null;
-  return (
-    <div className="flex flex-col gap-0.5 py-1.5 sm:flex-row sm:gap-3">
-      <div className="w-44 shrink-0 text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </div>
-      <div className="text-sm">{String(value)}</div>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-lg border p-4">
-      <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide">{title}</h3>
-      {children}
-    </section>
-  );
-}
-
-function JsonList({ data }: { data: any }) {
-  if (!data) return <p className="text-xs text-muted-foreground">Không có</p>;
-  if (Array.isArray(data) && data.every((x) => typeof x === "string")) {
-    return (
-      <div className="flex flex-wrap gap-2">
-        {data.map((s, i) => (
-          <span key={i} className="rounded bg-muted px-2 py-1 text-xs">
-            {s}
-          </span>
-        ))}
-      </div>
-    );
-  }
-  return (
-    <pre className="max-h-[260px] overflow-auto rounded bg-muted p-3 text-xs">
-      {JSON.stringify(data, null, 2)}
-    </pre>
-  );
-}
-
-export default function InstructorProfileView({
-  profile,
-  variant = "full",
-}: {
+interface Props {
+  account: InstructorAccount;
   profile: InstructorProfile;
-  variant?: Variant;
-}) {
-  const showCccd = variant === "full";
+  courses: Course[];
+  isLoading?: boolean;
+}
+
+export function InstructorProfileView({ account, profile, courses, isLoading }: Props) {
+  const t = useTranslations("instructor");
+
+  const experience = profile.experience ?? [];
+  const education = profile.education ?? [];
+  const projects = (profile.projects ?? []).filter((p) => p?.name);
+  const certs = (profile.cvCertifications ?? profile.certificates ?? []).filter((c) => c?.name);
+
+  const stats = useMemo<HeroStat[]>(() => {
+    if (!courses?.length) return [];
+    const students = courses.reduce((a, c) => a + (Number(c.students) || 0), 0);
+    const rated = courses.filter((c) => Number(c.rating) > 0);
+    const avg = rated.length ? rated.reduce((a, c) => a + Number(c.rating), 0) / rated.length : 0;
+    const out: HeroStat[] = [
+      { icon: BookOpen, value: courses.length, label: t("stats.courses") },
+    ];
+    if (students > 0) out.push({ icon: Users, value: compactNumber(students), label: t("stats.students") });
+    if (avg > 0) out.push({ icon: Star, value: avg.toFixed(1), label: t("stats.rating") });
+    if (profile.yearsOfExperience != null)
+      out.push({ icon: Briefcase, value: `${profile.yearsOfExperience}+`, label: t("stats.years") });
+    return out;
+  }, [courses, profile.yearsOfExperience, t]);
+
+  const tabs = useMemo<ProfileTab[]>(() => {
+    const list: ProfileTab[] = [{ id: "courses", label: t("tabs.courses"), count: courses?.length ?? 0 }];
+    if (experience.length) list.push({ id: "experience", label: t("tabs.experience"), count: experience.length });
+    if (education.length) list.push({ id: "education", label: t("tabs.education"), count: education.length });
+    if (projects.length) list.push({ id: "projects", label: t("tabs.projects"), count: projects.length });
+    if (certs.length) list.push({ id: "certifications", label: t("tabs.certifications"), count: certs.length });
+    return list;
+  }, [courses, experience.length, education.length, projects.length, certs.length, t]);
+
+  if (isLoading) return <ProfileSkeleton />;
 
   return (
-    <div className="space-y-4">
-      <Section title="Thông tin cá nhân">
-        <Row label="Họ tên" value={profile.fullName} />
-        <Row label="Email" value={profile.cvEmail} />
-        <Row label="Số điện thoại" value={profile.cvPhone} />
-        <Row label="Vị trí" value={profile.cvLocation} />
-        <Row label="LinkedIn" value={profile.linkedinUrl} />
-        <Row label="GitHub" value={profile.githubUrl} />
-        <Row label="Portfolio" value={profile.portfolioUrl} />
-        <Row label="Số năm KN" value={profile.yearsOfExperience} />
-      </Section>
+    <article>
+      <InstructorHero account={account} profile={profile} stats={stats} />
 
-      {showCccd && (
-        <Section title="CCCD">
-          <Row label="Số CCCD" value={profile.idNumber} />
-          <Row label="Ngày sinh" value={profile.dateOfBirth} />
-          <Row label="Giới tính" value={profile.gender} />
-          <Row label="Quốc tịch" value={profile.nationality} />
-          <Row label="Quê quán" value={profile.placeOfOrigin} />
-          <Row label="Nơi thường trú" value={profile.placeOfResidence} />
-          <Row label="Ngày cấp" value={profile.cccdIssueDate} />
-          <Row label="Nơi cấp" value={profile.cccdIssuePlace} />
-          <Row label="Đặc điểm nhận dạng" value={profile.identifyingFeatures} />
-        </Section>
-      )}
+      <div className="mx-auto max-w-[var(--content-max,1180px)] px-6 pb-20">
+        <AboutSection profile={profile} />
+        <ProfileTabs tabs={tabs} />
 
-      {profile.cvSummary && (
-        <Section title="Giới thiệu bản thân">
-          <p className="text-sm leading-relaxed">{profile.cvSummary}</p>
-        </Section>
-      )}
+        {/* Primary content: courses */}
+        <SectionShell id="courses" title={t("tabs.courses")} count={courses?.length ?? 0}>
+          {courses?.length ? (
+            <div className="grid grid-cols-1 gap-[22px] sm:grid-cols-2 lg:grid-cols-3">
+              {courses.map((course) => (
+                <CourseCard key={course.id} course={course} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={BookOpen} title={t("empty.courses.title")} body={t("empty.courses.body")} />
+          )}
+        </SectionShell>
 
-      <Section title="Kỹ năng">
-        <JsonList data={profile.skills} />
-      </Section>
+        {experience.length > 0 && (
+          <SectionShell id="experience" title={t("tabs.experience")} count={experience.length}>
+            <CvTimeline
+              variant="experience"
+              items={experience.map((e) => ({
+                title: e.title,
+                subtitle: e.company,
+                location: e.location,
+                startDate: e.startDate,
+                endDate: e.endDate,
+                description: e.description,
+              }))}
+            />
+          </SectionShell>
+        )}
 
-      <Section title="Ngôn ngữ">
-        <JsonList data={profile.languages} />
-      </Section>
+        {education.length > 0 && (
+          <SectionShell id="education" title={t("tabs.education")} count={education.length}>
+            <CvTimeline
+              variant="education"
+              items={education.map((e) => ({
+                title: e.degree,
+                subtitle: e.school,
+                startDate: e.startDate,
+                endDate: e.endDate,
+                description: e.description,
+              }))}
+            />
+          </SectionShell>
+        )}
 
-      <Section title="Học vấn">
-        <JsonList data={profile.education} />
-      </Section>
+        {projects.length > 0 && (
+          <SectionShell id="projects" title={t("tabs.projects")} count={projects.length}>
+            <div className="grid grid-cols-1 gap-[22px] md:grid-cols-2">
+              {projects.map((p, i) => (
+                <ProjectCard key={i} project={p} />
+              ))}
+            </div>
+          </SectionShell>
+        )}
 
-      <Section title="Kinh nghiệm làm việc">
-        <JsonList data={profile.experience} />
-      </Section>
-
-      <Section title="Dự án">
-        <JsonList data={profile.projects} />
-      </Section>
-
-      <Section title="Chứng chỉ (từ CV)">
-        <JsonList data={profile.cvCertifications} />
-      </Section>
-
-      <Section title="Chứng chỉ đã upload">
-        <JsonList data={profile.certificates} />
-      </Section>
-    </div>
+        {certs.length > 0 && (
+          <SectionShell id="certifications" title={t("tabs.certifications")} count={certs.length}>
+            <div className="flex flex-col gap-3">
+              {certs.map((c, i) => (
+                <CertificateCard key={i} cert={c} />
+              ))}
+            </div>
+          </SectionShell>
+        )}
+      </div>
+    </article>
   );
 }
+
+export default InstructorProfileView;

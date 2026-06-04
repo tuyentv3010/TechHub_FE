@@ -23,6 +23,9 @@
 
 @layer base {
   :root {
+    /* Instructor profile layout tokens */
+    --content-max: 1180px;
+    --nav-height: 68px;
     --background: 216 45% 98%;
     --app-bg: 216 45% 98%;
     --app-surface: 0 0% 100%;

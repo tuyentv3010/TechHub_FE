@@ -1,4 +1,46 @@
 {
+  "instructor": {
+    "eyebrow": "Instructor",
+    "avatarAlt": "Profile photo of {name}",
+    "yearsExperience": "{years}+ years of experience",
+    "statsAria": "Instructor statistics",
+    "stats": {
+      "courses": "Courses",
+      "students": "Students",
+      "rating": "Avg. rating",
+      "years": "Yrs exp."
+    },
+    "about": {
+      "title": "About"
+    },
+    "skills": "Skills",
+    "languages": "Languages",
+    "tabs": {
+      "courses": "Courses",
+      "experience": "Experience",
+      "education": "Education",
+      "projects": "Projects",
+      "certifications": "Certifications"
+    },
+    "empty": {
+      "courses": {
+        "title": "No published courses yet",
+        "body": "This instructor hasn't published any courses yet. Check back soon!"
+      }
+    },
+    "project": {
+      "openAria": "Open project {name}"
+    },
+    "cert": {
+      "verify": "Verify",
+      "verifyAria": "Verify certificate {name}"
+    },
+    "course": {
+      "lessons": "{count} lessons",
+      "hours": "{count} hours",
+      "students": "{count} students"
+    }
+  },
   "common": {
     "loading": "Loading...",
     "save": "Save",
@@ -1510,6 +1552,8 @@
     "CompletedOn": "Completed on",
     "LastPosition": "Last position",
     "MarkComplete": "Mark Complete",
+    "VideoGateTitle": "Requirement not met",
+    "VideoGateDescription": "Watch at least 80% of the video without skipping ahead to complete this lesson.",
     "Success": "Success",
     "LessonMarkedComplete": "Lesson marked as complete",
     "NoProgressData": "No progress data available",

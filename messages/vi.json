@@ -1,4 +1,46 @@
 {
+  "instructor": {
+    "eyebrow": "Giảng viên",
+    "avatarAlt": "Ảnh đại diện của {name}",
+    "yearsExperience": "{years}+ năm kinh nghiệm",
+    "statsAria": "Thống kê giảng viên",
+    "stats": {
+      "courses": "Khóa học",
+      "students": "Học viên",
+      "rating": "Đánh giá TB",
+      "years": "Năm KN"
+    },
+    "about": {
+      "title": "Giới thiệu"
+    },
+    "skills": "Kỹ năng",
+    "languages": "Ngôn ngữ",
+    "tabs": {
+      "courses": "Khóa học",
+      "experience": "Kinh nghiệm",
+      "education": "Học vấn",
+      "projects": "Dự án",
+      "certifications": "Chứng chỉ"
+    },
+    "empty": {
+      "courses": {
+        "title": "Chưa có khóa học nào được xuất bản",
+        "body": "Giảng viên này hiện chưa xuất bản khóa học. Hãy quay lại sau nhé!"
+      }
+    },
+    "project": {
+      "openAria": "Mở dự án {name}"
+    },
+    "cert": {
+      "verify": "Xác minh",
+      "verifyAria": "Xác minh chứng chỉ {name}"
+    },
+    "course": {
+      "lessons": "{count} bài",
+      "hours": "{count} giờ",
+      "students": "{count} học viên"
+    }
+  },
   "common": {
     "loading": "Đang tải...",
     "save": "Lưu",
@@ -363,25 +405,25 @@
     "userAvatarAlt": "Người dùng"
   },
   "VideoPlayer": {
-    "byInstructor": "bá»Ÿi {name}",
-    "playShortcut": "PhÃ¡t (K)",
-    "pauseShortcut": "Táº¡m dá»«ng (K)",
-    "rewind10": "Tua láº¡i 10 giÃ¢y",
-    "forward10": "Tua tá»›i 10 giÃ¢y",
-    "cannotSkipUnwatchedVideo": "KhÃ´ng thá»ƒ tua Ä‘áº¿n pháº§n chÆ°a xem",
-    "muteShortcut": "Táº¯t tiáº¿ng (M)",
-    "unmuteShortcut": "Báº­t tiáº¿ng (M)",
-    "quality": "Cháº¥t lÆ°á»£ng",
-    "captions": "Phá»¥ Ä‘á»",
-    "captionsShortcut": "Phá»¥ Ä‘á» (C)",
-    "settings": "CÃ i Ä‘áº·t",
-    "playbackSpeed": "Tá»‘c Ä‘á»™ phÃ¡t",
-    "speed": "Tá»‘c Ä‘á»™",
-    "normalSpeed": "BÃ¬nh thÆ°á»ng",
-    "on": "Báº­t",
-    "off": "Táº¯t",
-    "fullscreenShortcut": "ToÃ n mÃ n hÃ¬nh (F)",
-    "exitFullscreenShortcut": "ThoÃ¡t toÃ n mÃ n hÃ¬nh (F)"
+    "byInstructor": "b\u1edfi {name}",
+    "playShortcut": "Ph\u00e1t (K)",
+    "pauseShortcut": "T\u1ea1m d\u1eebng (K)",
+    "rewind10": "Tua l\u1ea1i 10 gi\u00e2y",
+    "forward10": "Tua t\u1edbi 10 gi\u00e2y",
+    "cannotSkipUnwatchedVideo": "Kh\u00f4ng th\u1ec3 tua \u0111\u1ebfn ph\u1ea7n ch\u01b0a xem",
+    "muteShortcut": "T\u1eaft ti\u1ebfng (M)",
+    "unmuteShortcut": "B\u1eadt ti\u1ebfng (M)",
+    "quality": "Ch\u1ea5t l\u01b0\u1ee3ng",
+    "captions": "Ph\u1ee5 \u0111\u1ec1",
+    "captionsShortcut": "Ph\u1ee5 \u0111\u1ec1 (C)",
+    "settings": "C\u00e0i \u0111\u1eb7t",
+    "playbackSpeed": "T\u1ed1c \u0111\u1ed9 ph\u00e1t",
+    "speed": "T\u1ed1c \u0111\u1ed9",
+    "normalSpeed": "B\u00ecnh th\u01b0\u1eddng",
+    "on": "B\u1eadt",
+    "off": "T\u1eaft",
+    "fullscreenShortcut": "To\u00e0n m\u00e0n h\u00ecnh (F)",
+    "exitFullscreenShortcut": "Tho\u00e1t to\u00e0n m\u00e0n h\u00ecnh (F)"
   },
   "Footer": {
     "title": "TechHub",
@@ -1509,6 +1551,8 @@
     "CompletedOn": "Hoàn thành vào",
     "LastPosition": "Vị trí cuối",
     "MarkComplete": "Đánh dấu hoàn thành",
+    "VideoGateTitle": "Chưa đủ điều kiện",
+    "VideoGateDescription": "Bạn cần xem tối thiểu 80% video và không tua tới để hoàn thành bài học.",
     "Success": "Thành công",
     "LessonMarkedComplete": "Đã đánh dấu bài học hoàn thành",
     "NoProgressData": "Chưa có dữ liệu tiến độ",

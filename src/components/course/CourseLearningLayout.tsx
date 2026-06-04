@@ -328,8 +328,8 @@ export default function CourseLearningLayout({
 
   const showVideoGateToast = () => {
     toast({
-      title: "Chua du dieu kien",
-      description: "Ban can xem toi thieu 80% video va khong tua de hoan thanh bai hoc.",
+      title: t("VideoGateTitle"),
+      description: t("VideoGateDescription"),
       variant: "destructive",
     });
   };
