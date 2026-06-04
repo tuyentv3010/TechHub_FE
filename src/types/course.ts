@@ -52,12 +52,13 @@ export interface ApiCourse {
   title: string;
   description: string;
   price: number;
+  currency?: string | null;
   discountPrice: number;
   promoEndDate: string | null;
   status: "PUBLISHED" | "DRAFT" | "ARCHIVED";
   level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
   language: "VI" | "EN";
-  categories: any | null;
+  categories: unknown | null;
   skills: Skill[];
   tags: Tag[];
   objectives: string[];
@@ -103,7 +104,7 @@ export interface Course {
 export type CoursesResponse = ApiResponse<ApiCourse[]>;
 
 // Transform function to convert ApiCourse to Course
-export function transformApiCourse(apiCourse: ApiCourse, additionalData?: any): Course {
+export function transformApiCourse(apiCourse: ApiCourse, additionalData?: Partial<Course>): Course {
   // If we have additional data from your sample format, use it
   if (additionalData) {
     return {

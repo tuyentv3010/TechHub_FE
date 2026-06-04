@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { BookOpen, Users, Star, Briefcase } from "lucide-react";
 import { useTranslations } from "next-intl";
 import CourseCard from "@/components/molecules/CourseCard";
@@ -17,7 +17,6 @@ import { CvTimeline } from "@/components/instructor/CvTimeline";
 import { ProjectCard } from "@/components/instructor/ProjectCard";
 import { CertificateCard } from "@/components/instructor/CertificateCard";
 import { EmptyState, SectionShell, ProfileSkeleton } from "@/components/instructor/ProfileStates";
-import { tFallback } from "@/lib/i18n-fallback";
 
 interface Props {
   account: InstructorAccount;
@@ -30,10 +29,6 @@ interface Props {
 /** Redesigned public instructor profile (hero + stats + sticky tabs + courses + CV). */
 export function PublicInstructorProfile({ account, profile, courses, isLoading, coverImageUrl }: Props) {
   const t = useTranslations("instructor");
-  const tr = useCallback(
-    (key: string, fallback: string) => tFallback(t, "instructor", key, fallback),
-    [t],
-  );
 
   const experience = profile.experience ?? [];
   const education = profile.education ?? [];
@@ -46,23 +41,23 @@ export function PublicInstructorProfile({ account, profile, courses, isLoading, 
     const rated = courses.filter((c) => Number(c.rating) > 0);
     const avg = rated.length ? rated.reduce((a, c) => a + Number(c.rating), 0) / rated.length : 0;
     const out: HeroStat[] = [
-      { icon: BookOpen, value: courses.length, label: tr("stats.courses", "Khóa học") },
+      { icon: BookOpen, value: courses.length, label: t("stats.courses") },
     ];
-    if (students > 0) out.push({ icon: Users, value: compactNumber(students), label: tr("stats.students", "Học viên") });
-    if (avg > 0) out.push({ icon: Star, value: avg.toFixed(1), label: tr("stats.rating", "Đánh giá TB") });
+    if (students > 0) out.push({ icon: Users, value: compactNumber(students), label: t("stats.students") });
+    if (avg > 0) out.push({ icon: Star, value: avg.toFixed(1), label: t("stats.rating") });
     if (profile.yearsOfExperience != null)
-      out.push({ icon: Briefcase, value: `${profile.yearsOfExperience}+`, label: tr("stats.years", "Năm KN") });
+      out.push({ icon: Briefcase, value: `${profile.yearsOfExperience}+`, label: t("stats.years") });
     return out;
-  }, [courses, profile.yearsOfExperience, tr]);
+  }, [courses, profile.yearsOfExperience, t]);
 
   const tabs = useMemo<ProfileTab[]>(() => {
-    const list: ProfileTab[] = [{ id: "courses", label: tr("tabs.courses", "Khóa học"), count: courses?.length ?? 0 }];
-    if (experience.length) list.push({ id: "experience", label: tr("tabs.experience", "Kinh nghiệm"), count: experience.length });
-    if (education.length) list.push({ id: "education", label: tr("tabs.education", "Học vấn"), count: education.length });
-    if (projects.length) list.push({ id: "projects", label: tr("tabs.projects", "Dự án"), count: projects.length });
-    if (certs.length) list.push({ id: "certifications", label: tr("tabs.certifications", "Chứng chỉ"), count: certs.length });
+    const list: ProfileTab[] = [{ id: "courses", label: t("tabs.courses"), count: courses?.length ?? 0 }];
+    if (experience.length) list.push({ id: "experience", label: t("tabs.experience"), count: experience.length });
+    if (education.length) list.push({ id: "education", label: t("tabs.education"), count: education.length });
+    if (projects.length) list.push({ id: "projects", label: t("tabs.projects"), count: projects.length });
+    if (certs.length) list.push({ id: "certifications", label: t("tabs.certifications"), count: certs.length });
     return list;
-  }, [courses, experience.length, education.length, projects.length, certs.length, tr]);
+  }, [courses, experience.length, education.length, projects.length, certs.length, t]);
 
   if (isLoading) return <ProfileSkeleton />;
 
@@ -75,7 +70,7 @@ export function PublicInstructorProfile({ account, profile, courses, isLoading, 
         <ProfileTabs tabs={tabs} />
 
         {/* Primary content: courses */}
-        <SectionShell id="courses" title={tr("tabs.courses", "Khóa học")} count={courses?.length ?? 0}>
+        <SectionShell id="courses" title={t("tabs.courses")} count={courses?.length ?? 0}>
           {courses?.length ? (
             <div className="grid grid-cols-1 gap-[22px] sm:grid-cols-2 lg:grid-cols-3">
               {courses.map((course) => (
@@ -85,14 +80,14 @@ export function PublicInstructorProfile({ account, profile, courses, isLoading, 
           ) : (
             <EmptyState
               icon={BookOpen}
-              title={tr("empty.courses.title", "Chưa có khóa học nào được xuất bản")}
-              body={tr("empty.courses.body", "Giảng viên này hiện chưa xuất bản khóa học. Hãy quay lại sau nhé!")}
+              title={t("empty.courses.title")}
+              body={t("empty.courses.body")}
             />
           )}
         </SectionShell>
 
         {experience.length > 0 && (
-          <SectionShell id="experience" title={tr("tabs.experience", "Kinh nghiệm")} count={experience.length}>
+          <SectionShell id="experience" title={t("tabs.experience")} count={experience.length}>
             <CvTimeline
               variant="experience"
               items={experience.map((e) => ({
@@ -108,7 +103,7 @@ export function PublicInstructorProfile({ account, profile, courses, isLoading, 
         )}
 
         {education.length > 0 && (
-          <SectionShell id="education" title={tr("tabs.education", "Học vấn")} count={education.length}>
+          <SectionShell id="education" title={t("tabs.education")} count={education.length}>
             <CvTimeline
               variant="education"
               items={education.map((e) => ({
@@ -123,7 +118,7 @@ export function PublicInstructorProfile({ account, profile, courses, isLoading, 
         )}
 
         {projects.length > 0 && (
-          <SectionShell id="projects" title={tr("tabs.projects", "Dự án")} count={projects.length}>
+          <SectionShell id="projects" title={t("tabs.projects")} count={projects.length}>
             <div className="grid grid-cols-1 gap-[22px] md:grid-cols-2">
               {projects.map((p, i) => (
                 <ProjectCard key={i} project={p} />
@@ -133,7 +128,7 @@ export function PublicInstructorProfile({ account, profile, courses, isLoading, 
         )}
 
         {certs.length > 0 && (
-          <SectionShell id="certifications" title={tr("tabs.certifications", "Chứng chỉ")} count={certs.length}>
+          <SectionShell id="certifications" title={t("tabs.certifications")} count={certs.length}>
             <div className="flex flex-col gap-3">
               {certs.map((c, i) => (
                 <CertificateCard key={i} cert={c} />

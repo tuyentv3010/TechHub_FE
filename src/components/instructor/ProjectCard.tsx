@@ -5,12 +5,9 @@ import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toStringArray, type CvProject } from "@/types/instructor";
-import { tFallback } from "@/lib/i18n-fallback";
 
 export function ProjectCard({ project }: { project: CvProject }) {
   const t = useTranslations("instructor");
-  const tr = (key: string, fallback: string, values?: Record<string, string | number | Date>) =>
-    tFallback(t, "instructor", key, fallback, values);
   if (!project?.name) return null;
   const tags = toStringArray(project.tags);
 
@@ -32,7 +29,7 @@ export function ProjectCard({ project }: { project: CvProject }) {
                 target="_blank"
                 rel="noreferrer noopener"
                 className="text-muted-foreground transition-colors hover:text-primary"
-                aria-label={tr("project.openAria", `Mở dự án ${project.name}`, { name: project.name })}
+                aria-label={t("project.openAria", { name: project.name })}
               >
                 <ExternalLink className="size-4" />
               </a>

@@ -6,8 +6,8 @@ import instructorProfileApi from "@/apiRequests/instructor-profile";
 import { useGetAccount } from "@/queries/useAccount";
 import { useGetCourses } from "@/queries/useCourse";
 import { normalizePersistedMediaUrl } from "@/lib/file-media";
-import { transformApiCourse } from "@/types/course";
 import type { InstructorAccount, InstructorProfile } from "@/types/instructor";
+import type { Course } from "@/types/course";
 import { PublicInstructorProfile } from "@/components/instructor/PublicInstructorProfile";
 
 const DEFAULT_AVATAR = "/avatars/default-avatar.svg";
@@ -54,12 +54,32 @@ export default function PublicInstructorProfilePage() {
     status: "PUBLISHED",
     size: 100,
   });
-  const courses = useMemo(
+  const courses = useMemo<Course[]>(
     () =>
       (coursesResponse?.data || [])
         .filter((course) => course.instructorId === userId)
-        .map(transformApiCourse),
-    [coursesResponse?.data, userId],
+        .map((course) => ({
+          id: course.id,
+          title: course.title,
+          description: course.description ?? "",
+          instructor: account?.username ?? "Instructor",
+          instructorAvatar: normalizePersistedMediaUrl(account?.avatar) || undefined,
+          image: normalizePersistedMediaUrl(course.thumbnail?.secureUrl || course.thumbnail?.url),
+          rating: course.averageRating || 0,
+          reviews: course.ratingCount,
+          price: course.discountPrice ?? course.price ?? 0,
+          originalPrice: course.price ?? 0,
+          currency: course.currency ?? undefined,
+          badge: course.level,
+          level: course.level,
+          language: course.language,
+          students: course.totalEnrollments,
+          instructorId: course.instructorId,
+          skills: course.skills,
+          promoEndDate: course.promoEndDate,
+          createdAt: course.created,
+        })),
+    [account?.avatar, account?.username, coursesResponse?.data, userId],
   );
 
   // CV profile (extracted from the uploaded CV via n8n scan).
