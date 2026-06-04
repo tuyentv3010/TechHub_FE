@@ -69,6 +69,20 @@ export default function VideoPlayer({
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverPosition, setHoverPosition] = useState(0);
 
+  const readDuration = (video: HTMLVideoElement) =>
+    Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+
+  const syncDuration = () => {
+    const video = videoRef.current;
+    if (!video) return 0;
+
+    const nextDuration = readDuration(video);
+    if (nextDuration > 0) {
+      setDuration(nextDuration);
+    }
+    return nextDuration;
+  };
+
   // Format time to MM:SS
   const formatTime = (time: number): string => {
     if (isNaN(time) || !isFinite(time)) return "0:00";
@@ -110,21 +124,21 @@ export default function VideoPlayer({
 
     maxWatchedTimeRef.current = Math.max(maxWatchedTimeRef.current, video.currentTime);
     lastSafeTimeRef.current = video.currentTime;
+    const mediaDuration = syncDuration();
+    const effectiveDuration = Math.max(mediaDuration, duration, video.currentTime);
     setCurrentTime(video.currentTime);
-    onTimeUpdate?.(video.currentTime, video.duration);
+    onTimeUpdate?.(video.currentTime, effectiveDuration);
 
     // Update buffered
-    if (video.buffered.length > 0) {
+    if (video.buffered.length > 0 && effectiveDuration > 0) {
       const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-      setBuffered((bufferedEnd / video.duration) * 100);
+      setBuffered(Math.min(100, (bufferedEnd / effectiveDuration) * 100));
     }
   };
 
   // Handle loaded metadata
   const handleLoadedMetadata = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    setDuration(video.duration);
+    syncDuration();
     maxWatchedTimeRef.current = 0;
     lastSafeTimeRef.current = 0;
   };
@@ -132,8 +146,10 @@ export default function VideoPlayer({
   // Handle video end
   const handleEnded = () => {
     const video = videoRef.current;
+    const mediaDuration = video ? syncDuration() : 0;
+    const finalTime = video?.currentTime || 0;
     setIsPlaying(false);
-    onEnded?.(video?.currentTime || 0, video?.duration || 0);
+    onEnded?.(finalTime, Math.max(mediaDuration, duration, finalTime));
   };
 
   const seekTo = (targetTime: number) => {
@@ -174,7 +190,7 @@ export default function VideoPlayer({
     const rect = progressBar.getBoundingClientRect();
     const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     setHoverPosition(pos * 100);
-    setHoverTime(pos * duration);
+    setHoverTime(pos * displayDuration);
 
     if (isDraggingProgress) {
       const video = videoRef.current;
@@ -373,7 +389,26 @@ export default function VideoPlayer({
   const handleWaiting = () => setIsBuffering(true);
   const handleCanPlay = () => setIsBuffering(false);
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  useEffect(() => {
+    const video = videoRef.current;
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setBuffered(0);
+    setHoverTime(null);
+    setIsDraggingProgress(false);
+    maxWatchedTimeRef.current = 0;
+    lastSafeTimeRef.current = 0;
+    if (video) {
+      video.currentTime = 0;
+      video.load();
+    }
+  }, [src]);
+
+  const displayDuration = Math.max(duration, currentTime);
+  const progressPercent = displayDuration > 0
+    ? Math.min(100, (currentTime / displayDuration) * 100)
+    : 0;
 
   return (
     <div
@@ -397,6 +432,7 @@ export default function VideoPlayer({
         onPause={handlePause}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
+        onDurationChange={syncDuration}
         onEnded={handleEnded}
         onWaiting={handleWaiting}
         onCanPlay={handleCanPlay}
@@ -558,7 +594,7 @@ export default function VideoPlayer({
 
             {/* Time Display */}
             <span className="text-white text-xs sm:text-sm font-medium ml-1 sm:ml-2 tabular-nums whitespace-nowrap">
-              {formatTime(currentTime)} / {formatTime(duration)}
+              {formatTime(currentTime)} / {formatTime(displayDuration)}
             </span>
           </div>
 

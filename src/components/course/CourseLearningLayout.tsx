@@ -744,6 +744,7 @@ export default function CourseLearningLayout({
                       id="video-player-area"
                     >
                       <VideoPlayer
+                        key={currentLesson?.id || currentLessonVideoUrl}
                         src={currentLessonVideoUrl}
                         title={currentLesson?.title}
                         subtitle={courseSummary?.instructorName}
