@@ -5,9 +5,12 @@ import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { CvCertification } from "@/types/instructor";
+import { tFallback } from "@/lib/i18n-fallback";
 
 export function CertificateCard({ cert }: { cert: CvCertification }) {
   const t = useTranslations("instructor");
+  const tr = (key: string, fallback: string, values?: Record<string, string | number | Date>) =>
+    tFallback(t, "instructor", key, fallback, values);
   if (!cert?.name) return null;
 
   return (
@@ -35,10 +38,10 @@ export function CertificateCard({ cert }: { cert: CvCertification }) {
             href={cert.credentialUrl}
             target="_blank"
             rel="noreferrer noopener"
-            aria-label={t("cert.verifyAria", { name: cert.name })}
+            aria-label={tr("cert.verifyAria", `Xác minh chứng chỉ ${cert.name}`, { name: cert.name })}
           >
             <ShieldCheck className="size-4" />
-            {t("cert.verify")}
+            {tr("cert.verify", "Xác minh")}
           </a>
         </Button>
       )}

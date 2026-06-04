@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toStringArray, type InstructorProfile } from "@/types/instructor";
+import { tFallback } from "@/lib/i18n-fallback";
 
 /**
  * "Giới thiệu" + skills + languages. Renders nothing if all three are empty
@@ -12,6 +13,7 @@ import { toStringArray, type InstructorProfile } from "@/types/instructor";
  */
 export function AboutSection({ profile }: { profile: InstructorProfile }) {
   const t = useTranslations("instructor");
+  const tr = (key: string, fallback: string) => tFallback(t, "instructor", key, fallback);
   const skills = toStringArray(profile.skills);
   const languages = toStringArray(profile.languages);
   const hasSummary = Boolean(profile.cvSummary);
@@ -24,7 +26,7 @@ export function AboutSection({ profile }: { profile: InstructorProfile }) {
         <div>
           {hasSummary && (
             <>
-              <h2 className="mb-3.5 font-display text-[1.4rem] font-bold text-foreground">{t("about.title")}</h2>
+              <h2 className="mb-3.5 font-display text-[1.4rem] font-bold text-foreground">{tr("about.title", "Giới thiệu")}</h2>
               <p className="max-w-[64ch] text-[1.05rem] leading-[1.72] text-foreground/85 [text-wrap:pretty]">
                 {profile.cvSummary}
               </p>
@@ -37,7 +39,7 @@ export function AboutSection({ profile }: { profile: InstructorProfile }) {
             <div>
               <h3 className="mb-3 flex items-center gap-1.5 whitespace-nowrap text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
                 <Sparkles className="size-[15px] text-primary" />
-                {t("skills")}
+                {tr("skills", "Kỹ năng")}
               </h3>
               <div className="flex flex-wrap gap-2">
                 {skills.map((s) => (
@@ -57,7 +59,7 @@ export function AboutSection({ profile }: { profile: InstructorProfile }) {
             <div>
               <h3 className="mb-3 flex items-center gap-1.5 whitespace-nowrap text-[13px] font-bold uppercase tracking-wide text-muted-foreground">
                 <Languages className="size-[15px] text-primary" />
-                {t("languages")}
+                {tr("languages", "Ngôn ngữ")}
               </h3>
               <div className="flex flex-wrap gap-2">
                 {languages.map((l) => (

@@ -1,4 +1,46 @@
 {
+  "instructor": {
+    "eyebrow": "講師",
+    "avatarAlt": "{name}のプロフィール写真",
+    "yearsExperience": "{years}+ 年の経験",
+    "statsAria": "講師の統計",
+    "stats": {
+      "courses": "コース",
+      "students": "受講生",
+      "rating": "平均評価",
+      "years": "経験年数"
+    },
+    "about": {
+      "title": "紹介"
+    },
+    "skills": "スキル",
+    "languages": "言語",
+    "tabs": {
+      "courses": "コース",
+      "experience": "経験",
+      "education": "学歴",
+      "projects": "プロジェクト",
+      "certifications": "認定資格"
+    },
+    "empty": {
+      "courses": {
+        "title": "公開済みコースはまだありません",
+        "body": "この講師はまだコースを公開していません。しばらくしてからもう一度ご確認ください。"
+      }
+    },
+    "project": {
+      "openAria": "{name}プロジェクトを開く"
+    },
+    "cert": {
+      "verify": "確認",
+      "verifyAria": "{name}の認定資格を確認"
+    },
+    "course": {
+      "lessons": "{count} レッスン",
+      "hours": "{count} 時間",
+      "students": "{count} 受講生"
+    }
+  },
   "common": {
     "loading": "読み込み中...",
     "save": "保存",

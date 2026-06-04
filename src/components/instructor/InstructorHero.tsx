@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { InstructorAccount, InstructorProfile } from "@/types/instructor";
+import { tFallback } from "@/lib/i18n-fallback";
 
 export interface HeroStat {
   icon: ComponentType<{ className?: string }>;
@@ -41,6 +42,8 @@ export function InstructorHero({
   coverImageUrl?: string;
 }) {
   const t = useTranslations("instructor");
+  const tr = (key: string, fallback: string, values?: Record<string, string | number | Date>) =>
+    tFallback(t, "instructor", key, fallback, values);
   const name = profile.fullName || account.username;
   const socials = SOCIALS.map((s) => ({ ...s, url: profile[s.key] })).filter((s) => Boolean(s.url));
 
@@ -58,7 +61,7 @@ export function InstructorHero({
       <div className="mx-auto flex max-w-[var(--content-max,1180px)] flex-wrap items-start justify-between gap-10 px-6 pt-[22px]">
         <div className="flex flex-col items-start gap-3.5 sm:flex-row sm:items-start sm:gap-6">
           <Avatar className="-mt-[104px] size-[140px] flex-none text-4xl font-extrabold ring-[5px] ring-background shadow-lg max-sm:-mt-16">
-            <AvatarImage src={account.avatarUrl} alt={t("avatarAlt", { name })} />
+            <AvatarImage src={account.avatarUrl} alt={tr("avatarAlt", `Ảnh đại diện của ${name}`, { name })} />
             <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 font-display text-white">
               {initials(name)}
             </AvatarFallback>
@@ -67,7 +70,7 @@ export function InstructorHero({
           <div>
             <span className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.09em] text-primary">
               <Sparkles className="size-3.5" />
-              {t("eyebrow")}
+              {tr("eyebrow", "Giảng viên")}
             </span>
             <h1 id="instructor-name" className="font-display text-[clamp(1.875rem,4vw,2.875rem)] font-extrabold leading-[1.05] text-foreground">
               {name}
@@ -83,7 +86,7 @@ export function InstructorHero({
               {profile.yearsOfExperience != null && (
                 <span className="inline-flex items-center gap-1.5">
                   <Briefcase className="size-4 text-primary/85" />
-                  {t("yearsExperience", { years: profile.yearsOfExperience })}
+                  {tr("yearsExperience", `${profile.yearsOfExperience}+ năm kinh nghiệm`, { years: profile.yearsOfExperience })}
                 </span>
               )}
               {account.username && (
@@ -115,7 +118,7 @@ export function InstructorHero({
         </div>
 
         {stats.length > 0 && (
-          <div className="flex flex-wrap gap-3 pt-1.5" role="group" aria-label={t("statsAria")}>
+          <div className="flex flex-wrap gap-3 pt-1.5" role="group" aria-label={tr("statsAria", "Thống kê giảng viên")}>
             {stats.map((s, i) => {
               const Icon = s.icon;
               return (

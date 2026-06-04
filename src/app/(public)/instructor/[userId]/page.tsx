@@ -6,6 +6,7 @@ import instructorProfileApi from "@/apiRequests/instructor-profile";
 import { useGetAccount } from "@/queries/useAccount";
 import { useGetCourses } from "@/queries/useCourse";
 import { normalizePersistedMediaUrl } from "@/lib/file-media";
+import { transformApiCourse } from "@/types/course";
 import type { InstructorAccount, InstructorProfile } from "@/types/instructor";
 import { PublicInstructorProfile } from "@/components/instructor/PublicInstructorProfile";
 
@@ -53,8 +54,12 @@ export default function PublicInstructorProfilePage() {
     status: "PUBLISHED",
     size: 100,
   });
-  const courses = (coursesResponse?.transformedData || []).filter(
-    (course) => course.instructorId === userId,
+  const courses = useMemo(
+    () =>
+      (coursesResponse?.data || [])
+        .filter((course) => course.instructorId === userId)
+        .map(transformApiCourse),
+    [coursesResponse?.data, userId],
   );
 
   // CV profile (extracted from the uploaded CV via n8n scan).
