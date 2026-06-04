@@ -3,6 +3,9 @@ import { ArrowRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
+
+const DEFAULT_AVATAR = "/avatars/default-avatar.svg";
 
 interface Instructor {
   id: string;
@@ -84,8 +87,8 @@ export function HeroSection({
                     <>
                       {instructors.slice(0, 4).map((instructor, index) => (
                         <Avatar key={instructor.id} className="w-10 h-10 border-2 border-background">
-                          <AvatarImage 
-                            src={instructor.avatar || "/instructors/Square.png"} 
+                          <AvatarImage
+                            src={normalizePersistedMediaUrl(instructor.avatar) || DEFAULT_AVATAR}
                             alt={instructor.username}
                             className="object-cover"
                           />

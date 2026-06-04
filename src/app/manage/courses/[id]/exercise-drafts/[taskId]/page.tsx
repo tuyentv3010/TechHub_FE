@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Accordion,
   AccordionContent,
@@ -19,7 +21,7 @@ import {
   useRejectDraftMutation,
 } from "@/queries/useAi";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import TableSkeleton from "@/components/Skeleton";
 import courseApiRequest from "@/apiRequests/course";
 
@@ -74,17 +76,17 @@ const MCQOption = memo(function MCQOption({
 });
 
 const MCQOptionsList = memo(function MCQOptionsList({
-  exerciseIdx,
+  exerciseId,
   options,
   selectedOptions,
   onToggle,
   selectLabel,
   selectedLabel,
 }: {
-  exerciseIdx: number;
+  exerciseId: string;
   options: string[];
   selectedOptions: number[];
-  onToggle: (exerciseIdx: number, optionIdx: number) => void;
+  onToggle: (exerciseId: string, optionIdx: number) => void;
   selectLabel: string;
   selectedLabel: string;
 }) {
@@ -106,7 +108,7 @@ const MCQOptionsList = memo(function MCQOptionsList({
             option={option}
             optIdx={optIdx}
             isSelected={selectedOptions.includes(optIdx)}
-            onToggle={() => onToggle(exerciseIdx, optIdx)}
+            onToggle={() => onToggle(exerciseId, optIdx)}
           />
         ))}
       </div>
@@ -236,61 +238,145 @@ export default function ExerciseDraftDetailPage() {
   const rejectDraftMutation = useRejectDraftMutation();
 
   const draft = draftData?.payload?.data;
-  const exercises = useMemo(() => normalizeExercises(draft?.resultPayload), [draft?.resultPayload]);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number[]>>({});
-  const [includedExercises, setIncludedExercises] = useState<Record<number, boolean>>({});
+  const generatedExercises = useMemo(
+    () => normalizeExercises(draft?.resultPayload),
+    [draft?.resultPayload]
+  );
+
+  // Editable working copy of the generated exercises so the instructor can
+  // tweak/remove AI content before approving.
+  const [exercises, setExercises] = useState<DraftExercise[]>([]);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number[]>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
-    const nextSelectedAnswers: Record<number, number[]> = {};
-    const nextIncludedExercises: Record<number, boolean> = {};
-    exercises.forEach((exercise, index) => {
-      nextIncludedExercises[index] = true;
+    const nextSelectedAnswers: Record<string, number[]> = {};
+    generatedExercises.forEach((exercise) => {
       if (exercise.type === "MCQ" && exercise.suggestedCorrectIndices?.length) {
-        nextSelectedAnswers[index] = exercise.suggestedCorrectIndices;
+        nextSelectedAnswers[exercise.id] = exercise.suggestedCorrectIndices;
       }
     });
+    setExercises(generatedExercises.map((exercise) => ({ ...exercise })));
     setSelectedAnswers(nextSelectedAnswers);
-    setIncludedExercises(nextIncludedExercises);
-  }, [exercises]);
+    setEditingId(null);
+  }, [generatedExercises]);
 
-  const toggleAnswer = useCallback((exerciseIdx: number, optionIdx: number) => {
+  const toggleAnswer = useCallback((exerciseId: string, optionIdx: number) => {
     setSelectedAnswers((prev) => {
-      const current = prev[exerciseIdx] || [];
+      const current = prev[exerciseId] || [];
       return current.includes(optionIdx)
-        ? { ...prev, [exerciseIdx]: current.filter((idx) => idx !== optionIdx) }
-        : { ...prev, [exerciseIdx]: [...current, optionIdx] };
+        ? { ...prev, [exerciseId]: current.filter((idx) => idx !== optionIdx) }
+        : { ...prev, [exerciseId]: [...current, optionIdx] };
     });
   }, []);
 
-  const toggleExerciseInclusion = useCallback((exerciseIdx: number) => {
-    setIncludedExercises((prev) => ({ ...prev, [exerciseIdx]: !(prev[exerciseIdx] ?? true) }));
+  const updateExercise = useCallback(
+    (exerciseId: string, patch: Partial<DraftExercise>) => {
+      setExercises((prev) =>
+        prev.map((exercise) => (exercise.id === exerciseId ? { ...exercise, ...patch } : exercise))
+      );
+    },
+    []
+  );
+
+  const updateOption = useCallback((exerciseId: string, optionIdx: number, value: string) => {
+    setExercises((prev) =>
+      prev.map((exercise) => {
+        if (exercise.id !== exerciseId || !exercise.options) {
+          return exercise;
+        }
+        const options = exercise.options.map((option, idx) => (idx === optionIdx ? value : option));
+        return { ...exercise, options };
+      })
+    );
+  }, []);
+
+  const addOption = useCallback((exerciseId: string) => {
+    setExercises((prev) =>
+      prev.map((exercise) =>
+        exercise.id === exerciseId
+          ? { ...exercise, options: [...(exercise.options || []), ""] }
+          : exercise
+      )
+    );
+  }, []);
+
+  const removeOption = useCallback((exerciseId: string, optionIdx: number) => {
+    setExercises((prev) =>
+      prev.map((exercise) => {
+        if (exercise.id !== exerciseId || !exercise.options) {
+          return exercise;
+        }
+        return {
+          ...exercise,
+          options: exercise.options.filter((_, idx) => idx !== optionIdx),
+        };
+      })
+    );
+    // Keep correct-answer selection in sync after an option is removed.
+    setSelectedAnswers((prev) => {
+      const current = prev[exerciseId];
+      if (!current) {
+        return prev;
+      }
+      const next = current
+        .filter((idx) => idx !== optionIdx)
+        .map((idx) => (idx > optionIdx ? idx - 1 : idx));
+      return { ...prev, [exerciseId]: next };
+    });
+  }, []);
+
+  const deleteExercise = useCallback((exerciseId: string) => {
+    setExercises((prev) => prev.filter((exercise) => exercise.id !== exerciseId));
+    setSelectedAnswers((prev) => {
+      const next = { ...prev };
+      delete next[exerciseId];
+      return next;
+    });
+    setEditingId((current) => (current === exerciseId ? null : current));
   }, []);
 
   const handleApprove = async () => {
     try {
-      const selectedExercises = exercises.filter((_, index) => includedExercises[index] !== false);
-
-      if (selectedExercises.length === 0) {
+      if (exercises.length === 0) {
         toast({
           title: tCommon("error"),
-          description: t("noExercises") || "Vui lòng chọn ít nhất một bài tập để duyệt.",
+          description: t("noExercises") || "Vui lòng giữ lại ít nhất một bài tập để duyệt.",
           variant: "destructive",
         });
         return;
       }
 
       for (const [index, exercise] of exercises.entries()) {
-        if (includedExercises[index] === false) {
-          continue;
-        }
-        if (exercise.type === "MCQ" && (selectedAnswers[index] || []).length === 0) {
+        if (!exercise.question.trim()) {
           toast({
             title: tCommon("error"),
             description:
-              `${t("pleaseSelectCorrectAnswer") || "Vui lòng chọn đáp án đúng cho"} ${t("mcq")} ${index + 1}`,
+              `${t("pleaseEnterQuestion") || "Vui lòng nhập nội dung câu hỏi cho"} ${t(exercise.type.toLowerCase())} ${index + 1}`,
             variant: "destructive",
           });
           return;
+        }
+        if (exercise.type === "MCQ") {
+          const validOptions = (exercise.options || []).filter((option) => option.trim());
+          if (validOptions.length < 2) {
+            toast({
+              title: tCommon("error"),
+              description:
+                `${t("pleaseAddOptions") || "Vui lòng nhập ít nhất 2 đáp án cho"} ${t("mcq")} ${index + 1}`,
+              variant: "destructive",
+            });
+            return;
+          }
+          if ((selectedAnswers[exercise.id] || []).length === 0) {
+            toast({
+              title: tCommon("error"),
+              description:
+                `${t("pleaseSelectCorrectAnswer") || "Vui lòng chọn đáp án đúng cho"} ${t("mcq")} ${index + 1}`,
+              variant: "destructive",
+            });
+            return;
+          }
         }
       }
 
@@ -300,8 +386,7 @@ export default function ExerciseDraftDetailPage() {
         throw new Error("Lesson ID not found in draft");
       }
 
-      const exercisesData = selectedExercises.map((exercise) => {
-        const exerciseIndex = exercises.findIndex((item) => item.id === exercise.id);
+      const exercisesData = exercises.map((exercise) => {
         if (exercise.type === "MCQ") {
           return {
             type: "MULTIPLE_CHOICE",
@@ -311,7 +396,7 @@ export default function ExerciseDraftDetailPage() {
                 exercise.options?.map((option, optionIndex) => ({
                   id: String.fromCharCode(97 + optionIndex),
                   text: option,
-                  isCorrect: (selectedAnswers[exerciseIndex] || []).includes(optionIndex),
+                  isCorrect: (selectedAnswers[exercise.id] || []).includes(optionIndex),
                 })) || [],
             },
           };
@@ -391,7 +476,7 @@ export default function ExerciseDraftDetailPage() {
     );
   }
 
-  if (!exercises.length) {
+  if (!generatedExercises.length) {
     return (
       <div className="manage-page">
         <div className="text-center space-y-4">
@@ -407,8 +492,6 @@ export default function ExerciseDraftDetailPage() {
       </div>
     );
   }
-
-  const selectedCount = exercises.filter((_, index) => includedExercises[index] !== false).length;
 
   return (
     <div className="container mx-auto py-8 space-y-6">
@@ -443,83 +526,208 @@ export default function ExerciseDraftDetailPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{t("generatedExercises")}</h2>
           <Badge variant="secondary" className="text-xs">
-            {selectedCount}/{exercises.length} {t("exercises") || "bài tập"}
+            {exercises.length} {t("exercises") || "bài tập"}
           </Badge>
         </div>
 
-        <Accordion type="single" collapsible className="w-full">
-          {exercises.map((exercise, idx) => (
-            <AccordionItem key={exercise.id} value={exercise.id}>
-              <AccordionTrigger>
-                <div className="flex items-center gap-3 w-full">
-                  <Checkbox
-                    checked={includedExercises[idx] !== false}
-                    onClick={(event) => event.stopPropagation()}
-                    onCheckedChange={() => toggleExerciseInclusion(idx)}
-                  />
-                  <Badge variant="outline">{exercise.type}</Badge>
-                  <span className="text-sm font-medium">
-                    {t(exercise.type.toLowerCase())} {idx + 1}
-                  </span>
-                  {exercise.difficulty && <Badge variant="secondary">{exercise.difficulty}</Badge>}
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <Card>
-                  <CardContent className="space-y-4 pt-4">
-                    <p className="font-medium">{exercise.question}</p>
-
-                    {exercise.type === "MCQ" && exercise.options && (
-                      <MCQOptionsList
-                        exerciseIdx={idx}
-                        options={exercise.options}
-                        selectedOptions={selectedAnswers[idx] || []}
-                        onToggle={toggleAnswer}
-                        selectLabel={t("selectCorrectAnswers") || "Chọn đáp án đúng"}
-                        selectedLabel={t("selected") || "đã chọn"}
-                      />
-                    )}
-
-                    {exercise.type === "CODING" && exercise.testCases && exercise.testCases.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">{t("testCases")}:</p>
-                        {exercise.testCases.map((testCase, tcIdx) => (
-                          <div key={tcIdx} className="p-3 bg-muted rounded text-sm space-y-1">
-                            <div>
-                              <strong className="text-foreground">Input:</strong>{" "}
-                              <code className="bg-background px-1 py-0.5 rounded">{testCase.input}</code>
-                            </div>
-                            <div>
-                              <strong className="text-foreground">Expected:</strong>{" "}
-                              <code className="bg-background px-1 py-0.5 rounded">{testCase.expectedOutput}</code>
-                            </div>
+        {exercises.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              {t("allExercisesRemoved") ||
+                "Bạn đã xóa hết bài tập. Hãy từ chối draft hoặc tạo lại."}
+            </CardContent>
+          </Card>
+        ) : (
+          <Accordion type="single" collapsible className="w-full">
+            {exercises.map((exercise, idx) => {
+              const isEditing = editingId === exercise.id;
+              return (
+                <AccordionItem key={exercise.id} value={exercise.id}>
+                  <AccordionTrigger>
+                    <div className="flex items-center gap-3 w-full">
+                      <Badge variant="outline">{exercise.type}</Badge>
+                      <span className="text-sm font-medium">
+                        {t(exercise.type.toLowerCase())} {idx + 1}
+                      </span>
+                      {exercise.difficulty && <Badge variant="secondary">{exercise.difficulty}</Badge>}
+                      <div className="ml-auto flex items-center gap-1 pr-2">
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label={isEditing ? tCommon("done") || "Xong" : tCommon("edit") || "Sửa"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setEditingId(isEditing ? null : exercise.id);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setEditingId(isEditing ? null : exercise.id);
+                            }
+                          }}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                        >
+                          {isEditing ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+                        </span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label={tCommon("delete") || "Xóa"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            deleteExercise(exercise.id);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              deleteExercise(exercise.id);
+                            }
+                          }}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </span>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <Card>
+                      <CardContent className="space-y-4 pt-4">
+                        {isEditing ? (
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">{t("question") || "Câu hỏi"}</p>
+                            <Textarea
+                              value={exercise.question}
+                              onChange={(event) =>
+                                updateExercise(exercise.id, { question: event.target.value })
+                              }
+                              placeholder={t("question") || "Câu hỏi"}
+                            />
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        ) : (
+                          <p className="font-medium">{exercise.question}</p>
+                        )}
 
-                    {exercise.type === "ESSAY" && exercise.rubric && exercise.rubric.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Rubric:</p>
-                        <ul className="list-disc pl-5 text-sm text-muted-foreground">
-                          {exercise.rubric.map((entry, rubricIdx) => (
-                            <li key={`${exercise.id}-rubric-${rubricIdx}`}>{entry}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                        {exercise.type === "MCQ" && exercise.options && (
+                          isEditing ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium">
+                                  {t("selectCorrectAnswers") || "Chọn đáp án đúng"}:
+                                </p>
+                              </div>
+                              {exercise.options.map((option, optIdx) => {
+                                const isSelected = (selectedAnswers[exercise.id] || []).includes(optIdx);
+                                return (
+                                  <div key={optIdx} className="flex items-center gap-2">
+                                    <Checkbox
+                                      checked={isSelected}
+                                      onCheckedChange={() => toggleAnswer(exercise.id, optIdx)}
+                                      aria-label={t("markCorrect") || "Đánh dấu đáp án đúng"}
+                                    />
+                                    <span className="font-semibold text-primary min-w-[24px]">
+                                      {String.fromCharCode(65 + optIdx)}.
+                                    </span>
+                                    <Input
+                                      value={option}
+                                      onChange={(event) =>
+                                        updateOption(exercise.id, optIdx, event.target.value)
+                                      }
+                                      placeholder={`${t("option") || "Đáp án"} ${String.fromCharCode(65 + optIdx)}`}
+                                      className="flex-1"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="text-destructive"
+                                      onClick={() => removeOption(exercise.id, optIdx)}
+                                      aria-label={tCommon("delete") || "Xóa"}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addOption(exercise.id)}
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                {t("addOption") || "Thêm đáp án"}
+                              </Button>
+                            </div>
+                          ) : (
+                            <MCQOptionsList
+                              exerciseId={exercise.id}
+                              options={exercise.options}
+                              selectedOptions={selectedAnswers[exercise.id] || []}
+                              onToggle={toggleAnswer}
+                              selectLabel={t("selectCorrectAnswers") || "Chọn đáp án đúng"}
+                              selectedLabel={t("selected") || "đã chọn"}
+                            />
+                          )
+                        )}
 
-                    {exercise.explanation && (
-                      <div className="p-3 bg-muted rounded">
-                        <p className="text-sm">{exercise.explanation}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+                        {exercise.type === "CODING" && exercise.testCases && exercise.testCases.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">{t("testCases")}:</p>
+                            {exercise.testCases.map((testCase, tcIdx) => (
+                              <div key={tcIdx} className="p-3 bg-muted rounded text-sm space-y-1">
+                                <div>
+                                  <strong className="text-foreground">Input:</strong>{" "}
+                                  <code className="bg-background px-1 py-0.5 rounded">{testCase.input}</code>
+                                </div>
+                                <div>
+                                  <strong className="text-foreground">Expected:</strong>{" "}
+                                  <code className="bg-background px-1 py-0.5 rounded">{testCase.expectedOutput}</code>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {exercise.type === "ESSAY" && exercise.rubric && exercise.rubric.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">Rubric:</p>
+                            <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                              {exercise.rubric.map((entry, rubricIdx) => (
+                                <li key={`${exercise.id}-rubric-${rubricIdx}`}>{entry}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {isEditing ? (
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">{t("explanation") || "Giải thích"}</p>
+                            <Textarea
+                              value={exercise.explanation || ""}
+                              onChange={(event) =>
+                                updateExercise(exercise.id, { explanation: event.target.value })
+                              }
+                              placeholder={t("explanation") || "Giải thích"}
+                            />
+                          </div>
+                        ) : (
+                          exercise.explanation && (
+                            <div className="p-3 bg-muted rounded">
+                              <p className="text-sm">{exercise.explanation}</p>
+                            </div>
+                          )
+                        )}
+                      </CardContent>
+                    </Card>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
+        )}
       </div>
     </div>
   );

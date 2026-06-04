@@ -1,6 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 
 import { AppSurface, PageHeader } from "@/components/common";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
+
+const DEFAULT_AVATAR = "/avatars/default-avatar.svg";
 
 interface Instructor {
   id: string;
@@ -13,6 +19,21 @@ interface InstructorsSectionProps {
   title: string;
   subtitle: string;
   instructors: Instructor[];
+}
+
+function InstructorAvatar({ instructor }: { instructor: Instructor }) {
+  const initialSrc = normalizePersistedMediaUrl(instructor.avatar) || DEFAULT_AVATAR;
+  const [src, setSrc] = useState(initialSrc);
+
+  return (
+    <Image
+      src={src}
+      alt={instructor.username}
+      fill
+      className="th-hover-zoom object-cover"
+      onError={() => setSrc(DEFAULT_AVATAR)}
+    />
+  );
 }
 
 export function InstructorsSection({ title, subtitle, instructors }: InstructorsSectionProps) {
@@ -39,12 +60,7 @@ export function InstructorsSection({ title, subtitle, instructors }: Instructors
               className="group overflow-hidden"
             >
               <div className="relative h-72 overflow-hidden bg-muted">
-                <Image
-                  src={instructor.avatar || "/instructors/Square.png"}
-                  alt={instructor.username}
-                  fill
-                  className="th-hover-zoom object-cover"
-                />
+                <InstructorAvatar instructor={instructor} />
               </div>
               <div className="p-5">
                 <h3 className="th-hover-title line-clamp-1 text-base font-semibold text-foreground">

@@ -47,7 +47,7 @@ export default function GenerateAiLearningPath({
   const tCommon = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<string>("");
-  const { setGeneratedPath } = useAiLearningPath();
+  const { setGeneratedPath, clearGeneratedPath } = useAiLearningPath();
   const { data: accountData } = useAccountProfile();
 
   // Form state
@@ -102,6 +102,7 @@ export default function GenerateAiLearningPath({
     }
 
     try {
+      clearGeneratedPath();
       const response = await generateMutation.mutateAsync({
         goal,
         timeframe,
@@ -150,9 +151,10 @@ export default function GenerateAiLearningPath({
         }
       }
     } catch (error: any) {
+      clearGeneratedPath();
       toast({
         title: tCommon("error"),
-        description: error?.message || t("error"),
+        description: error?.payload?.message || error?.message || t("error"),
         variant: "destructive",
       });
     }

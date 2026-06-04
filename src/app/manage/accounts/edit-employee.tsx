@@ -27,7 +27,7 @@ import { useGetAccount, useUpdateAccountMutation, useAccountProfile } from "@/qu
 import { useGetRoles } from "@/queries/useRole";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import fileApiRequest from "@/apiRequests/file";
-import { normalizePersistedMediaUrl, resolvePersistentFileUrl } from "@/lib/file-media";
+import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
 import PermissionOverrides from "./permission-overrides";
 
 type EditEmployeeProps = {
@@ -194,8 +194,10 @@ export default function EditEmployee({
 
       const response = await fileApiRequest.uploadFile(formData);
       
+      // Use the authenticated proxy URL (/api/proxy/files/{id}/...) instead of a
+      // raw MinIO/presigned URL, which would 403 when rendered in the table.
       const avatarUrl = response.payload?.data
-        ? resolvePersistentFileUrl(response.payload.data, "thumbnail")
+        ? resolveManagedFileUrl(response.payload.data, userId, "content")
         : null;
 
       if (avatarUrl) {
@@ -469,7 +471,7 @@ export default function EditEmployee({
         open={showAvatarLibrary}
         onOpenChange={setShowAvatarLibrary}
         onSelectFile={(file) => {
-          const avatarUrl = resolvePersistentFileUrl(file, "thumbnail");
+          const avatarUrl = resolveManagedFileUrl(file, userId, "content");
           if (avatarUrl) {
             form.setValue('avatar', avatarUrl);
           }

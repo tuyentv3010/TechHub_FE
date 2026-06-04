@@ -80,7 +80,11 @@ export class BadRequestError extends HttpError {
     status: typeof BAD_REQUEST_STATUS;
     payload: BadRequestErrorPayload;
   }) {
-    super({ status, payload, message: payload.error || "Lỗi yêu cầu" });
+    super({
+      status,
+      payload,
+      message: payload.message || payload.error || "Lỗi yêu cầu",
+    });
     this.status = status;
     this.payload = payload;
   }

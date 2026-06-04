@@ -59,6 +59,129 @@ import {
 } from "@/lib/blog";
 import type { Blog, BlogComment, TocItem, BlogAttachment } from "@/types/blog.types";
 
+type BlogCommentSocketEvent = {
+  eventType?: "CREATED" | "REPLIED" | "UPDATED" | "DELETED";
+  payload?: Partial<BlogComment> & {
+    commentId?: string;
+    createdAt?: string;
+  };
+  comment?: BlogComment;
+  id?: string;
+  commentId?: string;
+  content?: string;
+  userId?: string;
+  parentId?: string | null;
+  created?: string;
+  createdAt?: string;
+  replies?: BlogComment[];
+};
+
+const normalizeSocketComment = (event: BlogCommentSocketEvent): BlogComment | null => {
+  const source = event.comment ?? event.payload ?? event;
+  const id = source.id ?? event.commentId;
+  const content = source.content;
+  const userId = source.userId;
+  const created = source.created ?? source.createdAt ?? event.created ?? event.createdAt;
+
+  if (!id || !content || !userId || !created) {
+    return null;
+  }
+
+  return {
+    id: String(id),
+    content,
+    userId,
+    parentId: source.parentId ?? null,
+    created,
+    replies: source.replies ?? [],
+  };
+};
+
+const replaceCommentInTree = (
+  comments: BlogComment[],
+  incoming: BlogComment
+): { comments: BlogComment[]; found: boolean } => {
+  let found = false;
+  const next = comments.map((comment) => {
+    if (comment.id === incoming.id) {
+      found = true;
+      return {
+        ...comment,
+        ...incoming,
+        replies: incoming.replies?.length ? incoming.replies : comment.replies ?? [],
+      };
+    }
+
+    const childResult = replaceCommentInTree(comment.replies ?? [], incoming);
+    if (childResult.found) {
+      found = true;
+      return { ...comment, replies: childResult.comments };
+    }
+
+    return comment;
+  });
+
+  return { comments: next, found };
+};
+
+const addReplyToTree = (
+  comments: BlogComment[],
+  incoming: BlogComment
+): { comments: BlogComment[]; foundParent: boolean } => {
+  let foundParent = false;
+  const next = comments.map((comment) => {
+    if (comment.id === incoming.parentId) {
+      foundParent = true;
+      const replies = comment.replies ?? [];
+      const exists = replies.some((reply: BlogComment) => reply.id === incoming.id);
+      return {
+        ...comment,
+        replies: exists ? replies : [...replies, incoming],
+      };
+    }
+
+    const childResult = addReplyToTree(comment.replies ?? [], incoming);
+    if (childResult.foundParent) {
+      foundParent = true;
+      return { ...comment, replies: childResult.comments };
+    }
+
+    return comment;
+  });
+
+  return { comments: next, foundParent };
+};
+
+const upsertCommentInTree = (
+  comments: BlogComment[],
+  incoming: BlogComment
+): BlogComment[] => {
+  const replaceResult = replaceCommentInTree(comments, incoming);
+  if (replaceResult.found) {
+    return replaceResult.comments;
+  }
+
+  if (incoming.parentId) {
+    const replyResult = addReplyToTree(comments, incoming);
+    if (replyResult.foundParent) {
+      return replyResult.comments;
+    }
+  }
+
+  return [incoming, ...comments];
+};
+
+const removeCommentFromTree = (
+  comments: BlogComment[],
+  commentId: string
+): BlogComment[] =>
+  comments
+    .filter((comment) => comment.id !== commentId)
+    .map((comment) => ({
+      ...comment,
+      replies: removeCommentFromTree(comment.replies ?? [], commentId),
+    }));
+
 const ShareButton = ({
   label,
   icon: Icon,
@@ -414,10 +537,44 @@ export default function BlogDetailPage() {
         client.subscribe(destination, (message) => {
           console.log("[WebSocket] Received message:", message.body);
           try {
-            const newComment = JSON.parse(message.body);
-            console.log("[WebSocket] New comment received:", newComment);
-            
-            // Invalidate comments query to refetch
+            const event = JSON.parse(message.body) as BlogCommentSocketEvent;
+            console.log("[WebSocket] Comment event received:", event);
+
+            const eventType = event.eventType ?? "CREATED";
+            if (eventType === "DELETED") {
+              const deletedCommentId = event.commentId ?? event.id ?? event.payload?.id;
+              if (deletedCommentId) {
+                queryClient.setQueryData(["blog-comments", blogId], (old: any) => {
+                  const currentComments = old?.payload?.data;
+                  if (!Array.isArray(currentComments)) return old;
+
+                  return {
+                    ...old,
+                    payload: {
+                      ...old.payload,
+                      data: removeCommentFromTree(currentComments, String(deletedCommentId)),
+                    },
+                  };
+                });
+              }
+            } else {
+              const incomingComment = normalizeSocketComment(event);
+              if (incomingComment) {
+                queryClient.setQueryData(["blog-comments", blogId], (old: any) => {
+                  const currentComments = old?.payload?.data;
+                  if (!Array.isArray(currentComments)) return old;
+
+                  return {
+                    ...old,
+                    payload: {
+                      ...old.payload,
+                      data: upsertCommentInTree(currentComments, incomingComment),
+                    },
+                  };
+                });
+              }
+            }
+
             queryClient.invalidateQueries({ queryKey: ["blog-comments", blogId] });
             
             toast({
