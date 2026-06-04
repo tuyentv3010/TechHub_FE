@@ -7,9 +7,34 @@ import { useGetAccount } from "@/queries/useAccount";
 import { useGetCourses } from "@/queries/useCourse";
 import { normalizePersistedMediaUrl } from "@/lib/file-media";
 import type { InstructorAccount, InstructorProfile } from "@/types/instructor";
-import { InstructorProfileView } from "@/components/instructor-profile-view";
+import { PublicInstructorProfile } from "@/components/instructor/PublicInstructorProfile";
 
 const DEFAULT_AVATAR = "/avatars/default-avatar.svg";
+type InstructorProfileResponse = {
+  payload?: {
+    data?: InstructorProfile | null;
+  } | InstructorProfile | null;
+};
+
+const COVER_IMAGES = [
+  "/backgroundAvatar/1-14.jpg",
+  "/backgroundAvatar/2-15.jpg",
+  "/backgroundAvatar/3-13.jpg",
+  "/backgroundAvatar/961e70fa08de66a153d72aa05fbd61ad.jpg",
+  "/backgroundAvatar/anh-bien-12.webp",
+  "/backgroundAvatar/hinh-nen-bien-2.png",
+  "/backgroundAvatar/images.jpg",
+];
+
+function pickCoverImage(seed?: string) {
+  if (!seed) return COVER_IMAGES[0];
+
+  const hash = Array.from(seed).reduce(
+    (value, char) => (value * 31 + char.charCodeAt(0)) >>> 0,
+    0,
+  );
+  return COVER_IMAGES[hash % COVER_IMAGES.length];
+}
 
 export default function PublicInstructorProfilePage() {
   const params = useParams<{ userId: string }>();
@@ -26,9 +51,11 @@ export default function PublicInstructorProfilePage() {
   const { data: coursesResponse, isLoading: coursesLoading } = useGetCourses({
     instructorId: userId,
     status: "PUBLISHED",
-    size: 24,
+    size: 100,
   });
-  const courses = coursesResponse?.transformedData || [];
+  const courses = (coursesResponse?.transformedData || []).filter(
+    (course) => course.instructorId === userId,
+  );
 
   // CV profile (extracted from the uploaded CV via n8n scan).
   const [profile, setProfile] = useState<InstructorProfile | null>(null);
@@ -40,8 +67,12 @@ export default function PublicInstructorProfilePage() {
     setProfileLoading(true);
     (async () => {
       try {
-        const res: any = await instructorProfileApi.getByUserId(userId);
-        const data = res?.payload?.data || res?.payload || null;
+        const res = await instructorProfileApi.getByUserId(userId) as InstructorProfileResponse;
+        const payload = res?.payload;
+        const data: InstructorProfile | null =
+          payload && typeof payload === "object" && "data" in payload
+            ? payload.data ?? null
+            : (payload as InstructorProfile | null) ?? null;
         if (active) setProfile(data);
       } catch {
         if (active) setProfile(null);
@@ -64,14 +95,16 @@ export default function PublicInstructorProfilePage() {
   );
 
   const isLoading = accountLoading || profileLoading || coursesLoading;
+  const coverImageUrl = useMemo(() => pickCoverImage(userId), [userId]);
 
   return (
     <main className="min-h-screen bg-background">
-      <InstructorProfileView
+      <PublicInstructorProfile
         account={normalizedAccount}
         profile={(profile ?? {}) as InstructorProfile}
         courses={courses}
         isLoading={isLoading}
+        coverImageUrl={coverImageUrl}
       />
     </main>
   );

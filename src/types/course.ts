@@ -63,8 +63,8 @@ export interface ApiCourse {
   objectives: string[];
   requirements: string[];
   instructorId: string;
-  thumbnail: FileInfo;
-  introVideo: FileInfo;
+  thumbnail: FileInfo | null;
+  introVideo: FileInfo | null;
   created: string;
   updated: string;
   active: boolean;
@@ -92,6 +92,7 @@ export interface Course {
   lessons?: number;
   students?: number;
   instructorAvatar?: string;
+  instructorId?: string;
   skills?: Skill[];
   promoEndDate?: string | null;
   createdAt?: string;
@@ -126,12 +127,15 @@ export function transformApiCourse(apiCourse: ApiCourse, additionalData?: any): 
     id: apiCourse.id,
     title: apiCourse.title,
     instructor: "Instructor", // Will be fetched separately
-    image: apiCourse.thumbnail.url,
+    image: apiCourse.thumbnail?.secureUrl || apiCourse.thumbnail?.url || null,
     rating: apiCourse.averageRating || 0,
     reviews: apiCourse.ratingCount,
     price: apiCourse.discountPrice || apiCourse.price,
     badge: apiCourse.level,
     students: apiCourse.totalEnrollments,
+    instructorId: apiCourse.instructorId,
     skills: apiCourse.skills,
+    promoEndDate: apiCourse.promoEndDate,
+    createdAt: apiCourse.created,
   };
 }

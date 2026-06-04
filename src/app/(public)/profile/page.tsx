@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/components/ui/use-toast";
@@ -45,6 +46,9 @@ export default function ProfilePage() {
 
   const account = profileData?.payload?.data;
   const userId = account?.id || '';
+  const isInstructor = (account?.roles || []).some(
+    (role: string) => role?.toUpperCase() === "INSTRUCTOR",
+  );
 
   // Profile form
   const profileForm = useForm<UpdateProfileBodyType>({
@@ -176,9 +180,19 @@ export default function ProfilePage() {
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">{t("title")}</h1>
-        <p className="text-muted-foreground">{t("subtitle")}</p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
+        </div>
+        {isInstructor && userId && (
+          <Button asChild variant="outline">
+            <Link href={`/instructor/${userId}`}>
+              <GraduationCap className="mr-2 h-4 w-4" />
+              {t("viewPublicProfile")}
+            </Link>
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="profile" className="w-full">

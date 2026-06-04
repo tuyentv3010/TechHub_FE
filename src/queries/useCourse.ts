@@ -7,6 +7,10 @@ import {
 import { CoursesResponse, transformApiCourse } from "@/types/course";
 import { normalizePublicMediaUrl } from "@/lib/file-media";
 
+type CoursesHttpResponse = {
+  payload?: CoursesResponse;
+} & Partial<CoursesResponse>;
+
 // Get instructor's own courses for Manage page (all statuses including DRAFT)
 export const useGetMyCourses = (params?: {
   page?: number;
@@ -43,11 +47,14 @@ export const useGetCourses = (params?: {
   return useQuery({
     queryKey: ["courses", params],
     queryFn: () => courseApiRequest.getCourses(params),
-    select: (response: CoursesResponse) => ({
-      ...response,
-      // Transform ApiCourse[] to Course[] for backward compatibility
-      transformedData: response.data.map(transformApiCourse),
-    }),
+    select: (response: CoursesHttpResponse) => {
+      const payload = response.payload ?? response;
+      return {
+        ...payload,
+        // Transform ApiCourse[] to Course[] for backward compatibility
+        transformedData: (payload.data || []).map(transformApiCourse),
+      };
+    },
   });
 };
 

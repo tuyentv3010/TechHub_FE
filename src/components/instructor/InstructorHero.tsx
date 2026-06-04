@@ -33,10 +33,12 @@ export function InstructorHero({
   account,
   profile,
   stats,
+  coverImageUrl,
 }: {
   account: InstructorAccount;
   profile: InstructorProfile;
   stats: HeroStat[];
+  coverImageUrl?: string;
 }) {
   const t = useTranslations("instructor");
   const name = profile.fullName || account.username;
@@ -46,10 +48,11 @@ export function InstructorHero({
     <section aria-labelledby="instructor-name">
       {/* Cover band — brand gradient built from the theme primary */}
       <div
-        className="relative h-[184px] overflow-hidden bg-gradient-to-br from-primary to-primary/70"
+        className="relative h-[184px] overflow-hidden bg-gradient-to-br from-primary to-primary/70 bg-cover bg-center"
+        style={coverImageUrl ? { backgroundImage: `url("${coverImageUrl}")` } : undefined}
         aria-hidden="true"
       >
-        <span className="absolute inset-0 bg-[radial-gradient(60%_120%_at_85%_10%,theme(colors.white/0.18),transparent_60%)]" />
+        <span className="absolute inset-0 bg-gradient-to-r from-black/25 via-black/5 to-black/20" />
       </div>
 
       <div className="mx-auto flex max-w-[var(--content-max,1180px)] flex-wrap items-start justify-between gap-10 px-6 pt-[22px]">

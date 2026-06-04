@@ -2878,6 +2878,7 @@
   "ProfilePage": {
     "title": "Profile",
     "subtitle": "Manage your account information and security",
+    "viewPublicProfile": "View public profile",
     "profileTab": "Profile Information",
     "passwordTab": "Change Password",
     "profileInfo": "Profile Information",

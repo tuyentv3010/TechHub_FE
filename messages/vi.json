@@ -2912,6 +2912,7 @@
   "ProfilePage": {
     "title": "Hồ Sơ",
     "subtitle": "Quản lý thông tin tài khoản và bảo mật",
+    "viewPublicProfile": "Xem trang công khai",
     "profileTab": "Thông Tin Hồ Sơ",
     "passwordTab": "Đổi Mật Khẩu",
     "profileInfo": "Thông Tin Hồ Sơ",
