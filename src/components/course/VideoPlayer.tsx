@@ -22,7 +22,7 @@ interface VideoPlayerProps {
   title?: string;
   subtitle?: string;
   onTimeUpdate?: (currentTime: number, duration: number) => void;
-  onEnded?: () => void;
+  onEnded?: (currentTime: number, duration: number) => void;
   preventForwardSeek?: boolean;
   onSeekBlocked?: () => void;
   className?: string;
@@ -131,8 +131,9 @@ export default function VideoPlayer({
 
   // Handle video end
   const handleEnded = () => {
+    const video = videoRef.current;
     setIsPlaying(false);
-    onEnded?.();
+    onEnded?.(video?.currentTime || 0, video?.duration || 0);
   };
 
   const seekTo = (targetTime: number) => {

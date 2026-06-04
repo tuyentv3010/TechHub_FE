@@ -108,7 +108,6 @@ export default function CourseLearningLayout({
   // Cộng dồn thời gian xem THỰC SỰ theo từng bài vào videoProgressByLesson,
   // bỏ qua các bước nhảy (tua) bằng cách chỉ cộng các delta nhỏ của playback.
   const lastVideoTimeRef = useRef(0);
-  const autoCompleteTriggeredRef = useRef<Set<string>>(new Set());
 
   // Reset mốc thời gian khi chuyển bài (bộ đếm theo bài được giữ trong state).
   useEffect(() => {
@@ -118,15 +117,14 @@ export default function CourseLearningLayout({
   const handleVideoTimeUpdate = (currentTime: number, duration: number) => {
     const lessonId = currentLesson?.id;
     if (!lessonId) return;
-    const delta = currentTime - lastVideoTimeRef.current;
+    const watchedTime = currentTime >= lastVideoTimeRef.current ? currentTime : lastVideoTimeRef.current;
     lastVideoTimeRef.current = currentTime;
-    const increment = delta > 0 && delta <= 1.5 ? delta : 0; // bỏ qua tua
     setVideoProgressByLesson((prev) => {
       const prevEntry = prev[lessonId] || { maxWatchedSeconds: 0, duration };
       return {
         ...prev,
         [lessonId]: {
-          maxWatchedSeconds: prevEntry.maxWatchedSeconds + increment,
+          maxWatchedSeconds: Math.max(prevEntry.maxWatchedSeconds, watchedTime),
           duration: duration || prevEntry.duration,
         },
       };
@@ -134,11 +132,16 @@ export default function CourseLearningLayout({
   };
 
   // Đánh dấu đã xem hết khi video kết thúc.
-  const handleVideoEnded = () => {
+  const handleVideoEnded = (currentTime?: number, duration?: number) => {
     const lessonId = currentLesson?.id;
     if (!lessonId) return;
-    const videoDuration = Number.isFinite(currentVideoProgress?.duration)
-      ? currentVideoProgress?.duration || 0
+    const videoDuration = Number.isFinite(duration) && duration && duration > 0
+      ? duration
+      : Number.isFinite(currentVideoProgress?.duration)
+        ? currentVideoProgress?.duration || 0
+        : 0;
+    const watchedUntilEnd = Number.isFinite(currentTime) && currentTime && currentTime > 0
+      ? currentTime
       : 0;
     setVideoProgressByLesson((prev) => {
       const prevEntry = prev[lessonId];
@@ -146,7 +149,7 @@ export default function CourseLearningLayout({
       return {
         ...prev,
         [lessonId]: {
-          maxWatchedSeconds: dur || prevEntry?.maxWatchedSeconds || 0,
+          maxWatchedSeconds: Math.max(prevEntry?.maxWatchedSeconds || 0, watchedUntilEnd, dur || 0),
           duration: dur,
         },
       };
@@ -433,31 +436,6 @@ export default function CourseLearningLayout({
       }
     );
   };
-
-  useEffect(() => {
-    const lessonId = currentLesson?.id;
-    if (
-      !lessonId ||
-      !currentLessonHasVideo ||
-      currentLessonCompleted ||
-      markCompleteMutation.isPending ||
-      currentVideoWatchRatio < VIDEO_AUTO_COMPLETE_RATIO ||
-      autoCompleteTriggeredRef.current.has(lessonId)
-    ) {
-      return;
-    }
-
-    autoCompleteTriggeredRef.current.add(lessonId);
-    handleMarkComplete({
-      onError: () => autoCompleteTriggeredRef.current.delete(lessonId),
-    });
-  }, [
-    currentLesson?.id,
-    currentLessonHasVideo,
-    currentLessonCompleted,
-    currentVideoWatchRatio,
-    markCompleteMutation.isPending,
-  ]);
 
   const handleGoNextLesson = () => {
     if (currentLessonIndex >= allLessons.length - 1) {
@@ -760,16 +738,21 @@ export default function CourseLearningLayout({
               <>
                 {/* VIDEO player only when there is a video URL */}
                 {currentLessonVideoUrl && (
-                  <div className="bg-black w-full" id="video-player-area">
-                    <VideoPlayer
-                      src={currentLessonVideoUrl}
-                      title={currentLesson?.title}
-                      subtitle={courseSummary?.instructorName}
-                      onTimeUpdate={handleVideoTimeUpdate}
-                      onEnded={handleVideoEnded}
-                      preventForwardSeek={!currentLessonCompleted}
-                      onSeekBlocked={showVideoGateToast}
-                    />
+                  <div className="px-6 md:px-10 pt-6 max-w-[900px] mx-auto w-full">
+                    <div
+                      className="overflow-hidden rounded-2xl border border-border bg-black shadow-[0_18px_48px_rgba(76,46,224,0.10),0_4px_14px_rgba(15,16,35,0.05)]"
+                      id="video-player-area"
+                    >
+                      <VideoPlayer
+                        src={currentLessonVideoUrl}
+                        title={currentLesson?.title}
+                        subtitle={courseSummary?.instructorName}
+                        onTimeUpdate={handleVideoTimeUpdate}
+                        onEnded={handleVideoEnded}
+                        preventForwardSeek={!currentLessonCompleted}
+                        onSeekBlocked={showVideoGateToast}
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -801,18 +784,39 @@ export default function CourseLearningLayout({
                     </Button>
                   </div>
 
-                  <p className="text-sm text-muted-foreground mb-6">
+                  {/* Meta row kiểu design: Bài X/Y · Chương · phút đọc · Cập nhật, ngăn bằng chấm */}
+                  <div className="mb-6 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground/80">
+                      Bài {currentLessonIndex + 1} / {allLessons.length}
+                    </span>
                     {currentLesson?.chapterTitle && (
                       <>
+                        <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
                         <span className="font-medium text-foreground/80">{currentLesson.chapterTitle}</span>
-                        <span className="mx-2">·</span>
                       </>
                     )}
-                    Cập nhật{" "}
-                    {currentLesson?.created
-                      ? new Date(currentLesson.created).toLocaleDateString("vi-VN")
-                      : "N/A"}
-                  </p>
+                    {readMinutes && (
+                      <>
+                        <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                        <span>{readMinutes} phút</span>
+                      </>
+                    )}
+                    {currentLessonCompleted && (
+                      <>
+                        <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                        <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Đã hoàn thành
+                        </span>
+                      </>
+                    )}
+                    <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                    <span>
+                      Cập nhật{" "}
+                      {currentLesson?.created
+                        ? new Date(currentLesson.created).toLocaleDateString("vi-VN")
+                        : "N/A"}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Lesson Article Body */}
@@ -1019,70 +1023,71 @@ export default function CourseLearningLayout({
           <div className="h-24"></div>
         </ScrollArea>
 
-        {/* Navigation Buttons - Sticky at bottom */}
-        <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t">
-          <div className="px-6 py-3">
-            <div className="flex items-center justify-between gap-2">
-              {/* Bài trước */}
-              <Button
-                variant="ghost"
+        {/* Navigation Buttons - Sticky at bottom (Lesson Viewer design) */}
+        <div className="sticky bottom-0 left-0 right-0 border-t border-border bg-white/95 backdrop-blur dark:bg-slate-950/95">
+          <div className="px-4 py-3 sm:px-7 sm:py-4">
+            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-4">
+              {/* Bài trước - pill outline */}
+              <button
+                type="button"
                 disabled={currentLessonIndex === 0}
                 onClick={() => onLessonChange(currentLessonIndex - 1)}
-                className="flex-shrink-0 rounded-full font-semibold text-muted-foreground hover:text-foreground disabled:opacity-30"
+                className="justify-self-start inline-flex h-11 items-center gap-2 rounded-full border border-border bg-white px-3 text-sm font-bold tracking-wide text-slate-700 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:px-5 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                BÀI TRƯỚC
-              </Button>
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">BÀI TRƯỚC</span>
+              </button>
 
-              {/* Hoàn thành + actions - Ở giữa */}
-              <div className="flex items-center gap-2">
-                {/* Mark Complete Button */}
+              {/* Hoàn thành + actions - giữa */}
+              <div className="flex min-w-0 items-center justify-center gap-2 sm:gap-2.5">
+                {/* Mark Complete */}
                 {isLessonCompleted(currentLesson?.id) ? (
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-green-500 bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400 shadow-sm">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span className="text-sm font-semibold hidden sm:inline">Đã hoàn thành</span>
+                  <div className="inline-flex h-11 items-center gap-2 rounded-full border border-emerald-300 bg-white px-3 text-sm font-semibold text-emerald-600 sm:px-5 dark:border-emerald-800 dark:bg-slate-900 dark:text-emerald-400">
+                    <CheckCircle2 className="h-[18px] w-[18px]" />
+                    <span className="hidden sm:inline">Đã hoàn thành</span>
                   </div>
                 ) : (
-                  <Button
+                  <button
+                    type="button"
                     onClick={() => handleMarkComplete()}
                     disabled={markCompleteMutation.isPending}
-                    className="rounded-full font-semibold px-5 shadow-lg"
+                    className="inline-flex h-11 items-center gap-2 rounded-full bg-emerald-600 px-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5 hover:bg-emerald-700 disabled:opacity-50 sm:px-5"
                   >
-                    <CheckCircle2 className="h-4 w-4 sm:mr-2" />
+                    <CheckCircle2 className="h-[18px] w-[18px]" />
                     <span className="hidden sm:inline">Hoàn thành</span>
-                  </Button>
+                  </button>
                 )}
 
-                {/* Hỏi đáp */}
-                <Button
+                {/* Hỏi đáp - tròn cam */}
+                <button
+                  type="button"
                   onClick={() => setShowCommentModal(true)}
-                  size="icon"
-                  className="h-10 w-10 rounded-full shadow-md"
                   id="qa-button"
                   title={commentT("openDiscussion")}
+                  className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-100 text-orange-700 transition-all hover:-translate-y-0.5 dark:bg-orange-950/40 dark:text-orange-300"
                 >
-                  <MessageSquare className="h-4 w-4" />
-                </Button>
+                  <MessageSquare className="h-[18px] w-[18px]" />
+                </button>
 
-                {/* Bài tập */}
-                <Button
+                {/* Bài tập - tròn indigo */}
+                <button
+                  type="button"
                   onClick={() => {
                     const exerciseSection = document.getElementById("exercise-section");
                     if (exerciseSection) {
                       exerciseSection.scrollIntoView({ behavior: "smooth", block: "start" });
                     }
                   }}
-                  size="icon"
-                  variant="outline"
-                  className="h-10 w-10 rounded-full border-2"
                   title="Bài tập"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-indigo-100 text-indigo-700 transition-all hover:-translate-y-0.5 dark:bg-indigo-950/40 dark:text-indigo-300"
                 >
-                  <BookOpenCheck className="h-4 w-4" />
-                </Button>
+                  <BookOpenCheck className="h-[18px] w-[18px]" />
+                </button>
               </div>
 
-              {/* Bài tiếp theo - chỉ mở khi đã đủ điều kiện hoàn thành bài hiện tại */}
-              <Button
+              {/* Bài tiếp theo - pill gradient tím, chỉ qua khi đủ điều kiện */}
+              <button
+                type="button"
                 disabled={currentLessonIndex >= allLessons.length - 1}
                 onClick={() => {
                   // Phải hoàn thành (xem đủ 80% video, không tua) bài hiện tại mới qua bài sau.
@@ -1091,17 +1096,16 @@ export default function CourseLearningLayout({
                     return;
                   }
                   if (!currentLessonCompleted) {
-                    // Tự đánh dấu hoàn thành rồi chuyển bài.
                     handleMarkComplete({ onSuccess: () => onLessonChange(currentLessonIndex + 1) });
                     return;
                   }
                   onLessonChange(currentLessonIndex + 1);
                 }}
-                className="flex-shrink-0 rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:opacity-90 font-semibold shadow-md shadow-primary/30 disabled:opacity-30"
+                className="justify-self-end inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-br from-[#7C5CFA] to-[#5B37E6] px-3 text-sm font-bold tracking-wide text-white shadow-[0_8px_22px_rgba(91,55,230,0.32)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(91,55,230,0.4)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 sm:px-6"
               >
-                BÀI TIẾP THEO
-                <ChevronRight className="h-4 w-4 ml-2" />
-              </Button>
+                <span className="hidden sm:inline">BÀI TIẾP THEO</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </div>
@@ -1153,25 +1157,32 @@ export default function CourseLearningLayout({
               )
             )}
 
-            {/* Progress */}
-            <div>
-              <div className="flex items-center justify-between text-xs mb-1.5">
-                <span className="text-muted-foreground font-medium">
-                  {completedLessons}/{allLessons.length} bài học
+            {/* Progress - vòng tròn (ProgressRing) theo design */}
+            <div className="flex items-center gap-4 rounded-xl border border-border bg-[#F6F7FB] px-4 py-3 dark:bg-slate-900/50">
+              <div className="relative h-14 w-14 flex-shrink-0">
+                <svg viewBox="0 0 36 36" className="h-14 w-14 -rotate-90">
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/40" />
+                  <circle
+                    cx="18" cy="18" r="15.5" fill="none"
+                    stroke="#7C5CFA" strokeWidth="3" strokeLinecap="round"
+                    strokeDasharray={`${(progressPercentage / 100) * 97.4} 97.4`}
+                    className="transition-all duration-500"
+                  />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-sm font-extrabold text-[#5B37E6] dark:text-[#9d86ff]">
+                  {progressPercentage}%
                 </span>
-                <span className="font-extrabold text-primary text-sm">{progressPercentage}%</span>
               </div>
-              <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-500"
-                  style={{ width: `${progressPercentage}%` }}
-                />
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-foreground">
+                  {completedLessons}/{allLessons.length} bài học
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {completedLessons === allLessons.length
+                    ? "🎉 Đã hoàn thành khóa học!"
+                    : `Còn ${allLessons.length - completedLessons} bài để hoàn thành`}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground mt-1.5">
-                {completedLessons === allLessons.length
-                  ? "🎉 Đã hoàn thành khóa học!"
-                  : `Còn ${allLessons.length - completedLessons} bài để hoàn thành`}
-              </p>
             </div>
           </div>
 
