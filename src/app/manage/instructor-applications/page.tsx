@@ -318,156 +318,6 @@ export default function ManageInstructorApplicationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, selectedId, hasPendingAiScan]);
 
-  const StatusBadge = ({ value }: { value?: string | null }) => {
-    const normalized = String(value || "").toUpperCase();
-    return (
-      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${STATUS_TONE[normalized] || "border-border bg-muted text-muted-foreground"}`}>
-        {getStatusLabel(value)}
-      </span>
-    );
-  };
-
-  const RescanButton = ({
-    kind,
-    certId,
-    status,
-    updatedAt,
-  }: {
-    kind: "cv" | "cccdFront" | "cccdBack" | "cert";
-    certId?: string;
-    status?: string | null;
-    updatedAt?: string | null;
-  }) => {
-    const key = kind === "cert" ? `cert:${certId}` : kind;
-    const isPending = String(status || "").toUpperCase() === "PENDING";
-    const pendingElapsedMs = updatedAt ? Date.now() - new Date(updatedAt).getTime() : 0;
-    const pendingTimedOut = isPending && pendingElapsedMs > 72_000;
-    const isBusy = rescanning === key || (isPending && !pendingTimedOut);
-
-    return (
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={isBusy}
-        onClick={() => handleRescan(kind, certId)}
-        className="h-8 gap-1.5"
-      >
-        {rescanning === key ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <RefreshCw className="h-3.5 w-3.5" />
-        )}
-        {rescanning === key ? "Đang gửi" : isPending && !pendingTimedOut ? "Đang scan" : "Scan lại"}
-      </Button>
-    );
-  };
-
-  const FilePreview = ({ url, label }: { url?: string | null; label: string }) => {
-    if (!url) {
-      return (
-        <div className="flex h-36 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
-          Chưa có file
-        </div>
-      );
-    }
-
-    return (
-      <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
-        <div className="flex h-[520px] items-center justify-center bg-muted">
-          {isImage(url) ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={url} alt={label} className="h-full w-full object-contain p-2" />
-          ) : (
-            <iframe
-              src={url}
-              title={label}
-              className="h-full w-full bg-white"
-            />
-          )}
-        </div>
-        <div className="flex items-center justify-between gap-2 px-3 py-2">
-          <span className="truncate text-xs font-medium">{label}</span>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setPreview({ url, label })}
-              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              Xem lớn
-            </button>
-            <a
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-medium text-muted-foreground underline underline-offset-2"
-            >
-              Mở tab
-            </a>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const DocumentSection = ({
-    title,
-    icon,
-    status,
-    rescanKind,
-    children,
-    aiData,
-    aiError,
-    certId,
-  }: {
-    title: string;
-    icon: React.ReactNode;
-    status?: string | null;
-    rescanKind?: "cv" | "cccdFront" | "cccdBack" | "cert";
-    children: React.ReactNode;
-    aiData?: unknown;
-    aiError?: string | null;
-    certId?: string;
-  }) => {
-    const needsReview = status && status !== "PROCESSED";
-    return (
-      <section className="rounded-xl border bg-card p-4 shadow-sm">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              {icon}
-            </div>
-            <div>
-              <h3 className="font-semibold">{title}</h3>
-              {needsReview && (
-                <p className="mt-0.5 flex items-center gap-1 text-xs text-amber-600">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  AI chưa hoàn tất hoặc cần kiểm tra thủ công
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <StatusBadge value={status} />
-            {rescanKind && (
-              <RescanButton kind={rescanKind} certId={certId} status={status} updatedAt={detail?.updated} />
-            )}
-          </div>
-        </div>
-
-        {children}
-
-        {aiError && (
-          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
-            Lỗi AI: {aiError}
-          </p>
-        )}
-
-        <AiDataPanel data={aiData} />
-      </section>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-background px-4 py-6 sm:px-6">
       <div className="mx-auto max-w-7xl space-y-5">
@@ -681,8 +531,11 @@ export default function ManageInstructorApplicationsPage() {
                   rescanKind="cv"
                   aiData={aiData}
                   aiError={detail.aiError}
+                  rescanning={rescanning}
+                  onRescan={handleRescan}
+                  updatedAt={detail.updated}
                 >
-                  <FilePreview url={detail.cvFileUrl} label="CV" />
+                  <FilePreview url={detail.cvFileUrl} label="CV" onPreview={setPreview} />
                 </DocumentSection>
 
                 {(detail.cccdFrontFileUrl || detail.cccdBackFileUrl) && (
@@ -691,6 +544,9 @@ export default function ManageInstructorApplicationsPage() {
                     icon={<IdCard className="h-4 w-4" />}
                     status={detail.cccdFrontStatus || detail.cccdBackStatus || undefined}
                     aiData={cccdFrontData || cccdBackData ? { front: cccdFrontData, back: cccdBackData } : null}
+                    rescanning={rescanning}
+                    onRescan={handleRescan}
+                    updatedAt={detail.updated}
                   >
                     <div className="grid gap-4 xl:grid-cols-2">
                       <div className="space-y-2">
@@ -703,11 +559,13 @@ export default function ManageInstructorApplicationsPage() {
                                 kind="cccdFront"
                                 status={detail.cccdFrontStatus}
                                 updatedAt={detail.updated}
+                                rescanning={rescanning}
+                                onRescan={handleRescan}
                               />
                             )}
                           </div>
                         </div>
-                        <FilePreview url={detail.cccdFrontFileUrl} label="CCCD mặt trước" />
+                        <FilePreview url={detail.cccdFrontFileUrl} label="CCCD mặt trước" onPreview={setPreview} />
                         {detail.cccdFrontError && <p className="text-xs text-rose-600">{detail.cccdFrontError}</p>}
                       </div>
                       <div className="space-y-2">
@@ -720,11 +578,13 @@ export default function ManageInstructorApplicationsPage() {
                                 kind="cccdBack"
                                 status={detail.cccdBackStatus}
                                 updatedAt={detail.updated}
+                                rescanning={rescanning}
+                                onRescan={handleRescan}
                               />
                             )}
                           </div>
                         </div>
-                        <FilePreview url={detail.cccdBackFileUrl} label="CCCD mặt sau" />
+                        <FilePreview url={detail.cccdBackFileUrl} label="CCCD mặt sau" onPreview={setPreview} />
                         {detail.cccdBackError && <p className="text-xs text-rose-600">{detail.cccdBackError}</p>}
                       </div>
                     </div>
@@ -742,16 +602,16 @@ export default function ManageInstructorApplicationsPage() {
                         <p className="text-xs text-muted-foreground">{detail.certificates.length} tài liệu</p>
                       </div>
                     </div>
-                    <div className="grid gap-4 xl:grid-cols-2">
+                    <div className="grid gap-4">
                       {detail.certificates.map((cert, index) => (
                         <CertificateItem
                           key={cert.id}
                           cert={cert}
                           index={index}
-                          StatusBadge={StatusBadge}
-                          RescanButton={RescanButton}
-                          FilePreview={FilePreview}
                           updatedAt={detail.updated}
+                          rescanning={rescanning}
+                          onRescan={handleRescan}
+                          onPreview={setPreview}
                         />
                       ))}
                     </div>
@@ -910,15 +770,16 @@ function StatusTabs({
   );
 }
 
-function AiDataPanel({ data }: { data?: unknown }) {
+function AiDataPanel({ data, compact = false }: { data?: unknown; compact?: boolean }) {
+  const [jsonOpen, setJsonOpen] = useState(false);
   const parsed = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
   const entries = parsed ? Object.entries(parsed) : [];
   const previewEntries = entries
     .filter(([, value]) => value !== null && value !== undefined && typeof value !== "object")
-    .slice(0, 4);
+    .slice(0, compact ? 12 : 4);
 
   return (
-    <div className="mt-4 overflow-hidden rounded-xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-orange-50 shadow-sm dark:border-sky-500/20 dark:from-sky-500/10 dark:via-slate-950 dark:to-orange-500/10">
+    <div className={`overflow-hidden rounded-xl border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-orange-50 shadow-sm dark:border-sky-500/20 dark:from-sky-500/10 dark:via-slate-950 dark:to-orange-500/10 ${compact ? "" : "mt-4"}`}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sky-100/80 px-4 py-3 dark:border-sky-500/20">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
@@ -940,7 +801,7 @@ function AiDataPanel({ data }: { data?: unknown }) {
       {entries.length > 0 ? (
         <div className="space-y-3 p-4">
           {previewEntries.length > 0 && (
-            <div className="grid gap-2 md:grid-cols-2">
+            <div className={`grid gap-2 ${compact ? "grid-cols-1" : "md:grid-cols-2"}`}>
               {previewEntries.map(([key, value]) => (
                 <div key={key} className="rounded-lg border bg-white/80 px-3 py-2 dark:bg-slate-900/80">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{formatAiKey(key)}</p>
@@ -952,18 +813,31 @@ function AiDataPanel({ data }: { data?: unknown }) {
             </div>
           )}
 
-          <details className="group overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs font-semibold text-slate-200">
-              <span className="inline-flex items-center gap-2">
-                <Braces className="h-3.5 w-3.5 text-orange-300" />
-                Xem JSON đầy đủ
-              </span>
-              <span className="text-slate-400 transition group-open:rotate-90">›</span>
-            </summary>
-            <pre className="max-h-80 overflow-auto border-t border-slate-800 p-4 text-xs leading-5 text-slate-100">
-              <code dangerouslySetInnerHTML={{ __html: highlightJson(JSON.stringify(data, null, 2)) }} />
-            </pre>
-          </details>
+          <button
+            type="button"
+            onClick={() => setJsonOpen(true)}
+            className="flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Braces className="h-3.5 w-3.5 text-sky-500" />
+              Xem JSON đầy đủ
+            </span>
+            <span className="text-slate-400">›</span>
+          </button>
+
+          <Dialog open={jsonOpen} onOpenChange={setJsonOpen}>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Braces className="h-4 w-4 text-sky-500" />
+                  Dữ liệu AI trích xuất (JSON)
+                </DialogTitle>
+              </DialogHeader>
+              <pre className="max-h-[70vh] overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-4 text-[13px] leading-6 text-slate-100">
+                <code dangerouslySetInnerHTML={{ __html: highlightJson(JSON.stringify(data, null, 2)) }} />
+              </pre>
+            </DialogContent>
+          </Dialog>
         </div>
       ) : (
         <div className="p-4">
@@ -1005,22 +879,17 @@ function highlightJson(json: string) {
 function CertificateItem({
   cert,
   index,
-  StatusBadge,
-  RescanButton,
-  FilePreview,
   updatedAt,
+  rescanning,
+  onRescan,
+  onPreview,
 }: {
   cert: InstructorApplicationCertificate;
   index: number;
-  StatusBadge: (props: { value?: string | null }) => React.ReactNode;
-  RescanButton: (props: {
-    kind: "cv" | "cccdFront" | "cccdBack" | "cert";
-    certId?: string;
-    status?: string | null;
-    updatedAt?: string | null;
-  }) => React.ReactNode;
-  FilePreview: (props: { url?: string | null; label: string }) => React.ReactNode;
   updatedAt?: string | null;
+  rescanning: string | null;
+  onRescan: RescanHandler;
+  onPreview: (preview: PreviewState) => void;
 }) {
   const certData = safeParse(cert.aiData);
 
@@ -1030,12 +899,207 @@ function CertificateItem({
         <span className="text-xs font-medium text-muted-foreground">Chứng chỉ #{index + 1}</span>
         <div className="flex items-center gap-2">
           <StatusBadge value={cert.aiStatus} />
-          <RescanButton kind="cert" certId={cert.id} status={cert.aiStatus} updatedAt={updatedAt} />
+          <RescanButton
+            kind="cert"
+            certId={cert.id}
+            status={cert.aiStatus}
+            updatedAt={updatedAt}
+            rescanning={rescanning}
+            onRescan={onRescan}
+          />
         </div>
       </div>
-      <FilePreview url={cert.fileUrl} label={`Chứng chỉ ${index + 1}`} />
+      <div className="grid gap-4 lg:grid-cols-[7fr_3fr]">
+        <FilePreview url={cert.fileUrl} label={`Chứng chỉ ${index + 1}`} onPreview={onPreview} />
+        <div className="min-w-0">
+          <AiDataPanel data={certData} compact />
+        </div>
+      </div>
       {cert.aiError && <p className="mt-2 text-xs text-rose-600">{cert.aiError}</p>}
-      <AiDataPanel data={certData} />
     </div>
+  );
+}
+
+type RescanKind = "cv" | "cccdFront" | "cccdBack" | "cert";
+type RescanHandler = (kind: RescanKind, certId?: string) => void;
+
+function StatusBadge({ value }: { value?: string | null }) {
+  const t = useTranslations("ManageInstructorApplication");
+  const normalized = String(value || "").toUpperCase();
+  const key = STATUS_LABEL_KEYS[normalized];
+  const label = key ? t(key) : normalized || t("NotAvailable");
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${STATUS_TONE[normalized] || "border-border bg-muted text-muted-foreground"}`}>
+      {label}
+    </span>
+  );
+}
+
+function RescanButton({
+  kind,
+  certId,
+  status,
+  updatedAt,
+  rescanning,
+  onRescan,
+}: {
+  kind: RescanKind;
+  certId?: string;
+  status?: string | null;
+  updatedAt?: string | null;
+  rescanning: string | null;
+  onRescan: RescanHandler;
+}) {
+  const key = kind === "cert" ? `cert:${certId}` : kind;
+  const isPending = String(status || "").toUpperCase() === "PENDING";
+  const pendingElapsedMs = updatedAt ? Date.now() - new Date(updatedAt).getTime() : 0;
+  const pendingTimedOut = isPending && pendingElapsedMs > 72_000;
+  const isBusy = rescanning === key || (isPending && !pendingTimedOut);
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={isBusy}
+      onClick={() => onRescan(kind, certId)}
+      className="h-8 gap-1.5"
+    >
+      {rescanning === key ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <RefreshCw className="h-3.5 w-3.5" />
+      )}
+      {rescanning === key ? "Đang gửi" : isPending && !pendingTimedOut ? "Đang scan" : "Scan lại"}
+    </Button>
+  );
+}
+
+function FilePreview({
+  url,
+  label,
+  onPreview,
+}: {
+  url?: string | null;
+  label: string;
+  onPreview: (preview: PreviewState) => void;
+}) {
+  if (!url) {
+    return (
+      <div className="flex h-36 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+        Chưa có file
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
+      <div className="flex h-[70vh] min-h-[480px] items-center justify-center bg-muted">
+        {isImage(url) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt={label} loading="lazy" className="h-full w-full object-contain p-2" />
+        ) : (
+          // Defined at module scope so its identity is stable across the 5s
+          // auto-refresh — otherwise React would remount the iframe each poll
+          // and the PDF would visibly reload.
+          <iframe src={url} title={label} className="h-full w-full bg-white" />
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <span className="truncate text-xs font-medium">{label}</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onPreview({ url, label })}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Xem lớn
+          </button>
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs font-medium text-muted-foreground underline underline-offset-2"
+          >
+            Mở tab
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DocumentSection({
+  title,
+  icon,
+  status,
+  rescanKind,
+  children,
+  aiData,
+  aiError,
+  certId,
+  rescanning,
+  onRescan,
+  updatedAt,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  status?: string | null;
+  rescanKind?: RescanKind;
+  children: React.ReactNode;
+  aiData?: unknown;
+  aiError?: string | null;
+  certId?: string;
+  rescanning: string | null;
+  onRescan: RescanHandler;
+  updatedAt?: string | null;
+}) {
+  const needsReview = status && status !== "PROCESSED";
+  return (
+    <section className="rounded-xl border bg-card p-4 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            {icon}
+          </div>
+          <div>
+            <h3 className="font-semibold">{title}</h3>
+            {needsReview && (
+              <p className="mt-0.5 flex items-center gap-1 text-xs text-amber-600">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                AI chưa hoàn tất hoặc cần kiểm tra thủ công
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusBadge value={status} />
+          {rescanKind && (
+            <RescanButton
+              kind={rescanKind}
+              certId={certId}
+              status={status}
+              updatedAt={updatedAt}
+              rescanning={rescanning}
+              onRescan={onRescan}
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[7fr_3fr]">
+        <div className="min-w-0">
+          {children}
+          {aiError && (
+            <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+              Lỗi AI: {aiError}
+            </p>
+          )}
+        </div>
+        <div className="min-w-0">
+          <AiDataPanel data={aiData} compact />
+        </div>
+      </div>
+    </section>
   );
 }
