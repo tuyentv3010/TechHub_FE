@@ -75,6 +75,7 @@ import {
   getAccessTokenFromLocalStorage,
   getUserInfoFromStorage,
 } from "@/lib/utils";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 import {
   ResponsiveContainer,
   CartesianGrid,
@@ -97,6 +98,10 @@ import { useSearchParams } from "next/navigation";
 interface MessageTraceItem {
   step?: string;
   detail?: string;
+  // "running" while the node is in progress (spinner), "done" once it finishes
+  // (green check). Absent on the final trace replay — treated as done.
+  status?: "running" | "done" | "warning";
+  durationMs?: number;
 }
 
 type SuggestedActionKind =
@@ -1225,7 +1230,26 @@ export default function AiChatPage() {
       next.trace = [{ step: "planning_start", detail: "AI orchestration started." }];
     }
     if (event.event === "planning_step") {
-      next.trace = [...(next.trace || []), { step: event.data?.step, detail: event.data?.detail }];
+      const stepName = event.data?.step;
+      const isStart = event.data?.status === "start";
+      const stepStatus: MessageTraceItem["status"] = isStart ? "running" : "done";
+      const stepDetail = event.data?.detail;
+      const stepDuration = typeof event.data?.durationMs === "number" ? event.data.durationMs : undefined;
+      const existing = next.trace || [];
+      const idx = existing.findIndex((item) => item.step === stepName);
+      if (idx >= 0) {
+        // Same node firing its "end" after "start": flip running -> done.
+        const merged = [...existing];
+        merged[idx] = {
+          ...merged[idx],
+          detail: stepDetail ?? merged[idx].detail,
+          status: stepStatus,
+          durationMs: stepDuration ?? merged[idx].durationMs,
+        };
+        next.trace = merged;
+      } else {
+        next.trace = [...existing, { step: stepName, detail: stepDetail, status: stepStatus, durationMs: stepDuration }];
+      }
     }
     if (event.event === "done") {
       next.requestId = event.data?.requestId ?? next.requestId ?? null;
@@ -2924,6 +2948,55 @@ export default function AiChatPage() {
           </button>
         ) : null}
 
+        {(() => {
+          // Render clickable course cards (instructor avatar + link) inline in
+          // the chat answer when the analytics result carries course rows.
+          const rows = Array.isArray((metadata.queryResult as any)?.rows)
+            ? ((metadata.queryResult as any).rows as any[])
+            : [];
+          const courseRows = rows.filter((row) => row && row.course_id);
+          if (!courseRows.length) return null;
+          return (
+            <div className="border-l border-border pl-3 py-1">
+              <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                {t("analysisWorkspace.relatedCourses")}
+              </div>
+              <div className="mt-2 flex flex-col gap-2">
+                {courseRows.slice(0, 8).map((row, index) => {
+                  const courseId = String(row.course_id);
+                  const title = String(row.label ?? row.title ?? "");
+                  const instructor = String(row.instructor ?? "");
+                  const avatar = normalizePersistedMediaUrl(row.instructorAvatar) || undefined;
+                  const level = row.level ? String(row.level) : "";
+                  return (
+                    <Link
+                      key={`${courseId}-${index}`}
+                      href={`/courses/${courseId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 transition-colors hover:border-primary/40 hover:bg-muted"
+                    >
+                      <Avatar className="h-8 w-8 flex-shrink-0">
+                        {avatar ? <AvatarImage src={avatar} alt={instructor} /> : null}
+                        <AvatarFallback>{(instructor || "?").slice(0, 1).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-ed-xs font-medium text-foreground group-hover:text-primary">
+                          {title}
+                        </div>
+                        <div className="truncate text-[11px] text-muted-foreground">
+                          {instructor}{level ? ` · ${level}` : ""}
+                        </div>
+                      </div>
+                      <ExternalLink className="h-3 w-3 flex-shrink-0 self-center text-muted-foreground group-hover:text-primary" />
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {citations.length > 0 && (
           <div className="border-l border-border pl-3 py-1">
             <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
@@ -3132,9 +3205,13 @@ export default function AiChatPage() {
         <div className="flex items-center justify-between px-3 h-12 border-b border-border">
           {!sidebarCollapsed && (
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-7 w-7 rounded-sm bg-primary flex items-center justify-center flex-shrink-0 font-sans text-[14px] leading-none text-primary-foreground">
-                T
-              </div>
+              <Image
+                src="/ai/TechHub_Logo.png"
+                alt="AI Chat Assistant"
+                width={28}
+                height={28}
+                className="h-7 w-7 flex-shrink-0 rounded-xl border border-border bg-card object-cover shadow-sm"
+              />
               <span className="text-ed-sm font-medium text-foreground truncate tracking-tight">
                 {t("headerTitle") || "Techhub AI"}
               </span>
@@ -3714,9 +3791,13 @@ export default function AiChatPage() {
                   {/* Assistant Message */}
                   {message.role === "assistant" && (
                     <div className="group flex items-start gap-4">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-sm bg-primary font-sans text-[15px] leading-none text-primary-foreground">
-                        T
-                      </div>
+                      <Image
+                        src="/ai/TechHub_Logo.png"
+                        alt="AI Chat Assistant"
+                        width={32}
+                        height={32}
+                        className="h-8 w-8 flex-shrink-0 rounded-xl border border-border bg-card object-cover shadow-sm"
+                      />
                       <div
                         className={cn(
                           "min-w-0 flex-1 border-l transition-colors duration-150",
@@ -5454,18 +5535,25 @@ function buildAgentSteps({
 }) {
   if (trace.length > 0) {
     return trace.map((item, index) => {
-      const duration = nodeTimings.find(([step]) => step === item.step)?.[1];
+      const duration =
+        typeof item.durationMs === "number"
+          ? item.durationMs
+          : nodeTimings.find(([step]) => step === item.step)?.[1];
       const detail = String(item.detail || "").trim();
       const lowered = detail.toLowerCase();
+      // A node still in progress (spinner) takes priority; otherwise derive
+      // warning vs done from the detail text as before.
       const status =
-        lowered.includes("warning") || lowered.includes("fallback") || lowered.includes("clarify")
-          ? "warning"
-          : "done";
+        item.status === "running"
+          ? "running"
+          : lowered.includes("warning") || lowered.includes("fallback") || lowered.includes("clarify")
+            ? "warning"
+            : "done";
       return {
         key: `${item.step || "step"}-${index}`,
         title: humanizeAgentStep(item.step, t),
         detail,
-        duration,
+        duration: status === "running" ? undefined : duration,
         status,
       };
     });
@@ -5513,7 +5601,19 @@ function AgentStepsPanel({
     [trace, nodeTimings, thinkingText, t]
   );
   const [openSteps, setOpenSteps] = useState<Record<string, boolean>>({});
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState<boolean>(Boolean(isStreaming));
+
+  // Auto-open the trace while the agent is running so the user can watch the
+  // steps light up, then auto-collapse once the response has been composed.
+  const prevStreamingRef = useRef<boolean | undefined>(isStreaming);
+  useEffect(() => {
+    if (isStreaming && !prevStreamingRef.current) {
+      setIsExpanded(true);
+    } else if (!isStreaming && prevStreamingRef.current) {
+      setIsExpanded(false);
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming]);
 
   useEffect(() => {
     if (!isExpanded) return;
@@ -5576,6 +5676,7 @@ function AgentStepsPanel({
         {steps.map((step, idx) => {
           const isOpen = openSteps[step.key] ?? false;
           const isWarning = step.status === "warning";
+          const isRunning = step.status === "running";
           return (
             <li key={step.key} className="text-ed-xs">
               <button
@@ -5591,7 +5692,13 @@ function AgentStepsPanel({
                 <div className="flex items-baseline gap-2 min-w-0">
                   <span className="font-mono text-muted-foreground tabular-nums">{String(idx + 1).padStart(2, "0")}</span>
                   <span className={cn("flex-shrink-0 self-center", isWarning ? "text-primary" : "text-data-pos")}>
-                    {isWarning ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
+                    {isRunning ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : isWarning ? (
+                      <AlertTriangle className="h-3 w-3" />
+                    ) : (
+                      <CheckCircle className="h-3 w-3" />
+                    )}
                   </span>
                   <span className="text-muted-foreground group-hover:text-foreground truncate">{step.title}</span>
                 </div>

@@ -2233,6 +2233,7 @@
       "prev": "Prev",
       "next": "Next",
       "sources": "Sources",
+          "relatedCourses": "Related courses",
       "noRows": "Query executed, but no rows matched the current filter."
     },
     "humanized": {

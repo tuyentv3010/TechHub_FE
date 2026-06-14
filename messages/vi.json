@@ -2207,6 +2207,7 @@
       "prev": "Trước",
       "next": "Sau",
       "sources": "Nguồn",
+          "relatedCourses": "Khóa học liên quan",
       "noRows": "Truy vấn đã chạy, nhưng không có dòng nào khớp bộ lọc hiện tại."
     },
     "humanized": {

@@ -441,9 +441,14 @@ export default function AiChatOnboardingTour({
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-1">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-[15px] font-semibold leading-none text-primary-foreground">
-                T
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/ai/TechHub_Logo.png"
+                alt="AI Chat Assistant"
+                width={32}
+                height={32}
+                className="h-8 w-8 flex-shrink-0 rounded-xl border border-border bg-card object-cover shadow-sm"
+              />
               <div>
                 <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                   {t("stepOf", { current: currentStep + 1, total: tourSteps.length })}
