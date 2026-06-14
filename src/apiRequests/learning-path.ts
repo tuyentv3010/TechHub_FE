@@ -36,6 +36,25 @@ const learningPathApiRequest = {
     );
   },
 
+  // Get the current user's own learning paths for the Manage page.
+  // Admins receive every author's paths; other roles only their own.
+  getMyLearningPaths: (params?: {
+    page?: number;
+    size?: number;
+    sortBy?: string;
+    sortDirection?: string;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.page !== undefined) searchParams.append("page", String(params.page));
+    if (params?.size !== undefined) searchParams.append("size", String(params.size));
+    if (params?.sortBy) searchParams.append("sortBy", params.sortBy);
+    if (params?.sortDirection) searchParams.append("sortDirection", params.sortDirection);
+
+    return http.get<LearningPathListResponseType>(
+      `/app/api/proxy/learning-paths/my-paths${searchParams.toString() ? `?${searchParams.toString()}` : ""}`
+    );
+  },
+
   // Get learning path by ID
   getLearningPathById: (id: string) =>
     http.get<LearningPathDetailResponseType>(`/app/api/proxy/learning-paths/${id}`),

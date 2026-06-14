@@ -55,7 +55,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { useDeleteLearningPathMutation, useGetLearningPathList } from "@/queries/useLearningPath";
+import { useDeleteLearningPathMutation, useGetMyLearningPathList } from "@/queries/useLearningPath";
 import { useGetLearningPathDrafts, useRejectDraftMutation } from "@/queries/useAi";
 import { normalizeLearningPathListPayload } from "@/lib/learning-paths";
 import { DraftItemType } from "@/schemaValidations/ai.schema";
@@ -87,7 +87,7 @@ export default function LearningPathTable() {
   const [editingPath, setEditingPath] = useState<LearningPathItemType | null>(null);
   const [publishingDraftId, setPublishingDraftId] = useState<string | null>(null);
 
-  const { data, isLoading, refetch } = useGetLearningPathList({
+  const { data, isLoading, refetch } = useGetMyLearningPathList({
     page: pagination.pageIndex,
     size: pagination.pageSize,
   });
