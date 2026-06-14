@@ -1397,9 +1397,13 @@
     "saveErrorTitle": "Lưu thất bại",
     "passed": "Đạt",
     "notPassed": "Chưa đạt",
-    "learnerFallback": "Học viên {id}"
+    "learnerFallback": "Học viên {id}",
+    "summary": "Đã làm {done}/{total} học viên",
+    "statusNotSubmitted": "Chưa làm",
+    "notSubmittedHint": "Học viên chưa nộp bài này."
   },
   "ManageCourse": {
+    "ViewSubmissions": "Xem bài nộp / Chấm điểm",
     "PageEyebrow": "Studio / Thư viện khóa học",
     "Title": "Quản lý Khóa học",
     "Description": "Quản lý khóa học: tạo, chỉnh sửa, xuất bản",

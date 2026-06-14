@@ -1393,9 +1393,13 @@
     "saveErrorTitle": "保存に失敗しました",
     "passed": "合格",
     "notPassed": "不合格",
-    "learnerFallback": "受講者 {id}"
+    "learnerFallback": "受講者 {id}",
+    "summary": "{done}/{total} 人が提出済み",
+    "statusNotSubmitted": "未提出",
+    "notSubmittedHint": "この受講者はまだ提出していません。"
   },
   "ManageCourse": {
+    "ViewSubmissions": "提出物を見る / 採点",
     "PageEyebrow": "Studio / コースライブラリ",
     "Title": "コース管理",
     "Description": "コースの作成・編集・公開を管理",
