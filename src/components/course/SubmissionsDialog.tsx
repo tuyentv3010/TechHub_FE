@@ -28,10 +28,11 @@ interface ExerciseLite {
 }
 
 interface SubmissionItem {
-  id: string;
+  id?: string | null;
   userId: string;
   username?: string | null;
   avatar?: string | null;
+  submitted?: boolean | null;
   answer?: string | null;
   submissionData?: any;
   grade?: number | null;
@@ -39,6 +40,13 @@ interface SubmissionItem {
   status?: string | null;
   submittedAt?: string | null;
   gradedAt?: string | null;
+}
+
+// Backend marks placeholder rows (enrolled learners who haven't submitted) with
+// submitted=false. Older backends omit the flag — fall back to submittedAt.
+function hasSubmitted(submission: SubmissionItem): boolean {
+  if (typeof submission.submitted === "boolean") return submission.submitted;
+  return Boolean(submission.submittedAt);
 }
 
 /**
@@ -66,6 +74,7 @@ export default function SubmissionsDialog({
     open && Boolean(exercise),
   );
   const submissions: SubmissionItem[] = data?.payload?.data ?? [];
+  const submittedCount = submissions.filter(hasSubmitted).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -76,6 +85,12 @@ export default function SubmissionsDialog({
             {exercise?.question}
           </DialogDescription>
         </DialogHeader>
+
+        {!isLoading && submissions.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            {t("summary", { done: submittedCount, total: submissions.length })}
+          </p>
+        )}
 
         {isLoading ? (
           <div className="flex items-center justify-center py-10 text-muted-foreground">
@@ -89,7 +104,7 @@ export default function SubmissionsDialog({
           <div className="space-y-4">
             {submissions.map((submission) => (
               <SubmissionRow
-                key={submission.id}
+                key={submission.id ?? submission.userId}
                 courseId={courseId}
                 lessonId={lessonId}
                 exercise={exercise as ExerciseLite}
@@ -123,6 +138,7 @@ function SubmissionRow({
   const [feedback, setFeedback] = useState<string>(submission.feedback ?? "");
 
   const handleSave = async () => {
+    if (!submission.id) return; // placeholder row (learner hasn't submitted)
     const trimmed = grade.trim();
     const parsedGrade = trimmed === "" ? null : Number(trimmed);
     if (
@@ -155,6 +171,7 @@ function SubmissionRow({
 
   const displayName =
     submission.username || t("learnerFallback", { id: submission.userId.slice(0, 8) });
+  const submitted = hasSubmitted(submission);
 
   return (
     <div className="rounded-xl border border-border p-4">
@@ -169,14 +186,23 @@ function SubmissionRow({
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{displayName}</p>
             <p className="text-xs text-muted-foreground">
-              {formatWhen(submission.submittedAt)}
+              {submitted ? formatWhen(submission.submittedAt) : t("notSubmittedHint")}
             </p>
           </div>
         </div>
-        <SubmissionStatusBadge status={submission.status} grade={submission.grade} />
+        {submitted ? (
+          <SubmissionStatusBadge status={submission.status} grade={submission.grade} />
+        ) : (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            <XCircle className="h-3.5 w-3.5" /> {t("statusNotSubmitted")}
+          </span>
+        )}
       </div>
 
-      <AnswerView exercise={exercise} submission={submission} />
+      {/* No answer / grading controls for learners who haven't submitted yet. */}
+      {!submitted ? null : (
+        <>
+          <AnswerView exercise={exercise} submission={submission} />
 
       <div className="mt-3 grid gap-2 sm:grid-cols-[120px_1fr] sm:items-start">
         <div>
@@ -213,6 +239,8 @@ function SubmissionRow({
           {t("saveGrade")}
         </Button>
       </div>
+        </>
+      )}
     </div>
   );
 }

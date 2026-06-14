@@ -667,6 +667,11 @@ export default function AiChatPage() {
   const currentIsDraftSessionRef = useRef<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sessionMessagesCache = useRef<Map<string, Message[]>>(new Map());
+  // Tracks session IDs created locally (just promoted from a draft) that the
+  // server session list has not caught up with yet. Prevents the "session no
+  // longer exists" guard from wiping a freshly-created session and snapping the
+  // UI back to a previously-opened tab before the sessions query refetches.
+  const recentlyCreatedSessionIdsRef = useRef<Set<string>>(new Set());
   const draftStateRef = useRef<{
     messages: Message[];
     inputMessage: string;
@@ -1263,6 +1268,7 @@ export default function AiChatPage() {
         const nextSessionId = String(event.data.sessionId);
         const shouldPromoteActiveDraft = currentIsDraftSessionRef.current && !currentSessionIdRef.current;
         if (shouldPromoteActiveDraft) {
+          recentlyCreatedSessionIdsRef.current.add(nextSessionId);
           setSessionId(nextSessionId);
           setIsDraftSession(false);
         }
@@ -1450,7 +1456,16 @@ export default function AiChatPage() {
 
       setSessions(sessionsWithLabels);
 
-      if (sessionId && !dbSessions.some((s: { id: string }) => s.id === sessionId)) {
+      // The server list now reflects this session — stop shielding it.
+      if (sessionId && dbSessions.some((s: { id: string }) => s.id === sessionId)) {
+        recentlyCreatedSessionIdsRef.current.delete(sessionId);
+      }
+
+      if (
+        sessionId &&
+        !dbSessions.some((s: { id: string }) => s.id === sessionId) &&
+        !recentlyCreatedSessionIdsRef.current.has(sessionId)
+      ) {
         setSessionId(null);
         setMessages([]);
         setSelectedInsightMessageId(null);
@@ -1921,6 +1936,7 @@ export default function AiChatPage() {
 
         if (!sessionId && response.payload?.data?.sessionId) {
           const newId = response.payload.data.sessionId;
+          recentlyCreatedSessionIdsRef.current.add(newId);
           setSessionId(newId);
           setIsDraftSession(false);
           setSessions((prev) =>
@@ -2390,11 +2406,12 @@ export default function AiChatPage() {
         // Update session ID if new session
         if (!sessionId && response.payload?.data?.sessionId) {
           const newId = response.payload.data.sessionId;
+          recentlyCreatedSessionIdsRef.current.add(newId);
           setSessionId(newId);
           setIsDraftSession(false);
           setSessions((prev) =>
-            prev.find((s) => s.id === newId) ? prev : [{ 
-              id: newId, 
+            prev.find((s) => s.id === newId) ? prev : [{
+              id: newId,
               label: pendingSessionLabelRef.current || `${t("session")} ${prev.length + 1}`,
               startedAt: new Date().toISOString()
             }, ...prev]

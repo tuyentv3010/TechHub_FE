@@ -1398,9 +1398,13 @@
     "saveErrorTitle": "Save failed",
     "passed": "Passed",
     "notPassed": "Not passed",
-    "learnerFallback": "Learner {id}"
+    "learnerFallback": "Learner {id}",
+    "summary": "{done}/{total} learners submitted",
+    "statusNotSubmitted": "Not submitted",
+    "notSubmittedHint": "This learner hasn't submitted yet."
   },
   "ManageCourse": {
+    "ViewSubmissions": "View submissions / Grade",
     "PageEyebrow": "Studio / Course Library",
     "Title": "Manage Courses",
     "Description": "Manage courses: create, edit, publish",
