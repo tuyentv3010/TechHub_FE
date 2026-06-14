@@ -85,6 +85,12 @@ const USER_INFO_KEY = "userInfo";
 const AUTH_STORAGE_MODE_KEY = "authStorageMode";
 type AuthStorageMode = "local" | "session";
 
+const getCookie = (name: string): string | null => {
+  if (!isBrowser) return null;
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
 const getAuthStorageMode = (): AuthStorageMode => {
   if (!isBrowser) return "local";
   if (sessionStorage.getItem(AUTH_STORAGE_MODE_KEY) === "session") {
@@ -94,6 +100,12 @@ const getAuthStorageMode = (): AuthStorageMode => {
     return "local";
   }
   if (sessionStorage.getItem(ACCESS_TOKEN_KEY)) {
+    return "session";
+  }
+  // Fresh tab (empty web storage) rehydrating from the shared httpOnly cookie
+  // session: the authStorageMode cookie records which storage the original tab
+  // used, so a "session" login stays in sessionStorage and "local" in localStorage.
+  if (getCookie(AUTH_STORAGE_MODE_KEY) === "session") {
     return "session";
   }
   return "local";
@@ -137,6 +149,11 @@ export const getRefreshTokenFromLocalStorage = () => {
 export const getUserInfoFromStorage = () => {
   return getAuthStorageItem(USER_INFO_KEY);
 };
+
+// True when a prior login left an authStorageMode cookie — a JS-readable hint
+// that a (possibly cross-tab) httpOnly cookie session may still be alive, so a
+// new tab with empty web storage is worth trying to rehydrate via refresh.
+export const hasAuthSessionCookie = () => Boolean(getCookie(AUTH_STORAGE_MODE_KEY));
 
 export const persistAuthSession = ({
   accessToken,

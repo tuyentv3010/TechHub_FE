@@ -85,9 +85,11 @@ export async function POST(request: Request) {
       secure: isProduction,
       ...(persistentCookie ? { expires: decodedRefreshToken.exp * 1000 } : {}),
     });
+    // Not httpOnly on purpose — see /api/auth/token. The client reads this to
+    // rehydrate a new tab into the correct storage kind; it carries no secret.
     (await cookieStore).set("authStorageMode", persistentCookie ? "local" : "session", {
       path: "/",
-      httpOnly: true,
+      httpOnly: false,
       sameSite: "lax",
       secure: isProduction,
       ...(persistentCookie ? { expires: decodedRefreshToken.exp * 1000 } : {}),

@@ -49,6 +49,7 @@ import { useAccountProfile } from "@/queries/useAccount";
 import { CourseCommentsList } from "./CourseCommentsList";
 import ExerciseDisplay from "./ExerciseDisplay";
 import ExercisePlayer from "./ExercisePlayer";
+import EssayExercises from "./EssayExercises";
 import VideoPlayer from "./VideoPlayer";
 import envConfig from "@/config";
 import { normalizePersistedMediaUrl } from "@/lib/file-media";
@@ -898,7 +899,7 @@ export default function CourseLearningLayout({
               </div>
             )}
             
-            {exercises.length > 0 && (
+            {exercises.some((exercise: any) => exercise.type === "MULTIPLE_CHOICE") && (
               <ExercisePlayer
                 courseId={courseSummary?.id}
                 lessonId={currentLesson?.id}
@@ -925,6 +926,15 @@ export default function CourseLearningLayout({
                   }
                 }}
                 onNextLesson={handleGoNextLesson}
+              />
+            )}
+
+            {/* Essay (OPEN_ENDED) exercises — free text, instructor-graded */}
+            {exercises.some((exercise: any) => exercise.type === "OPEN_ENDED") && (
+              <EssayExercises
+                courseId={courseSummary?.id}
+                lessonId={currentLesson?.id}
+                exercises={exercises.filter((exercise: any) => exercise.type === "OPEN_ENDED")}
               />
             )}
           </div>

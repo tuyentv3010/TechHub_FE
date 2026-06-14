@@ -497,6 +497,45 @@ export const useSubmitExerciseMutation = () => {
   });
 };
 
+// Instructor: list the latest submission per learner for an exercise
+export const useGetExerciseSubmissions = (
+  courseId: string,
+  lessonId: string,
+  exerciseId: string,
+  enabled = true,
+) => {
+  return useQuery({
+    queryKey: ["exercise-submissions", courseId, lessonId, exerciseId],
+    queryFn: () => courseApiRequest.getExerciseSubmissions(courseId, lessonId, exerciseId),
+    enabled: enabled && !!courseId && !!lessonId && !!exerciseId,
+  });
+};
+
+// Instructor: grade a submission (score + feedback)
+export const useGradeSubmissionMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      courseId,
+      lessonId,
+      submissionId,
+      body,
+    }: {
+      courseId: string;
+      lessonId: string;
+      submissionId: string;
+      body: { grade?: number | null; feedback?: string | null; status?: string };
+    }) => courseApiRequest.gradeSubmission(courseId, lessonId, submissionId, body),
+    onSuccess: (_data, variables) => {
+      // Prefix match invalidates every exercise's submission list under this lesson.
+      queryClient.invalidateQueries({
+        queryKey: ["exercise-submissions", variables.courseId, variables.lessonId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["exercises", variables.courseId, variables.lessonId] });
+    },
+  });
+};
+
 // Update exercise
 export const useUpdateExerciseMutation = () => {
   const queryClient = useQueryClient();

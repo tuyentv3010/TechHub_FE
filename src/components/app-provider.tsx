@@ -1,10 +1,12 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { RoleType, Permission } from "@/types/jwt.types";
 import {
+  checkAndRefreshToken,
   decodeToken,
   getAccessTokenFromLocalStorage,
   getRefreshTokenFromLocalStorage,
+  hasAuthSessionCookie,
   removeTokenFromLocalStorage,
   setUserInfoToAuthStorage,
 } from "@/lib/utils";
@@ -73,11 +75,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isAuth, setIsAuth] = useState(false);
   const [role, setRole] = useState<RoleType | null>(null);
   const [permissions, setPermissions] = useState<Permission[] | null>(null);
+  // Ensures the new-tab cookie rehydrate (below) runs at most once per mount,
+  // even though a failed refresh clears storage and emits "auth-logout", which
+  // re-enters applyProfileRole.
+  const cookieRehydrateAttempted = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
 
     const applyProfileRole = async () => {
+      // A tab opened by pasting the URL starts with an empty sessionStorage, so
+      // web storage looks logged-out even though the shared httpOnly cookie
+      // session is still alive. If a prior login left an authStorageMode cookie,
+      // try ONE silent cookie-based refresh to rehydrate web storage (into the
+      // same storage kind the original tab used) before concluding logged-out.
+      if (
+        !cookieRehydrateAttempted.current &&
+        hasAuthSessionCookie() &&
+        !getAccessTokenFromLocalStorage() &&
+        !getRefreshTokenFromLocalStorage()
+      ) {
+        cookieRehydrateAttempted.current = true;
+        try {
+          await checkAndRefreshToken({ force: true, redirectOnError: false });
+        } catch {
+          // No live cookie session — fall through to the logged-out branch.
+        }
+        if (!isMounted) return;
+      }
+
       const token = getAccessTokenFromLocalStorage();
       const refreshToken = getRefreshTokenFromLocalStorage();
       if (token) {

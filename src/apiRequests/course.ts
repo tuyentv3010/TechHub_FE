@@ -355,6 +355,24 @@ const courseApiRequest = {
     });
     return http.delete(url);
   },
+
+  // Instructor: list the latest submission per learner for an exercise
+  getExerciseSubmissions: (courseId: string, lessonId: string, exerciseId: string) =>
+    http.get<any>(
+      `/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/${exerciseId}/submissions`,
+    ),
+
+  // Instructor: grade a submission (score and/or written feedback)
+  gradeSubmission: (
+    courseId: string,
+    lessonId: string,
+    submissionId: string,
+    body: { grade?: number | null; feedback?: string | null; status?: string },
+  ) =>
+    http.put<any>(
+      `/app/api/proxy/courses/${courseId}/lessons/${lessonId}/submissions/${submissionId}/grade`,
+      body,
+    ),
 };
 
 export default courseApiRequest;

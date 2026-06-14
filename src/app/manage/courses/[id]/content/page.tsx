@@ -60,7 +60,9 @@ import {
   CheckCircle2,
   Check,
   Sparkles,
+  ClipboardList,
 } from "lucide-react";
+import SubmissionsDialog from "@/components/course/SubmissionsDialog";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
@@ -192,8 +194,10 @@ const ExerciseDisplay = ({
   onCreate?: () => void;
 }) => {
   const t = useTranslations("ManageCourse");
+  const ts = useTranslations("Submission");
   const { data: exercisesData, isLoading } = useGetExercises(courseId, lessonId);
   const exercises = exercisesData?.payload?.data || [];
+  const [submissionsExercise, setSubmissionsExercise] = useState<any>(null);
 
   return (
     <div>
@@ -231,6 +235,17 @@ const ExerciseDisplay = ({
                     <TagIcon /> {tag.label}
                   </span>
                   <div className="row-actions" style={{ opacity: 1, transform: "none" }}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="tip"
+                      data-tip={ts("viewSubmissions")}
+                      aria-label={ts("viewSubmissions")}
+                      onClick={() => setSubmissionsExercise(exercise)}
+                    >
+                      <ClipboardList />
+                    </Button>
                     {onEdit && (
                       <Button
                         type="button"
@@ -300,6 +315,14 @@ const ExerciseDisplay = ({
       ) : (
         <Empty small icon={HelpCircle} text={t("NoExercise")} />
       )}
+
+      <SubmissionsDialog
+        open={Boolean(submissionsExercise)}
+        onOpenChange={(open) => !open && setSubmissionsExercise(null)}
+        courseId={courseId}
+        lessonId={lessonId}
+        exercise={submissionsExercise}
+      />
     </div>
   );
 };
