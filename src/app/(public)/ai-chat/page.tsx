@@ -1346,9 +1346,16 @@ export default function AiChatPage() {
   
   // Fetch user sessions from DB
   const { data: sessionsData, isLoading: isSessionsLoading, isFetching: isSessionsFetching } = useGetUserSessions(userId);
+  const dbSessions = useMemo(() => sessionsData?.payload?.data ?? [], [sessionsData]);
+  const currentSessionBelongsToUser = Boolean(
+    sessionId && dbSessions.some((session: { id: string }) => session.id === sessionId)
+  );
   
   // Fetch messages for current session from DB
-  const { data: messagesData, isLoading: isSessionMessagesLoading, isFetching: isSessionMessagesFetching } = useGetSessionMessages(sessionId || "");
+  const { data: messagesData, isLoading: isSessionMessagesLoading, isFetching: isSessionMessagesFetching } = useGetSessionMessages(
+    sessionId || "",
+    currentSessionBelongsToUser
+  );
 
   // Load userId from localStorage
   useEffect(() => {
@@ -1426,9 +1433,7 @@ export default function AiChatPage() {
 
   // Sync sessions from DB
   useEffect(() => {
-    if (sessionsData?.payload?.data) {
-      const dbSessions = sessionsData.payload.data;
-
+    if (dbSessions.length > 0 || sessionsData?.payload?.data) {
       const sessionsWithLabels = dbSessions.map((s: { id: string; userId: string; startedAt: string; title?: string | null }, idx: number) => {
         const serverLabel = typeof s.title === "string" && s.title.trim() ? s.title.trim() : null;
         const cachedLabel = sessionLabelsCache.current.get(s.id);
@@ -1445,12 +1450,20 @@ export default function AiChatPage() {
 
       setSessions(sessionsWithLabels);
 
+      if (sessionId && !dbSessions.some((s: { id: string }) => s.id === sessionId)) {
+        setSessionId(null);
+        setMessages([]);
+        setSelectedInsightMessageId(null);
+        setLoadingSessionId(null);
+        return;
+      }
+
       // Auto-select most recent session if none selected
       if (!sessionId && !isDraftSession && dbSessions.length > 0) {
         setSessionId(dbSessions[0].id);
       }
     }
-  }, [isDraftSession, sessionId, sessionsData, t]);
+  }, [dbSessions, isDraftSession, sessionId, sessionsData?.payload?.data, t]);
 
   // Sync messages from DB when session changes
   useEffect(() => {
@@ -1599,14 +1612,15 @@ export default function AiChatPage() {
     setDismissedRefineMessageId(activeAnalysisMessage.id);
   }, [activeAnalysisMessage]);
 
-  const buildRequestContext = useCallback(() => {
+  const buildRequestContext = useCallback((options?: { includeAttachments?: boolean }) => {
+    const includeAttachments = options?.includeAttachments !== false;
     const context: Record<string, any> = {
       includeProgress: true,
     };
     if (customInstructions.trim()) {
       context.instructions = customInstructions.trim();
     }
-    if (attachedFiles.length > 0) {
+    if (includeAttachments && attachedFiles.length > 0) {
       context.fileContexts = attachedFiles.map((file) => ({
         id: file.id,
         fileId: file.id,
@@ -1844,7 +1858,9 @@ export default function AiChatPage() {
       };
 
       setMessages((prev) => [...prev, userMessage]);
-      const baseContext = options?.skipAttachments ? undefined : buildRequestContext();
+      const baseContext = buildRequestContext({
+        includeAttachments: !options?.skipAttachments,
+      });
       const overrideContext = options?.contextOverrides;
       let requestContext: Record<string, any> | undefined;
       if (baseContext || overrideContext) {
@@ -1958,8 +1974,21 @@ export default function AiChatPage() {
         });
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [userId, attachedFiles, useStreaming, sessionId, t, tCommon]
+    [
+      attachedFiles,
+      buildRequestContext,
+      chatMutation,
+      draftStartedAt,
+      formatSessionLabel,
+      resetStream,
+      sendStreamingMessage,
+      sessionId,
+      t,
+      tCommon,
+      toast,
+      useStreaming,
+      userId,
+    ]
   );
 
   const exportQueryResultAsCsv = useCallback(
