@@ -1599,14 +1599,15 @@ export default function AiChatPage() {
     setDismissedRefineMessageId(activeAnalysisMessage.id);
   }, [activeAnalysisMessage]);
 
-  const buildRequestContext = useCallback(() => {
+  const buildRequestContext = useCallback((options?: { includeAttachments?: boolean }) => {
+    const includeAttachments = options?.includeAttachments !== false;
     const context: Record<string, any> = {
       includeProgress: true,
     };
     if (customInstructions.trim()) {
       context.instructions = customInstructions.trim();
     }
-    if (attachedFiles.length > 0) {
+    if (includeAttachments && attachedFiles.length > 0) {
       context.fileContexts = attachedFiles.map((file) => ({
         id: file.id,
         fileId: file.id,
@@ -1844,7 +1845,9 @@ export default function AiChatPage() {
       };
 
       setMessages((prev) => [...prev, userMessage]);
-      const baseContext = options?.skipAttachments ? undefined : buildRequestContext();
+      const baseContext = buildRequestContext({
+        includeAttachments: !options?.skipAttachments,
+      });
       const overrideContext = options?.contextOverrides;
       let requestContext: Record<string, any> | undefined;
       if (baseContext || overrideContext) {
@@ -1958,8 +1961,21 @@ export default function AiChatPage() {
         });
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [userId, attachedFiles, useStreaming, sessionId, t, tCommon]
+    [
+      attachedFiles,
+      buildRequestContext,
+      chatMutation,
+      draftStartedAt,
+      formatSessionLabel,
+      resetStream,
+      sendStreamingMessage,
+      sessionId,
+      t,
+      tCommon,
+      toast,
+      useStreaming,
+      userId,
+    ]
   );
 
   const exportQueryResultAsCsv = useCallback(
