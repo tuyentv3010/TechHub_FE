@@ -158,11 +158,11 @@ export const useGetUserSessions = (userId: string) => {
 };
 
 // Get session messages
-export const useGetSessionMessages = (sessionId: string) => {
+export const useGetSessionMessages = (sessionId: string, enabled: boolean = true) => {
   return useQuery({
     queryKey: ["session-messages", sessionId],
     queryFn: () => aiApiRequest.getSessionMessages(sessionId),
-    enabled: !!sessionId,
+    enabled: !!sessionId && enabled,
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes to avoid duplicate calls
     refetchOnWindowFocus: false,
   });
