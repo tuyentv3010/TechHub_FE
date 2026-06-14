@@ -2997,6 +2997,51 @@ export default function AiChatPage() {
           );
         })()}
 
+        {(() => {
+          // Render clickable learning-path cards when the result carries path rows.
+          const rows = Array.isArray((metadata.queryResult as any)?.rows)
+            ? ((metadata.queryResult as any).rows as any[])
+            : [];
+          const pathRows = rows.filter((row) => row && row.path_id);
+          if (!pathRows.length) return null;
+          return (
+            <div className="border-l border-border pl-3 py-1">
+              <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                {t("analysisWorkspace.relatedPaths")}
+              </div>
+              <div className="mt-2 flex flex-col gap-2">
+                {pathRows.slice(0, 8).map((row, index) => {
+                  const pathId = String(row.path_id);
+                  const title = String(row.label ?? row.title ?? "");
+                  const count = Number(row.value ?? 0);
+                  return (
+                    <Link
+                      key={`${pathId}-${index}`}
+                      href={`/learning-paths/${pathId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2 transition-colors hover:border-primary/40 hover:bg-muted"
+                    >
+                      <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-primary/10 text-[11px] font-semibold text-primary tabular-nums">
+                        {count}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-ed-xs font-medium text-foreground group-hover:text-primary">
+                          {title}
+                        </div>
+                        <div className="truncate text-[11px] text-muted-foreground">
+                          {count} {t("analysisWorkspace.coursesCountLabel")}
+                        </div>
+                      </div>
+                      <ExternalLink className="h-3 w-3 flex-shrink-0 self-center text-muted-foreground group-hover:text-primary" />
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {citations.length > 0 && (
           <div className="border-l border-border pl-3 py-1">
             <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">

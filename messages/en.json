@@ -80,7 +80,7 @@
   },
   "NavItem": {
     "home": "Home",
-    "courses": "Courses", 
+    "courses": "Courses",
     "blog": "Blog",
     "about": "About Us",
     "learningPaths": "Learning Paths",
@@ -135,7 +135,7 @@
     "pathDescription": "Path design and orchestration workspace"
   },
   "HomePage": {
-    "title": "TechHub - Programming Learning Platform", 
+    "title": "TechHub - Programming Learning Platform",
     "defaultTitle": "TechHub - Learn Programming Effectively",
     "hero": {
       "welcomeText": "Welcome to TechHub Online Courses",
@@ -622,7 +622,7 @@
     "title": "Welcome back",
     "description": "Welcome back! Please enter your details.",
     "email": "Email",
-    "password": "Password", 
+    "password": "Password",
     "forgotPassword": "Forgot password?",
     "signIn": "Sign In",
     "noAlreadyHaveAccount": "Don't have an account?",
@@ -708,12 +708,12 @@
     "emailExists": "Email already exists",
     "usernameExists": "Username already exists"
   },
-    "SwitchLanguage": {
-    "title": "Select language", 
+  "SwitchLanguage": {
+    "title": "Select language",
     "en": "English",
-    "vi": "Vietnamese", 
-    "ja": "Japanese" 
-    },
+    "vi": "Vietnamese",
+    "ja": "Japanese"
+  },
   "ManageAccount": {
     "PageEyebrow": "Admin / Accounts",
     "Title": "Account Management",
@@ -1324,7 +1324,7 @@
     "Title": "Blog Management",
     "Description": "Manage blogs: create, edit, publish",
     "ID": "ID",
-    "Thumbnail" : "Thumbnail",
+    "Thumbnail": "Thumbnail",
     "TitleLabel": "Title",
     "Status": "Status",
     "Tags": "Tags",
@@ -1473,9 +1473,7 @@
     "PricePlaceholder": "0",
     "DiscountPriceLabel": "Discount Price",
     "DiscountPricePlaceholder": "0",
-    "LevelLabel": "Level",
     "LanguageLabel": "Language",
-    "StatusLabel": "Status",
     "CategoriesLabel": "Categories",
     "CategoriesPlaceholder": "Enter category and press Enter",
     "SkillsLabel": "Skills",
@@ -1608,7 +1606,6 @@
     "NoChaptersYet": "No chapters yet. Create your first chapter!",
     "AssetsFor": "Assets for",
     "CourseNotFound": "Course not found",
-    "Enrollments": "Enrollments",
     "EditCourseDescription": "Update course information",
     "AddCourseDescription": "Create a new course",
     "Upload": "Upload",
@@ -1815,7 +1812,7 @@
     "AddSelected": "Add Selected"
   },
   "LearningPaths": {
-    "searchTitle" : "Search Learning Path",
+    "searchTitle": "Search Learning Path",
     "heroTitle": "Structured Learning Paths",
     "heroDescription": "Follow curated learning paths designed by experts to master new skills step by step",
     "loading": "Loading learning paths...",
@@ -2233,7 +2230,6 @@
       "prev": "Prev",
       "next": "Next",
       "sources": "Sources",
-          "relatedCourses": "Related courses",
       "noRows": "Query executed, but no rows matched the current filter."
     },
     "humanized": {
@@ -2328,7 +2324,10 @@
       "answer": "Answer",
       "aria": "Analysis workspace",
       "workspaceTooNarrow": "Workspace hidden - widen the window or collapse the sidebar to show it",
-      "open": "Open workspace"
+      "open": "Open workspace",
+      "relatedCourses": "Related courses",
+      "relatedPaths": "Related learning paths",
+      "coursesCountLabel": "courses"
     }
   },
   "AiDashboard": {
