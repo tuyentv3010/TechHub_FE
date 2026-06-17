@@ -1524,7 +1524,7 @@ export default function RevenueDashboardPage() {
                     </pre>
                   </section>
 
-                  <div className="flex gap-4 border-t border-white/5 pt-6">
+                  <div className="flex flex-col gap-4 border-t border-white/5 pt-6 sm:flex-row">
                     <Button
                       className="flex-1 rounded-lg bg-primary py-6 font-bold text-primary-foreground shadow-sm hover:bg-primary/90"
                       onClick={() => navigator.clipboard.writeText(detailTransactionId)}

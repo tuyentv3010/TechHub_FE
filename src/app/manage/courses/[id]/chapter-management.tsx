@@ -72,12 +72,12 @@ export default function ChapterManagement({ courseId }: ChapterManagementProps) 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>{t("Chapters")}</CardTitle>
             <CardDescription>{t("ManageChaptersDescription")}</CardDescription>
           </div>
-          <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+          <Button size="sm" className="w-full sm:w-auto" onClick={() => setAddDialogOpen(true)}>
             <PlusCircle className="h-4 w-4 mr-2" />
             {t("AddChapter")}
           </Button>

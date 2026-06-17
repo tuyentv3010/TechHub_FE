@@ -3714,7 +3714,7 @@ export default function AiChatPage() {
           "flex min-h-0 min-w-0 flex-1 flex-col border-b border-border bg-background lg:min-w-[360px] lg:border-b-0",
         )}>
         {/* Chat Messages Area */}
-        <ScrollArea className="flex-1 px-4 py-6 sm:px-6" ref={scrollAreaRef}>
+        <ScrollArea className="ai-chat-scroll flex-1 px-4 py-6 sm:px-6" ref={scrollAreaRef}>
           <div className="mx-auto w-full max-w-4xl space-y-8">
             {isSessionTransitioning && messages.length > 0 ? (
               <div className="sticky top-0 z-10 flex items-center justify-center">

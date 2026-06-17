@@ -460,14 +460,14 @@ export default function AccountTable() {
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-between py-4">
+            <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-xs text-muted-foreground">
                 {paginationT("Pagi1")}{" "}
                 <strong>{table.getRowModel().rows.length}</strong>{" "}
                 {paginationT("Pagi2")} <strong>{totalItems}</strong>{" "}
                 {paginationT("Pagi3")}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"

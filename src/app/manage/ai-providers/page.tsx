@@ -522,7 +522,7 @@ export default function AiProvidersPage() {
               <CardTitle className="text-base">{t("healthRaw.title")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="rounded bg-muted p-3 text-xs">{JSON.stringify(healthData, null, 2)}</pre>
+              <pre className="overflow-x-auto rounded bg-muted p-3 text-xs">{JSON.stringify(healthData, null, 2)}</pre>
             </CardContent>
           </Card>
 
@@ -531,7 +531,7 @@ export default function AiProvidersPage() {
               <CardTitle className="text-base">{t("metadataRaw.title")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="max-h-60 overflow-y-auto rounded bg-muted p-3 text-xs">
+              <pre className="max-h-60 overflow-auto rounded bg-muted p-3 text-xs">
                 {JSON.stringify(metadata, null, 2)}
               </pre>
             </CardContent>

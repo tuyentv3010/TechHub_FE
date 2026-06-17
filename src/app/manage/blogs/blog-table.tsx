@@ -348,13 +348,13 @@ export default function BlogTable() {
                 placeholder={t("FilterTitle")}
                 value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
                 onChange={(e) => table.getColumn("title")?.setFilterValue(e.target.value)}
-                className="manage-field max-w-sm w-[200px]"
+                className="manage-field w-full max-w-sm sm:w-[200px]"
               />
               <Input
                 placeholder={t("FilterStatus")}
                 value={(table.getColumn("status")?.getFilterValue() as string) ?? ""}
                 onChange={(e) => table.getColumn("status")?.setFilterValue(e.target.value)}
-                className="manage-field max-w-sm w-[160px]"
+                className="manage-field w-full max-w-sm sm:w-[160px]"
               />
               <div className="manage-toolbar-spacer flex items-center gap-2">
                 {hasAddPermission && <AddBlog />}
@@ -405,13 +405,13 @@ export default function BlogTable() {
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-between py-4">
+            <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-xs text-muted-foreground">
                 {paginationT("Pagi1")} <strong>{table.getRowModel().rows.length}</strong>{" "}
                 {paginationT("Pagi2")} <strong>{totalItems}</strong>{" "}
                 {paginationT("Pagi3")}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"

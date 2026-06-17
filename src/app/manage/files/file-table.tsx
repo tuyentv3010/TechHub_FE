@@ -728,8 +728,8 @@ export default function FileTable() {
       )}
 
       <div className="manage-toolbar">
-        <div className="flex flex-1 items-center gap-2">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-1 flex-wrap items-center gap-2 sm:flex-nowrap">
+          <div className="relative w-full min-w-0 flex-1 sm:w-auto sm:max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={t('SearchPlaceholder')}
@@ -741,7 +741,7 @@ export default function FileTable() {
           <Button
             variant="outline"
             onClick={() => setFolderDialogOpen(true)}
-            className="manage-secondary-button"
+            className="manage-secondary-button max-w-full shrink-0 truncate"
           >
             <FolderOpen className="mr-2 h-4 w-4" />
             {selectedFolder && selectedFolderName ? selectedFolderName : t('AllFolders')}
@@ -871,6 +871,12 @@ export default function FileTable() {
           {paginationT('Pagi1')} <strong>{filteredFiles.length}</strong>{' '}
           {paginationT('Pagi2')} <strong>{totalItems}</strong>{' '}
           {paginationT('Pagi3')}
+          <span className="mx-2 hidden sm:inline" aria-hidden>
+            ·
+          </span>
+          <span className="mt-1 block sm:mt-0 sm:inline">
+            {paginationT('Page')} {page} {paginationT('Of')} {totalPages}
+          </span>
         </div>
         <div className="manage-pagination-actions">
           <Button
@@ -882,9 +888,6 @@ export default function FileTable() {
           >
             {paginationT('Previous')}
           </Button>
-          <span className="text-sm text-muted-foreground">
-            {paginationT('Page')} {page} {paginationT('Of')} {totalPages}
-          </span>
           <Button
             variant="outline"
             size="sm"

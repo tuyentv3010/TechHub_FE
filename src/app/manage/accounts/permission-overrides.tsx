@@ -356,7 +356,7 @@ export default function PermissionOverrides({
                     {state.label}
                   </Badge>
 
-                  <div className="grid grid-cols-3 gap-2.5 md:min-w-[310px]">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 md:min-w-[310px]">
                     <Button
                       type="button"
                       size="sm"

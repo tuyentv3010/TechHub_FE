@@ -305,7 +305,7 @@ export default function AddEmployee() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="username">{t("Name")}</Label>
                       <div className="col-span-3 w-full space-y-2">
                         <Input id="username" className="w-full" {...field} />
@@ -320,7 +320,7 @@ export default function AddEmployee() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="email">{t("Email")}</Label>
                       <div className="col-span-3 w-full space-y-2">
                         <Input id="email" className="w-full" {...field} />
@@ -335,7 +335,7 @@ export default function AddEmployee() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="password">{t("Password")}</Label>
                       <div className="col-span-3 w-full space-y-2">
                         <Input
@@ -355,7 +355,7 @@ export default function AddEmployee() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="confirmPassword">
                         {t("ConfirmPassword")}
                       </Label>
@@ -377,7 +377,7 @@ export default function AddEmployee() {
                 name="roles"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="roles">{t("Role")}</Label>
                       <div className="col-span-3 w-full space-y-2">
                         <select

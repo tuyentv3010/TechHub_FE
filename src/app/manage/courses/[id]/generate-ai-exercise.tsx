@@ -306,7 +306,7 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Variants */}
             <div className="space-y-2">
               <Label htmlFor="variants">{t("variants")}</Label>

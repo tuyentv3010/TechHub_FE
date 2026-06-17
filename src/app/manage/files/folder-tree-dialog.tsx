@@ -256,8 +256,9 @@ export default function FolderTreeDialog({
           </div>
 
           {creatingSubfolderFor === folder.id && (
-            <div className="flex items-center gap-2 px-2 py-2" style={{ marginLeft: '20px' }}>
+            <div className="flex flex-col gap-2 px-2 py-2 sm:flex-row sm:items-center" style={{ marginLeft: '20px' }}>
               <Input
+                className="w-full sm:flex-1"
                 placeholder={t('SubfolderNamePlaceholder')}
                 value={newSubfolderName}
                 onChange={(e) => setNewSubfolderName(e.target.value)}
@@ -316,8 +317,9 @@ export default function FolderTreeDialog({
               {t('CreateFolder')}
             </Button>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Input
+                className="w-full sm:flex-1"
                 placeholder={t('FolderNamePlaceholder')}
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}

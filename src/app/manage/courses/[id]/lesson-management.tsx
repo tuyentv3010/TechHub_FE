@@ -101,9 +101,9 @@ export default function LessonManagement({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-lg font-semibold">{t("Lessons")}</h3>
-        <Button size="sm" variant="outline" onClick={() => setAddDialogOpen(true)}>
+        <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setAddDialogOpen(true)}>
           <PlusCircle className="h-4 w-4 mr-2" />
           {t("AddLesson")}
         </Button>
@@ -308,7 +308,7 @@ function AddLessonDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="contentType">{t("ContentTypeLabel")}</Label>
               <Select
@@ -362,7 +362,7 @@ function AddLessonDialog({
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="orderIndex">{t("OrderLabel")}</Label>
               <Input
@@ -373,7 +373,7 @@ function AddLessonDialog({
               />
             </div>
 
-            <div className="flex items-center space-x-2 pt-8">
+            <div className="flex items-center space-x-2 sm:pt-8">
               <Switch
                 id="isFree"
                 checked={form.watch("isFree")}
@@ -472,7 +472,7 @@ function EditLessonDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="contentType">{t("ContentTypeLabel")}</Label>
               <Select
@@ -522,7 +522,7 @@ function EditLessonDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="orderIndex">{t("OrderLabel")}</Label>
               <Input
@@ -533,7 +533,7 @@ function EditLessonDialog({
               />
             </div>
 
-            <div className="flex items-center space-x-2 pt-8">
+            <div className="flex items-center space-x-2 sm:pt-8">
               <Switch
                 id="isFree"
                 checked={form.watch("isFree")}

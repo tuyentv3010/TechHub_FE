@@ -71,7 +71,7 @@ export default function AiExercisePanel({
   return (
     <div className="space-y-6">
       {/* Generate AI Exercise Button */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -81,9 +81,9 @@ export default function AiExercisePanel({
             {t("description")}
           </p>
         </div>
-        <GenerateAiExercise 
-          courseId={courseId} 
-          chapters={chapters} 
+        <GenerateAiExercise
+          courseId={courseId}
+          chapters={chapters}
         />
       </div>
 
@@ -120,7 +120,7 @@ export default function AiExercisePanel({
                   metadata?: { lessonTitle?: string };
                 }>).map((draft) => (
                   <Card key={draft.taskId}>
-                    <CardContent className="py-3 flex items-center justify-between">
+                    <CardContent className="py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{draft.taskType}</Badge>

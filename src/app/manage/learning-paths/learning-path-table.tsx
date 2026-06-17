@@ -442,9 +442,9 @@ export default function LearningPathTable() {
                 {(aiDraftsData?.payload?.data || []).map(
                   (draft: { taskId: string; taskType: string; status: string; createdAt: string }) => (
                     <Card key={draft.taskId} className="manage-subsurface border-border/50">
-                      <CardContent className="flex items-center justify-between py-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
+                      <CardContent className="flex flex-col gap-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
                             <Badge variant="outline">{draft.taskType}</Badge>
                             <Badge variant={draft.status === "DRAFT" ? "secondary" : "default"}>
                               {draft.status}
@@ -454,7 +454,7 @@ export default function LearningPathTable() {
                             {new Date(draft.createdAt).toLocaleString()}
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button
                             size="sm"
                             variant="default"

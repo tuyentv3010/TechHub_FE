@@ -24,7 +24,8 @@ import {
   Video,
   HelpCircle,
   Badge,
-  Flame
+  Flame,
+  List
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -82,7 +83,15 @@ export default function CourseLearningLayout({
   const { data: profileData } = useAccountProfile();
   const currentUserId = profileData?.payload?.data?.id;
   const userAvatar = normalizePersistedMediaUrl(profileData?.payload?.data?.avatar) || undefined;
-  
+
+  // On mobile the sidebar is an overlay drawer, so keep it closed by default
+  // there to avoid covering the lesson content on first load.
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  }, []);
+
   const courseSummary = course.summary;
   const chapters = course.chapters || [];
 
@@ -650,8 +659,8 @@ export default function CourseLearningLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden" id="learning-content-area">
         {/* Header */}
-        <header className="border-b bg-card/80 backdrop-blur px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4 min-w-0">
+        <header className="border-b bg-card/80 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <Button
               variant="ghost"
               size="icon"
@@ -688,7 +697,7 @@ export default function CourseLearningLayout({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {learningStreak && (
               <div
                 className="hidden items-center gap-1.5 rounded-full border border-orange-200 bg-gradient-to-r from-orange-50 to-pink-50 px-3 py-1.5 text-sm font-semibold text-orange-700 shadow-sm md:flex"
@@ -701,25 +710,33 @@ export default function CourseLearningLayout({
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-full"
+              className="rounded-full px-2 sm:px-3"
               onClick={() => onStartTour?.()}
+              title="Hướng dẫn"
             >
-              <BookOpen className="h-4 w-4 mr-1" />
-              Hướng dẫn
+              <BookOpen className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Hướng dẫn</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="rounded-full"
+              className="rounded-full px-2 sm:px-3"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              title={isSidebarOpen ? "Ẩn danh sách" : "Hiện danh sách"}
             >
-              {isSidebarOpen ? "Ẩn" : "Hiện"} danh sách
+              <List className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">{isSidebarOpen ? "Ẩn" : "Hiện"} danh sách</span>
             </Button>
           </div>
         </header>
 
         {/* Scrollable Content Area */}
-        <ScrollArea className="flex-1">
+        {/* The `course-learn-scroll` rule (globals.css) forces the Radix
+            ScrollArea viewport wrapper (display:table) to block layout so it
+            can't grow to its widest child, which made the video/content
+            overflow the viewport on mobile. (A Tailwind arbitrary variant with
+            nested brackets fails to compile, so this is done in plain CSS.) */}
+        <ScrollArea className="course-learn-scroll flex-1">
           {(() => {
             const lessonType = (currentLesson?.contentType || (currentLessonVideoUrl ? "VIDEO" : "TEXT")) as
               | "VIDEO" | "TEXT" | "QUIZ" | "CODING";
@@ -739,7 +756,7 @@ export default function CourseLearningLayout({
               <>
                 {/* VIDEO player only when there is a video URL */}
                 {currentLessonVideoUrl && (
-                  <div className="px-6 md:px-10 pt-6 max-w-[900px] mx-auto w-full">
+                  <div className="px-4 sm:px-6 md:px-10 pt-4 sm:pt-6 max-w-[900px] mx-auto w-full">
                     <div
                       className="overflow-hidden rounded-2xl border border-border bg-black shadow-[0_18px_48px_rgba(76,46,224,0.10),0_4px_14px_rgba(15,16,35,0.05)]"
                       id="video-player-area"
@@ -759,7 +776,7 @@ export default function CourseLearningLayout({
                 )}
 
                 {/* Lesson Header (chip + title + meta) */}
-                <div className="px-6 md:px-10 pt-8 pb-2 max-w-[820px] mx-auto w-full">
+                <div className="px-4 sm:px-6 md:px-10 pt-6 sm:pt-8 pb-2 max-w-[820px] mx-auto w-full">
                   <div className="flex items-center gap-2 mb-4">
                     <span
                       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold tracking-wider ${meta.cls}`}
@@ -776,13 +793,13 @@ export default function CourseLearningLayout({
                     )}
                   </div>
 
-                  <div className="flex items-start justify-between gap-4 mb-1">
-                    <h1 className="text-3xl md:text-[34px] font-extrabold tracking-tight leading-tight flex-1">
+                  <div className="flex items-start justify-between gap-2 sm:gap-4 mb-1">
+                    <h1 className="text-2xl sm:text-3xl md:text-[34px] font-extrabold tracking-tight leading-tight flex-1">
                       {currentLesson?.title}
                     </h1>
-                    <Button variant="outline" size="sm" className="flex-shrink-0 rounded-full" id="add-note-button">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Ghi chú
+                    <Button variant="outline" size="sm" className="flex-shrink-0 rounded-full px-2 sm:px-3" id="add-note-button" title="Ghi chú">
+                      <FileText className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Ghi chú</span>
                     </Button>
                   </div>
 
@@ -823,7 +840,7 @@ export default function CourseLearningLayout({
 
                 {/* Lesson Article Body */}
                 {currentLesson?.content && (
-                  <div className="px-6 md:px-10 pb-8 max-w-[860px] mx-auto w-full">
+                  <div className="px-4 sm:px-6 md:px-10 pb-8 max-w-[860px] mx-auto w-full">
                     <button
                       onClick={() => setShowContentDescription(!showContentDescription)}
                       className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
@@ -837,11 +854,11 @@ export default function CourseLearningLayout({
                     </button>
                     {showContentDescription && (
                       <article
-                        className="prose prose-slate dark:prose-invert max-w-none
+                        className="rich-content prose prose-slate dark:prose-invert max-w-none
                           prose-headings:tracking-tight prose-headings:font-bold
                           prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-2xl
                           prose-h3:mt-6 prose-h3:text-xl
-                          prose-p:leading-[1.75] prose-p:text-[18px]
+                          prose-p:leading-[1.75] prose-p:text-base sm:prose-p:text-[18px]
                           prose-a:text-primary prose-a:no-underline hover:prose-a:underline
                           prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:not-italic
                           prose-code:bg-primary/10 prose-code:text-primary prose-code:rounded prose-code:px-1.5 prose-code:py-0.5 prose-code:font-medium prose-code:before:content-none prose-code:after:content-none
@@ -856,7 +873,7 @@ export default function CourseLearningLayout({
 
                 {/* Empty state when no video + no content */}
                 {!currentLessonVideoUrl && !currentLesson?.content && (
-                  <div className="px-6 md:px-10 py-16 max-w-[820px] mx-auto w-full text-center">
+                  <div className="px-4 sm:px-6 md:px-10 py-12 sm:py-16 max-w-[820px] mx-auto w-full text-center">
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
                       <BookOpen className="h-8 w-8" />
                     </div>
@@ -871,7 +888,7 @@ export default function CourseLearningLayout({
           })()}
 
           {/* Exercise Section - New Interactive Design */}
-          <div id="exercise-section" className="p-6 border-b">
+          <div id="exercise-section" className="p-4 sm:p-6 border-b">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <HelpCircle className="h-5 w-5" />
               Bài tập thực hành
@@ -941,7 +958,7 @@ export default function CourseLearningLayout({
 
           {/* Lesson Assets/Resources */}
           {currentLessonAssets.length > 0 && (
-            <div className="border-b px-6 py-6">
+            <div className="border-b px-4 sm:px-6 py-6">
               <div className="mx-auto w-full max-w-[860px]">
                 <Tabs defaultValue="resources" className="w-full">
                   <TabsList className="mb-5 h-auto w-full justify-start overflow-x-auto rounded-none border-b bg-transparent p-0">
@@ -1011,14 +1028,14 @@ export default function CourseLearningLayout({
 
                   <TabsContent value="discussion" className="mt-0">
                     <div className="rounded-xl border bg-card p-5 shadow-sm">
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <h3 className="font-semibold">Thao luan bai hoc</h3>
                           <p className="mt-1 text-sm text-muted-foreground">
                             Mo hoi dap de xem binh luan va trao doi voi hoc vien khac.
                           </p>
                         </div>
-                        <Button onClick={() => setShowCommentModal(true)} className="rounded-full">
+                        <Button onClick={() => setShowCommentModal(true)} className="w-full rounded-full sm:w-auto">
                           <MessageSquare className="mr-2 h-4 w-4" />
                           Mo thao luan
                         </Button>
@@ -1124,10 +1141,17 @@ export default function CourseLearningLayout({
 
       {/* Sidebar - Lesson List */}
       {isSidebarOpen && (
-        <aside
-          className="w-[45%] min-w-[320px] max-w-[400px] border-l bg-card flex flex-col"
-          id="lesson-sidebar"
-        >
+        <>
+          {/* Backdrop - mobile only (sidebar is an overlay drawer below lg) */}
+          <div
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-hidden="true"
+          />
+          <aside
+            className="fixed inset-y-0 right-0 z-50 flex w-[92%] max-w-[400px] flex-col border-l bg-card shadow-2xl lg:static lg:z-auto lg:w-[45%] lg:min-w-[320px] lg:max-w-[400px] lg:shadow-none"
+            id="lesson-sidebar"
+          >
           {/* Progress Header */}
           <div className="p-4 border-b space-y-3">
             <div className="flex items-center justify-between">
@@ -1228,7 +1252,7 @@ export default function CourseLearningLayout({
                             {isChapterDone ? <CheckCircle2 className="h-4 w-4" /> : chapterIndex + 1}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm line-clamp-1">{chapter.title}</h4>
+                            <h4 className="font-semibold text-base line-clamp-1 lg:text-sm">{chapter.title}</h4>
                             <div className="mt-1 flex items-center gap-2">
                               <div className="h-1 w-20 rounded-full bg-muted overflow-hidden">
                                 <div
@@ -1269,7 +1293,7 @@ export default function CourseLearningLayout({
                             return (
                               <button
                                 key={lesson.id}
-                                className={`group w-full rounded-lg border px-3 py-2.5 text-left transition-all ${
+                                className={`group w-full rounded-lg border px-3 py-3 text-left transition-all lg:py-2.5 ${
                                   isCurrent
                                     ? "bg-primary/8 border-primary shadow-sm ring-1 ring-primary/40"
                                     : isCompleted
@@ -1307,7 +1331,7 @@ export default function CourseLearningLayout({
                                   {/* Lesson info */}
                                   <div className="flex-1 min-w-0">
                                     <p
-                                      className={`text-sm font-medium line-clamp-2 mb-1.5 ${
+                                      className={`text-base font-medium line-clamp-2 mb-1.5 lg:text-sm ${
                                         isCurrent ? "text-primary" : ""
                                       }`}
                                     >
@@ -1347,7 +1371,8 @@ export default function CourseLearningLayout({
               </Accordion>
             </div>
           </ScrollArea>
-        </aside>
+          </aside>
+        </>
       )}
 
       {/* Comment/Discussion Modal */}

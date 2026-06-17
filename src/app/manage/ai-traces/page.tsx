@@ -159,7 +159,7 @@ export default function AiTracesPage() {
                 <p className="text-sm text-muted-foreground">
                   {t("trackedCount", { count: total })}
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -289,7 +289,7 @@ export default function AiTracesPage() {
                 <p className="text-sm text-muted-foreground">
                   {t("trackedCount", { count: total })}
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"

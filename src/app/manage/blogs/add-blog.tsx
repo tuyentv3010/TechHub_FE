@@ -196,24 +196,26 @@ export default function AddBlog() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("Thumbnail")}</FormLabel>
-                    <div className="flex gap-2">
-                      <Input 
-                        placeholder="Enter thumbnail URL or choose from library" 
-                        value={field.value || ''} 
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Input
+                        placeholder="Enter thumbnail URL or choose from library"
+                        value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value || null)}
                       />
-                      <Button 
-                        type="button" 
+                      <Button
+                        type="button"
                         variant="outline"
+                        className="w-full sm:w-auto"
                         onClick={() => setShowThumbnailLibrary(true)}
                         disabled={isUploading}
                       >
                         <ImageIcon className="w-4 h-4 mr-2" />
                         Choose
                       </Button>
-                      <Button 
-                        type="button" 
+                      <Button
+                        type="button"
                         variant="outline"
+                        className="w-full sm:w-auto"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
                       >

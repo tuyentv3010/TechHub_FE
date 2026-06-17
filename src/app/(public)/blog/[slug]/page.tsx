@@ -344,7 +344,7 @@ const RelatedLearningSection = ({ blog }: { blog: Blog }) => {
   }
 
   return (
-    <section className="rounded-2xl border border-muted/40 bg-card/60 p-6">
+    <section className="rounded-2xl border border-muted/40 bg-card/60 p-4 sm:p-6">
       <div className="mb-4 flex items-center gap-3">
         <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <BookOpen className="h-5 w-5" />
@@ -461,7 +461,7 @@ const CommentItem = ({
     `@${comment.userId.slice(0, 8)}`;
   return (
     <div className="space-y-3">
-      <div className={`flex gap-3 ${depth > 0 ? "ml-12" : ""}`}>
+      <div className={`flex gap-2 sm:gap-3 ${depth > 0 ? "ml-4 sm:ml-12" : ""}`}>
         {/* Avatar */}
         <div className="flex-shrink-0">
           <CommentUserInfo userId={comment.userId} />
@@ -622,6 +622,7 @@ export default function BlogDetailPage() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [showEmojiPickerMain, setShowEmojiPickerMain] = useState(false);
+  const [showTocMobile, setShowTocMobile] = useState(false);
   const mainTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const insertEmojiAtCursor = (
@@ -958,7 +959,7 @@ export default function BlogDetailPage() {
 
   if (isLoading || !blog) {
     return (
-      <main className="container mx-auto px-4 py-20">
+      <main className="container mx-auto px-4 py-10 sm:py-20">
         <div className="grid gap-6 lg:grid-cols-[80px_minmax(0,1fr)_260px]">
           <div className="hidden lg:block" />
           <div className="space-y-6">
@@ -967,7 +968,7 @@ export default function BlogDetailPage() {
             <Skeleton className="h-[400px] w-full rounded-2xl" />
             <Skeleton className="h-20 w-full rounded-2xl" />
           </div>
-          <div className="space-y-4">
+          <div className="hidden space-y-4 lg:block">
             <Skeleton className="h-6 w-32" />
             <Skeleton className="h-48 w-full rounded-2xl" />
           </div>
@@ -979,7 +980,7 @@ export default function BlogDetailPage() {
   const tags = normalizeTags(blog.tags ?? []);
 
   return (
-    <main className="relative bg-background pb-24 pt-16">
+    <main className="relative bg-background pb-16 pt-10 sm:pb-24 sm:pt-16">
       <article className="container mx-auto px-4">
         {/* Breadcrumb */}
         <div className="mb-6">
@@ -991,12 +992,12 @@ export default function BlogDetailPage() {
           </Link>
         </div>
 
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-10">
           {/* Content Column */}
-          <section className="order-2 lg:order-1 space-y-8">
+          <section className="order-2 min-w-0 space-y-6 sm:space-y-8 lg:order-1">
             {/* Title & Meta */}
             <div className="space-y-3">
-              <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
+              <h1 className="break-words text-2xl font-semibold leading-tight sm:text-3xl md:text-5xl">
                 {blog.title}
               </h1>
               <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -1034,10 +1035,10 @@ export default function BlogDetailPage() {
             </div>
 
             {/* Blog Content */}
-            <div className="prose prose-lg max-w-none dark:prose-invert prose-headings:scroll-mt-24 prose-img:rounded-2xl">
+            <div className="prose max-w-none break-words dark:prose-invert prose-headings:scroll-mt-24 prose-pre:overflow-x-auto prose-img:rounded-2xl lg:prose-lg [&_img]:h-auto [&_img]:max-w-full [&_table]:block [&_table]:overflow-x-auto">
               <div
                 dangerouslySetInnerHTML={{ __html: preparedContent.html }}
-                className="leading-relaxed text-muted-foreground [&_.blog-heading-number]:mr-3 [&_.blog-heading-number]:inline-flex [&_.blog-heading-number]:h-8 [&_.blog-heading-number]:min-w-8 [&_.blog-heading-number]:items-center [&_.blog-heading-number]:justify-center [&_.blog-heading-number]:rounded-lg [&_.blog-heading-number]:bg-primary/10 [&_.blog-heading-number]:px-2 [&_.blog-heading-number]:text-sm [&_.blog-heading-number]:font-semibold [&_.blog-heading-number]:text-primary [&_figure]:my-8 [&_h2]:mt-12 [&_h2]:border-t [&_h2]:border-border/60 [&_h2]:pt-8 [&_h3]:mt-8 [&_p]:my-4"
+                className="rich-content leading-relaxed text-muted-foreground [&_.blog-heading-number]:mr-3 [&_.blog-heading-number]:inline-flex [&_.blog-heading-number]:h-8 [&_.blog-heading-number]:min-w-8 [&_.blog-heading-number]:items-center [&_.blog-heading-number]:justify-center [&_.blog-heading-number]:rounded-lg [&_.blog-heading-number]:bg-primary/10 [&_.blog-heading-number]:px-2 [&_.blog-heading-number]:text-sm [&_.blog-heading-number]:font-semibold [&_.blog-heading-number]:text-primary [&_figure]:my-8 [&_h2]:mt-12 [&_h2]:border-t [&_h2]:border-border/60 [&_h2]:pt-8 [&_h3]:mt-8 [&_p]:my-4"
               />
             </div>
 
@@ -1045,7 +1046,7 @@ export default function BlogDetailPage() {
 
             {/* Attachments */}
             {blog.attachments && blog.attachments.length > 0 && (
-              <section className="rounded-2xl border border-muted/40 bg-card/60 p-6">
+              <section className="rounded-2xl border border-muted/40 bg-card/60 p-4 sm:p-6">
                 <h2 className="text-lg font-semibold">Tệp đính kèm</h2>
                 <p className="text-sm text-muted-foreground">
                   Tải về tài liệu hoặc hình ảnh liên quan.
@@ -1077,7 +1078,7 @@ export default function BlogDetailPage() {
             )}
 
             {/* Share Section */}
-            <section className="rounded-2xl border border-muted/40 bg-card/60 p-6">
+            <section className="rounded-2xl border border-muted/40 bg-card/60 p-4 sm:p-6">
               <h2 className="text-lg font-semibold mb-4">Chia sẻ bài viết</h2>
               <div className="flex flex-wrap gap-3">
                 {shareItems.map((item) => (
@@ -1087,9 +1088,9 @@ export default function BlogDetailPage() {
             </section>
 
             {/* Comments Section */}
-            <section className="space-y-6 rounded-2xl border border-muted/40 bg-card/60 p-6">
+            <section className="space-y-6 rounded-2xl border border-muted/40 bg-card/60 p-4 sm:p-6">
               {/* Header with count and sort */}
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-base font-semibold">
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <MessageCircle className="h-4 w-4" />
@@ -1187,32 +1188,47 @@ export default function BlogDetailPage() {
 
           {/* Sidebar - Mục lục */}
           <aside className="order-1 lg:order-2">
-            <div className="sticky top-24 space-y-6">
+            <div className="lg:sticky lg:top-24 space-y-6">
               {/* Table of Contents */}
-              <div className="rounded-2xl border border-muted/40 bg-card/70 p-6">
-                <h2 className="text-lg font-semibold mb-2">Mục Lục</h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Các nội dung chính trong bài viết này.
-                </p>
-                <div className="space-y-1">
-                  {preparedContent.toc.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Bài viết chưa có cấu trúc tiêu đề rõ ràng.
-                    </p>
-                  ) : (
-                    preparedContent.toc.map((item, index) => (
-                      <a
-                        key={item.id}
-                        href={`#${item.id}`}
-                        onClick={(event) => handleScrollToHeading(event, item)}
-                        className="block w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-muted/60 hover:text-primary"
-                        style={{ paddingLeft: `${Math.max(item.level - 2, 0) * 12 + 12}px` }}
-                      >
-                        {item.number ?? `${index + 1}`}.{" "}
-                        {item.text}
-                      </a>
-                    ))
-                  )}
+              <div className="rounded-2xl border border-muted/40 bg-card/70 p-4 sm:p-6">
+                {/* Header doubles as a collapse toggle on mobile; always expanded on desktop */}
+                <button
+                  type="button"
+                  onClick={() => setShowTocMobile((s) => !s)}
+                  aria-expanded={showTocMobile}
+                  className="flex w-full items-center justify-between gap-2 text-left lg:pointer-events-none"
+                >
+                  <h2 className="text-lg font-semibold">Mục Lục</h2>
+                  <ChevronDown
+                    className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform lg:hidden ${
+                      showTocMobile ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                <div className={`${showTocMobile ? "block" : "hidden"} lg:block`}>
+                  <p className="mb-4 mt-3 text-sm text-muted-foreground">
+                    Các nội dung chính trong bài viết này.
+                  </p>
+                  <div className="space-y-1">
+                    {preparedContent.toc.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Bài viết chưa có cấu trúc tiêu đề rõ ràng.
+                      </p>
+                    ) : (
+                      preparedContent.toc.map((item, index) => (
+                        <a
+                          key={item.id}
+                          href={`#${item.id}`}
+                          onClick={(event) => handleScrollToHeading(event, item)}
+                          className="block w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-muted/60 hover:text-primary"
+                          style={{ paddingLeft: `${Math.max(item.level - 2, 0) * 12 + 12}px` }}
+                        >
+                          {item.number ?? `${index + 1}`}.{" "}
+                          {item.text}
+                        </a>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

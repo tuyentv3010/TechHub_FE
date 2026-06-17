@@ -343,7 +343,7 @@ export default function ManageInstructorApplicationsPage() {
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metric label="Tổng đơn" value={counts.total} icon={<Inbox className="h-4 w-4" />} />
           <Metric label="Chờ duyệt" value={counts.pending} icon={<Clock className="h-4 w-4" />} />
           <Metric label="AI đã xử lý" value={counts.processed} icon={<Sparkles className="h-4 w-4" />} />
@@ -739,7 +739,7 @@ function StatusTabs({
   const tabs: StatusFilter[] = ["ALL", "PENDING", "APPROVED", "REJECTED"];
 
   return (
-    <div className="inline-flex h-12 items-center gap-1 rounded-xl border border-border bg-muted p-1">
+    <div className="inline-flex h-12 max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-border bg-muted p-1">
       {tabs.map((tab) => {
         const active = value === tab;
         return (
@@ -747,7 +747,7 @@ function StatusTabs({
             key={tab}
             type="button"
             onClick={() => onChange(tab)}
-            className={`inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition ${
+            className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition ${
               active
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:bg-background hover:text-foreground"
