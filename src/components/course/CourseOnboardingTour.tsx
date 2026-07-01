@@ -342,14 +342,14 @@ export default function CourseOnboardingTour({
 
       {/* Tour Card */}
       <Card
-        className="fixed z-50 w-96 p-6 shadow-2xl"
+        className="fixed z-50 w-96 rounded-lg border border-border bg-card p-6 shadow-lg"
         style={getTooltipPosition()}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-bold">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">
                 M
               </div>
               <div>
@@ -432,7 +432,7 @@ export default function CourseOnboardingTour({
           <Button
             size="sm"
             onClick={handleNext}
-            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {currentStep === tourSteps.length - 1 ? t("finish") : t("next")}
           </Button>

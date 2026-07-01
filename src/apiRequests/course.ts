@@ -14,17 +14,31 @@ const courseApiRequest = {
     page?: number;
     size?: number;
     search?: string;
+    status?: string;
+    level?: string;
+    language?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    skillIds?: string[];
+    tagIds?: string[];
   }) => {
-    console.log("🔍 [FE] getMyCourses called with params:", JSON.stringify(params, null, 2));
-    
     const searchParams = new URLSearchParams();
     if (params?.page !== undefined) searchParams.append("page", String(params.page));
     if (params?.size !== undefined) searchParams.append("size", String(params.size));
     if (params?.search) searchParams.append("search", params.search);
+    if (params?.status) searchParams.append("status", params.status);
+    if (params?.level) searchParams.append("level", params.level);
+    if (params?.language) searchParams.append("language", params.language);
+    if (params?.minPrice !== undefined) searchParams.append("minPrice", String(params.minPrice));
+    if (params?.maxPrice !== undefined) searchParams.append("maxPrice", String(params.maxPrice));
+    if (params?.skillIds && params.skillIds.length > 0) {
+      params.skillIds.forEach((id) => searchParams.append("skillIds", id));
+    }
+    if (params?.tagIds && params.tagIds.length > 0) {
+      params.tagIds.forEach((id) => searchParams.append("tagIds", id));
+    }
 
     const url = `/app/api/proxy/courses/my-courses${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
-    console.log("🌐 [FE] getMyCourses Request URL:", url);
-
     return http.get<CourseListResponseType>(url);
   },
 
@@ -83,7 +97,7 @@ const courseApiRequest = {
     maxPrice?: number;
     skillIds?: string[];
     tagIds?: string[];
-  }) => {
+  }, options?: Parameters<typeof http.get>[1]) => {
     console.log("🔍 [FE] getCourseList called with params:", JSON.stringify(params, null, 2));
     
     const searchParams = new URLSearchParams();
@@ -109,12 +123,16 @@ const courseApiRequest = {
     console.log("🌐 [FE] Request URL:", url);
     console.log("📋 [FE] Search params:", searchParams.toString());
 
-    return http.get<CourseListResponseType>(url);
+    return http.get<CourseListResponseType>(url, options);
   },
 
   // Get course by ID
   getCourseById: (id: string) =>
     http.get<CourseDetailResponseType>(`/app/api/proxy/courses/${id}`),
+
+  // Get current user's learning streak
+  getLearningStreak: () =>
+    http.get(`/app/api/proxy/courses/streak`),
 
   // Create new course
   createCourse: (body: CreateCourseBodyType) =>
@@ -137,7 +155,11 @@ const courseApiRequest = {
     http.get(`/app/api/proxy/courses/${courseId}/chapters`),
 
   // Get all available skills (from course-service)
-  getSkills: () => http.get(`/app/api/proxy/courses/skills`),
+  getSkills: (options?: Parameters<typeof http.get>[1]) =>
+    http.get(`/app/api/proxy/courses/skills`, {
+      redirectOnUnauthorized: false,
+      ...options,
+    }),
   // Get single skill by id
   getSkill: (id: string) => http.get(`/app/api/proxy/courses/skills/${id}`),
 
@@ -147,7 +169,11 @@ const courseApiRequest = {
   deleteSkill: (id: string) => http.delete(`/app/api/proxy/courses/skills/${id}`),
 
   // Get all available tags (from course-service)
-  getTags: () => http.get(`/app/api/proxy/courses/tags`),
+  getTags: (options?: Parameters<typeof http.get>[1]) =>
+    http.get(`/app/api/proxy/courses/tags`, {
+      redirectOnUnauthorized: false,
+      ...options,
+    }),
 
   // Create/update/delete tag
   createTag: (body: any) => http.post(`/app/api/proxy/courses/tags`, body),
@@ -295,6 +321,16 @@ const courseApiRequest = {
   bulkCreateExercises: (courseId: string, lessonId: string, body: { exercises: any[] }) =>
     http.post(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/bulk`, body),
 
+  // Submit learner answer and receive grading feedback
+  submitExercise: (courseId: string, lessonId: string, body: any) =>
+    http.post(`/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercise/submissions`, body),
+
+  // Lesson leaderboard (top N learners by submission grade)
+  getLessonLeaderboard: (courseId: string, lessonId: string, limit: number = 10) =>
+    http.get<any>(
+      `/app/api/proxy/courses/${courseId}/lessons/${lessonId}/leaderboard?limit=${limit}`,
+    ),
+
   // Update exercise
   updateExercise: (courseId: string, lessonId: string, exerciseId: string, body: any) => {
     const url = `/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/${exerciseId}`;
@@ -319,6 +355,24 @@ const courseApiRequest = {
     });
     return http.delete(url);
   },
+
+  // Instructor: list the latest submission per learner for an exercise
+  getExerciseSubmissions: (courseId: string, lessonId: string, exerciseId: string) =>
+    http.get<any>(
+      `/app/api/proxy/courses/${courseId}/lessons/${lessonId}/exercises/${exerciseId}/submissions`,
+    ),
+
+  // Instructor: grade a submission (score and/or written feedback)
+  gradeSubmission: (
+    courseId: string,
+    lessonId: string,
+    submissionId: string,
+    body: { grade?: number | null; feedback?: string | null; status?: string },
+  ) =>
+    http.put<any>(
+      `/app/api/proxy/courses/${courseId}/lessons/${lessonId}/submissions/${submissionId}/grade`,
+      body,
+    ),
 };
 
 export default courseApiRequest;

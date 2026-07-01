@@ -38,7 +38,8 @@ function getWebSocketUrl(service: WebSocketServiceType, directConnection: boolea
     return `http://localhost:${port}/ws-comment`;
   }
   
-  const baseUrl = envConfig.NEXT_PUBLIC_API_ENDPOINT;
+  const baseUrl =
+    envConfig.NEXT_PUBLIC_WS_BASE || envConfig.NEXT_PUBLIC_API_ENDPOINT;
   const servicePath = service === "blog" ? "blog-service" : "course-service";
   return `${baseUrl}/${servicePath}/ws-comment`;
 }
@@ -47,7 +48,7 @@ function getWebSocketUrl(service: WebSocketServiceType, directConnection: boolea
  * Create STOMP client for WebSocket communication
  */
 export function createStompClient(config: StompClientConfig): Client {
-  const { service, onConnect, onDisconnect, onError, debug = false, directConnection = true } = config;
+  const { service, onConnect, onDisconnect, onError, debug = false, directConnection = false } = config;
 
   const wsUrl = getWebSocketUrl(service, directConnection);
   

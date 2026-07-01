@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
-import { useRecommendRealtimeMutation, useRecommendScheduledMutation } from "@/queries/useAi";
+import { useGetRecommendationHistory, useRecommendRealtimeMutation, useRecommendScheduledMutation } from "@/queries/useAi";
 import { Sparkles, Loader2, Clock, TrendingUp, BookOpen, Star } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -28,6 +28,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useTranslations } from "next-intl";
 import { useAppContext } from "@/components/app-provider";
+import { useAccountProfile } from "@/queries/useAccount";
+import courseApiRequest from "@/apiRequests/course";
+import { useRouter } from "next/navigation";
+import { getUserInfoFromStorage } from "@/lib/utils";
 
 interface Recommendation {
   title: string;
@@ -38,30 +42,28 @@ interface Recommendation {
   reason: string;
 }
 
-interface ScheduledHistoryItem {
-  id: string;
-  createdAt: Date;
-  recommendations: Recommendation[];
-}
-
 export default function RecommendationsPage() {
   const { toast } = useToast();
   const t = useTranslations("AiRecommendation");
   const tCommon = useTranslations("common");
   const { isAuth } = useAppContext();
+  const router = useRouter();
   const [userId, setUserId] = useState<string>("");
   const [language, setLanguage] = useState<string>("vi");
   const [preferredLanguages, setPreferredLanguages] = useState<string[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [showDetails, setShowDetails] = useState<Recommendation | null>(null);
-  const [scheduledHistory, setScheduledHistory] = useState<ScheduledHistoryItem[]>([]);
 
   const realtimeMutation = useRecommendRealtimeMutation();
   const scheduledMutation = useRecommendScheduledMutation();
+  const { data: accountData } = useAccountProfile();
+  const { data: historyData, refetch: refetchHistory } = useGetRecommendationHistory(userId, "SCHEDULED", 20);
+
+  const scheduledHistory = historyData?.payload?.data || [];
 
   useEffect(() => {
     if (typeof window !== "undefined" && isAuth) {
-      const storedUserInfo = localStorage.getItem("userInfo");
+      const storedUserInfo = getUserInfoFromStorage();
       if (storedUserInfo) {
         try {
           const parsed = JSON.parse(storedUserInfo);
@@ -72,6 +74,13 @@ export default function RecommendationsPage() {
       }
     }
   }, [isAuth]);
+
+  useEffect(() => {
+    const accountUserId = accountData?.payload?.data?.id;
+    if (accountUserId) {
+      setUserId(accountUserId);
+    }
+  }, [accountData]);
 
   const handleLanguageToggle = (lang: string) => {
     setPreferredLanguages((prev) =>
@@ -129,16 +138,8 @@ export default function RecommendationsPage() {
         language,
         preferredLanguages: preferredLanguages.length > 0 ? preferredLanguages : undefined,
       });
-
-      const recs = response.payload?.data?.recommendations || [];
-      setScheduledHistory((prev) => [
-        {
-          id: Date.now().toString(),
-          createdAt: new Date(),
-          recommendations: recs,
-        },
-        ...prev,
-      ]);
+      setRecommendations(response.payload?.data?.recommendations || []);
+      await refetchHistory();
 
       toast({
         title: tCommon("success"),
@@ -165,12 +166,33 @@ export default function RecommendationsPage() {
     return t("maybeSuitable");
   };
 
+  const handleEnroll = async (courseId: string) => {
+    try {
+      await courseApiRequest.enrollCourse(courseId);
+      toast({
+        title: tCommon("success"),
+        description: t("enroll"),
+      });
+    } catch (error) {
+      toast({
+        title: tCommon("error"),
+        description: error instanceof Error ? error.message : tCommon("error"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAskAiWhy = (recommendation: Recommendation) => {
+    const prompt = `Vi sao ban goi y khoa hoc "${recommendation.title}" cho toi? Hay phan tich theo muc tieu, muc do phu hop va buoc tiep theo.`;
+    router.push(`/ai-chat?prompt=${encodeURIComponent(prompt)}`);
+  };
+
   return (
     <main className="container mx-auto p-4 sm:px-6 sm:py-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Sparkles className="h-8 w-8 text-purple-500" />
+            <Sparkles className="h-8 w-8 text-primary" />
             {t("title")}
           </h1>
           <p className="text-muted-foreground mt-2">
@@ -363,8 +385,8 @@ export default function RecommendationsPage() {
                                     </Badge>
                                   ))}
                                 </div>
-                                <div className="bg-blue-50 p-3 rounded-md text-sm">
-                                  <p className="text-blue-900">
+                                <div className="bg-muted p-3 rounded-md text-sm">
+                                  <p className="text-foreground">
                                     <strong>{t("reasonForRecommendation")}</strong> {rec.reason}
                                   </p>
                                 </div>
@@ -414,7 +436,10 @@ export default function RecommendationsPage() {
                                   </div>
                                 </DialogContent>
                               </Dialog>
-                              <Button size="sm" className="flex-1">
+                              <Button size="sm" variant="outline" onClick={() => handleAskAiWhy(rec)}>
+                                Ask AI why
+                              </Button>
+                              <Button size="sm" className="flex-1" onClick={() => handleEnroll((rec as any).courseId)}>
                                 {t("enroll")}
                               </Button>
                             </div>
@@ -440,11 +465,11 @@ export default function RecommendationsPage() {
                     <div className="text-sm text-muted-foreground">{t("noScheduledHistory")}</div>
                   ) : (
                     <div className="space-y-3">
-                      {scheduledHistory.map((item) => (
-                        <Card key={item.id}>
+                      {scheduledHistory.map((item: any) => (
+                        <Card key={item.taskId}>
                           <CardContent className="py-3 space-y-2">
                             <div className="text-xs text-muted-foreground">
-                              {item.createdAt.toLocaleString()}
+                              {new Date(item.createdAt).toLocaleString()}
                             </div>
                             {(item.recommendations || []).length === 0 ? (
                               <p className="text-sm text-muted-foreground">

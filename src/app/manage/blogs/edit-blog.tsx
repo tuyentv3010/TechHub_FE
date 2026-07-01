@@ -27,6 +27,8 @@ import { Badge } from "@/components/ui/badge";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import fileApiRequest from "@/apiRequests/file";
 import { Upload } from "lucide-react";
+import { resolveManagedFileUrl } from "@/lib/file-media";
+import IntegratedBlogLinkPicker from "@/components/blog/integrated-blog-link-picker";
 
 const RichTextEditor = dynamic(() => import("@/components/blog/rich-text-editor"), {
   ssr: false,
@@ -56,19 +58,32 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
       thumbnail: null,
       status: "DRAFT",
       tags: [],
+      relatedCourseIds: [],
+      relatedLessonIds: [],
       attachments: [],
     },
   });
 
   useEffect(() => {
     if (data?.payload?.data) {
-      const { title, content, thumbnail, status, tags, attachments } = data.payload.data;
+      const {
+        title,
+        content,
+        thumbnail,
+        status,
+        tags,
+        attachments,
+        relatedCourseIds,
+        relatedLessonIds,
+      } = data.payload.data;
       form.reset({ 
         title, 
         content, 
         thumbnail: thumbnail || null,
         status, 
         tags: tags || [], 
+        relatedCourseIds: relatedCourseIds || [],
+        relatedLessonIds: relatedLessonIds || [],
         attachments: attachments || [] 
       });
     }
@@ -126,8 +141,12 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        form.setValue('thumbnail', response.payload.data.cloudinarySecureUrl);
+      const thumbnailUrl = response.payload?.data
+        ? resolveManagedFileUrl(response.payload.data, userId, "thumbnail")
+        : null;
+
+      if (thumbnailUrl) {
+        form.setValue('thumbnail', thumbnailUrl);
         toast({ description: "Thumbnail uploaded successfully" });
       }
     } catch (error: any) {
@@ -175,7 +194,7 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
         if (!value) reset();
       }}
     >
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-auto" onCloseAutoFocus={reset}>
+      <DialogContent className="manage-dialog-panel sm:max-w-[900px] max-h-[90vh] overflow-auto rounded-[1.35rem] border-border/50" onCloseAutoFocus={reset}>
         <DialogHeader>
           <DialogTitle>{t("UpdateBlog")}</DialogTitle>
         </DialogHeader>
@@ -205,24 +224,26 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("Thumbnail")}</FormLabel>
-                    <div className="flex gap-2">
-                      <Input 
-                        placeholder="Enter thumbnail URL or choose from library" 
-                        value={field.value || ''} 
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Input
+                        placeholder="Enter thumbnail URL or choose from library"
+                        value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value || null)}
                       />
-                      <Button 
-                        type="button" 
+                      <Button
+                        type="button"
                         variant="outline"
+                        className="w-full sm:w-auto"
                         onClick={() => setShowThumbnailLibrary(true)}
                         disabled={isUploading}
                       >
                         <ImageIcon className="w-4 h-4 mr-2" />
                         Choose
                       </Button>
-                      <Button 
-                        type="button" 
+                      <Button
+                        type="button"
                         variant="outline"
+                        className="w-full sm:w-auto"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
                       >
@@ -276,7 +297,7 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
                   <FormItem>
                     <FormLabel>{t("Tags")}</FormLabel>
                     <div className="flex items-center gap-2">
-                      <Button type="button" variant="ghost" onClick={() => setShowTagManager(true)} className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700">
+                      <Button type="button" onClick={() => setShowTagManager(true)} className="ml-2">
                         {t("ManageTags") || "Manage tags"}
                       </Button>
                     </div>
@@ -293,6 +314,27 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
                   </FormItem>
                 )}
               />
+              <FormItem>
+                <FormLabel>Integrated links</FormLabel>
+                <IntegratedBlogLinkPicker
+                  relatedCourseIds={form.watch("relatedCourseIds") || []}
+                  relatedLessonIds={form.watch("relatedLessonIds") || []}
+                  onRelatedCourseIdsChange={(ids) =>
+                    form.setValue("relatedCourseIds", ids, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    })
+                  }
+                  onRelatedLessonIdsChange={(ids) =>
+                    form.setValue("relatedLessonIds", ids, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    })
+                  }
+                />
+              </FormItem>
               <FormField
                 control={form.control}
                 name="content"
@@ -330,7 +372,10 @@ export default function EditBlog({ id, setId, onSubmitSuccess }: EditBlogProps) 
       open={showThumbnailLibrary}
       onOpenChange={setShowThumbnailLibrary}
       onSelectFile={(file) => {
-        form.setValue('thumbnail', file.cloudinarySecureUrl);
+        const thumbnailUrl = resolveManagedFileUrl(file, userId, "thumbnail");
+        if (thumbnailUrl) {
+          form.setValue('thumbnail', thumbnailUrl);
+        }
         setShowThumbnailLibrary(false);
       }}
       userId={userId}

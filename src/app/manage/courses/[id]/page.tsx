@@ -1,21 +1,25 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useTranslations } from "next-intl";
-import { useGetCourseById, useGetChapters } from "@/queries/useCourse";
-import { Suspense, useMemo } from "react";
+import { Suspense } from "react";
 import dynamic from "next/dynamic";
+import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+
 import TableSkeleton from "@/components/Skeleton";
+import { AdminPageFrame, AdminSurface } from "@/components/manage/admin-page-frame";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import LessonManagement from "./lesson-management";
-import AssetManagement from "./asset-management";
-import ExerciseManagement from "./exercise-management";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatPrice } from "@/lib/utils";
+import { useGetChapters, useGetCourseById } from "@/queries/useCourse";
+
 import AiExercisePanel from "./ai-exercise-panel";
 
 const ChapterManagement = dynamic(() => import("./chapter-management"));
 const ProgressTracker = dynamic(() => import("./progress-tracker"));
+const LessonManagement = dynamic(() => import("./lesson-management"));
+const AssetManagement = dynamic(() => import("./asset-management"));
+const ExerciseManagement = dynamic(() => import("./exercise-management"));
 
 export default function CourseDetailPage() {
   const params = useParams();
@@ -23,14 +27,18 @@ export default function CourseDetailPage() {
   const t = useTranslations("ManageCourse");
 
   const { data: courseData, isLoading: courseLoading } = useGetCourseById(courseId);
-  const { data: chaptersData, isLoading: chaptersLoading, refetch: refetchChapters } = useGetChapters(courseId);
+  const {
+    data: chaptersData,
+    isLoading: chaptersLoading,
+    refetch: refetchChapters,
+  } = useGetChapters(courseId);
 
-  const course = courseData?.payload?.data?.summary;    
+  const course = courseData?.payload?.data?.summary;
   const chapters = (chaptersData?.payload?.data || []) as any[];
 
   if (courseLoading) {
     return (
-      <div className="p-6">
+      <div className="manage-page">
         <TableSkeleton />
       </div>
     );
@@ -38,12 +46,10 @@ export default function CourseDetailPage() {
 
   if (!course) {
     return (
-      <div className="p-6">
-        <Card>
-          <CardContent className="py-8">
-            <div className="text-center text-muted-foreground">
-              {t("CourseNotFound")}
-            </div>
+      <div className="manage-page">
+        <Card className="manage-surface border-border/50">
+          <CardContent className="py-10 text-center text-muted-foreground">
+            {t("CourseNotFound")}
           </CardContent>
         </Card>
       </div>
@@ -51,63 +57,55 @@ export default function CourseDetailPage() {
   }
 
   return (
-    <main className="p-4 sm:px-6 sm:py-4 md:p-8 space-y-6">
-      {/* Course Header */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">{course.title}</CardTitle>
-          <CardDescription>{course.description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-muted-foreground">{t("Status")}: </span>
-              <span className="font-medium">{t(`Status.${course.status}`)}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{t("Level")}: </span>
-              <span className="font-medium">{t(`Level.${course.level}`)}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{t("Price")}: </span>
-              <span className="font-medium">{course.price.toFixed(2)} USD</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">{t("Enrollments")}: </span>
-              <span className="font-medium">{course.totalEnrollments}</span>
-            </div>
+    <AdminPageFrame
+      eyebrow="Studio / Course Detail"
+      title={course.title}
+      description={course.description}
+    >
+      <AdminSurface className="p-5 md:p-7">
+        <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+          <div className="manage-subsurface p-4">
+            <span className="text-muted-foreground">{t("Status")}: </span>
+            <span className="font-medium">{t(`Status.${course.status}`)}</span>
           </div>
-        </CardContent>
-      </Card>
+          <div className="manage-subsurface p-4">
+            <span className="text-muted-foreground">{t("Level")}: </span>
+            <span className="font-medium">{t(`Level.${course.level}`)}</span>
+          </div>
+          <div className="manage-subsurface p-4">
+            <span className="text-muted-foreground">{t("Price")}: </span>
+            <span className="font-medium">{formatPrice(course.price, course.currency)}</span>
+          </div>
+          <div className="manage-subsurface p-4">
+            <span className="text-muted-foreground">{t("Enrollments")}: </span>
+            <span className="font-medium">{course.totalEnrollments}</span>
+          </div>
+        </div>
+      </AdminSurface>
 
-      {/* Tabs */}
       <Tabs defaultValue="content" className="space-y-4">
-        <TabsList>
+        <TabsList className="manage-glass h-auto rounded-2xl border border-border/50 p-1">
           <TabsTrigger value="content">{t("CourseContent")}</TabsTrigger>
           <TabsTrigger value="progress">{t("Progress")}</TabsTrigger>
           <TabsTrigger value="ai-exercises">{t("AiExercises")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="content" className="space-y-6">
-          {/* Chapter Management */}
           <Suspense fallback={<TableSkeleton />}>
             <ChapterManagement courseId={courseId} />
           </Suspense>
 
-          {/* Chapters with Lessons */}
           {chaptersLoading ? (
             <TableSkeleton />
           ) : (
-            <Card>
+            <Card className="manage-surface border-border/50">
               <CardHeader>
                 <CardTitle>{t("ChaptersAndLessons")}</CardTitle>
                 <CardDescription>{t("ManageChaptersLessonsDescription")}</CardDescription>
               </CardHeader>
               <CardContent>
                 {chapters.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    {t("NoChaptersYet")}
-                  </div>
+                  <div className="py-8 text-center text-muted-foreground">{t("NoChaptersYet")}</div>
                 ) : (
                   <Accordion type="single" collapsible className="w-full">
                     {chapters.map((chapter: any) => (
@@ -121,7 +119,6 @@ export default function CourseDetailPage() {
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="space-y-6 pt-4">
-                          {/* Lesson Management */}
                           <LessonManagement
                             courseId={courseId}
                             chapterId={chapter.id}
@@ -129,12 +126,10 @@ export default function CourseDetailPage() {
                             onRefresh={refetchChapters}
                           />
 
-                          {/* Assets for each lesson */}
                           {chapter.lessons && chapter.lessons.length > 0 && (
-                            <div className="space-y-4 pl-6 border-l-2">
+                            <div className="space-y-4 border-l-2 pl-6">
                               {chapter.lessons.map((lesson: any) => (
                                 <div key={lesson.id} className="space-y-4">
-                                  {/* Assets Section */}
                                   <div className="space-y-2">
                                     <h5 className="text-sm font-medium text-muted-foreground">
                                       {t("AssetsFor")}: {lesson.title}
@@ -148,7 +143,6 @@ export default function CourseDetailPage() {
                                     />
                                   </div>
 
-                                  {/* Exercises Section */}
                                   <div className="space-y-2">
                                     <h5 className="text-sm font-medium text-muted-foreground">
                                       {t("ExercisesFor")}: {lesson.title}
@@ -189,6 +183,6 @@ export default function CourseDetailPage() {
           )}
         </TabsContent>
       </Tabs>
-    </main>
+    </AdminPageFrame>
   );
 }

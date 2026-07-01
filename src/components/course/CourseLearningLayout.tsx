@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
@@ -23,13 +23,16 @@ import {
   Award,
   Video,
   HelpCircle,
-  Badge
+  Badge,
+  Flame,
+  List
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,14 +40,20 @@ import {
   useLessonComments, 
   useAddLessonCommentMutation 
 } from "@/queries/useCourseComments";
-import { useCourseProgress, useMarkLessonCompleteMutation } from "@/queries/useCourseProgress";
+import {
+  useCourseProgress,
+  useMarkLessonCompleteMutation,
+  useUpdateLessonProgressMutation,
+} from "@/queries/useCourseProgress";
 import { useGetExercises } from "@/queries/useCourse";
 import { useAccountProfile } from "@/queries/useAccount";
 import { CourseCommentsList } from "./CourseCommentsList";
 import ExerciseDisplay from "./ExerciseDisplay";
 import ExercisePlayer from "./ExercisePlayer";
+import EssayExercises from "./EssayExercises";
 import VideoPlayer from "./VideoPlayer";
 import envConfig from "@/config";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 interface CourseLearningLayoutProps {
   course: any;
@@ -60,16 +69,29 @@ export default function CourseLearningLayout({
   onStartTour,
 }: CourseLearningLayoutProps) {
   const t = useTranslations("ManageCourse");
+  const commentT = useTranslations("CourseComments");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [showContentDescription, setShowContentDescription] = useState(true);
+  const [videoProgressByLesson, setVideoProgressByLesson] = useState<
+    Record<string, { maxWatchedSeconds: number; duration: number }>
+  >({});
   
   // Fetch user profile for avatar
   const { data: profileData } = useAccountProfile();
-  const userAvatar = profileData?.payload?.data?.avatar || undefined;
-  
+  const currentUserId = profileData?.payload?.data?.id;
+  const userAvatar = normalizePersistedMediaUrl(profileData?.payload?.data?.avatar) || undefined;
+
+  // On mobile the sidebar is an overlay drawer, so keep it closed by default
+  // there to avoid covering the lesson content on first load.
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  }, []);
+
   const courseSummary = course.summary;
   const chapters = course.chapters || [];
 
@@ -88,7 +110,62 @@ export default function CourseLearningLayout({
   });
 
   const currentLesson = allLessons[currentLessonIndex];
-  console.log("dasasdasdas asd asd as", currentLesson);
+  const currentLessonVideoUrl = normalizePersistedMediaUrl(currentLesson?.videoUrl);
+  const currentLessonAssets = currentLesson?.assets || [];
+  const VIDEO_AUTO_COMPLETE_RATIO = 0.8;
+
+  // --- Video watch gating: phải xem đủ 80% (không tính phần tua) mới tự hoàn thành ---
+  // Cộng dồn thời gian xem THỰC SỰ theo từng bài vào videoProgressByLesson,
+  // bỏ qua các bước nhảy (tua) bằng cách chỉ cộng các delta nhỏ của playback.
+  const lastVideoTimeRef = useRef(0);
+
+  // Reset mốc thời gian khi chuyển bài (bộ đếm theo bài được giữ trong state).
+  useEffect(() => {
+    lastVideoTimeRef.current = 0;
+  }, [currentLessonIndex]);
+
+  const handleVideoTimeUpdate = (currentTime: number, duration: number) => {
+    const lessonId = currentLesson?.id;
+    if (!lessonId) return;
+    const watchedTime = currentTime >= lastVideoTimeRef.current ? currentTime : lastVideoTimeRef.current;
+    lastVideoTimeRef.current = currentTime;
+    setVideoProgressByLesson((prev) => {
+      const prevEntry = prev[lessonId] || { maxWatchedSeconds: 0, duration };
+      return {
+        ...prev,
+        [lessonId]: {
+          maxWatchedSeconds: Math.max(prevEntry.maxWatchedSeconds, watchedTime),
+          duration: duration || prevEntry.duration,
+        },
+      };
+    });
+  };
+
+  // Đánh dấu đã xem hết khi video kết thúc.
+  const handleVideoEnded = (currentTime?: number, duration?: number) => {
+    const lessonId = currentLesson?.id;
+    if (!lessonId) return;
+    const videoDuration = Number.isFinite(duration) && duration && duration > 0
+      ? duration
+      : Number.isFinite(currentVideoProgress?.duration)
+        ? currentVideoProgress?.duration || 0
+        : 0;
+    const watchedUntilEnd = Number.isFinite(currentTime) && currentTime && currentTime > 0
+      ? currentTime
+      : 0;
+    setVideoProgressByLesson((prev) => {
+      const prevEntry = prev[lessonId];
+      const dur = prevEntry?.duration || videoDuration;
+      return {
+        ...prev,
+        [lessonId]: {
+          maxWatchedSeconds: Math.max(prevEntry?.maxWatchedSeconds || 0, watchedUntilEnd, dur || 0),
+          duration: dur,
+        },
+      };
+    });
+  };
+
   // Fetch exercises for current lesson
   const { data: exercisesResponse } = useGetExercises(
     courseSummary?.id, 
@@ -110,6 +187,7 @@ export default function CourseLearningLayout({
   const { data: progressResponse } = useCourseProgress(courseSummary?.id, !!courseSummary?.id);
   const progressData = progressResponse?.payload?.data;
   const completedLessons = progressData?.completedLessons || 0;
+  const learningStreak = progressData?.learningStreak;
   
   // Calculate progress percentage
   const progressPercentage = allLessons.length > 0 
@@ -139,6 +217,7 @@ export default function CourseLearningLayout({
 
   // Mark lesson complete mutation
   const markCompleteMutation = useMarkLessonCompleteMutation();
+  const updateProgressMutation = useUpdateLessonProgressMutation();
 
   // Fetch lesson comments
   const { data: commentsResponse, isLoading: isLoadingComments } = useLessonComments(
@@ -190,8 +269,8 @@ export default function CourseLearningLayout({
             });
             
             toast({
-              title: "Bình luận mới",
-              description: "Có người vừa bình luận trong bài học này!",
+              title: commentT("newCourseCommentTitle"),
+              description: commentT("newLessonCommentDescription"),
             });
           } catch (e) {
             console.error("[WebSocket] Error parsing message:", e);
@@ -212,7 +291,7 @@ export default function CourseLearningLayout({
       console.log("[WebSocket] Cleaning up connection...");
       client.deactivate();
     };
-  }, [currentLesson?.id, courseSummary?.id, queryClient, toast]);
+  }, [commentT, currentLesson?.id, courseSummary?.id, queryClient, toast]);
 
   // Check if a lesson is completed (only from API/database)
   const isLessonCompleted = (lessonId: string) => {
@@ -240,6 +319,44 @@ export default function CourseLearningLayout({
     console.log(`  ✗ Lesson ${lessonId} is NOT completed`);
     return false;
   };
+
+  const isLessonAccessible = (lessonIndex: number) => {
+    if (lessonIndex <= 0) return true;
+    const previousLesson = allLessons[lessonIndex - 1];
+    return previousLesson ? isLessonCompleted(previousLesson.id) : false;
+  };
+
+  const currentLessonCompleted = currentLesson?.id ? isLessonCompleted(currentLesson.id) : false;
+  const currentLessonHasVideo = Boolean(currentLessonVideoUrl);
+  const currentVideoProgress = currentLesson?.id ? videoProgressByLesson[currentLesson.id] : undefined;
+  const currentVideoWatchRatio =
+    currentVideoProgress?.duration && currentVideoProgress.duration > 0
+      ? Math.min(1, currentVideoProgress.maxWatchedSeconds / currentVideoProgress.duration)
+      : 0;
+  const canCompleteCurrentLesson =
+    currentLessonCompleted || !currentLessonHasVideo || currentVideoWatchRatio >= VIDEO_AUTO_COMPLETE_RATIO;
+
+  const showVideoGateToast = () => {
+    toast({
+      title: t("VideoGateTitle"),
+      description: t("VideoGateDescription"),
+      variant: "destructive",
+    });
+  };
+
+  useEffect(() => {
+    if (
+      !progressData ||
+      currentLessonIndex <= 0 ||
+      currentLessonCompleted ||
+      isLessonAccessible(currentLessonIndex)
+    ) {
+      return;
+    }
+
+    const firstLockedIndex = allLessons.findIndex((_, index) => !isLessonAccessible(index));
+    onLessonChange(firstLockedIndex > 0 ? firstLockedIndex - 1 : 0);
+  }, [progressData, currentLessonIndex, currentLessonCompleted]);
 
   // Fireworks effect
   const triggerFireworks = () => {
@@ -276,9 +393,14 @@ export default function CourseLearningLayout({
   };
 
   // Handle mark lesson complete
-  const handleMarkComplete = () => {
+  const handleMarkComplete = (options?: { onSuccess?: () => void; onError?: () => void }) => {
     if (!courseSummary?.id || !currentLesson?.id) {
       console.log('[handleMarkComplete] Missing courseId or lessonId');
+      return;
+    }
+
+    if (!canCompleteCurrentLesson) {
+      showVideoGateToast();
       return;
     }
     
@@ -296,19 +418,20 @@ export default function CourseLearningLayout({
       {
         onSuccess: (response) => {
           console.log('[handleMarkComplete] ✓ Success:', response);
-          
+
           // Invalidate and refetch progress data
-          queryClient.invalidateQueries({ 
-            queryKey: ['course-progress', courseSummary.id] 
+          queryClient.invalidateQueries({
+            queryKey: ['course-progress', courseSummary.id]
           });
-          
+
           // Trigger fireworks after successful API call
           triggerFireworks();
-          
+
           toast({
             title: "🎉 Chúc mừng!",
             description: "Bạn đã hoàn thành bài học này!",
           });
+          options?.onSuccess?.();
         },
         onError: (error) => {
           console.error('[handleMarkComplete] ✗ Error:', error);
@@ -318,16 +441,39 @@ export default function CourseLearningLayout({
             description: "Không thể đánh dấu hoàn thành bài học.",
             variant: "destructive",
           });
+          options?.onError?.();
         },
       }
     );
   };
 
+  const handleGoNextLesson = () => {
+    if (currentLessonIndex >= allLessons.length - 1) {
+      toast({
+        title: "Da hoan thanh",
+        description: "Ban dang o bai hoc cuoi cung cua khoa hoc.",
+      });
+      return;
+    }
+
+    if (!canCompleteCurrentLesson) {
+      showVideoGateToast();
+      return;
+    }
+
+    if (!currentLessonCompleted) {
+      handleMarkComplete({ onSuccess: () => onLessonChange(currentLessonIndex + 1) });
+      return;
+    }
+
+    onLessonChange(currentLessonIndex + 1);
+  };
+
   const handleSubmitComment = (content: string) => {
     if (!courseSummary?.id || !currentLesson?.id) {
       toast({
-        title: "Không thể gửi bình luận",
-        description: "Vui lòng thử lại.",
+        title: commentT("submitCommentErrorTitle"),
+        description: commentT("tryAgainDescription"),
         variant: "destructive",
       });
       return;
@@ -345,13 +491,13 @@ export default function CourseLearningLayout({
       {
         onSuccess: () => {
           toast({
-            title: "Đã gửi bình luận",
+            title: commentT("submitCommentSuccessTitle"),
           });
         },
         onError: () => {
           toast({
-            title: "Không thể gửi bình luận",
-            description: "Vui lòng đăng nhập và thử lại.",
+            title: commentT("submitCommentErrorTitle"),
+            description: commentT("loginAndRetryDescription"),
             variant: "destructive",
           });
         },
@@ -362,8 +508,8 @@ export default function CourseLearningLayout({
   const handleSubmitReply = (parentId: string, content: string) => {
     if (!courseSummary?.id || !currentLesson?.id) {
       toast({
-        title: "Không thể gửi phản hồi",
-        description: "Vui lòng thử lại.",
+        title: commentT("submitReplyErrorTitle"),
+        description: commentT("tryAgainDescription"),
         variant: "destructive",
       });
       return;
@@ -381,13 +527,13 @@ export default function CourseLearningLayout({
       {
         onSuccess: () => {
           toast({
-            title: "Đã gửi phản hồi",
+            title: commentT("submitReplySuccessTitle"),
           });
         },
         onError: () => {
           toast({
-            title: "Không thể gửi phản hồi",
-            description: "Vui lòng đăng nhập và thử lại.",
+            title: commentT("submitReplyErrorTitle"),
+            description: commentT("loginAndRetryDescription"),
             variant: "destructive",
           });
         },
@@ -513,106 +659,236 @@ export default function CourseLearningLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden" id="learning-content-area">
         {/* Header */}
-        <header className="border-b bg-card px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <header className="border-b bg-card/80 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <Button
               variant="ghost"
               size="icon"
+              className="rounded-full"
               onClick={() => window.history.back()}
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="font-semibold text-lg line-clamp-1">
+
+            {/* Progress ring */}
+            <div className="relative h-10 w-10 flex-shrink-0">
+              <svg className="h-10 w-10 -rotate-90" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.5" stroke="currentColor" strokeWidth="3" fill="none" className="text-muted/40" />
+                <circle
+                  cx="18" cy="18" r="15.5"
+                  stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round"
+                  className="text-primary transition-all"
+                  strokeDasharray={`${(progressPercentage / 100) * 97.4} 97.4`}
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-primary">
+                {progressPercentage}%
+              </span>
+            </div>
+
+            <div className="min-w-0">
+              <h1 className="font-semibold text-base md:text-lg line-clamp-1">
                 {courseSummary.title}
               </h1>
-              <p className="text-sm text-muted-foreground">
-                {completedLessons}/{allLessons.length} bài hoàn thành • {progressPercentage}%
+              <p className="text-xs text-muted-foreground">
+                {completedLessons}/{allLessons.length} bài hoàn thành
+                {allLessons.length - completedLessons > 0 &&
+                  ` · còn ${allLessons.length - completedLessons} bài`}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {learningStreak && (
+              <div
+                className="hidden items-center gap-1.5 rounded-full border border-orange-200 bg-gradient-to-r from-orange-50 to-pink-50 px-3 py-1.5 text-sm font-semibold text-orange-700 shadow-sm md:flex"
+                title="Learning streak"
+              >
+                <Flame className="h-4 w-4 fill-orange-500 text-orange-500" />
+                <span>{learningStreak.currentStreak ?? 0}</span>
+              </div>
+            )}
             <Button
               variant="ghost"
               size="sm"
+              className="rounded-full px-2 sm:px-3"
               onClick={() => onStartTour?.()}
+              title="Hướng dẫn"
             >
-              <BookOpen className="h-4 w-4 mr-1" />
-              Hướng dẫn
+              <BookOpen className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Hướng dẫn</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
+              className="rounded-full px-2 sm:px-3"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              title={isSidebarOpen ? "Ẩn danh sách" : "Hiện danh sách"}
             >
-              {isSidebarOpen ? "Ẩn" : "Hiện"} danh sách
+              <List className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">{isSidebarOpen ? "Ẩn" : "Hiện"} danh sách</span>
             </Button>
           </div>
         </header>
 
         {/* Scrollable Content Area */}
-        <ScrollArea className="flex-1">
-          {/* Video/Content Player */}
-          <div className="bg-black flex items-center justify-center w-full" id="video-player-area">
-            {currentLesson?.videoUrl ? (
-              <VideoPlayer
-                src={currentLesson.videoUrl}
-                title={currentLesson?.title}
-                subtitle={courseSummary?.instructorName}
-                onEnded={() => {
-                  // Optional: Auto-advance to next lesson
-                  console.log("Video ended");
-                }}
-              />
-            ) : (
-              <div className="text-white text-center p-8 aspect-video w-full flex flex-col items-center justify-center">
-                <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                <p className="text-xl mb-2">{currentLesson?.title}</p>
-                <p className="text-muted-foreground">
-                  {currentLesson?.description || "Nội dung bài học"}
-                </p>
-              </div>
-            )}
-          </div>
+        {/* The `course-learn-scroll` rule (globals.css) forces the Radix
+            ScrollArea viewport wrapper (display:table) to block layout so it
+            can't grow to its widest child, which made the video/content
+            overflow the viewport on mobile. (A Tailwind arbitrary variant with
+            nested brackets fails to compile, so this is done in plain CSS.) */}
+        <ScrollArea className="course-learn-scroll flex-1">
+          {(() => {
+            const lessonType = (currentLesson?.contentType || (currentLessonVideoUrl ? "VIDEO" : "TEXT")) as
+              | "VIDEO" | "TEXT" | "QUIZ" | "CODING";
+            const typeMeta: Record<string, { label: string; cls: string; icon: any }> = {
+              VIDEO: { label: "VIDEO", cls: "bg-blue-50 text-blue-700 border-blue-200", icon: Video },
+              TEXT: { label: "TEXT", cls: "bg-primary/10 text-primary border-primary/30", icon: FileText },
+              QUIZ: { label: "QUIZ", cls: "bg-pink-50 text-pink-700 border-pink-200", icon: HelpCircle },
+              CODING: { label: "CODE", cls: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: Code },
+            };
+            const meta = typeMeta[lessonType] || typeMeta.TEXT;
+            const TypeIcon = meta.icon;
+            const readMinutes = currentLesson?.estimatedDuration
+              ? Math.max(1, Math.round(currentLesson.estimatedDuration / 60))
+              : null;
 
-          {/* Lesson Title & Info */}
-          <div className="p-6 border-b">
-            <div className="flex items-start justify-between gap-4 mb-2">
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold mb-2">{currentLesson?.title}</h1>
-                <p className="text-sm text-muted-foreground">
-                  Cập nhật {currentLesson?.created ? new Date(currentLesson.created).toLocaleDateString('vi-VN') : 'N/A'}
-                </p>
-              </div>
-              <Button variant="outline" size="sm" className="flex-shrink-0" id="add-note-button">
-                <FileText className="h-4 w-4 mr-2" />
-                Thêm ghi chú tại 01:46
-              </Button>
-            </div>
-            
-            {/* Content Description Collapsible */}
-            {currentLesson?.content && (
-              <div className="bg-muted/30 rounded-lg p-4 mb-4">
-                <button 
-                  onClick={() => setShowContentDescription(!showContentDescription)}
-                  className="flex items-center justify-between w-full text-left font-medium mb-2"
-                >
-                  <span>Nội dung bài học</span>
-                  <ChevronRight className={`h-4 w-4 transition-transform ${showContentDescription ? 'rotate-90' : ''}`} />
-                </button>
-                {showContentDescription && (  
-                  <div 
-                    className="text-sm text-muted-foreground prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: currentLesson.content }}
-                  />)
-                }
-              </div>
-            )}
+            return (
+              <>
+                {/* VIDEO player only when there is a video URL */}
+                {currentLessonVideoUrl && (
+                  <div className="px-4 sm:px-6 md:px-10 pt-4 sm:pt-6 max-w-[900px] mx-auto w-full">
+                    <div
+                      className="overflow-hidden rounded-2xl border border-border bg-black shadow-[0_18px_48px_rgba(76,46,224,0.10),0_4px_14px_rgba(15,16,35,0.05)]"
+                      id="video-player-area"
+                    >
+                      <VideoPlayer
+                        key={currentLesson?.id || currentLessonVideoUrl}
+                        src={currentLessonVideoUrl}
+                        title={currentLesson?.title}
+                        subtitle={courseSummary?.instructorName}
+                        onTimeUpdate={handleVideoTimeUpdate}
+                        onEnded={handleVideoEnded}
+                        preventForwardSeek={!currentLessonCompleted}
+                        onSeekBlocked={showVideoGateToast}
+                      />
+                    </div>
+                  </div>
+                )}
 
-          </div>
+                {/* Lesson Header (chip + title + meta) */}
+                <div className="px-4 sm:px-6 md:px-10 pt-6 sm:pt-8 pb-2 max-w-[820px] mx-auto w-full">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold tracking-wider ${meta.cls}`}
+                    >
+                      <TypeIcon className="h-3.5 w-3.5" />
+                      {meta.label}
+                      {readMinutes && <span className="opacity-70">· {readMinutes} phút</span>}
+                    </span>
+                    {currentLesson?.hasExercise && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-bold tracking-wider text-orange-700">
+                        <HelpCircle className="h-3.5 w-3.5" />
+                        BÀI TẬP
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-start justify-between gap-2 sm:gap-4 mb-1">
+                    <h1 className="text-2xl sm:text-3xl md:text-[34px] font-extrabold tracking-tight leading-tight flex-1">
+                      {currentLesson?.title}
+                    </h1>
+                    <Button variant="outline" size="sm" className="flex-shrink-0 rounded-full px-2 sm:px-3" id="add-note-button" title="Ghi chú">
+                      <FileText className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Ghi chú</span>
+                    </Button>
+                  </div>
+
+                  {/* Meta row kiểu design: Bài X/Y · Chương · phút đọc · Cập nhật, ngăn bằng chấm */}
+                  <div className="mb-6 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground/80">
+                      Bài {currentLessonIndex + 1} / {allLessons.length}
+                    </span>
+                    {currentLesson?.chapterTitle && (
+                      <>
+                        <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                        <span className="font-medium text-foreground/80">{currentLesson.chapterTitle}</span>
+                      </>
+                    )}
+                    {readMinutes && (
+                      <>
+                        <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                        <span>{readMinutes} phút</span>
+                      </>
+                    )}
+                    {currentLessonCompleted && (
+                      <>
+                        <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                        <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Đã hoàn thành
+                        </span>
+                      </>
+                    )}
+                    <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                    <span>
+                      Cập nhật{" "}
+                      {currentLesson?.created
+                        ? new Date(currentLesson.created).toLocaleDateString("vi-VN")
+                        : "N/A"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Lesson Article Body */}
+                {currentLesson?.content && (
+                  <div className="px-4 sm:px-6 md:px-10 pb-8 max-w-[860px] mx-auto w-full">
+                    <button
+                      onClick={() => setShowContentDescription(!showContentDescription)}
+                      className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                    >
+                      <ChevronRight
+                        className={`h-3.5 w-3.5 transition-transform ${
+                          showContentDescription ? "rotate-90" : ""
+                        }`}
+                      />
+                      {showContentDescription ? "Ẩn nội dung" : "Hiện nội dung"}
+                    </button>
+                    {showContentDescription && (
+                      <article
+                        className="rich-content prose prose-slate dark:prose-invert max-w-none
+                          prose-headings:tracking-tight prose-headings:font-bold
+                          prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-2xl
+                          prose-h3:mt-6 prose-h3:text-xl
+                          prose-p:leading-[1.75] prose-p:text-base sm:prose-p:text-[18px]
+                          prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+                          prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:not-italic
+                          prose-code:bg-primary/10 prose-code:text-primary prose-code:rounded prose-code:px-1.5 prose-code:py-0.5 prose-code:font-medium prose-code:before:content-none prose-code:after:content-none
+                          prose-pre:bg-slate-950 prose-pre:text-slate-100 prose-pre:rounded-xl prose-pre:shadow-lg
+                          prose-img:rounded-xl prose-img:shadow-md
+                          prose-hr:border-border"
+                        dangerouslySetInnerHTML={{ __html: currentLesson.content }}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Empty state when no video + no content */}
+                {!currentLessonVideoUrl && !currentLesson?.content && (
+                  <div className="px-4 sm:px-6 md:px-10 py-12 sm:py-16 max-w-[820px] mx-auto w-full text-center">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <BookOpen className="h-8 w-8" />
+                    </div>
+                    <p className="text-lg font-semibold mb-1">{currentLesson?.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {currentLesson?.description || "Nội dung bài học đang được cập nhật."}
+                    </p>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
           {/* Exercise Section - New Interactive Design */}
-          <div id="exercise-section" className="p-6 border-b">
+          <div id="exercise-section" className="p-4 sm:p-6 border-b">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <HelpCircle className="h-5 w-5" />
               Bài tập thực hành
@@ -640,8 +916,10 @@ export default function CourseLearningLayout({
               </div>
             )}
             
-            {exercises.length > 0 && (
+            {exercises.some((exercise: any) => exercise.type === "MULTIPLE_CHOICE") && (
               <ExercisePlayer
+                courseId={courseSummary?.id}
+                lessonId={currentLesson?.id}
                 exercises={exercises.map((exercise: any) => ({
                   id: exercise.id,
                   type: exercise.type,
@@ -651,6 +929,7 @@ export default function CourseLearningLayout({
                 }))}
                 lessonTitle={currentLesson?.title}
                 lessonSlug={courseSummary?.slug}
+                currentUserId={currentUserId}
                 userAvatar={userAvatar}
                 onComplete={(results) => {
                   console.log('All exercises completed:', results);
@@ -663,85 +942,107 @@ export default function CourseLearningLayout({
                     });
                   }
                 }}
-                onNextLesson={() => {
-                  // Navigate to next lesson if available
-                  if (currentLessonIndex < allLessons.length - 1) {
-                    onLessonChange(currentLessonIndex + 1);
-                  }
-                }}
+                onNextLesson={handleGoNextLesson}
+              />
+            )}
+
+            {/* Essay (OPEN_ENDED) exercises — free text, instructor-graded */}
+            {exercises.some((exercise: any) => exercise.type === "OPEN_ENDED") && (
+              <EssayExercises
+                courseId={courseSummary?.id}
+                lessonId={currentLesson?.id}
+                exercises={exercises.filter((exercise: any) => exercise.type === "OPEN_ENDED")}
               />
             )}
           </div>
 
-          {/* DEBUG: Check currentLesson data */}
-          {console.log('🔍 DEBUG currentLesson:', {
-            hasLesson: !!currentLesson,
-            lessonId: currentLesson?.id,
-            lessonTitle: currentLesson?.title,
-            hasAssets: !!currentLesson?.assets,
-            assetsLength: currentLesson?.assets?.length,
-            assets: currentLesson?.assets
-          })}
-
           {/* Lesson Assets/Resources */}
-          {currentLesson?.assets && currentLesson.assets.length > 0 && (
-            <div className="p-6 border-b">
-              <h3 className="font-semibold mb-3">Tài liệu & Link</h3>
-              <div className="space-y-2">
-                {currentLesson.assets.map((asset: any) => {
-                  const assetUrl = asset.externalUrl || asset.url;
-                  const isDocument = asset.assetType === 'DOCUMENT';
-                  
-                  // DEBUG: Log asset data
-                  console.log('🔍 Asset data:', {
-                    id: asset.id,
-                    title: asset.title,
-                    assetType: asset.assetType,
-                    url: asset.url,
-                    externalUrl: asset.externalUrl,
-                    resolvedUrl: assetUrl,
-                    allFields: Object.keys(asset)
-                  });
-                  
-                  return (
-                    <div
-                      key={asset.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted transition-colors"
+          {currentLessonAssets.length > 0 && (
+            <div className="border-b px-4 sm:px-6 py-6">
+              <div className="mx-auto w-full max-w-[860px]">
+                <Tabs defaultValue="resources" className="w-full">
+                  <TabsList className="mb-5 h-auto w-full justify-start overflow-x-auto rounded-none border-b bg-transparent p-0">
+                    <TabsTrigger
+                      value="resources"
+                      className="mr-6 rounded-none border-b-2 border-transparent px-0 py-3 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                     >
-                      <div className="p-2 rounded bg-primary/10">
-                        {getAssetIcon(asset.assetType)}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{asset.title}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{asset.assetType}</p>
-                      </div>
-                      {/* Download button for DOCUMENT type */}
-                      {isDocument && assetUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => handleDownloadAsset(e, assetUrl, asset.title)}
-                          title="Tải xuống"
-                          className="text-blue-500 hover:text-blue-600"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {/* External link for non-document types */}
-                      {!isDocument && (
-                        <a
-                          href={assetUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Mở trong tab mới"
-                        >
-                          <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                        </a>
-                      )}
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Tai lieu ({currentLessonAssets.length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="discussion"
+                      className="rounded-none border-b-2 border-transparent px-0 py-3 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Thao luan
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="resources" className="mt-0">
+                    <div className="rounded-xl border bg-card p-2 shadow-sm">
+                      {currentLessonAssets.map((asset: any) => {
+                        const assetUrl = normalizePersistedMediaUrl(asset.externalUrl || asset.url);
+                        const isDocument = asset.assetType === "DOCUMENT";
+
+                        return (
+                          <div
+                            key={asset.id}
+                            className="flex items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-muted/60"
+                          >
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                              {getAssetIcon(asset.assetType)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">{asset.title}</p>
+                              <p className="text-xs text-muted-foreground capitalize">{asset.assetType}</p>
+                            </div>
+                            {isDocument && assetUrl && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => handleDownloadAsset(e, assetUrl, asset.title)}
+                                title="Tai xuong"
+                                className="rounded-full text-primary hover:text-primary/80"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {!isDocument && assetUrl && (
+                              <Button asChild variant="ghost" size="icon" className="rounded-full">
+                                <a
+                                  href={assetUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Mo trong tab moi"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  </TabsContent>
+
+                  <TabsContent value="discussion" className="mt-0">
+                    <div className="rounded-xl border bg-card p-5 shadow-sm">
+                      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h3 className="font-semibold">Thao luan bai hoc</h3>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Mo hoi dap de xem binh luan va trao doi voi hoc vien khac.
+                          </p>
+                        </div>
+                        <Button onClick={() => setShowCommentModal(true)} className="w-full rounded-full sm:w-auto">
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                          Mo thao luan
+                        </Button>
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             </div>
           )}
@@ -750,79 +1051,89 @@ export default function CourseLearningLayout({
           <div className="h-24"></div>
         </ScrollArea>
 
-        {/* Navigation Buttons - Sticky at bottom */}
-        <div className="sticky bottom-0 left-0 right-0 bg-background">
-          {/* Navigation Buttons */}
-          <div className="px-6 py-4 border-t">
-            <div className="flex items-center justify-between gap-2">
-              {/* Bài trước */}
-              <Button
-                variant="outline"
+        {/* Navigation Buttons - Sticky at bottom (Lesson Viewer design) */}
+        <div className="sticky bottom-0 left-0 right-0 border-t border-border bg-white/95 backdrop-blur dark:bg-slate-950/95">
+          <div className="px-4 py-3 sm:px-7 sm:py-4">
+            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:grid-cols-[1fr_auto_1fr] sm:gap-4">
+              {/* Bài trước - pill outline */}
+              <button
+                type="button"
                 disabled={currentLessonIndex === 0}
                 onClick={() => onLessonChange(currentLessonIndex - 1)}
-                className="flex-shrink-0"
+                className="justify-self-start inline-flex h-11 items-center gap-2 rounded-full border border-border bg-white px-3 text-sm font-bold tracking-wide text-slate-700 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:px-5 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                BÀI TRƯỚC
-              </Button>
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">BÀI TRƯỚC</span>
+              </button>
 
-              {/* Hoàn thành + Hỏi đáp - Ở giữa */}
-              <div className="flex items-center gap-2">
-                {/* Mark Complete Button */}
+              {/* Hoàn thành + actions - giữa */}
+              <div className="flex min-w-0 items-center justify-center gap-2 sm:gap-2.5">
+                {/* Mark Complete */}
                 {isLessonCompleted(currentLesson?.id) ? (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-green-600 text-white shadow-md">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span className="text-xs font-medium hidden sm:inline">Đã hoàn thành</span>
+                  <div className="inline-flex h-11 items-center gap-2 rounded-full border border-emerald-300 bg-white px-3 text-sm font-semibold text-emerald-600 sm:px-5 dark:border-emerald-800 dark:bg-slate-900 dark:text-emerald-400">
+                    <CheckCircle2 className="h-[18px] w-[18px]" />
+                    <span className="hidden sm:inline">Đã hoàn thành</span>
                   </div>
                 ) : (
-                  <Button
-                    onClick={handleMarkComplete}
+                  <button
+                    type="button"
+                    onClick={() => handleMarkComplete()}
                     disabled={markCompleteMutation.isPending}
-                    size="sm"
-                    className="rounded-full bg-green-600 hover:bg-green-700 shadow-md"
+                    className="inline-flex h-11 items-center gap-2 rounded-full bg-emerald-600 px-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5 hover:bg-emerald-700 disabled:opacity-50 sm:px-5"
                   >
-                    <CheckCircle2 className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline font-medium">Hoàn thành</span>
-                  </Button>
+                    <CheckCircle2 className="h-[18px] w-[18px]" />
+                    <span className="hidden sm:inline">Hoàn thành</span>
+                  </button>
                 )}
 
-                {/* Hỏi đáp Button */}
-                <Button 
+                {/* Hỏi đáp - tròn cam */}
+                <button
+                  type="button"
                   onClick={() => setShowCommentModal(true)}
-                  variant="default"
-                  size="icon"
-                  className="h-9 w-9 rounded-full bg-orange-500 hover:bg-orange-600 shadow-md"
                   id="qa-button"
+                  title={commentT("openDiscussion")}
+                  className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-100 text-orange-700 transition-all hover:-translate-y-0.5 dark:bg-orange-950/40 dark:text-orange-300"
                 >
-                  <MessageSquare className="h-4 w-4" />
-                </Button>
+                  <MessageSquare className="h-[18px] w-[18px]" />
+                </button>
 
-                {/* Bài tập Button */}
-                <Button 
+                {/* Bài tập - tròn indigo */}
+                <button
+                  type="button"
                   onClick={() => {
-                    const exerciseSection = document.getElementById('exercise-section');
+                    const exerciseSection = document.getElementById("exercise-section");
                     if (exerciseSection) {
-                      exerciseSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      exerciseSection.scrollIntoView({ behavior: "smooth", block: "start" });
                     }
                   }}
-                  variant="default"
-                  size="icon"
-                  className="h-9 w-9 rounded-full bg-purple-500 hover:bg-purple-600 shadow-md"
                   title="Bài tập"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-indigo-100 text-indigo-700 transition-all hover:-translate-y-0.5 dark:bg-indigo-950/40 dark:text-indigo-300"
                 >
-                  <BookOpenCheck className="h-4 w-4" />
-                </Button>
+                  <BookOpenCheck className="h-[18px] w-[18px]" />
+                </button>
               </div>
 
-              {/* Bài tiếp theo */}
-              <Button
+              {/* Bài tiếp theo - pill gradient tím, chỉ qua khi đủ điều kiện */}
+              <button
+                type="button"
                 disabled={currentLessonIndex >= allLessons.length - 1}
-                onClick={() => onLessonChange(currentLessonIndex + 1)}
-                className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 flex-shrink-0"
+                onClick={() => {
+                  // Phải hoàn thành (xem đủ 80% video, không tua) bài hiện tại mới qua bài sau.
+                  if (!canCompleteCurrentLesson) {
+                    showVideoGateToast();
+                    return;
+                  }
+                  if (!currentLessonCompleted) {
+                    handleMarkComplete({ onSuccess: () => onLessonChange(currentLessonIndex + 1) });
+                    return;
+                  }
+                  onLessonChange(currentLessonIndex + 1);
+                }}
+                className="justify-self-end inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-br from-[#7C5CFA] to-[#5B37E6] px-3 text-sm font-bold tracking-wide text-white shadow-[0_8px_22px_rgba(91,55,230,0.32)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(91,55,230,0.4)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 sm:px-6"
               >
-                BÀI TIẾP THEO
-                <ChevronRight className="h-4 w-4 ml-2" />
-              </Button>
+                <span className="hidden sm:inline">BÀI TIẾP THEO</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </div>
@@ -830,169 +1141,219 @@ export default function CourseLearningLayout({
 
       {/* Sidebar - Lesson List */}
       {isSidebarOpen && (
-        <aside
-          className="w-[45%] min-w-[320px] max-w-[400px] border-l bg-card flex flex-col"
-          id="lesson-sidebar"
-        >
+        <>
+          {/* Backdrop - mobile only (sidebar is an overlay drawer below lg) */}
+          <div
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-hidden="true"
+          />
+          <aside
+            className="fixed inset-y-0 right-0 z-50 flex w-[92%] max-w-[400px] flex-col border-l bg-card shadow-2xl lg:static lg:z-auto lg:w-[45%] lg:min-w-[320px] lg:max-w-[400px] lg:shadow-none"
+            id="lesson-sidebar"
+          >
           {/* Progress Header */}
           <div className="p-4 border-b space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Nội dung khóa học</h3>
+              <h3 className="font-bold text-base">Nội dung khóa học</h3>
               <button
                 onClick={() => setIsSidebarOpen(false)}
-                className="p-1 hover:bg-muted rounded"
+                className="p-1.5 hover:bg-muted rounded-full transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            
-            {/* Progress Bar */}
-            <div>
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-muted-foreground">
-                  {completedLessons}/{allLessons.length} bài học
+
+            {/* Streak Card */}
+            {learningStreak && (
+              (learningStreak.currentStreak ?? 0) > 0 ? (
+                <div className="relative overflow-hidden rounded-xl border border-orange-300/60 bg-gradient-to-br from-orange-100 via-pink-50 to-orange-50 dark:from-orange-950/40 dark:via-pink-950/30 dark:to-orange-950/20 p-3 shadow-sm">
+                  <div className="absolute -right-3 -top-3 h-16 w-16 rounded-full bg-orange-400/20 blur-xl" />
+                  <div className="relative flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-sm font-semibold text-orange-800 dark:text-orange-200">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-pink-500 shadow-md shadow-orange-500/40">
+                        <Flame className="h-4 w-4 fill-white text-white" />
+                      </span>
+                      Streak học tập
+                    </span>
+                    <span className="text-lg font-extrabold text-orange-600 dark:text-orange-300">
+                      {learningStreak.currentStreak} <span className="text-xs font-medium">ngày</span>
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between rounded-xl border bg-muted/30 px-3 py-2.5 text-sm">
+                  <span className="flex items-center gap-2 font-medium text-muted-foreground">
+                    <Flame className="h-4 w-4" />
+                    Streak học tập
+                  </span>
+                  <span className="font-bold text-muted-foreground">0 ngày</span>
+                </div>
+              )
+            )}
+
+            {/* Progress - vòng tròn (ProgressRing) theo design */}
+            <div className="flex items-center gap-4 rounded-xl border border-border bg-[#F6F7FB] px-4 py-3 dark:bg-slate-900/50">
+              <div className="relative h-14 w-14 flex-shrink-0">
+                <svg viewBox="0 0 36 36" className="h-14 w-14 -rotate-90">
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/40" />
+                  <circle
+                    cx="18" cy="18" r="15.5" fill="none"
+                    stroke="#7C5CFA" strokeWidth="3" strokeLinecap="round"
+                    strokeDasharray={`${(progressPercentage / 100) * 97.4} 97.4`}
+                    className="transition-all duration-500"
+                  />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-sm font-extrabold text-[#5B37E6] dark:text-[#9d86ff]">
+                  {progressPercentage}%
                 </span>
-                <span className="font-bold text-primary">{progressPercentage}%</span>
               </div>
-              <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-500"
-                  style={{ width: `${progressPercentage}%` }}
-                />
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-foreground">
+                  {completedLessons}/{allLessons.length} bài học
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {completedLessons === allLessons.length
+                    ? "🎉 Đã hoàn thành khóa học!"
+                    : `Còn ${allLessons.length - completedLessons} bài để hoàn thành`}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {completedLessons === allLessons.length 
-                  ? "🎉 Đã hoàn thành khóa học!" 
-                  : `Còn ${allLessons.length - completedLessons} bài để hoàn thành`
-                }
-              </p>
             </div>
           </div>
 
           <ScrollArea className="flex-1">
-            <div className="p-2">
-              <Accordion type="multiple" defaultValue={chapters.map((ch: any) => ch.id)} className="space-y-2">
+            <div className="p-3">
+              <Accordion type="multiple" defaultValue={chapters.map((ch: any) => ch.id)} className="space-y-3">
                 {chapters.map((chapter: any, chapterIndex: number) => {
                   const chapterLessons = chapter.lessons || [];
-                  const completedCount = chapterLessons.filter((l: any) => 
+                  const completedCount = chapterLessons.filter((l: any) =>
                     isLessonCompleted(l.id)
                   ).length;
+                  const chapterPct = chapterLessons.length
+                    ? Math.round((completedCount / chapterLessons.length) * 100)
+                    : 0;
+                  const isChapterDone = completedCount === chapterLessons.length && chapterLessons.length > 0;
 
                   return (
-                    <AccordionItem 
-                      key={chapter.id} 
+                    <AccordionItem
+                      key={chapter.id}
                       value={chapter.id}
-                      className="border rounded-lg bg-card"
+                      className="border rounded-xl bg-card overflow-hidden shadow-sm"
                     >
-                      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50 rounded-t-lg">
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/40">
                         <div className="flex items-center gap-3 text-left flex-1">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">
-                            {chapterIndex + 1}
+                          <div
+                            className={`flex items-center justify-center w-9 h-9 rounded-full font-extrabold text-sm flex-shrink-0 ${
+                              isChapterDone
+                                ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-sm shadow-emerald-500/30"
+                                : "bg-primary/10 text-primary"
+                            }`}
+                          >
+                            {isChapterDone ? <CheckCircle2 className="h-4 w-4" /> : chapterIndex + 1}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm line-clamp-1">
-                              {chapter.title}
-                            </h4>
-                            <p className="text-xs text-muted-foreground">
-                              {completedCount}/{chapterLessons.length} • {Math.round((completedCount / chapterLessons.length) * 100)}%
-                            </p>
+                            <h4 className="font-semibold text-base line-clamp-1 lg:text-sm">{chapter.title}</h4>
+                            <div className="mt-1 flex items-center gap-2">
+                              <div className="h-1 w-20 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className="h-full bg-primary/80"
+                                  style={{ width: `${chapterPct}%` }}
+                                />
+                              </div>
+                              <p className="text-[11px] text-muted-foreground">
+                                {completedCount}/{chapterLessons.length} · {chapterPct}%
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-2 pb-2">
-                        <div className="space-y-1 pt-1">
+                        <div className="space-y-1.5 pt-1">
                           {chapterLessons.map((lesson: any, lessonIndex: number) => {
-                            const globalIndex = allLessons.findIndex(
-                              (l) => l.id === lesson.id
-                            );
+                            const globalIndex = allLessons.findIndex((l) => l.id === lesson.id);
                             const isCompleted = isLessonCompleted(lesson.id);
-                            // Bài học bị khóa nếu: không phải bài hiện tại, không phải bài kế tiếp, và chưa hoàn thành
-                            const isLocked = !isCompleted && globalIndex > currentLessonIndex + 1;
                             const isCurrent = globalIndex === currentLessonIndex;
+                            // Khóa bài chưa học: chỉ mở bài đầu, bài đang học, bài đã hoàn thành,
+                            // hoặc bài có bài trước đã hoàn thành (học tuần tự).
+                            const isLocked = !isCurrent && !isCompleted && !isLessonAccessible(globalIndex);
                             const isFirstLesson = globalIndex === 0;
 
-                            // DEBUG: Log lesson render state
-                            console.log(`[Lesson Render] ${lesson.title}:`, {
-                              lessonId: lesson.id,
-                              isCompleted,
-                              isLocked,
-                              isCurrent,
-                              globalIndex,
-                              currentLessonIndex
-                            });
-
-                            // Get content type icon (matching manage)
-                            let contentIcon = <Video className="h-4 w-4" />;
-                            if (lesson.contentType === "TEXT") {
-                              contentIcon = <FileText className="h-4 w-4" />;
-                            } else if (lesson.contentType === "QUIZ") {
-                              contentIcon = <HelpCircle className="h-4 w-4" />;
-                            } else if (lesson.contentType === "CODING") {
-                              contentIcon = <Code className="h-4 w-4" />;
-                            }
+                            const typeMeta: Record<string, { label: string; chip: string; Icon: any }> = {
+                              VIDEO: { label: "Video", chip: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300", Icon: Video },
+                              TEXT: { label: "Text", chip: "bg-primary/10 text-primary border-primary/30", Icon: FileText },
+                              QUIZ: { label: "Quiz", chip: "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950/40 dark:text-pink-300", Icon: HelpCircle },
+                              CODING: { label: "Code", chip: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300", Icon: Code },
+                            };
+                            const meta = typeMeta[lesson.contentType] || typeMeta.VIDEO;
+                            const TypeIcon = meta.Icon;
+                            const durationMin = lesson.estimatedDuration
+                              ? Math.max(1, Math.round(lesson.estimatedDuration / 60))
+                              : null;
 
                             return (
                               <button
                                 key={lesson.id}
-                                className={`w-full p-3 rounded-lg border transition-all text-left relative ${
+                                className={`group w-full rounded-lg border px-3 py-3 text-left transition-all lg:py-2.5 ${
                                   isCurrent
-                                    ? "bg-primary/10 border-primary shadow-sm"
-                                    : "hover:bg-muted/50 border-transparent"
+                                    ? "bg-primary/8 border-primary shadow-sm ring-1 ring-primary/40"
+                                    : isCompleted
+                                    ? "border-transparent hover:bg-emerald-50/40 dark:hover:bg-emerald-950/10"
+                                    : "border-transparent hover:bg-muted/60"
                                 } ${isLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                                 onClick={() => !isLocked && onLessonChange(globalIndex)}
                                 disabled={isLocked}
                                 id={isFirstLesson ? "first-lesson" : globalIndex === 1 ? "second-lesson-locked" : undefined}
                               >
-                                {/* Completed Badge - Small green checkmark at bottom right */}
-                                {isCompleted && (
-                                  <div className="absolute bottom-2 right-2 flex items-center justify-center w-5 h-5 rounded-full bg-green-600 text-white">
-                                    <CheckCircle2 className="h-3.5 w-3.5" fill="currentColor" />
-                                  </div>
-                                )}
-
                                 <div className="flex items-start gap-3">
-                                  {/* Status Icon */}
+                                  {/* State circle */}
                                   <div className="flex-shrink-0 mt-0.5">
                                     {isCompleted ? (
-                                      <div className="h-5 w-5 rounded-full border-2 border-green-600 flex items-center justify-center bg-green-50 dark:bg-green-900/20">
-                                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                      <div className="h-5 w-5 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-sm shadow-emerald-500/40">
+                                        <CheckCircle2 className="h-3 w-3 text-white" strokeWidth={3} />
                                       </div>
                                     ) : isLocked ? (
-                                      <Lock className="h-5 w-5 text-muted-foreground" />
+                                      <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center">
+                                        <Lock className="h-3 w-3 text-muted-foreground" />
+                                      </div>
+                                    ) : isCurrent ? (
+                                      <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center shadow-sm shadow-primary/40">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                                      </div>
                                     ) : (
-                                      <div className="h-5 w-5 rounded-full border-2 border-muted-foreground flex items-center justify-center">
-                                        {isCurrent && <div className="h-2 w-2 rounded-full bg-primary" />}
+                                      <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/40 flex items-center justify-center">
+                                        <span className="text-[10px] font-bold text-muted-foreground">
+                                          {lessonIndex + 1}
+                                        </span>
                                       </div>
                                     )}
                                   </div>
-                                  
-                                  {/* Lesson Info */}
-                                  <div className="flex-1 min-w-0 pr-6">
-                                    <div className="flex items-start gap-2 mb-1">
-                                      <span className="text-xs text-muted-foreground flex-shrink-0">
-                                        {lessonIndex + 1}.
+
+                                  {/* Lesson info */}
+                                  <div className="flex-1 min-w-0">
+                                    <p
+                                      className={`text-base font-medium line-clamp-2 mb-1.5 lg:text-sm ${
+                                        isCurrent ? "text-primary" : ""
+                                      }`}
+                                    >
+                                      {lesson.title}
+                                    </p>
+
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span
+                                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wide ${meta.chip}`}
+                                      >
+                                        <TypeIcon className="h-3 w-3" />
+                                        {meta.label}
                                       </span>
-                                      <p className="text-sm font-medium line-clamp-2 flex-1">
-                                        {lesson.title}
-                                      </p>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                      <span className="flex items-center gap-1">
-                                        {contentIcon}
-                                        <span className="capitalize">
-                                          {lesson.contentType?.toLowerCase() || "Video"}
-                                        </span>
-                                      </span>
-                                      {lesson.estimatedDuration && (
-                                        <span className="flex items-center gap-1">
+                                      {durationMin && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                                           <Clock className="h-3 w-3" />
-                                          {Math.floor(lesson.estimatedDuration / 60)} phút
+                                          {durationMin}p
                                         </span>
                                       )}
                                       {lesson.hasExercise && (
-                                        <span className="flex items-center gap-1 text-orange-600">
-                                          <HelpCircle className="h-3 w-3" />
+                                        <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-700 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-900/40">
+                                          <HelpCircle className="h-2.5 w-2.5" />
                                           Bài tập
                                         </span>
                                       )}
@@ -1010,7 +1371,8 @@ export default function CourseLearningLayout({
               </Accordion>
             </div>
           </ScrollArea>
-        </aside>
+          </aside>
+        </>
       )}
 
       {/* Comment/Discussion Modal */}
@@ -1019,7 +1381,7 @@ export default function CourseLearningLayout({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              Hỏi đáp - {currentLesson?.title}
+              {commentT("lessonDiscussionTitle", { title: currentLesson?.title ?? "" })}
             </DialogTitle>
           </DialogHeader>
           

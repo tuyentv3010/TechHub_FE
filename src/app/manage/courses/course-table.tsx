@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,7 +44,8 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "@/components/ui/use-toast";
-import { handleErrorApi } from "@/lib/utils";
+import { formatPrice, handleErrorApi } from "@/lib/utils";
+import { getManageTableColumnClass } from "@/lib/manage-table";
 import TableSkeleton from "@/components/Skeleton";
 import {
   Select,
@@ -60,6 +61,8 @@ import CourseFilters from "./course-filters";
 import { useDeleteCourseMutation, useGetMyCourses, useGetSkills, useGetTags } from "@/queries/useCourse";
 import { CourseListResponseType } from "@/schemaValidations/course.schema";
 import { DollarSign } from "lucide-react";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type CourseItem = CourseListResponseType["data"][0];
 
@@ -108,7 +111,7 @@ function AlertDialogDeleteCourse({
       open={Boolean(courseDelete)}
       onOpenChange={(value) => !value && setCourseDelete(null)}
     >
-      <AlertDialogContent>
+      <AlertDialogContent className="manage-dialog-panel rounded-[1.35rem] border-border/50">
         <AlertDialogHeader>
           <AlertDialogTitle>{t("ConfirmDelete")}</AlertDialogTitle>
           <AlertDialogDescription>
@@ -130,9 +133,11 @@ function AlertDialogDeleteCourse({
 
 export default function CourseTable() {
   const t = useTranslations("ManageCourse");
+  const paginationT = useTranslations("Pagination");
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+  const { hasPermission } = usePermissions();
 
   const page = searchParams.get("page") ? Number(searchParams.get("page")) : 1;
   const pageSize = searchParams.get("pageSize")
@@ -154,6 +159,20 @@ export default function CourseTable() {
   const [courseIdEdit, setCourseIdEdit] = useState<string | undefined>();
   const [courseDelete, setCourseDelete] = useState<CourseItem | null>(null);
   const [searchInput, setSearchInput] = useState(search); // Local state for search input
+
+  const canManageCourseContent = useCallback(
+    (courseId: string) =>
+      hasPermission("GET", "/manage/courses") &&
+      hasPermission("GET", `/api/courses/${courseId}`) &&
+      hasPermission("GET", `/api/courses/${courseId}/chapters`) &&
+      (hasPermission("POST", `/api/courses/${courseId}/chapters`) ||
+        hasPermission("PUT", `/api/courses/${courseId}/chapters/any-chapter`) ||
+        hasPermission("POST", `/api/courses/${courseId}/chapters/any-chapter/lessons`) ||
+        hasPermission("PUT", `/api/courses/${courseId}/chapters/any-chapter/lessons/any-lesson`) ||
+        hasPermission("POST", `/api/courses/${courseId}/chapters/any-chapter/lessons/any-lesson/assets`) ||
+        hasPermission("PUT", `/api/courses/${courseId}/chapters/any-chapter/lessons/any-lesson/assets/any-asset`)),
+    [hasPermission]
+  );
 
   // Debounce search
   useEffect(() => {
@@ -187,6 +206,13 @@ export default function CourseTable() {
     page: page - 1,
     size: pageSize,
     search: search || undefined,
+    status: status || undefined,
+    level: level || undefined,
+    language: language || undefined,
+    skillIds: skillIds.length > 0 ? skillIds : undefined,
+    tagIds: tagIds.length > 0 ? tagIds : undefined,
+    minPrice: minPrice ? Number(minPrice) : undefined,
+    maxPrice: maxPrice ? Number(maxPrice) : undefined,
   });
 
   const data = useMemo(
@@ -223,11 +249,12 @@ export default function CourseTable() {
         header: t("ThumbnailColumn"),
         cell: ({ row }) => {
           const thumbnail = row.original.thumbnail;
+          const thumbnailUrl = normalizePersistedMediaUrl(thumbnail?.secureUrl || thumbnail?.url);
           return (
             <div className="flex items-center justify-center">
-              {thumbnail?.url ? (
+              {thumbnailUrl ? (
                 <img
-                  src={thumbnail.url}
+                  src={thumbnailUrl}
                   alt="Course thumbnail"
                   className="w-16 h-16 object-cover rounded-md border"
                 />
@@ -245,12 +272,13 @@ export default function CourseTable() {
         header: t("IntroVideoColumn"),
         cell: ({ row }) => {
           const introVideo = row.original.introVideo;
+          const introVideoUrl = normalizePersistedMediaUrl(introVideo?.secureUrl || introVideo?.url);
           return (
             <div className="flex items-center justify-center">
-              {introVideo?.url ? (
+              {introVideoUrl ? (
                 <div className="relative w-16 h-16 bg-black rounded-md overflow-hidden">
                   <video
-                    src={introVideo.url}
+                    src={introVideoUrl}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30">
@@ -306,7 +334,8 @@ export default function CourseTable() {
         accessorKey: "price",
         header: t("Price"),
         cell: ({ row }) => {
-          const price = parseFloat(row.getValue("price"));
+          const price = Number(row.getValue("price") ?? 0);
+          const currency = row.original.currency || "VND";
           return (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -314,7 +343,7 @@ export default function CourseTable() {
                   <DollarSign className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <div className="font-medium">{price.toFixed(2)} USD</div>
+                  <div className="font-medium">{formatPrice(price, currency)}</div>
                 </div>
               </div>
             </div>
@@ -325,7 +354,7 @@ export default function CourseTable() {
         accessorKey: "totalEnrollments",
         header: t("EnrollmentsColumn"),
         cell: ({ row }) => (
-          <div className="text-center">{row.getValue("totalEnrollments")}</div>
+          <div>{row.getValue("totalEnrollments")}</div>
         ),
       },
       {
@@ -335,7 +364,7 @@ export default function CourseTable() {
           const rating = row.getValue("averageRating") as number | null;
           const count = row.original.ratingCount;
           return (
-            <div className="text-center">
+            <div>
               {rating ? (
                 <>
                   <div className="font-medium">⭐ {rating.toFixed(1)}</div>
@@ -372,11 +401,13 @@ export default function CourseTable() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>{t("Actions")}</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => window.location.href = `/manage/courses/${course.id}/content`}
-                >
-                  {t("ManageContent")}
-                </DropdownMenuItem>
+                {canManageCourseContent(course.id) && (
+                  <DropdownMenuItem
+                    onClick={() => router.push(`/manage/courses/${course.id}/content`)}
+                  >
+                    {t("ManageContent")}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={() => navigator.clipboard.writeText(course.id)}
                 >
@@ -388,7 +419,7 @@ export default function CourseTable() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setCourseDelete(course)}
-                  className="text-red-600"
+                  className="text-destructive"
                 >
                   {t("Delete")}
                 </DropdownMenuItem>
@@ -398,7 +429,7 @@ export default function CourseTable() {
         },
       },
     ],
-    [t, setCourseIdEdit, setCourseDelete]
+    [canManageCourseContent, router, t, setCourseIdEdit, setCourseDelete]
   );
 
   const table = useReactTable({
@@ -426,6 +457,13 @@ export default function CourseTable() {
     router.push(`${pathname}?${params.toString()}`);
   };
 
+  const handlePageSizeChange = (newPageSize: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("pageSize", String(newPageSize));
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   useEffect(() => {
     table.setPageSize(pageSize);
   }, [pageSize, table]);
@@ -443,14 +481,14 @@ export default function CourseTable() {
         setCourseDelete,
       }}
     >
-      <div className="w-full">
-        <div className="flex flex-col gap-4 py-4">
-          <div className="flex items-center justify-between gap-4">
+      <div className="manage-data-table w-full">
+        <div className="flex flex-col gap-4 py-2">
+          <div className="manage-toolbar">
             <Input
               placeholder={t("SearchPlaceholder")}
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
-              className="max-w-sm"
+              className="manage-field max-w-md md:min-w-[20rem]"
             />
             <AddCourse onSuccess={() => courseListQuery.refetch()} />
           </div>
@@ -459,13 +497,16 @@ export default function CourseTable() {
             availableTags={tagsQuery.data?.payload?.data || []}
           />
         </div>
-        <div className="rounded-md border">
+        <div className="manage-table-shell">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
+                    <TableHead
+                      key={header.id}
+                      className={getManageTableColumnClass(header.column.id)}
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -485,7 +526,10 @@ export default function CourseTable() {
                     data-state={row.getIsSelected() && "selected"}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell
+                        key={cell.id}
+                        className={getManageTableColumnClass(cell.column.id)}
+                      >
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
@@ -507,17 +551,18 @@ export default function CourseTable() {
             </TableBody>
           </Table>
         </div>
-        <div className="flex items-center justify-between space-x-2 py-4">
-          <div className="text-sm text-muted-foreground">
+        <div className="manage-pagination py-4">
+          <div className="manage-pagination-copy">
             {t("PageInfo", {
               current: page,
               total: totalPages,
             })}
           </div>
-          <div className="flex gap-2">
+          <div className="manage-pagination-actions">
             <Button
               variant="outline"
               size="sm"
+              className="manage-secondary-button manage-pagination-button"
               onClick={() => handlePageChange(page - 1)}
               disabled={page <= 1}
             >
@@ -526,11 +571,25 @@ export default function CourseTable() {
             <Button
               variant="outline"
               size="sm"
+              className="manage-secondary-button manage-pagination-button"
               onClick={() => handlePageChange(page + 1)}
               disabled={page >= totalPages}
             >
               {t("Next")}
             </Button>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(value) => handlePageSizeChange(Number(value))}
+            >
+              <SelectTrigger className="manage-filter-trigger w-[120px]">
+                <SelectValue placeholder={paginationT("RowsPerPage")} />
+              </SelectTrigger>
+              <SelectContent className="manage-popover-panel">
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

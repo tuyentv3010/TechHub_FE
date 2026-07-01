@@ -8,9 +8,9 @@ interface BadgeProps {
 }
 
 const variantMap: Record<NonNullable<BadgeProps['variant']>, string> = {
-  default: 'bg-purple-600 text-white',
-  success: 'bg-green-600 text-white',
-  info: 'bg-blue-600 text-white'
+  default: 'bg-primary text-primary-foreground',
+  success: 'bg-emerald-600 text-white dark:bg-emerald-500',
+  info: 'bg-primary text-primary-foreground'
 };
 
 export const Badge = ({ children, variant = 'default', className }: BadgeProps) => (

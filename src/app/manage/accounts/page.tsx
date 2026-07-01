@@ -1,32 +1,23 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
-import AccountTable from "./account-table";
 
-export default async function Dashboard() {
-  const manageAccountT = await getTranslations("ManageAccount");
+import AccountTable from "./account-table";
+import { AdminPageFrame, AdminSurface } from "@/components/manage/admin-page-frame";
+
+export default async function ManageAccountsPage() {
+  const t = await getTranslations("ManageAccount");
+
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-      <div className="space-y-2">
-        <Card x-chunk="dashboard-06-chunk-0">
-          <CardHeader>
-            <CardTitle>{manageAccountT("Title")}</CardTitle>
-            <CardDescription>{manageAccountT("Description")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Suspense>
-              <AccountTable />
-            </Suspense>
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+    <AdminPageFrame
+      eyebrow={t("PageEyebrow")}
+      title={t("Title")}
+      description={t("Description")}
+    >
+      <AdminSurface className="p-5 md:p-7">
+        <Suspense>
+          <AccountTable />
+        </Suspense>
+      </AdminSurface>
+    </AdminPageFrame>
   );
 }

@@ -42,12 +42,14 @@ import {
   Code,
   CheckCircle,
   FileText,
+  ClipboardList,
 } from "lucide-react";
 import {
   useCreateExercisesMutation,
   useUpdateExerciseMutation,
   useDeleteExerciseMutation,
 } from "@/queries/useCourse";
+import SubmissionsDialog from "@/components/course/SubmissionsDialog";
 import {
   CreateExerciseBody,
   CreateExerciseBodyType,
@@ -89,6 +91,7 @@ export default function ExerciseManagement({
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editExercise, setEditExercise] = useState<ExerciseItemType | null>(null);
   const [deleteExercise, setDeleteExercise] = useState<ExerciseItemType | null>(null);
+  const [submissionsExercise, setSubmissionsExercise] = useState<ExerciseItemType | null>(null);
 
   const createMutation = useCreateExercisesMutation();
   const updateMutation = useUpdateExerciseMutation();
@@ -131,6 +134,15 @@ export default function ExerciseManagement({
                 </div>
               </div>
               <div className="flex gap-0.5">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSubmissionsExercise(exercise)}
+                  className="h-7 w-7 p-0"
+                  title={t("ViewSubmissions")}
+                >
+                  <ClipboardList className="h-3 w-3" />
+                </Button>
                 <Button
                   size="sm"
                   variant="ghost"
@@ -178,6 +190,15 @@ export default function ExerciseManagement({
           onSuccess={handleSuccess}
         />
       )}
+
+      {/* Submissions / Grading Dialog */}
+      <SubmissionsDialog
+        open={Boolean(submissionsExercise)}
+        onOpenChange={(open) => !open && setSubmissionsExercise(null)}
+        courseId={courseId}
+        lessonId={lessonId}
+        exercise={submissionsExercise}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog

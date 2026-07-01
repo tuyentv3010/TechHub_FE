@@ -3,17 +3,18 @@
 import { useState, useRef } from "react";
 import { format } from "date-fns";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Reply,
   Smile,
-  ThumbsDown,
-  ThumbsUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useGetAccount } from "@/queries/useAccount";
+import { cn } from "@/lib/utils";
 import type { CourseComment } from "@/types/course-comment.types";
 
 // Dynamic import emoji picker để tránh SSR issues
@@ -31,41 +32,55 @@ type CommentItemProps = {
   onCancelReply: () => void;
 };
 
-const CommentUserInfo = ({ userId }: { userId: string }) => {
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Resolve the commenter's account (avatar + display name) from their userId.
+ * The comment API only returns `userId`, so we look the account up once and
+ * reuse it for both the avatar and the name.
+ */
+const useCommentUser = (userId: string) => {
+  const canFetchUser = UUID_RE.test(userId);
   const { data: userResponse, isLoading } = useGetAccount({
     id: userId,
-    enabled: !!userId,
+    enabled: canFetchUser,
   });
   const user = userResponse?.payload?.data;
+  return {
+    user,
+    isLoading: canFetchUser && isLoading,
+    displayName: user?.username || `@${userId.slice(0, 8)}`,
+  };
+};
 
-  // Loading state
+const CommentAvatar = ({
+  isLoading,
+  avatar,
+  fallback,
+  alt,
+}: {
+  isLoading: boolean;
+  avatar?: string;
+  fallback: string;
+  alt: string;
+}) => {
   if (isLoading) {
     return <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />;
   }
-
-  // Fallback nếu không load được user
-  if (!user) {
+  if (avatar) {
     return (
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold uppercase text-primary">
-        {userId.slice(0, 2)}
-      </div>
+      <img
+        src={avatar}
+        alt={alt}
+        className="h-10 w-10 rounded-full object-cover"
+      />
     );
   }
-
   return (
-    <>
-      {user.avatar ? (
-        <img
-          src={user.avatar}
-          alt={user.username || "User"}
-          className="h-10 w-10 rounded-full object-cover"
-        />
-      ) : (
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold uppercase text-primary">
-          {user.username?.slice(0, 2).toUpperCase() || "U"}
-        </div>
-      )}
-    </>
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold uppercase text-primary">
+      {fallback.slice(0, 2).toUpperCase()}
+    </div>
   );
 };
 
@@ -80,9 +95,13 @@ export function CourseCommentItem({
   isSubmitting,
   onCancelReply,
 }: CommentItemProps) {
+  const t = useTranslations("CourseComments");
   const localReplyRef = useRef<HTMLTextAreaElement | null>(null);
   const [showLocalEmoji, setShowLocalEmoji] = useState(false);
   const [showReplies, setShowReplies] = useState(true);
+  const { user, isLoading: isUserLoading, displayName } = useCommentUser(
+    comment.userId
+  );
 
   const insertEmojiToLocalReply = (emoji: string) => {
     const ref = localReplyRef.current;
@@ -107,42 +126,51 @@ export function CourseCommentItem({
 
   return (
     <div className="space-y-3">
-      <div className={`flex gap-3 ${depth > 0 ? "ml-12" : ""}`}>
+      <div className={cn("flex gap-3", depth > 0 && "ml-8 border-l pl-4 sm:ml-12")}>
         {/* Avatar */}
         <div className="flex-shrink-0">
-          <CommentUserInfo userId={comment.userId} />
+          <CommentAvatar
+            isLoading={isUserLoading}
+            avatar={user?.avatar}
+            fallback={user?.username || comment.userId}
+            alt={displayName}
+          />
         </div>
 
         {/* Comment Content */}
-        <div className="flex-1 space-y-2">
+        <div className="min-w-0 flex-1 space-y-2">
           {/* Username & Time */}
-          <div className="flex items-center gap-2 text-xs">
-            <span className="font-medium text-foreground">
-              @{comment.userId.slice(0, 8)}
-            </span>
-            <span className="text-muted-foreground">
-              {format(new Date(comment.created), "dd/MM/yyyy")}
-            </span>
+          <div
+            className={cn(
+              "rounded-xl bg-muted/50 px-4 py-3",
+              comment.isPending && "opacity-70"
+            )}
+          >
+            <div className="mb-1 flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-medium text-foreground">
+                {displayName}
+              </span>
+              <span className="text-muted-foreground">
+                {format(new Date(comment.created), "dd/MM/yyyy HH:mm")}
+              </span>
+              {comment.isPending && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              )}
+            </div>
+            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
+              {comment.content}
+            </p>
           </div>
 
-          {/* Comment Text */}
-          <p className="text-sm text-foreground leading-relaxed">
-            {comment.content}
-          </p>
-
           {/* Action Buttons */}
-          <div className="flex items-center gap-4">
-            <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition">
-              <ThumbsUp className="h-4 w-4" />
-            </button>
-            <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition">
-              <ThumbsDown className="h-4 w-4" />
-            </button>
+          <div className="flex items-center gap-3">
             <button
               onClick={() => onReply(comment.id)}
-              className="text-xs font-semibold text-muted-foreground hover:text-foreground transition"
+              disabled={comment.isPending}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Trả lời
+              <Reply className="h-3.5 w-3.5" />
+              {t("reply")}
             </button>
           </div>
 
@@ -151,11 +179,11 @@ export function CourseCommentItem({
             <div className="pt-3 space-y-2">
               <div className="relative">
                 <Textarea
-                  placeholder="Viết phản hồi..."
+                  placeholder={t("replyPlaceholder")}
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
                   rows={3}
-                  className="text-sm"
+                  className="resize-none text-sm"
                   ref={localReplyRef}
                 />
 
@@ -163,7 +191,7 @@ export function CourseCommentItem({
                   type="button"
                   onClick={() => setShowLocalEmoji((s) => !s)}
                   className="absolute right-2 bottom-2 inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:text-foreground"
-                  title="Chèn emoji"
+                  title={t("insertEmoji")}
                 >
                   <Smile className="h-5 w-5" />
                 </button>
@@ -186,7 +214,7 @@ export function CourseCommentItem({
                   onClick={onCancelReply}
                   disabled={isSubmitting}
                 >
-                  Hủy
+                  {t("cancel")}
                 </Button>
                 <Button
                   size="sm"
@@ -194,7 +222,7 @@ export function CourseCommentItem({
                   disabled={!replyContent.trim() || isSubmitting}
                 >
                   {isSubmitting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                  Phản hồi
+                  {t("submitReply")}
                 </Button>
               </div>
             </div>
@@ -211,7 +239,7 @@ export function CourseCommentItem({
               ) : (
                 <ChevronDown className="h-4 w-4" />
               )}
-              <span>{comment.replies.length} phản hồi</span>
+              <span>{t("replyCount", { count: comment.replies.length })}</span>
             </button>
           )}
         </div>

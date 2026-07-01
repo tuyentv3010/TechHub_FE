@@ -111,7 +111,7 @@ export default function OAuth2RedirectPage() {
 
           // Redirect based on role
           console.log("🔐 OAuth2 Redirect - Redirecting user, role:", userRole);
-          if (userRole === "ADMIN") {
+          if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
             router.push("/manage/accounts");
           } else {
             router.push("/");
@@ -138,10 +138,10 @@ export default function OAuth2RedirectPage() {
 
   if (isProcessing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <p className="text-gray-700 text-lg">Đang xử lý đăng nhập...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+          <p className="text-muted-foreground text-lg">Đang xử lý đăng nhập...</p>
         </div>
       </div>
     );

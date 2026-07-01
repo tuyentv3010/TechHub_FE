@@ -1,4 +1,5 @@
 import http from "@/lib/http";
+import { HttpError } from "@/lib/http";
 import {
   NotificationListResType,
   NotificationResType,
@@ -35,6 +36,20 @@ const notificationApiRequest = {
       console.log("🔔 [NOTIFICATION API] getUnreadNotifications - Response:", response);
       return response;
     } catch (error) {
+      if (error instanceof HttpError && error.status === 503) {
+        return {
+          status: 503,
+          payload: {
+            data: [],
+            pagination: {
+              page,
+              size,
+              totalElements: 0,
+              totalPages: 0,
+            },
+          },
+        } as any;
+      }
       console.error("🔔 [NOTIFICATION API] getUnreadNotifications - Error:", error);
       throw error;
     }
@@ -50,6 +65,34 @@ const notificationApiRequest = {
       return response;
     } catch (error) {
       console.error("🔔 [NOTIFICATION API] markAsRead - Error:", error);
+      throw error;
+    }
+  },
+
+  // Soft-delete a single notification
+  deleteNotification: async (notificationId: string) => {
+    const url = `/app/api/proxy/notifications/${notificationId}`;
+    console.log("🔔 [NOTIFICATION API] deleteNotification - URL:", url);
+    try {
+      const response = await http.delete<NotificationResType>(url);
+      console.log("🔔 [NOTIFICATION API] deleteNotification - Response:", response);
+      return response;
+    } catch (error) {
+      console.error("🔔 [NOTIFICATION API] deleteNotification - Error:", error);
+      throw error;
+    }
+  },
+
+  // Soft-delete all notifications for the current user
+  deleteAllNotifications: async () => {
+    const url = `/app/api/proxy/notifications`;
+    console.log("🔔 [NOTIFICATION API] deleteAllNotifications - URL:", url);
+    try {
+      const response = await http.delete<void>(url);
+      console.log("🔔 [NOTIFICATION API] deleteAllNotifications - Response:", response);
+      return response;
+    } catch (error) {
+      console.error("🔔 [NOTIFICATION API] deleteAllNotifications - Error:", error);
       throw error;
     }
   },
@@ -77,6 +120,14 @@ const notificationApiRequest = {
       console.log("🔔 [NOTIFICATION API] getUnreadCount - Response:", response);
       return response;
     } catch (error) {
+      if (error instanceof HttpError && error.status === 503) {
+        return {
+          status: 503,
+          payload: {
+            data: 0,
+          },
+        } as any;
+      }
       console.error("🔔 [NOTIFICATION API] getUnreadCount - Error:", error);
       throw error;
     }

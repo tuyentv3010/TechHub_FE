@@ -27,6 +27,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useCreateVNPayPayment, useCreatePayPalPayment } from "@/queries/usePayment";
 import { useAccountProfile } from "@/queries/useAccount";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 type PaymentMethod = "vnpay" | "paypal" | null;
 
@@ -90,8 +91,6 @@ export default function PaymentPage() {
 
       if (selectedMethod === "vnpay") {
         // Tính giá cuối cùng (có giảm giá thì lấy giá giảm)
-        const finalPrice = courseSummary.discountPrice || courseSummary.price;
-
         toast({
           title: "Đang tạo liên kết thanh toán...",
           description: "Vui lòng đợi trong giây lát",
@@ -99,8 +98,6 @@ export default function PaymentPage() {
 
         // Gọi API để tạo payment URL với userId
         const response = await createVNPayPayment.mutateAsync({
-          amount: finalPrice,
-          bankCode: "NCB", // Mã ngân hàng mặc định, có thể để người dùng chọn
           userId: userProfile.id,
           courseId: courseId,
         });
@@ -112,16 +109,8 @@ export default function PaymentPage() {
           throw new Error("Không nhận được URL thanh toán");
         }
       } else if (selectedMethod === "paypal") {
-        // Lấy giá cuối cùng (đã là USD từ backend)
+        // Giá hiển thị dùng currency của khóa học; backend tự đổi sang USD cho PayPal.
         const finalPrice = courseSummary.discountPrice || courseSummary.price;
-
-        // Debug log để kiểm tra giá
-        console.log("💰 PayPal Payment Debug:", {
-          originalPrice: courseSummary.price,
-          discountPrice: courseSummary.discountPrice,
-          finalPrice: finalPrice,
-          courseSummary: courseSummary
-        });
 
         if (!finalPrice || finalPrice === 0) {
           toast({
@@ -133,43 +122,42 @@ export default function PaymentPage() {
           return;
         }
 
-        // Backend đã lưu giá bằng USD, không cần chuyển đổi
-        const priceInUSD = finalPrice.toFixed(2);
-
-        console.log("💵 PayPal Payment - Price is already in USD:", {
-          priceUSD: priceInUSD,
-          priceAsNumber: parseFloat(priceInUSD)
-        });
-
         toast({
           title: "Đang tạo liên kết thanh toán PayPal...",
           description: "Vui lòng đợi trong giây lát",
         });
 
-        // Gọi API để tạo PayPal payment với userId và courseId
+        // Backend resolve amount from courseId, frontend không gửi số tiền tự tính.
         const response = await createPayPalPayment.mutateAsync({
-          amount: parseFloat(priceInUSD),
           userId: userProfile.id,
           courseId: courseId,
         });
 
-        console.log("✅ PayPal API Response:", response);
+        const paypalOrder = response?.payload?.data ?? response?.payload;
+        const links = paypalOrder?.links;
 
-        if (response.payload?.links) {
+        if (Array.isArray(links) && links.length > 0) {
           // Tìm link "approve" để chuyển hướng người dùng
-          const approveLink = response.payload.links.find(
+          const approveLink = links.find(
             (link: { rel: string; href: string; method: string }) => link.rel === "approve"
           );
 
-          if (approveLink) {
-            console.log("🔗 Redirecting to PayPal:", approveLink.href);
+          const payerActionLink = links.find(
+            (link: { rel: string; href: string; method: string }) => link.rel === "payer-action"
+          );
+
+          const redirectLink = approveLink || payerActionLink;
+
+          if (redirectLink) {
             // Chuyển hướng đến trang thanh toán PayPal
-            window.location.href = approveLink.href;
+            window.location.href = redirectLink.href;
           } else {
             throw new Error("Không tìm thấy link thanh toán PayPal");
           }
         } else {
-          throw new Error("Không nhận được thông tin thanh toán PayPal");
+          throw new Error(
+            `Không nhận được thông tin thanh toán PayPal (response: ${JSON.stringify(response?.payload ?? {})})`
+          );
         }
       }
     } catch (error) {
@@ -230,6 +218,9 @@ export default function PaymentPage() {
     : 0;
 
   const finalPrice = courseSummary.discountPrice || courseSummary.price;
+  const courseThumbnailUrl = normalizePersistedMediaUrl(
+    courseSummary.thumbnail?.secureUrl || courseSummary.thumbnail?.url
+  );
 
   return (
     <main className="min-h-screen bg-background pb-20 pt-24">
@@ -261,7 +252,7 @@ export default function PaymentPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-purple-600" />
+                  <CreditCard className="h-5 w-5 text-primary" />
                   Chọn phương thức thanh toán
                 </CardTitle>
               </CardHeader>
@@ -269,16 +260,16 @@ export default function PaymentPage() {
                 {/* VNPay Option */}
                 <button
                   onClick={() => setSelectedMethod("vnpay")}
-                  className={`w-full rounded-lg border-2 p-6 text-left transition-all hover:border-purple-500 hover:shadow-md ${
+                  className={`w-full rounded-lg border-2 p-6 text-left transition-all hover:border-primary/60 hover:shadow-sm ${
                     selectedMethod === "vnpay"
-                      ? "border-purple-600 bg-purple-50 dark:bg-purple-950/30"
+                      ? "border-primary bg-primary/10"
                       : "border-border"
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
-                        <Wallet className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+                      <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-primary/10">
+                        <Wallet className="h-7 w-7 text-primary" />
                       </div>
                       <div>
                         <h3 className="mb-1 font-semibold">VNPay</h3>
@@ -288,7 +279,7 @@ export default function PaymentPage() {
                       </div>
                     </div>
                     {selectedMethod === "vnpay" && (
-                      <CheckCircle className="h-6 w-6 text-purple-600" />
+                      <CheckCircle className="h-6 w-6 text-primary" />
                     )}
                   </div>
                 </button>
@@ -296,9 +287,9 @@ export default function PaymentPage() {
                 {/* PayPal Option */}
                 <button
                   onClick={() => setSelectedMethod("paypal")}
-                  className={`w-full rounded-lg border-2 p-6 text-left transition-all hover:border-purple-500 hover:shadow-md ${
+                  className={`w-full rounded-lg border-2 p-6 text-left transition-all hover:border-primary/60 hover:shadow-sm ${
                     selectedMethod === "paypal"
-                      ? "border-purple-600 bg-purple-50 dark:bg-purple-950/30"
+                      ? "border-primary bg-primary/10"
                       : "border-border"
                   }`}
                 >
@@ -315,7 +306,7 @@ export default function PaymentPage() {
                       </div>
                     </div>
                     {selectedMethod === "paypal" && (
-                      <CheckCircle className="h-6 w-6 text-purple-600" />
+                      <CheckCircle className="h-6 w-6 text-primary" />
                     )}
                   </div>
                 </button>
@@ -342,11 +333,11 @@ export default function PaymentPage() {
             <Button
               onClick={handlePayment}
               disabled={!selectedMethod || isProcessing}
-              className="w-full bg-purple-600 py-6 text-lg font-semibold hover:bg-purple-700"
+              className="w-full bg-primary py-6 text-lg font-semibold text-primary-foreground hover:bg-primary/90"
             >
               {isProcessing
                 ? "Đang xử lý..."
-                : `Thanh toán ${formatPrice(finalPrice)}`}
+                : `Thanh toán ${formatPrice(finalPrice, courseSummary.currency)}`}
             </Button>
           </div>
 
@@ -358,10 +349,10 @@ export default function PaymentPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Course Thumbnail */}
-                {courseSummary.thumbnail?.url && (
+                {courseThumbnailUrl && (
                   <div className="overflow-hidden rounded-lg">
                     <img
-                      src={courseSummary.thumbnail.url}
+                      src={courseThumbnailUrl}
                       alt={courseSummary.title}
                       className="h-40 w-full object-cover"
                     />
@@ -402,7 +393,7 @@ export default function PaymentPage() {
                         courseSummary.discountPrice ? "line-through" : "font-semibold"
                       }
                     >
-                      {formatPrice(courseSummary.price)}
+                      {formatPrice(courseSummary.price, courseSummary.currency)}
                     </span>
                   </div>
 
@@ -415,7 +406,7 @@ export default function PaymentPage() {
                             -{discountPercentage}%
                           </Badge>
                           <span className="font-semibold text-green-600">
-                            -{formatPrice(courseSummary.price - courseSummary.discountPrice)}
+                            -{formatPrice(courseSummary.price - courseSummary.discountPrice, courseSummary.currency)}
                           </span>
                         </div>
                       </div>
@@ -424,8 +415,8 @@ export default function PaymentPage() {
 
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">Tổng thanh toán</span>
-                        <span className="text-2xl font-bold text-purple-600">
-                          {formatPrice(courseSummary.discountPrice)}
+                        <span className="text-2xl font-bold text-primary">
+                          {formatPrice(courseSummary.discountPrice, courseSummary.currency)}
                         </span>
                       </div>
                     </>

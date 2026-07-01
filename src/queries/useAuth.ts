@@ -62,7 +62,7 @@ export const useResetPasswordMutation = () => {
 // Set token to cookie mutation (for OAuth)
 export const useSetTokenToCookieMutation = () => {
   return useMutation({
-    mutationFn: (body: { accessToken: string; refreshToken: string }) =>
+    mutationFn: (body: { accessToken: string; refreshToken: string; remember?: boolean }) =>
       authApiRequest.setTokenToCookie(body),
   });
 };

@@ -3,12 +3,30 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { HttpError } from "@/lib/http";
 
+const clearAuthCookies = async () => {
+  const cookieStore = cookies();
+  const isProduction = process.env.NODE_ENV === "production";
+  const options = {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: isProduction,
+    maxAge: 0,
+  };
+
+  (await cookieStore).set("accessToken", "", options);
+  (await cookieStore).set("refreshToken", "", options);
+  (await cookieStore).set("authStorageMode", "", options);
+};
+
 export async function POST(request: Request) {
   console.log("🔄 [API /api/auth/refresh-token] Request received");
   
   const cookieStore = cookies();
+  const isProduction = process.env.NODE_ENV === "production";
   const refreshToken = (await cookieStore).get("refreshToken")?.value;
   const accessToken = (await cookieStore).get("accessToken")?.value;
+  const persistentCookie = (await cookieStore).get("authStorageMode")?.value !== "session";
   
   console.log("🔄 [API /api/auth/refresh-token] Cookies:", {
     hasRefreshToken: !!refreshToken,
@@ -17,6 +35,7 @@ export async function POST(request: Request) {
   });
   
   if (!refreshToken) {
+    await clearAuthCookies();
     console.log("🔄 [API /api/auth/refresh-token] No refreshToken in cookies!");
     return Response.json(
       {
@@ -56,21 +75,31 @@ export async function POST(request: Request) {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
-      expires: decodedAccessToken.exp * 1000,
+      secure: isProduction,
+      ...(persistentCookie ? { expires: decodedAccessToken.exp * 1000 } : {}),
     });
     (await cookieStore).set("refreshToken", payload.data.refreshToken, {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
-      expires: decodedRefreshToken.exp * 1000,
+      secure: isProduction,
+      ...(persistentCookie ? { expires: decodedRefreshToken.exp * 1000 } : {}),
+    });
+    // Not httpOnly on purpose — see /api/auth/token. The client reads this to
+    // rehydrate a new tab into the correct storage kind; it carries no secret.
+    (await cookieStore).set("authStorageMode", persistentCookie ? "local" : "session", {
+      path: "/",
+      httpOnly: false,
+      sameSite: "lax",
+      secure: isProduction,
+      ...(persistentCookie ? { expires: decodedRefreshToken.exp * 1000 } : {}),
     });
     
     console.log("🔄 [API /api/auth/refresh-token] Cookies updated successfully!");
     return Response.json(payload);
   } catch (error: any) {
     console.error("🔄 [API /api/auth/refresh-token] ERROR:", error);
+    await clearAuthCookies();
     if (error instanceof HttpError) {
       console.error("🔄 [API /api/auth/refresh-token] HttpError:", error.payload);
       return Response.json(error.payload, {

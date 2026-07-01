@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
 export interface PrimaryButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -9,18 +10,18 @@ export interface PrimaryButtonProps extends ButtonHTMLAttributes<HTMLButtonEleme
 const PrimaryButton = forwardRef<HTMLButtonElement, PrimaryButtonProps>(
   ({ className, size = "md", variant = "primary", children, ...props }, ref) => {
     return (
-      <button
+      <Button
         className={cn(
-          "inline-flex items-center justify-center rounded-full font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
+          "rounded-lg font-medium shadow-none",
           {
             "h-8 px-4 text-sm": size === "sm",
             "h-10 px-6 text-base": size === "md",
             "h-12 px-8 text-lg": size === "lg",
           },
           {
-            "bg-gradient-to-r from-purple-500 to-purple-600 text-white hover:from-purple-600 hover:to-purple-700": variant === "primary",
-            "bg-gray-100 text-gray-900 hover:bg-gray-200": variant === "secondary",
-            "border border-purple-500 text-purple-500 hover:bg-purple-50": variant === "outline",
+            "bg-primary text-primary-foreground hover:bg-primary/90": variant === "primary",
+            "bg-secondary text-secondary-foreground hover:bg-secondary/80": variant === "secondary",
+            "border border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted": variant === "outline",
           },
           className
         )}
@@ -28,7 +29,7 @@ const PrimaryButton = forwardRef<HTMLButtonElement, PrimaryButtonProps>(
         {...props}
       >
         {children}
-      </button>
+      </Button>
     );
   }
 );

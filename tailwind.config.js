@@ -51,6 +51,17 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        app: {
+          background: "hsl(var(--app-bg))",
+          surface: "hsl(var(--app-surface))",
+          subtle: "hsl(var(--app-surface-subtle))",
+          border: "hsl(var(--app-border))",
+        },
+        learning: {
+          DEFAULT: "hsl(var(--learning-accent))",
+          foreground: "hsl(var(--learning-accent-foreground))",
+        },
+        warning: "hsl(var(--warning))",
         // Custom theme colors
         blue: {
           50: "#eff6ff",
@@ -112,6 +123,41 @@ module.exports = {
           800: "#9d174d",
           900: "#831843",
         },
+        data: {
+          pos: "hsl(var(--data-pos))",
+          neg: "hsl(var(--data-neg))",
+          info: "hsl(var(--data-info))",
+        },
+      },
+      fontFamily: {
+        ui: ["var(--font-ui)", "ui-sans-serif", "system-ui"],
+        mono: ["var(--font-mono)", "ui-monospace", "Menlo"],
+      },
+      fontSize: {
+        // Workspace text scale: 12 / 14 / 16 / 18 / 22 / 30 / 44
+        "ed-xs": ["0.75rem", { lineHeight: "1.1rem" }],
+        "ed-sm": ["0.875rem", { lineHeight: "1.35rem" }],
+        "ed-base": ["1rem", { lineHeight: "1.6rem" }],
+        "ed-md": ["1.125rem", { lineHeight: "1.75rem" }],
+        "ed-lg": ["1.375rem", { lineHeight: "1.9rem" }],
+        "ed-xl": ["1.875rem", { lineHeight: "2.2rem", letterSpacing: "-0.015em" }],
+        "ed-2xl": ["2.75rem", { lineHeight: "3rem", letterSpacing: "-0.02em" }],
+      },
+      boxShadow: {
+        "card": "0 1px 2px rgb(0 0 0 / 0.04)",
+        "lift": "var(--lift-shadow)",
+        "lift-strong": "var(--lift-shadow-strong)",
+        "focus-ring": "var(--focus-ring-shadow)",
+      },
+      transitionDuration: {
+        snappy: "var(--motion-fast)",
+        std: "var(--motion-base)",
+        gentle: "var(--motion-slow)",
+      },
+      transitionTimingFunction: {
+        "out-soft": "var(--ease-out-soft)",
+        "in-out-soft": "var(--ease-in-out-soft)",
+        spring: "var(--ease-spring)",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -143,6 +189,10 @@ module.exports = {
           "0%, 100%": { opacity: "0.4" },
           "50%": { opacity: "0.8" },
         },
+        "shimmer": {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -154,6 +204,7 @@ module.exports = {
         "orbit-reverse-slow": "orbit-reverse 50s linear infinite",
         "float": "float 3s ease-in-out infinite",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "shimmer": "shimmer 2s linear infinite",
       },
     },
   },

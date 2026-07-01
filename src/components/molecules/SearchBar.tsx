@@ -13,7 +13,7 @@ export function SearchBar({ placeholder = "Search for anything", onSearch }: Pro
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); onSearch?.(value); }}
-      className="flex items-center gap-2 bg-white border border-gray-300 rounded-full pl-4 pr-2 h-10 w-[300px] focus-within:border-purple-600 transition-colors"
+      className="flex items-center gap-2 bg-background border border-input rounded-full pl-4 pr-2 h-10 w-[300px] focus-within:border-ring transition-colors"
     >
       <Input
         value={value}

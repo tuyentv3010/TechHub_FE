@@ -315,6 +315,8 @@ export default function BlogEditorDialog({
       content,
       status,
       tags,
+      relatedCourseIds: initialBlog?.relatedCourseIds || [],
+      relatedLessonIds: initialBlog?.relatedLessonIds || [],
       attachments: cleanedAttachments,
     };
 

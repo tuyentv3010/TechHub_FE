@@ -1,153 +1,249 @@
 "use client";
-import { useAccountProfile } from "@/queries/useAccount";
-import menuItems, { MenuItem } from "@/app/manage/menuItems";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { ArrowLeft, Maximize2, Minimize2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+
+import menuItems, { canAccessMenuItem, MenuItem } from "@/app/manage/menuItems";
 import { usePermissions } from "@/hooks/usePermissions";
-import { Role } from "@/constants/type";
+import { useAccountProfile } from "@/queries/useAccount";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
-  TooltipTrigger,
   TooltipProvider,
+  TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
-import { Package2, Settings } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
 
-export default function NavLinks() {
+type NavLinksProps = {
+  collapsed: boolean;
+};
+
+const SESSION_COMPACT_STORAGE_KEY = "manage-session-compact";
+
+export default function NavLinks({ collapsed }: NavLinksProps) {
+  const t = useTranslations("AdminNav");
   const pathname = usePathname();
-  const router = useRouter();
+  const [sessionCompact, setSessionCompact] = useState(false);
   const { data, isLoading: isProfileLoading } = useAccountProfile();
   const { hasPermission, isLoading: isPermissionsLoading } = usePermissions();
-  
   const account = data?.payload?.data;
-
-  // Lấy roles từ profile API (array of strings, e.g., ["INSTRUCTOR", "ADMIN"])
   const userRoles: string[] = account?.roles || [];
-  
-  console.log("🔐 [NavLinks] Profile data:", account);
-  console.log("🔐 [NavLinks] User roles:", userRoles);
-  console.log("🔐 [NavLinks] Role.Learner value:", Role.Learner);
-  
-  // Check if user is LEARNER - redirect to home
-  const isLearner = userRoles.includes(Role.Learner);
-  console.log("🔐 [NavLinks] Is Learner?:", isLearner);
+  const isCourseStudio = pathname.startsWith("/manage/courses");
+  const brandHref = "/";
+  const sessionRole = (userRoles[0] || "STAFF").replace(/_/g, " ");
+  const sessionName = account?.username || "Admin workspace";
+
   useEffect(() => {
-    if (!isProfileLoading && isLearner) {
-      router.push("/");
+    const stored = window.localStorage.getItem(SESSION_COMPACT_STORAGE_KEY);
+    if (stored !== null) {
+      setSessionCompact(stored === "true");
     }
-  }, [isProfileLoading, isLearner, router]);
+  }, []);
 
-  // If user is LEARNER, don't render anything
-  if (isLearner) {
-    return null;
-  }
+  useEffect(() => {
+    window.localStorage.setItem(
+      SESSION_COMPACT_STORAGE_KEY,
+      String(sessionCompact)
+    );
+  }, [sessionCompact]);
 
-  // Filter menu items based on roles from profile API
   const accessibleMenuItems = menuItems.filter((item: MenuItem) => {
-    // Check roles - if item has roles defined, user must have at least one matching role
-    if (item.roles && item.roles.length > 0) {
-      const hasRole = item.roles.some(role => userRoles.includes(role));
-      if (!hasRole) {
-        console.log(`🚫 [NavLinks] Menu "${item.title}": HIDDEN (user roles [${userRoles.join(', ')}] don't match required roles [${item.roles.join(', ')}])`);
-        return false;
-      }
-    }
-
-    // If still loading permissions, don't show permission-restricted items yet
-    if (item.requiredPermission && isPermissionsLoading) {
+    if (isPermissionsLoading) {
       return false;
     }
 
-    // Check permission if required
-    if (item.requiredPermission) {
-      const hasAccess = hasPermission(
-        item.requiredPermission.method,
-        item.requiredPermission.url
-      );
-      console.log(`🔍 [NavLinks] Menu "${item.title}": ${hasAccess ? "✅ SHOW" : "❌ HIDE"} (${item.requiredPermission.method} ${item.requiredPermission.url})`);
-      return hasAccess;
-    }
-
-    return true;
+    return canAccessMenuItem(item, hasPermission);
   });
-
-  if (isProfileLoading || isPermissionsLoading) {
-    return (
-      <TooltipProvider>
-        <aside className="fixed inset-y-0 left-0 z-10 hidden w-[70px] flex-col border-r bg-background sm:flex">
-          <nav className="flex flex-col items-center gap-4 px-2 py-4">
-            <Link
-              href="/"
-              className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
-            >
-              <Package2 className="h-4 w-4 transition-all group-hover:scale-110" />
-              <span className="sr-only">TechHub</span>
-            </Link>
-            <div className="text-xs text-muted-foreground">Loading...</div>
-          </nav>
-        </aside>
-      </TooltipProvider>
-    );
-  }
 
   return (
     <TooltipProvider>
-      <aside className="fixed inset-y-0 left-0 z-10 hidden w-[70px] flex-col border-r bg-background sm:flex">
-        <nav className="flex flex-col items-center gap-4 px-2 py-4">
+      <aside
+        data-collapsed={collapsed}
+        className={cn(
+          "manage-sidebar manage-glass fixed inset-y-0 left-0 z-40 hidden flex-col border-r transition-[width] duration-200 lg:flex",
+          collapsed ? "w-[5.25rem]" : "w-[17rem]"
+        )}
+      >
+        <nav
+          className={cn(
+            "manage-sidebar-nav flex h-full min-h-0 flex-col",
+            collapsed ? "gap-4 px-3 py-5" : "gap-6 px-4 py-6"
+          )}
+        >
           <Link
-            href="/"
-            className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
+            href={brandHref}
+            className={cn(
+              "manage-sidebar-brand group border border-border bg-card transition-colors hover:bg-muted/60",
+              collapsed
+                ? "mx-auto flex h-12 w-12 items-center justify-center rounded-xl"
+                : "rounded-xl px-4 py-4"
+            )}
           >
-            <Package2 className="h-4 w-4 transition-all group-hover:scale-110" />
-            <span className="sr-only">TechHub</span>
+            <div
+              className={cn(
+                "flex items-center",
+                collapsed ? "justify-center" : "gap-3"
+              )}
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-white shadow-sm">
+                <Image
+                  src="/brand-mark.png"
+                  alt=""
+                  width={36}
+                  height={36}
+                  className="h-9 w-9 object-contain"
+                  priority
+                />
+              </div>
+              {!collapsed ? (
+                <div className="min-w-0 flex-1">
+                  <p className="manage-display break-words text-base font-extrabold leading-tight text-foreground">
+                    {isCourseStudio ? t("curriculumStudio") : t("executiveConsole")}
+                  </p>
+                  <span className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-medium leading-none tracking-normal text-muted-foreground transition-colors group-hover:border-primary/35 group-hover:text-primary">
+                    <ArrowLeft className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{t("backToHomepage")}</span>
+                  </span>
+                </div>
+              ) : null}
+            </div>
           </Link>
 
-          {accessibleMenuItems.map((item: MenuItem, index: number) => {
-            const isActive = pathname === item.href;
-            return (
-              <Tooltip key={index}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:text-foreground md:h-8 md:w-8 mt-2",
-                      {
-                        "bg-accent text-accent-foreground": isActive,
-                        "text-muted-foreground": !isActive,
-                      }
-                    )}
-                  >
-                    <item.Icon className="h-7 w-7" />
-                    <span className="sr-only">{item.title}</span>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="right">{item.title}</TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </nav>
-        <nav className="mt-auto flex flex-col items-center gap-4 px-2 py-4">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href="/setting"
+          <div className="manage-sidebar-scroll min-h-0 flex-1 pr-1">
+            {(isProfileLoading || isPermissionsLoading) && (
+              <div
                 className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:text-foreground md:h-8 md:w-8",
-                  {
-                    "bg-accent text-accent-foreground":
-                      pathname === "/setting",
-                    "text-muted-foreground": pathname !== "/setting",
-                  }
+                  "text-muted-foreground",
+                  collapsed
+                    ? "px-1 text-center text-[0.65rem]"
+                    : "rounded-xl border border-border bg-muted/40 px-4 py-3 text-xs"
                 )}
               >
-                <Settings className="h-5 w-5" />
-                <span className="sr-only">Cài đặt</span>
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="right">Cài đặt</TooltipContent>
-          </Tooltip>
+                {t("loadingNavigation")}
+              </div>
+            )}
+
+            {!isProfileLoading && !isPermissionsLoading && (
+              <div className={cn(collapsed ? "space-y-2" : "space-y-1")}>
+                {accessibleMenuItems.map((item: MenuItem, index: number) => {
+                  const isActive = pathname === item.href;
+                  const label = item.titleKey ? t(item.titleKey) : item.title;
+
+                  return (
+                    <Tooltip key={index}>
+                      <TooltipTrigger asChild>
+                        <Link
+                          href={item.href}
+                          data-collapsed={collapsed}
+                          className={cn(
+                            "manage-sidebar-link group transition-all",
+                            collapsed
+                              ? "flex items-center justify-center rounded-lg px-2 py-2.5"
+                              : "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium",
+                            isActive
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "manage-sidebar-icon flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card transition-colors",
+                              isActive &&
+                                "border-primary/20 bg-primary/15 text-primary-foreground"
+                            )}
+                          >
+                            <item.Icon className="h-5 w-5" />
+                          </span>
+                          {!collapsed ? (
+                            <div className="manage-sidebar-meta min-w-0 flex-1">
+                              <div className="truncate font-semibold">{label}</div>
+                              <div className="manage-page-eyebrow truncate text-[0.58rem]">
+                                {item.href
+                                  .replace("/manage/", "")
+                                  .replace("/", " / ")}
+                              </div>
+                            </div>
+                          ) : null}
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">{label}</TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className={cn("mt-auto shrink-0", collapsed ? "space-y-2" : "space-y-3")}>
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="manage-sidebar-link mx-auto flex min-h-11 w-14 items-center justify-center rounded-lg px-2 py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    data-collapsed={collapsed}
+                    onClick={() => setSessionCompact((current) => !current)}
+                    aria-expanded={!sessionCompact}
+                  >
+                    <span className="max-w-full truncate text-[0.6rem] font-bold uppercase tracking-[0.12em]">
+                      {sessionRole}
+                    </span>
+                    <span className="sr-only">{t("session")}</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {t("session")}: {sessionName} - {sessionRole}
+                </TooltipContent>
+              </Tooltip>
+            ) : sessionCompact ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="flex h-auto min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/60"
+                onClick={() => setSessionCompact(false)}
+                aria-expanded={false}
+              >
+                <span className="min-w-0 flex-1 truncate text-left text-xs font-bold uppercase tracking-[0.18em] text-primary">
+                  {sessionRole}
+                </span>
+                <Maximize2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="sr-only">{t("session")}</span>
+              </Button>
+            ) : (
+              <div className="manage-sidebar-session rounded-xl border border-border bg-card px-4 py-3">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="manage-page-eyebrow text-[0.62rem] tracking-[0.2em]">
+                      {t("session")}
+                    </p>
+                    <p className="mt-1 truncate text-sm font-semibold text-foreground">
+                      {sessionName}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="app-control app-control-sm shrink-0"
+                    onClick={() => setSessionCompact(true)}
+                    aria-expanded
+                  >
+                    <Minimize2 className="h-4 w-4" />
+                    <span className="sr-only">{t("session")}</span>
+                  </Button>
+                </div>
+                <p className="mt-2 truncate text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  {sessionRole}
+                </p>
+              </div>
+            )}
+          </div>
         </nav>
       </aside>
     </TooltipProvider>

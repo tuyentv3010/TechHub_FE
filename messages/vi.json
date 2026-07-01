@@ -1,10 +1,56 @@
 {
+  "instructor": {
+    "eyebrow": "Giảng viên",
+    "avatarAlt": "Ảnh đại diện của {name}",
+    "yearsExperience": "{years}+ năm kinh nghiệm",
+    "statsAria": "Thống kê giảng viên",
+    "stats": {
+      "courses": "Khóa học",
+      "students": "Học viên",
+      "rating": "Đánh giá TB",
+      "years": "Năm KN"
+    },
+    "about": {
+      "title": "Giới thiệu"
+    },
+    "skills": "Kỹ năng",
+    "languages": "Ngôn ngữ",
+    "tabs": {
+      "courses": "Khóa học",
+      "experience": "Kinh nghiệm",
+      "education": "Học vấn",
+      "projects": "Dự án",
+      "certifications": "Chứng chỉ"
+    },
+    "empty": {
+      "courses": {
+        "title": "Chưa có khóa học nào được xuất bản",
+        "body": "Giảng viên này hiện chưa xuất bản khóa học. Hãy quay lại sau nhé!"
+      }
+    },
+    "project": {
+      "openAria": "Mở dự án {name}"
+    },
+    "cert": {
+      "verify": "Xác minh",
+      "verifyAria": "Xác minh chứng chỉ {name}"
+    },
+    "course": {
+      "lessons": "{count} bài",
+      "hours": "{count} giờ",
+      "students": "{count} học viên"
+    }
+  },
   "common": {
     "loading": "Đang tải...",
     "save": "Lưu",
     "cancel": "Hủy",
     "delete": "Xóa",
     "edit": "Chỉnh sửa",
+    "done": "Xong",
+    "previous": "Trang trước",
+    "next": "Trang sau",
+    "page": "Trang",
     "search": "Tìm kiếm",
     "viewAll": "Xem tất cả",
     "learnNow": "Học ngay",
@@ -26,7 +72,7 @@
     "myLearning": "Học của tôi",
     "manageCourses": "Quản lý khóa học",
     "analytics": "Thống kê",
-    "dashboard": "Dashboard",
+    "dashboard": "Bảng điều khiển",
     "users": "Người dùng",
     "profile": "Hồ sơ",
     "settings": "Cài đặt",
@@ -47,6 +93,43 @@
     "myLearning": "Học của tôi",
     "settings": "Cài đặt",
     "logout": "Đăng xuất"
+  },
+  "AdminNav": {
+    "dashboard": "Bảng điều khiển",
+    "aiAnalytics": "Phân tích AI",
+    "aiTraces": "Theo dõi AI",
+    "aiProviders": "Nhà cung cấp AI",
+    "revenue": "Doanh thu",
+    "payouts": "Payouts",
+    "instructorApplications": "Đơn ứng tuyển GV",
+    "accounts": "Người dùng",
+    "roles": "Vai trò",
+    "blogsAdmin": "Bài viết",
+    "filesAdmin": "Quản lý file",
+    "permissions": "Quyền hạn",
+    "manageCourses": "Khóa học",
+    "learningPathsAdmin": "Lộ trình học tập",
+    "settings": "Cài đặt",
+    "systemPreferences": "Tùy chọn hệ thống",
+    "curriculumStudio": "Curriculum Studio",
+    "executiveConsole": "Executive Console",
+    "architecturalCurator": "Architectural Curator",
+    "commandDeck": "Command Deck",
+    "backToHomepage": "Quay lại trang chủ",
+    "session": "Phiên làm việc",
+    "loadingNavigation": "Đang tải menu..."
+  },
+  "AdminShell": {
+    "workspaceEyebrow": "Không gian quản trị",
+    "workspaceDescription": "Vận hành, nội dung và quản trị nền tảng",
+    "courseEyebrow": "Curriculum Studio",
+    "courseDescription": "Không gian vận hành và xuất bản khóa học",
+    "payoutEyebrow": "Payout Control",
+    "payoutDescription": "Duyệt settlement và vận hành payout",
+    "revenueEyebrow": "Revenue Control",
+    "revenueDescription": "Analytics, policy và giám sát tài chính",
+    "pathEyebrow": "Learning Path Studio",
+    "pathDescription": "Thiết kế và điều phối learning path"
   },
   "HomePage": {
     "title": "TechHub - Nền tảng học lập trình",
@@ -103,7 +186,9 @@
     },
     "instructors": {
       "title": "Popular Instructor",
-      "subtitle": "We know the best things for You. Top picks for You."
+      "subtitle": "We know the best things for You. Top picks for You.",
+      "viewAll": "Xem tất cả giảng viên",
+      "empty": "Chưa có giảng viên nào."
     },
     "blog": {
       "title": "Khám Phá Lợi Ích Của Bạn",
@@ -115,7 +200,7 @@
       "subscribe": "Đăng Ký"
     },
     "learningPaths": {
-       "searchTitle" : "Tìm Kiếm Lộ Trình",
+      "searchTitle": "Tìm Kiếm Lộ Trình",
       "badge": "Lộ trình có cấu trúc",
       "title": "Lộ Trình Học Dành Riêng Cho Bạn",
       "subtitle": "Chúng tôi xây dựng lộ trình học cá nhân hóa, cung cấp khóa học miễn phí và tài liệu chất lượng, giúp bạn dễ dàng bắt đầu hành trình học tập một cách bài bản và hiệu quả.",
@@ -245,7 +330,100 @@
     "enrollError": "Đăng ký thất bại",
     "enrollErrorMessage": "Vui lòng đăng nhập và thử lại.",
     "free": "Miễn phí",
-    "startLearning": "Bắt đầu học"
+    "startLearning": "Bắt đầu học",
+    "viewDetails": "Xem chi tiết",
+    "bestseller": "Bán chạy",
+    "new": "Mới",
+    "freeLearning": "Học miễn phí",
+    "discountedPrice": "Giá sau giảm",
+    "tuitionFee": "Học phí",
+    "discountUntil": "Ưu đãi đến {date}",
+    "lessonsCount": "{count} bài học",
+    "hoursCount": "{count} giờ",
+    "studentsCount": "{count} học viên",
+    "catalogHeroTitle": "Tìm khóa học phù hợp với mục tiêu của bạn",
+    "catalogHeroSubtitle": "Lọc theo kỹ năng, cấp độ, ngôn ngữ và học phí để chọn đúng khóa học cần học tiếp theo.",
+    "searchTitle": "Bạn muốn học gì?",
+    "searchDescription": "Tìm theo tên khóa học, công nghệ hoặc kỹ năng bạn muốn phát triển.",
+    "searchPlaceholder": "Tìm khóa học, kỹ năng, công nghệ...",
+    "searchButton": "Tìm kiếm",
+    "allLevels": "Tất cả cấp độ",
+    "allLanguages": "Tất cả ngôn ngữ",
+    "vietnamese": "Tiếng Việt",
+    "english": "Tiếng Anh",
+    "japanese": "Tiếng Nhật",
+    "sortNewest": "Mới nhất",
+    "sortPopular": "Nhiều học viên",
+    "sortRating": "Đánh giá cao",
+    "sortPriceAsc": "Giá thấp trước",
+    "sortPriceDesc": "Giá cao trước",
+    "activeFilters": "{count} bộ lọc đang áp dụng",
+    "noFilters": "Đang hiển thị tất cả khóa học",
+    "advancedFilters": "Bộ lọc",
+    "filterTitle": "Bộ lọc khóa học",
+    "filterDescription": "Thu hẹp danh sách theo học phí, kỹ năng và thẻ nội dung.",
+    "priceRange": "Khoảng học phí",
+    "priceAll": "Tất cả",
+    "priceFree": "Miễn phí",
+    "priceUnder500": "Dưới $500",
+    "priceUnder1000": "Dưới $1000",
+    "pricePremium": "Từ $500",
+    "clearFilters": "Xóa bộ lọc",
+    "appliedFilters": "Đang lọc:",
+    "resultCount": "Tìm thấy {count} khóa học",
+    "emptyTitle": "Không tìm thấy khóa học nào",
+    "emptyDescription": "Thử đổi từ khóa, cấp độ hoặc bỏ bớt bộ lọc.",
+    "previous": "Trước",
+    "next": "Sau"
+  },
+  "CourseComments": {
+    "count": "{count} Bình luận",
+    "sortNewest": "Mới nhất",
+    "sortOldest": "Cũ nhất",
+    "commentPlaceholder": "Chia sẻ cảm nhận của bạn...",
+    "insertEmoji": "Chèn emoji",
+    "submitComment": "Bình luận",
+    "empty": "Hãy là người đầu tiên chia sẻ cảm nghĩ của bạn.",
+    "reply": "Trả lời",
+    "replyPlaceholder": "Viết phản hồi...",
+    "cancel": "Hủy",
+    "submitReply": "Phản hồi",
+    "replyCount": "{count} phản hồi",
+    "emptyCommentTitle": "Vui lòng nhập nội dung bình luận",
+    "emptyReplyTitle": "Vui lòng nhập nội dung phản hồi",
+    "newCourseCommentTitle": "Bình luận mới",
+    "newCourseCommentDescription": "Có người vừa bình luận trong khóa học này!",
+    "newLessonCommentDescription": "Có người vừa bình luận trong bài học này!",
+    "submitCommentErrorTitle": "Không thể gửi bình luận",
+    "submitReplyErrorTitle": "Không thể gửi phản hồi",
+    "submitCommentSuccessTitle": "Đã gửi bình luận",
+    "submitReplySuccessTitle": "Đã gửi phản hồi",
+    "tryAgainDescription": "Vui lòng thử lại.",
+    "loginAndRetryDescription": "Vui lòng đăng nhập và thử lại.",
+    "lessonDiscussionTitle": "Hỏi đáp - {title}",
+    "openDiscussion": "Mở hỏi đáp",
+    "userAvatarAlt": "Người dùng"
+  },
+  "VideoPlayer": {
+    "byInstructor": "bởi {name}",
+    "playShortcut": "Phát (K)",
+    "pauseShortcut": "Tạm dừng (K)",
+    "rewind10": "Tua lại 10 giây",
+    "forward10": "Tua tới 10 giây",
+    "cannotSkipUnwatchedVideo": "Không thể tua đến phần chưa xem",
+    "muteShortcut": "Tắt tiếng (M)",
+    "unmuteShortcut": "Bật tiếng (M)",
+    "quality": "Chất lượng",
+    "captions": "Phụ đề",
+    "captionsShortcut": "Phụ đề (C)",
+    "settings": "Cài đặt",
+    "playbackSpeed": "Tốc độ phát",
+    "speed": "Tốc độ",
+    "normalSpeed": "Bình thường",
+    "on": "Bật",
+    "off": "Tắt",
+    "fullscreenShortcut": "Toàn màn hình (F)",
+    "exitFullscreenShortcut": "Thoát toàn màn hình (F)"
   },
   "Footer": {
     "title": "TechHub",
@@ -254,11 +432,189 @@
     "privacyPolicy": "Chính sách bảo mật",
     "termsOfService": "Điều khoản dịch vụ",
     "ConditionService": "Điều khoản sử dụng",
-    "AboutWe": "Về chúng tôi"
+    "AboutWe": "Về chúng tôi",
+    "logoAlt": "Logo TechHub",
+    "brandDescription": "TechHub - Nền tảng học tập công nghệ trực tuyến hàng đầu. Khám phá các khóa học chất lượng cao, lộ trình học tập cá nhân hóa và cộng đồng học viên năng động.",
+    "skillsTitle": "Kỹ năng",
+    "noSkillsAvailable": "Chưa có kỹ năng.",
+    "quickLinksTitle": "Liên kết nhanh",
+    "quickLinks": {
+      "about": "Về chúng tôi",
+      "contact": "Liên hệ",
+      "courses": "Khóa học",
+      "learningPaths": "Lộ trình học tập",
+      "blog": "Blog & Tin tức"
+    },
+    "latestPostsTitle": "Bài viết mới",
+    "noLatestPosts": "Chưa có bài viết mới.",
+    "blogImageAlt": "Ảnh bài viết",
+    "copyrightPrefix": "Bản quyền © {year}"
   },
   "PrivacyPolicy": {
     "title": "Chính Sách Bảo Mật",
     "lastUpdated": "Cập nhật lần cuối"
+  },
+  "Legal": {
+    "backButton": {
+      "label": "Quay lại",
+      "ariaLabel": "Quay lại trang trước hoặc trang chủ"
+    },
+    "finePrint": {
+      "prefix": "Khi tiếp tục, bạn đồng ý với",
+      "termsOfService": "Điều khoản dịch vụ",
+      "and": "và",
+      "privacyPolicy": "Chính sách bảo mật"
+    },
+    "terms": {
+      "metadataTitle": "Điều khoản dịch vụ | TechHub",
+      "metadataDescription": "Điều khoản sử dụng nền tảng học tập TechHub.",
+      "eyebrow": "Pháp lý TechHub",
+      "title": "Điều khoản dịch vụ",
+      "description": "Các điều khoản này mô tả cách bạn có thể sử dụng TechHub, quyền và trách nhiệm khi học tập, thanh toán, tương tác với nội dung và dùng các tính năng hỗ trợ học tập.",
+      "lastUpdatedLabel": "Cập nhật lần cuối",
+      "lastUpdated": "11/05/2026",
+      "sections": [
+        {
+          "title": "Tài khoản và quyền truy cập",
+          "paragraphs": [
+            "Bạn cần cung cấp thông tin chính xác khi đăng ký và chịu trách nhiệm bảo mật tài khoản, mật khẩu, phiên đăng nhập và mọi hoạt động phát sinh từ tài khoản của mình."
+          ],
+          "bullets": [
+            "Không chia sẻ tài khoản cho người khác sử dụng nếu gói học hoặc khóa học không cho phép.",
+            "Thông báo cho TechHub khi phát hiện truy cập trái phép hoặc nghi ngờ tài khoản bị lộ."
+          ]
+        },
+        {
+          "title": "Nội dung khóa học",
+          "paragraphs": [
+            "Tài liệu, video, bài tập, câu hỏi, lộ trình học và nội dung do giảng viên hoặc TechHub cung cấp chỉ dùng cho mục đích học tập cá nhân trong phạm vi nền tảng."
+          ],
+          "bullets": [
+            "Không sao chép, phân phối lại, bán lại hoặc công khai nội dung khóa học nếu chưa có sự cho phép.",
+            "Bạn có thể lưu ghi chú cá nhân và bài làm của mình, miễn là không vi phạm quyền sở hữu trí tuệ của bên thứ ba."
+          ]
+        },
+        {
+          "title": "Thanh toán và ghi danh",
+          "paragraphs": [
+            "Giá, quyền lợi và điều kiện truy cập của từng khóa học sẽ được hiển thị trước khi thanh toán. Giao dịch có thể được xử lý bởi cổng thanh toán hoặc đối tác dịch vụ được TechHub tích hợp."
+          ],
+          "bullets": [
+            "Quyền truy cập khóa học có thể phụ thuộc vào trạng thái thanh toán, hoàn tiền hoặc chính sách của từng chương trình.",
+            "Nếu giao dịch lỗi hoặc bị trừ tiền nhưng chưa ghi danh, bạn nên liên hệ hỗ trợ để được đối soát."
+          ]
+        },
+        {
+          "title": "Hành vi sử dụng",
+          "paragraphs": [
+            "Bạn đồng ý sử dụng TechHub theo cách tôn trọng người học khác, giảng viên và hệ thống vận hành của nền tảng."
+          ],
+          "bullets": [
+            "Không đăng nội dung spam, lừa đảo, quấy rối, vi phạm pháp luật hoặc xâm phạm quyền riêng tư của người khác.",
+            "Không tấn công, quét, khai thác lỗ hổng, tự động hóa bất thường hoặc làm gián đoạn dịch vụ."
+          ]
+        },
+        {
+          "title": "Tính năng AI",
+          "paragraphs": [
+            "Một số khu vực của TechHub có thể dùng AI để gợi ý khóa học, giải thích nội dung, hỗ trợ học tập hoặc tạo bản nháp. Kết quả AI có tính hỗ trợ và có thể cần được kiểm tra lại."
+          ],
+          "bullets": [
+            "Không dùng kết quả AI như lời khuyên chuyên môn duy nhất cho các quyết định quan trọng.",
+            "Không nhập dữ liệu nhạy cảm, bí mật hoặc dữ liệu của người khác nếu bạn không có quyền xử lý."
+          ]
+        },
+        {
+          "title": "Tạm ngưng hoặc chấm dứt truy cập",
+          "paragraphs": [
+            "TechHub có thể tạm ngưng hoặc giới hạn quyền truy cập khi phát hiện vi phạm điều khoản, rủi ro bảo mật, gian lận thanh toán hoặc hành vi gây ảnh hưởng đến người dùng khác."
+          ]
+        },
+        {
+          "title": "Thay đổi điều khoản và liên hệ",
+          "paragraphs": [
+            "TechHub có thể cập nhật điều khoản để phản ánh thay đổi về sản phẩm, vận hành hoặc yêu cầu pháp lý. Khi có thay đổi quan trọng, nền tảng sẽ cố gắng thông báo bằng kênh phù hợp.",
+            "Nếu cần hỗ trợ về điều khoản dịch vụ, vui lòng liên hệ qua trang Liên hệ của TechHub."
+          ]
+        }
+      ]
+    },
+    "privacy": {
+      "metadataTitle": "Chính sách bảo mật | TechHub",
+      "metadataDescription": "Cách TechHub thu thập, sử dụng và bảo vệ dữ liệu người dùng.",
+      "eyebrow": "Quyền riêng tư TechHub",
+      "title": "Chính sách bảo mật",
+      "description": "Chính sách này giải thích dữ liệu TechHub thu thập, lý do sử dụng, trường hợp chia sẻ và các lựa chọn của bạn khi sử dụng nền tảng học tập.",
+      "lastUpdatedLabel": "Cập nhật lần cuối",
+      "lastUpdated": "11/05/2026",
+      "sections": [
+        {
+          "title": "Thông tin chúng tôi thu thập",
+          "paragraphs": [
+            "TechHub thu thập thông tin cần thiết để tạo tài khoản, vận hành khóa học, hỗ trợ thanh toán, cá nhân hóa trải nghiệm học tập và bảo vệ hệ thống."
+          ],
+          "bullets": [
+            "Thông tin tài khoản như email, tên người dùng, vai trò, trạng thái xác thực và ảnh đại diện nếu bạn cung cấp.",
+            "Dữ liệu học tập như khóa học đã ghi danh, tiến độ, bài làm, kết quả kiểm tra, lộ trình học và tương tác trong nền tảng.",
+            "Dữ liệu kỹ thuật như thiết bị, trình duyệt, địa chỉ IP, log phiên đăng nhập và sự kiện bảo mật.",
+            "Thông tin giao dịch ở mức cần thiết để xác nhận thanh toán, đối soát và hỗ trợ người dùng."
+          ]
+        },
+        {
+          "title": "Cách chúng tôi sử dụng thông tin",
+          "bullets": [
+            "Cung cấp, duy trì và cải thiện các tính năng học tập của TechHub.",
+            "Xử lý đăng nhập, xác thực, ghi danh khóa học, thanh toán và hỗ trợ khách hàng.",
+            "Cá nhân hóa gợi ý khóa học, lộ trình học, thông báo và trải nghiệm nội dung.",
+            "Phát hiện gian lận, lạm dụng, lỗi kỹ thuật và rủi ro bảo mật."
+          ]
+        },
+        {
+          "title": "Chia sẻ thông tin",
+          "paragraphs": [
+            "TechHub không bán dữ liệu cá nhân của bạn. Chúng tôi chỉ chia sẻ thông tin trong phạm vi cần thiết để vận hành nền tảng hoặc khi có yêu cầu hợp lệ."
+          ],
+          "bullets": [
+            "Nhà cung cấp hạ tầng, lưu trữ, phân tích, email, thanh toán hoặc dịch vụ hỗ trợ vận hành.",
+            "Giảng viên hoặc quản trị viên khi cần xử lý khóa học, tiến độ học tập, bài làm hoặc yêu cầu hỗ trợ.",
+            "Cơ quan có thẩm quyền khi pháp luật yêu cầu hoặc để bảo vệ quyền lợi hợp pháp của TechHub và người dùng."
+          ]
+        },
+        {
+          "title": "Cookie và công nghệ tương tự",
+          "paragraphs": [
+            "TechHub có thể dùng cookie hoặc bộ nhớ trình duyệt để duy trì phiên đăng nhập, ghi nhớ tùy chọn giao diện, ngôn ngữ và cải thiện hiệu năng."
+          ]
+        },
+        {
+          "title": "Lưu trữ và bảo vệ dữ liệu",
+          "paragraphs": [
+            "Chúng tôi duy trì dữ liệu trong thời gian cần thiết cho mục đích vận hành, pháp lý, bảo mật và hỗ trợ người dùng. TechHub áp dụng các biện pháp kỹ thuật và tổ chức hợp lý để giảm rủi ro truy cập trái phép, mất mát hoặc lạm dụng dữ liệu."
+          ]
+        },
+        {
+          "title": "Quyền lựa chọn của bạn",
+          "bullets": [
+            "Bạn có thể cập nhật một số thông tin tài khoản trong trang hồ sơ hoặc cài đặt.",
+            "Bạn có thể yêu cầu hỗ trợ về truy cập, chỉnh sửa hoặc xóa dữ liệu theo phạm vi hệ thống và quy định áp dụng.",
+            "Bạn có thể đăng xuất và xóa dữ liệu phiên khỏi trình duyệt khi không sử dụng thiết bị cá nhân."
+          ]
+        },
+        {
+          "title": "Tính năng AI và dữ liệu học tập",
+          "paragraphs": [
+            "Khi bạn sử dụng các tính năng AI, TechHub có thể xử lý nội dung bạn nhập và ngữ cảnh học tập liên quan để tạo phản hồi hoặc gợi ý. Bạn không nên nhập thông tin nhạy cảm, bí mật hoặc dữ liệu cá nhân của người khác nếu không có quyền."
+          ]
+        },
+        {
+          "title": "Cập nhật chính sách và liên hệ",
+          "paragraphs": [
+            "Chính sách này có thể được cập nhật khi TechHub thay đổi sản phẩm, cách xử lý dữ liệu hoặc yêu cầu tuân thủ. Nếu có thay đổi quan trọng, chúng tôi sẽ cố gắng thông báo bằng kênh phù hợp.",
+            "Nếu có câu hỏi về quyền riêng tư hoặc dữ liệu cá nhân, vui lòng liên hệ qua trang Liên hệ của TechHub."
+          ]
+        }
+      ]
+    }
   },
   "Login": {
     "title": "Chào mừng trở lại",
@@ -358,8 +714,9 @@
     "ja": "Tiếng Nhật"
   },
   "ManageAccount": {
+    "PageEyebrow": "Admin / Tài khoản",
     "Title": "Quản lý tài khoản",
-    "Description": "Quản lý tài khoản người dùng và phân quyền",
+    "Description": "Quản lý tài khoản người dùng, learner và phân quyền truy cập.",
     "CreateAccount": "Tạo tài khoản",
     "UpdateAccount": "Cập nhật tài khoản",
     "ID": "ID",
@@ -408,7 +765,33 @@
     "NoRoleSelected": "Chưa chọn vai trò",
     "RoleNote": "Liên hệ quản trị viên để thay đổi vai trò",
     "FilterEmails": "Lọc theo email",
-    "FilterName": "Lọc theo tên" 
+    "FilterName": "Lọc theo tên",
+    "PermissionOverrides": {
+      "Title": "Ghi đè quyền",
+      "PermissionCount": "{count} quyền",
+      "SearchPlaceholder": "Tìm kiếm quyền",
+      "Refreshing": "Đang làm mới...",
+      "PageLoadNote": "Chỉ trang này được tải từ máy chủ.",
+      "PageStatus": "Trang {page} / {totalPages}",
+      "Loading": "Đang tải quyền...",
+      "CatalogLoadTitle": "Không thể tải danh mục quyền.",
+      "CatalogLoadFallback": "Vui lòng thử lại sau. Chưa có thay đổi phân quyền nào được lưu.",
+      "CatalogLoadHint": "Nếu lỗi tiếp tục xảy ra, hãy liên hệ quản trị hệ thống.",
+      "HttpStatus": "HTTP {status}",
+      "NoPermissions": "Không tìm thấy quyền nào.",
+      "AllowedOverride": "Ghi đè cho phép",
+      "DeniedOverride": "Ghi đè từ chối",
+      "AllowedByRole": "Được cho phép bởi vai trò",
+      "DeniedByRole": "Bị từ chối bởi vai trò",
+      "AllowToast": "Đã ghi đè quyền thành cho phép.",
+      "DenyToast": "Đã ghi đè quyền thành từ chối.",
+      "ResetToast": "Đã đặt lại ghi đè quyền.",
+      "Allow": "Cho phép",
+      "Deny": "Từ chối",
+      "Reset": "Đặt lại",
+      "Previous": "Trước",
+      "Next": "Sau"
+    }
   },
   "DropdownAvatar": {
     "UnknownUser": "Người dùng không xác định",
@@ -445,7 +828,498 @@
     "Page": "Trang",
     "Of": "của"
   },
+  "ManageRole": {
+    "PageEyebrow": "Admin / Vai trò",
+    "Title": "Quản lý vai trò",
+    "Description": "Thiết kế nhóm vai trò theo phạm vi công việc, vẫn có tab kỹ thuật để chỉnh quyền chi tiết.",
+    "NameColumn": "Tên",
+    "DescriptionColumn": "Mô tả",
+    "StatusColumn": "Trạng thái",
+    "PermissionCountColumn": "Quyền",
+    "PermissionCount": "{count} quyền",
+    "ActionsColumn": "Hành động",
+    "SearchPlaceholder": "Tìm vai trò, mô tả hoặc quyền...",
+    "AddRole": "Thêm vai trò",
+    "EditRole": "Chỉnh sửa vai trò",
+    "AddRoleDescription": "Tạo vai trò mới và gán quyền tương ứng.",
+    "EditRoleDescription": "Cập nhật thông tin vai trò và danh sách quyền.",
+    "NameLabel": "Tên",
+    "NamePlaceholder": "ADMIN",
+    "DescriptionLabel": "Mô tả",
+    "DescriptionPlaceholder": "Quản trị viên hệ thống",
+    "StatusLabel": "Trạng thái",
+    "PermissionsLabel": "Quyền",
+    "SelectedCount": "Đã chọn {count}",
+    "UpdateRole": "Cập nhật vai trò",
+    "DeleteDialogTitle": "Xóa vai trò",
+    "DeleteDialogDescription": "Bạn có chắc chắn muốn xóa vai trò \"{name}\"? Hành động này không thể hoàn tác.",
+    "DeleteSuccess": "Đã xóa vai trò",
+    "DeleteFailed": "Xóa vai trò thất bại",
+    "RoleDeleted": "Vai trò \"{name}\" đã được xóa.",
+    "RoleCreated": "Đã tạo vai trò thành công.",
+    "RoleUpdated": "Đã cập nhật vai trò thành công.",
+    "CreateFailed": "Không thể tạo vai trò.",
+    "UpdateFailed": "Không thể cập nhật vai trò.",
+    "NoResults": "Không tìm thấy vai trò.",
+    "ErrorLabel": "Lỗi",
+    "UnknownError": "Đã xảy ra lỗi không xác định.",
+    "Edit": "Chỉnh sửa",
+    "Delete": "Xóa",
+    "Cancel": "Hủy",
+    "Continue": "Tiếp tục",
+    "Active": "Hoạt động",
+    "Inactive": "Ngừng hoạt động"
+  },
+  "ManagePermission": {
+    "PageEyebrow": "Admin / Quyền hạn",
+    "Title": "Điều phối quyền truy cập",
+    "Description": "Phân quyền theo nhóm chức năng cho vận hành, đồng thời giữ tab kỹ thuật để đối chiếu endpoint và method.",
+    "NameColumn": "Tên",
+    "DescriptionColumn": "Mô tả",
+    "MethodColumn": "Method",
+    "UrlColumn": "URL",
+    "ResourceColumn": "Resource",
+    "ActionsColumn": "Hành động",
+    "SearchPlaceholder": "Tìm quyền, URL, method hoặc resource...",
+    "ExpandGroup": "Mở nhóm quyền",
+    "CollapseGroup": "Thu gọn nhóm quyền",
+    "FilterMethod": "Lọc method",
+    "FilterResource": "Lọc resource",
+    "AllOption": "Tất cả",
+    "AddPermission": "Thêm quyền",
+    "EditPermission": "Chỉnh sửa quyền",
+    "UpdatePermission": "Cập nhật quyền",
+    "AddPermissionDescription": "Tạo quyền mới cho hệ thống phân quyền.",
+    "EditPermissionDescription": "Cập nhật thông tin quyền trong hệ thống phân quyền.",
+    "NameLabel": "Tên",
+    "NamePlaceholder": "USER_READ_ALL",
+    "DescriptionLabel": "Mô tả",
+    "DescriptionPlaceholder": "Lấy toàn bộ người dùng",
+    "MethodLabel": "Method",
+    "MethodPlaceholder": "Chọn method",
+    "ResourceLabel": "Resource",
+    "ResourcePlaceholder": "Chọn resource",
+    "UrlLabel": "URL",
+    "UrlPlaceholder": "/api/users",
+    "StatusLabel": "Trạng thái",
+    "Active": "Hoạt động",
+    "Inactive": "Ngừng hoạt động",
+    "DeleteDialogTitle": "Xóa quyền",
+    "DeleteDialogDescription": "Bạn có chắc chắn muốn xóa quyền \"{name}\"? Hành động này không thể hoàn tác.",
+    "DeleteSuccess": "Đã xóa quyền",
+    "DeleteFailed": "Xóa quyền thất bại",
+    "PermissionDeleted": "Quyền \"{name}\" đã được xóa.",
+    "PermissionCreated": "Đã tạo quyền thành công.",
+    "PermissionUpdated": "Đã cập nhật quyền thành công.",
+    "CreateFailed": "Không thể tạo quyền.",
+    "UpdateFailed": "Không thể cập nhật quyền.",
+    "NoResults": "Không tìm thấy quyền.",
+    "Loading": "Đang tải...",
+    "ErrorLabel": "Lỗi",
+    "UnknownError": "Đã xảy ra lỗi không xác định.",
+    "Edit": "Chỉnh sửa",
+    "Delete": "Xóa",
+    "Cancel": "Hủy",
+    "Continue": "Tiếp tục"
+  },
+  "ManageFile": {
+    "PageEyebrow": "Admin / File",
+    "Title": "Quản lý file",
+    "Description": "Duyệt, tải lên và sắp xếp thư viện media dùng chung.",
+    "TotalFiles": "Tổng số file",
+    "TotalSize": "Tổng dung lượng",
+    "Images": "Hình ảnh",
+    "Videos": "Video",
+    "SearchPlaceholder": "Tìm kiếm file...",
+    "AllFolders": "Tất cả thư mục",
+    "AllFiles": "Tất cả file",
+    "Upload": "Tải lên",
+    "Cancel": "Hủy",
+    "Create": "Tạo",
+    "FolderDialogTitle": "Chọn thư mục",
+    "FolderDialogDescription": "Chọn thư mục để lọc file hoặc tạo thư mục mới.",
+    "CreateFolder": "Tạo thư mục",
+    "FolderNamePlaceholder": "Tên thư mục...",
+    "SubfolderNamePlaceholder": "Tên thư mục con...",
+    "CreateFolderSuccess": "Đã tạo thư mục thành công.",
+    "CreateFolderError": "Không thể tạo thư mục.",
+    "CreateSubfolderSuccess": "Đã tạo thư mục con thành công.",
+    "CreateSubfolderError": "Không thể tạo thư mục con.",
+    "NoFolders": "Chưa có thư mục nào.",
+    "FolderFileCount": "({count} file)",
+    "UploadDialogTitle": "Tải lên file",
+    "UploadDialogDescription": "Chọn file để tải lên. Hỗ trợ hình ảnh, video, tài liệu và âm thanh.",
+    "SelectFilesLabel": "Chọn file",
+    "FileListLabel": "Danh sách file ({count})",
+    "TagsHint": "(cách nhau bởi dấu phẩy)",
+    "TagsPlaceholder": "Ví dụ: blog, 2024, featured",
+    "DescriptionPlaceholder": "Nhập mô tả cho file...",
+    "UploadTargetHint": "File sẽ được tải lên vào thư mục đã chọn.",
+    "UploadRequired": "Vui lòng chọn ít nhất một file để tải lên.",
+    "MissingUserInfo": "Không tìm thấy thông tin người dùng hiện tại.",
+    "UploadCompleted": "Đã tải lên {count} file thành công.",
+    "UploadFailed": "Không thể tải file lên.",
+    "Uploading": "Đang tải lên...",
+    "PreviewColumn": "Xem trước",
+    "FileNameColumn": "Tên file",
+    "TypeColumn": "Loại",
+    "SizeColumn": "Kích thước",
+    "FolderColumn": "Thư mục",
+    "CreatedAtColumn": "Ngày tạo",
+    "Loading": "Đang tải...",
+    "EmptyState": "Không có file nào.",
+    "RootFolder": "Gốc",
+    "Actions": "Hành động",
+    "PreviewAction": "Xem chi tiết",
+    "DownloadAction": "Tải xuống",
+    "DeleteAction": "Xóa",
+    "DeleteDialogTitle": "Xóa file",
+    "DeleteDialogDescription": "Bạn có chắc chắn muốn xóa file \"{name}\"? Hành động này không thể hoàn tác.",
+    "DeleteFolderAction": "Xóa thư mục",
+    "DeleteFolderDialogTitle": "Xóa thư mục",
+    "DeleteFolderDialogDescription": "Bạn có chắc chắn muốn xóa thư mục \"{name}\"? Chỉ có thể xóa thư mục rỗng.",
+    "PreviewDialogDescription": "Chi tiết file",
+    "BrowserUnsupportedVideo": "Trình duyệt không hỗ trợ video.",
+    "BrowserUnsupportedAudio": "Trình duyệt không hỗ trợ audio.",
+    "DocumentLabel": "Tài liệu",
+    "AttachmentLabel": "Tệp đính kèm",
+    "DocumentPreviewHint": "Xem thông tin tệp hoặc tải xuống để mở toàn bộ nội dung.",
+    "FileTypeLabel": "Loại file",
+    "SizeLabel": "Kích thước",
+    "DimensionsLabel": "Kích thước",
+    "DurationLabel": "Thời lượng",
+    "FormatLabel": "Định dạng",
+    "DescriptionLabel": "Mô tả",
+    "TagsLabel": "Tags",
+    "NotAvailable": "N/A",
+    "PermissionDeniedTitle": "Không có quyền",
+    "DeletePermissionDenied": "Bạn không có quyền xóa file.",
+    "DownloadPermissionDenied": "Bạn không có quyền tải file xuống.",
+    "UploadPermissionDenied": "Bạn không có quyền tải file lên.",
+    "SuccessTitle": "Thành công",
+    "ErrorTitle": "Lỗi",
+    "DeleteSuccess": "Đã xóa file thành công.",
+    "DeleteError": "Không thể xóa file.",
+    "DeleteFolderSuccess": "Đã xóa thư mục thành công.",
+    "DeleteFolderError": "Không thể xóa thư mục.",
+    "DeleteFolderNotEmpty": "Không thể xóa thư mục đang chứa file hoặc thư mục con.",
+    "DownloadSuccess": "Đã tải file xuống thành công.",
+    "DownloadError": "Không thể tải file xuống.",
+    "FileType": {
+      "IMAGE": "Hình ảnh",
+      "VIDEO": "Video",
+      "DOCUMENT": "Tài liệu",
+      "AUDIO": "Âm thanh",
+      "OTHER": "Tệp"
+    },
+    "ProcessingStatus": {
+      "READY": "Sẵn sàng",
+      "PENDING": "Đang tạo preview",
+      "PROCESSING": "Đang xử lý",
+      "FAILED": "Lỗi preview"
+    }
+  },
+  "ManageRevenue": {
+    "NotAvailable": "N/A",
+    "UnknownUser": "Người dùng không xác định",
+    "UnknownCourse": "Khóa học không xác định",
+    "PaymentRecord": "Bản ghi thanh toán",
+    "PageEyebrow": "Điều phối doanh thu",
+    "Title": "Phân tích doanh thu",
+    "DescriptionAdmin": "Giám sát doanh thu, đơn hàng và tỷ lệ chia cho hệ thống theo thời gian thực.",
+    "DescriptionInstructor": "Theo dõi doanh thu khóa học theo ngày và xem tỷ lệ chia hiện tại của bạn.",
+    "RoleLabel": "Vai trò",
+    "InstructorIdLabel": "Mã giảng viên",
+    "Unauthenticated": "Đang chờ xác thực. Dashboard doanh thu sẽ tải khi hệ thống xác định xong vai trò hiện tại.",
+    "FilterTitle": "Bộ lọc doanh thu",
+    "FilterDescription": "Điều chỉnh khoảng ngày, giảng viên và làm mới dữ liệu tài chính.",
+    "InstructorIdPlaceholder": "Mã giảng viên",
+    "Reset": "Đặt lại",
+    "RefreshData": "Làm mới dữ liệu",
+    "SummaryGrossRevenue": "Tổng doanh thu",
+    "SummarySystemShare": "Phần hệ thống",
+    "SummaryInstructorRevenue": "Thu nhập giảng viên",
+    "SummarySuccessfulOrders": "Đơn thành công",
+    "SummaryItemsSold": "Sản phẩm đã bán",
+    "ActivePolicyTitle": "Chính sách chia doanh thu đang áp dụng",
+    "ActivePolicyDescription": "Chính sách hiện tại được resolve từ payment-service.",
+    "ScopeLabel": "Phạm vi",
+    "InstructorRateLabel": "Tỷ lệ giảng viên",
+    "AdminRateLabel": "Tỷ lệ hệ thống",
+    "VersionLabel": "Phiên bản",
+    "Updating": "đang cập nhật...",
+    "CreatePolicyTitle": "Tạo chính sách doanh thu",
+    "CreatePolicyDescription": "Tạo policy chia doanh thu mới theo phạm vi và thời gian hiệu lực.",
+    "ScopeField": "Phạm vi",
+    "ScopeGlobal": "Toàn cục",
+    "ScopeInstructor": "Giảng viên",
+    "ScopeCourse": "Khóa học",
+    "InstructorRateField": "Tỷ lệ giảng viên (0-1)",
+    "EffectiveFrom": "Hiệu lực từ",
+    "EffectiveTo": "Hiệu lực đến (tùy chọn)",
+    "CreatePolicy": "Tạo policy",
+    "CreatingPolicy": "Đang tạo...",
+    "RevenueByDayTitle": "Doanh thu theo ngày",
+    "RevenueByDayDescription": "Doanh thu gross, phần giảng viên và phần hệ thống từ analytics-service.",
+    "RevenueSplitTitle": "Phân bổ doanh thu",
+    "RevenueSplitDescriptionAdmin": "Tỷ lệ chia hiện hiển thị theo dự phóng analytics.",
+    "RevenueSplitDescriptionInstructor": "Doanh thu ước tính theo chính sách chia hiện tại.",
+    "RecentTransactionsTitle": "Giao dịch gần đây",
+    "RecentTransactionsDescription": "Danh sách giao dịch mới nhất. Mở từng dòng để xem chi tiết thanh toán.",
+    "TransactionSearchPlaceholder": "Tìm giao dịch, người dùng hoặc khóa học...",
+    "AllStatuses": "Tất cả trạng thái",
+    "StatusCompleted": "Hoàn thành",
+    "StatusSuccess": "Thành công",
+    "StatusPending": "Chờ xử lý",
+    "StatusProcessing": "Đang xử lý",
+    "StatusFailed": "Thất bại",
+    "StatusCancelled": "Đã hủy",
+    "IdColumn": "Mã",
+    "UserColumn": "Người dùng",
+    "CourseColumn": "Khóa học",
+    "GrossColumn": "Gross",
+    "SplitColumn": "Phân chia",
+    "StatusColumn": "Trạng thái",
+    "ActionColumn": "Hành động",
+    "NoTransactions": "Không có giao dịch nào khớp với bộ lọc hiện tại.",
+    "View": "Xem",
+    "PageSummary": "Trang {page} / {total} - Tổng {count} giao dịch",
+    "TopPerformersTitle": "Mốc doanh thu cao nhất",
+    "TopPerformersDescription": "Những ngày có doanh thu cao nhất trong bộ lọc hiện tại.",
+    "NoTopData": "Chưa có dữ liệu doanh thu.",
+    "OrdersCount": "{count} đơn hàng",
+    "DailyProjectionTitle": "Dự phóng theo ngày",
+    "DailyProjectionDescription": "Bảng dự phóng theo ngày lấy từ analytics-service.",
+    "PolicyScopeLabel": "Phạm vi policy",
+    "LoadedPolicies": "Đã tải {count} policy cho phạm vi {scope}",
+    "Refreshing": "đang làm mới...",
+    "DateColumn": "Ngày",
+    "InstructorColumn": "Giảng viên",
+    "AdminColumn": "Hệ thống",
+    "OrdersColumn": "Đơn hàng",
+    "PolicyColumn": "Policy",
+    "LoadingData": "Đang tải dữ liệu...",
+    "NoDataInRange": "Không có dữ liệu trong khoảng thời gian đã chọn.",
+    "DashboardLoadError": "Không thể tải dashboard doanh thu. Vui lòng thử lại sau.",
+    "TransactionsLoadError": "Không thể tải danh sách giao dịch. Hãy kiểm tra endpoint lịch sử thanh toán và quyền truy cập.",
+    "TransactionDetailTitle": "Chi tiết giao dịch",
+    "CopyTransactionIdTitle": "Sao chép mã giao dịch",
+    "CopyPayloadTitle": "Sao chép payload",
+    "DetailLoadError": "Không thể tải chi tiết giao dịch. Endpoint payment detail có thể chưa sẵn sàng.",
+    "EventTimelineTitle": "Mốc sự kiện",
+    "TimelineCreated": "Khởi tạo",
+    "TimelinePaid": "Đã thanh toán",
+    "TimelineCompleted": "Hoàn tất",
+    "PaymentMethodLabel": "Phương thức thanh toán",
+    "TotalAmountLabel": "Tổng tiền",
+    "NetAmountHint": "Số tiền thực nhận được phản ánh từ payment detail.",
+    "BuyerInfoTitle": "Thông tin người mua",
+    "CopyUserId": "Sao chép mã người dùng",
+    "PurchasedItemsTitle": "Mục đã mua",
+    "ItemTitleColumn": "Tên mục",
+    "GrossPriceColumn": "Giá gross",
+    "RevenueSplitBreakdownTitle": "Chi tiết chia doanh thu",
+    "InstructorEarnings": "Thu nhập giảng viên ({rate}%)",
+    "PlatformFee": "Phí nền tảng ({rate}%)",
+    "SplitSourceLabel": "Nguồn chia",
+    "SplitSourceFromDetail": "Lấy từ payment detail",
+    "SplitSourceEstimated": "Ước tính từ policy đang áp dụng",
+    "SplitSourceUnavailable": "Chưa có dữ liệu",
+    "RawPayloadTitle": "Payload thô",
+    "CopyTransactionId": "Sao chép mã giao dịch",
+    "OpenRevenuePage": "Mở trang doanh thu",
+    "RefreshErrorTitle": "Không thể làm mới dữ liệu",
+    "RefreshErrorDescription": "Dashboard doanh thu chưa thể làm mới lúc này.",
+    "InvalidRateTitle": "Tỷ lệ không hợp lệ",
+    "InvalidRateDescription": "Tỷ lệ giảng viên phải nằm trong khoảng từ 0 đến 1.",
+    "MissingInstructorTitle": "Thiếu mã giảng viên",
+    "MissingInstructorDescription": "Phạm vi giảng viên yêu cầu phải có instructor ID.",
+    "MissingCourseTitle": "Thiếu mã khóa học",
+    "MissingCourseDescription": "Phạm vi khóa học yêu cầu phải có course ID.",
+    "CreatePolicySuccessTitle": "Tạo policy thành công",
+    "CreatePolicySuccessDescription": "Policy chia doanh thu mới đã được áp dụng theo mốc thời gian đã chọn.",
+    "CreatePolicyErrorTitle": "Không thể tạo policy",
+    "CreatePolicyErrorDescription": "Vui lòng kiểm tra dữ liệu nhập và thử lại."
+  },
+  "ManagePayout": {
+    "NotAvailable": "N/A",
+    "PageEyebrow": "Điều phối chi trả",
+    "Title": "Chi trả",
+    "Description": "Duyệt yêu cầu chi trả, tạo batch và theo dõi settlement sandbox.",
+    "Unauthenticated": "Đang chờ xác thực. Dashboard chi trả sẽ tải khi vai trò hiện tại được xác định.",
+    "CreateBatch": "Tạo batch",
+    "SummaryTotalEarned": "Tổng đã kiếm được",
+    "SummaryPendingPayout": "Đang chờ chi trả",
+    "SummaryAvailableBalance": "Số dư khả dụng",
+    "SummaryOpenRequests": "Yêu cầu mở",
+    "UpdatedProjection": "Được cập nhật từ dự phóng của payout-service",
+    "BalanceTitleAdmin": "Giảng viên {id}",
+    "BalanceTitleInstructor": "Số dư chi trả của tôi",
+    "BalanceDescriptionAdmin": "Chọn giảng viên để xem số dư và duyệt yêu cầu chi trả.",
+    "BalanceDescriptionInstructor": "Theo dõi số dư khả dụng và tạo yêu cầu chi trả từ dữ liệu sandbox.",
+    "LifetimeEarned": "Tổng thu nhập",
+    "CurrentPending": "Đang chờ hiện tại",
+    "Available": "Khả dụng",
+    "InstructorIdPlaceholder": "Mã giảng viên",
+    "Sending": "Đang gửi...",
+    "RequestPayout": "Yêu cầu chi trả",
+    "AmountPlaceholder": "Số tiền",
+    "NotePlaceholder": "Ghi chú cho finance / admin",
+    "Submit": "Gửi",
+    "BatchManagementTitle": "Quản lý batch",
+    "BatchManagementDescription": "Batch settlement theo tháng và batch thủ công.",
+    "NoBatches": "Chưa có batch chi trả nào.",
+    "ViewAllBatches": "Xem tất cả batch",
+    "AttentionRequired": "Cần xử lý",
+    "AttentionDescription": "Có {count} yêu cầu chi trả đang chờ duyệt. Hãy xử lý thủ công để tránh ảnh hưởng tới giảng viên.",
+    "QueueTitle": "Hàng chờ chi trả",
+    "QueueDescription": "Duyệt yêu cầu, từ chối hoặc đánh dấu đã chi trả.",
+    "AllRequests": "Tất cả yêu cầu",
+    "PendingOnly": "Chỉ chờ duyệt",
+    "InstructorColumn": "Giảng viên",
+    "RequestedColumn": "Yêu cầu",
+    "BatchColumn": "Batch",
+    "DateColumn": "Ngày",
+    "StatusColumn": "Trạng thái",
+    "ActionColumn": "Hành động",
+    "NoRequests": "Không có yêu cầu chi trả nào khớp với bộ lọc hiện tại.",
+    "NoNoteProvided": "Chưa có ghi chú",
+    "Unassigned": "Chưa gán",
+    "LedgerTitle": "Nhật ký giao dịch",
+    "LedgerDescription": "Sự kiện chi trả được tạo từ request và batch.",
+    "Refresh": "Làm mới",
+    "RefColumn": "Mã tham chiếu",
+    "TypeColumn": "Loại",
+    "DescriptionColumn": "Mô tả",
+    "AmountColumn": "Số tiền",
+    "TimestampColumn": "Thời gian",
+    "NoLedgerRows": "Chưa có dòng nhật ký nào.",
+    "BatchBuilderTitle": "Trình tạo batch",
+    "BatchBuilderDescription": "Tạo batch chi trả theo tháng hoặc thủ công trong sandbox.",
+    "MonthlyBatchTitle": "Batch theo tháng",
+    "MonthlyBatchDescription": "Tự động tạo batch cho tháng hiện tại.",
+    "PeriodLabel": "Kỳ",
+    "CreateMonthlyBatch": "Tạo batch tháng",
+    "CreateMonthlyBatchLoading": "Đang tạo...",
+    "ManualBatchTitle": "Batch thủ công",
+    "ManualBatchDescription": "Chọn khoảng ngày tùy chỉnh cho settlement đột xuất.",
+    "BatchNamePlaceholder": "Tên batch",
+    "CreateManualBatch": "Tạo batch thủ công",
+    "CreateManualBatchLoading": "Đang tạo...",
+    "DetailTitle": "Chi tiết yêu cầu chi trả",
+    "DetailDescription": "Xem lại yêu cầu, ghi chú duyệt và mã tham chiếu thanh toán.",
+    "CreatedLabel": "Tạo lúc",
+    "ApprovedLabel": "Duyệt lúc",
+    "PaidLabel": "Đã chi lúc",
+    "MethodLabel": "Phương thức",
+    "TypeLabel": "Loại",
+    "RequestedAmountLabel": "Số tiền yêu cầu",
+    "ReviewNoteLabel": "Ghi chú duyệt",
+    "PaymentReferenceLabel": "Mã tham chiếu thanh toán",
+    "NoReviewNote": "Chưa có ghi chú duyệt",
+    "NoRequestNote": "Chưa có ghi chú từ yêu cầu.",
+    "RequestNotesTitle": "Ghi chú yêu cầu",
+    "RequestNotesDescription": "Ghi chú duyệt và settlement trong luồng chi trả.",
+    "AddReviewNotePlaceholder": "Thêm ghi chú duyệt",
+    "PaymentReferencePlaceholder": "Mã tham chiếu để đánh dấu đã trả",
+    "Reject": "Từ chối",
+    "Approve": "Duyệt",
+    "IssueInvoiceAndTransfer": "Xuất hóa đơn & chuyển tiền",
+    "MarkPaid": "Đánh dấu đã trả",
+    "OverviewStatsTitle": "Tổng quan vận hành",
+    "OverviewStatsDescription": "Trạng thái nhanh của luồng chi trả hiện tại.",
+    "ApprovedRequestsCount": "{count} yêu cầu đã duyệt",
+    "RequestedSum": "Tổng tiền yêu cầu",
+    "LoadedRequests": "Yêu cầu đã tải",
+    "BatchCount": "Số batch",
+    "FooterBanner": "Settlement đang chạy ở sandbox. Đánh dấu đã trả chỉ là hành động kiểm toán.",
+    "RefreshAll": "Làm mới tất cả",
+    "SandboxWire": "Sandbox Wire",
+    "ManualSettlement": "Thanh toán thủ công",
+    "InvoiceListTitle": "Hóa đơn chi trả",
+    "InvoiceListDescription": "Hóa đơn được tạo theo từng yêu cầu chi trả, kèm mã tham chiếu chuyển tiền.",
+    "NoInvoices": "Chưa có hóa đơn chi trả nào.",
+    "InvoiceLabel": "Mã hóa đơn",
+    "InvoiceStatusLabel": "Trạng thái hóa đơn",
+    "DownloadInvoicePdf": "Tải PDF",
+    "DownloadingInvoice": "Đang tải...",
+    "DownloadInvoiceSuccessTitle": "Đã tải hóa đơn",
+    "DownloadInvoiceErrorTitle": "Không thể tải hóa đơn",
+    "AutoTransferMode": "Chuyển tiền tự động",
+    "InvoiceDrivenSettlement": "Settlement theo hóa đơn",
+    "RequestForInstructor": "Yêu cầu chi trả cho giảng viên {id}",
+    "ApprovedDescription": "Yêu cầu chi trả đã được duyệt",
+    "PaidVia": "Đã chi qua {reference}",
+    "MarkedAsPaid": "Đã đánh dấu đã chi",
+    "BatchDescription": "{name} • {count} yêu cầu",
+    "CopyRequestIdSuccess": "Đã sao chép mã yêu cầu",
+    "RefreshErrorTitle": "Không thể tải dữ liệu chi trả",
+    "RefreshErrorDescription": "Vui lòng thử lại sau ít phút.",
+    "InvalidAmountTitle": "Số tiền không hợp lệ",
+    "InvalidAmountDescription": "Hãy nhập số tiền lớn hơn 0.",
+    "ExceedAvailableTitle": "Vượt quá số dư khả dụng",
+    "ExceedAvailableDescription": "Số tiền yêu cầu không được lớn hơn số dư khả dụng.",
+    "CreateRequestSuccessTitle": "Đã tạo yêu cầu chi trả",
+    "CreateRequestSuccessDescription": "Một yêu cầu chi trả mới đã được gửi.",
+    "CreateRequestErrorTitle": "Không thể tạo yêu cầu chi trả",
+    "CreateRequestErrorDescription": "Vui lòng kiểm tra dữ liệu nhập và thử lại.",
+    "ApproveSuccessTitle": "Đã duyệt yêu cầu chi trả",
+    "ApproveErrorTitle": "Không thể duyệt yêu cầu chi trả",
+    "RejectSuccessTitle": "Đã từ chối yêu cầu chi trả",
+    "RejectErrorTitle": "Không thể từ chối yêu cầu chi trả",
+    "MissingPaymentReferenceTitle": "Thiếu mã tham chiếu thanh toán",
+    "MissingPaymentReferenceDescription": "Hãy nhập mã tham chiếu trước khi đánh dấu đã chi.",
+    "MarkPaidSuccessTitle": "Đã đánh dấu yêu cầu là đã chi",
+    "MarkPaidErrorTitle": "Không thể đánh dấu đã chi",
+    "MonthlyBatchSuccessTitle": "Đã tạo batch tháng",
+    "MonthlyBatchErrorTitle": "Không thể tạo batch tháng",
+    "MissingDateRangeTitle": "Thiếu khoảng ngày",
+    "MissingDateRangeDescription": "Hãy chọn cả ngày bắt đầu và kết thúc cho batch thủ công.",
+    "ManualBatchSuccessTitle": "Đã tạo batch thủ công",
+    "ManualBatchErrorTitle": "Không thể tạo batch thủ công"
+  },
+  "ManageInstructorApplication": {
+    "Title": "Đơn ứng tuyển giảng viên",
+    "Description": "Duyệt CV bằng AI scan và phê duyệt giảng viên mới.",
+    "ListLoadError": "Không thể tải danh sách đơn",
+    "DetailLoadError": "Không thể tải chi tiết đơn",
+    "ApproveSuccess": "Đã duyệt đơn. Người dùng đã nhận role INSTRUCTOR.",
+    "ApproveError": "Không thể duyệt đơn",
+    "RejectRequiresReason": "Từ chối đơn cần có lý do",
+    "RejectSuccess": "Đã từ chối đơn",
+    "RejectError": "Không thể từ chối đơn",
+    "StatusAll": "Tất cả",
+    "StatusPending": "Đang chờ",
+    "StatusApproved": "Đã duyệt",
+    "StatusRejected": "Đã từ chối",
+    "StatusProcessed": "Đã xử lý",
+    "StatusFailed": "Thất bại",
+    "ApplicantColumn": "Người nộp",
+    "EmailColumn": "Email",
+    "SubmittedAtColumn": "Ngày nộp",
+    "AiColumn": "AI",
+    "AdminColumn": "Admin",
+    "ActionColumn": "Thao tác",
+    "Loading": "Đang tải...",
+    "NoApplications": "Chưa có đơn nào.",
+    "NotAvailable": "N/A",
+    "View": "Xem",
+    "DetailTitle": "Chi tiết đơn",
+    "ApplicantLabel": "Người nộp",
+    "OriginalCvLabel": "CV gốc",
+    "OpenCv": "Mở CV trong tab mới",
+    "AiStatusLabel": "Trạng thái AI",
+    "AiErrorPrefix": "Lỗi AI: {error}",
+    "AiExtractedDataLabel": "Dữ liệu AI trích xuất",
+    "ReviewNotePlaceholder": "Ghi chú duyệt / lý do từ chối",
+    "ApproveButton": "Duyệt (cấp role INSTRUCTOR)",
+    "Reject": "Từ chối",
+    "ApproveBlockedByAi": "Chưa thể duyệt khi AI chưa scan xong CV.",
+    "AlreadyProcessed": "Đơn đã {status}. Ghi chú: {note}",
+    "NoNote": "Không có"
+  },
   "ManageBlog": {
+    "PageEyebrow": "Admin / Bài viết",
     "Title": "Quản lý Blog",
     "Description": "Quản lý bài viết: tạo, chỉnh sửa, xuất bản",
     "ID": "Mã số",
@@ -486,9 +1360,56 @@
     "TagsPlaceholder": "Nhập thẻ và nhấn Enter để thêm",
     "ContentPlaceholder": "Bắt đầu viết nội dung bài blog... (hỗ trợ tải hình ảnh và video từ máy tính hoặc URL)"
   },
+  "Submission": {
+    "essayHeading": "Bài tự luận",
+    "count": "{count} bài",
+    "questionLabel": "Câu {index}.",
+    "answerPlaceholder": "Nhập bài làm của bạn...",
+    "submit": "Nộp bài",
+    "resubmit": "Nộp lại",
+    "statusPending": "Chờ chấm",
+    "statusGraded": "Đã chấm",
+    "instructorFeedback": "Nhận xét của giảng viên",
+    "hintGraded": "Bạn có thể nộp lại để được chấm lại.",
+    "hintPending": "Đã nộp, đang chờ giảng viên chấm. Bạn vẫn có thể cập nhật.",
+    "hintNew": "Bài làm sẽ được giảng viên chấm thủ công.",
+    "emptyContentTitle": "Chưa có nội dung",
+    "emptyContentDesc": "Vui lòng nhập bài làm trước khi nộp.",
+    "submitSuccessTitle": "Đã nộp bài",
+    "submitSuccessDesc": "Bài tự luận của bạn đã được gửi tới giảng viên.",
+    "submitErrorTitle": "Nộp bài thất bại",
+    "genericError": "Có lỗi xảy ra.",
+    "viewSubmissions": "Xem bài nộp",
+    "dialogTitle": "Bài nộp của học viên",
+    "loading": "Đang tải bài nộp...",
+    "empty": "Chưa có học viên nào nộp bài này.",
+    "selected": "Đã chọn:",
+    "correctAnswer": "Đáp án đúng:",
+    "blank": "(trống)",
+    "gradeLabel": "Điểm (0–100)",
+    "feedbackLabel": "Nhận xét",
+    "feedbackPlaceholder": "Nhận xét cho học viên...",
+    "saveGrade": "Lưu chấm điểm",
+    "invalidGradeTitle": "Điểm không hợp lệ",
+    "invalidGradeDesc": "Điểm phải nằm trong khoảng 0 đến 100.",
+    "savedTitle": "Đã lưu",
+    "savedDesc": "Đã chấm điểm và lưu nhận xét.",
+    "saveErrorTitle": "Lưu thất bại",
+    "passed": "Đạt",
+    "notPassed": "Chưa đạt",
+    "learnerFallback": "Học viên {id}",
+    "summary": "Đã làm {done}/{total} học viên",
+    "statusNotSubmitted": "Chưa làm",
+    "notSubmittedHint": "Học viên chưa nộp bài này."
+  },
   "ManageCourse": {
+    "ViewSubmissions": "Xem bài nộp / Chấm điểm",
+    "PageEyebrow": "Studio / Thư viện khóa học",
     "Title": "Quản lý Khóa học",
     "Description": "Quản lý khóa học: tạo, chỉnh sửa, xuất bản",
+    "TabCourses": "Khóa học",
+    "TabSkills": "Kỹ năng",
+    "TabTags": "Thẻ",
     "TitleColumn": "Tiêu đề",
     "ThumbnailColumn": "Ảnh thu nhỏ",
     "IntroVideoColumn": "Video giới thiệu",
@@ -497,7 +1418,7 @@
     "PriceColumn": "Giá",
     "Price": "Giá",
     "EnrollmentsColumn": "Đăng ký",
-    "Enrollments": "Đăng ký",
+    "Enrollments": "Số lượng đăng ký",
     "StatusLabel": "Trạng thái",
     "LevelLabel": "Cấp độ",
     "RatingColumn": "Đánh giá",
@@ -551,11 +1472,10 @@
     "PricePlaceholder": "0",
     "DiscountPriceLabel": "Giá giảm",
     "DiscountPricePlaceholder": "0",
-    "LevelLabel": "Cấp độ",
     "LanguageLabel": "Ngôn ngữ",
-    "StatusLabel": "Trạng thái",
     "CategoriesLabel": "Danh mục",
     "CategoriesPlaceholder": "Nhập danh mục và nhấn Enter",
+    "SkillsLabel": "Kỹ năng",
     "TagsLabel": "Thẻ",
     "TagsPlaceholder": "Nhập thẻ và nhấn Enter",
     "ObjectivesLabel": "Mục tiêu học tập",
@@ -672,17 +1592,19 @@
     "CompletedOn": "Hoàn thành vào",
     "LastPosition": "Vị trí cuối",
     "MarkComplete": "Đánh dấu hoàn thành",
+    "VideoGateTitle": "Chưa đủ điều kiện",
+    "VideoGateDescription": "Bạn cần xem tối thiểu 80% video và không tua tới để hoàn thành bài học.",
     "Success": "Thành công",
     "LessonMarkedComplete": "Đã đánh dấu bài học hoàn thành",
     "NoProgressData": "Chưa có dữ liệu tiến độ",
     "CourseContent": "Nội dung khóa học",
     "Progress": "Tiến độ",
     "ChaptersAndLessons": "Chương & Bài học",
+    "BackToCourses": "Quay lại khóa học",
     "ManageChaptersLessonsDescription": "Quản lý nội dung chi tiết của khóa học",
     "NoChaptersYet": "Chưa có chương nào. Hãy tạo chương đầu tiên!",
     "AssetsFor": "Tài liệu cho",
     "CourseNotFound": "Không tìm thấy khóa học",
-    "Enrollments": "Số lượng đăng ký",
     "EditCourseDescription": "Cập nhật thông tin khóa học",
     "AddCourseDescription": "Tạo khóa học mới",
     "Upload": "Tải lên",
@@ -731,7 +1653,15 @@
     "TestCaseOutput": "Output mong đợi",
     "TestCaseWeight": "Trọng số",
     "TestCaseTimeout": "Timeout (giây)",
-    "Error": "Lỗi"
+    "Error": "Lỗi",
+    "ManageSkills": "Quản lý kỹ năng",
+    "ManageTags": "Quản lý thẻ",
+    "DragToReorder": "Kéo để sắp xếp lại",
+    "Locked": "Đã khóa",
+    "Expand": "Mở rộng",
+    "DeleteChapter": "Xóa chương",
+    "DeleteLesson": "Xóa bài học",
+    "Download": "Tải xuống"
   },
   "CourseOnboarding": {
     "step1": {
@@ -776,8 +1706,8 @@
       "content": "Xin chào {userName}! Mình là trợ lý AI của TechHub. Mình sẽ giúp cậu hiểu cách sử dụng trang chat AI này nhé. Bắt đầu thôi nào!"
     },
     "step2": {
-      "title": "Chế độ Chat 🎯",
-      "content": "Đây là nơi cậu chọn chế độ chat. Có 2 chế độ: \"Hỏi đáp chung\" để hỏi bất cứ điều gì, và \"Tư vấn học tập\" để được AI gợi ý lộ trình và khóa học phù hợp với cậu!"
+      "title": "Công cụ workspace",
+      "content": "Khu vực này có cài đặt hướng dẫn và tùy chỉnh cách AI phản hồi. Bạn có thể mở phần cài đặt để thêm chỉ dẫn cá nhân khi cần."
     },
     "step3": {
       "title": "Ô nhập tin nhắn 💬",
@@ -803,6 +1733,7 @@
     "tourButton": "Hướng dẫn"
   },
   "ManageLearningPath": {
+    "PageEyebrow": "Studio / Lộ trình học tập",
     "Title": "Quản lý Lộ trình Học tập",
     "Description": "Tạo và quản lý lộ trình học tập cho học viên",
     "TableTitle": "Tiêu đề",
@@ -914,6 +1845,7 @@
     "learningPaths": "Lộ Trình Học Tập",
     "courses": "khóa học",
     "hours": "giờ",
+    "levelLabel": "Cấp độ",
     "level": {
       "BEGINNER": "Sơ cấp",
       "INTERMEDIATE": "Trung cấp",
@@ -974,6 +1906,19 @@
     "hints": "Gợi ý",
     "lesson": "Bài học",
     "noDraftFound": "Không tìm thấy draft này",
+    "generatedExercises": "Bài tập đã tạo",
+    "exercises": "bài tập",
+    "question": "Câu hỏi",
+    "option": "Đáp án",
+    "addOption": "Thêm đáp án",
+    "markCorrect": "Đánh dấu đáp án đúng",
+    "selectCorrectAnswers": "Chọn đáp án đúng",
+    "selected": "đã chọn",
+    "noExercises": "Vui lòng giữ lại ít nhất một bài tập để duyệt.",
+    "allExercisesRemoved": "Bạn đã xóa hết bài tập. Hãy từ chối draft hoặc tạo lại.",
+    "pleaseSelectCorrectAnswer": "Vui lòng chọn đáp án đúng cho",
+    "pleaseEnterQuestion": "Vui lòng nhập nội dung câu hỏi cho",
+    "pleaseAddOptions": "Vui lòng nhập ít nhất 2 đáp án cho",
     "note1": "AI sẽ phân tích nội dung bài học và tạo bài tập phù hợp",
     "note2": "Bài tập sẽ được tạo dưới dạng draft, bạn có thể xem và duyệt trước khi lưu",
     "note3": "Quá trình tạo có thể mất 10-30 giây"
@@ -1074,10 +2019,405 @@
     "sessionDeleted": "Đã xóa phiên",
     "sessionDeletedSuccess": "Phiên đã được xóa thành công",
     "deleteSession": "Xóa phiên",
-    "errorDelete": "Không thể xóa phiên"
+    "errorDelete": "Không thể xóa phiên",
+    "newDraft": "Nháp mới",
+    "newDraftWithFiles": "Nháp mới ({count} file)",
+    "fileAnalysisSession": "Phân tích file",
+    "attachmentsCount": "{count} file đính kèm",
+    "attachedFile": "File đính kèm",
+    "unknownFile": "File không xác định",
+    "ready": "Sẵn sàng",
+    "yes": "Có",
+    "no": "Không",
+    "defaultUserName": "bạn",
+    "loginBeforeAttach": "Vui lòng đăng nhập trước khi đính kèm file vào AI chat.",
+    "loginBeforeChat": "Vui lòng đăng nhập trước khi chat với AI.",
+    "loginBeforeSession": "Vui lòng đăng nhập trước khi tạo phiên chat.",
+    "attachedInAiChat": "Đính kèm trong AI chat",
+    "attachedFileAnalysisPrompt": "Phân tích {count} file đính kèm.",
+    "filesAttachedTitle": "Đã đính kèm file",
+    "filesAttachedDesc": "{count} file đã sẵn sàng để AI phân tích.",
+    "attachFailed": "Không thể đính kèm một hoặc nhiều file để AI phân tích.",
+    "attachFailedAuth": "Phiên đăng nhập đã hết hạn hoặc thiếu token. Vui lòng đăng nhập lại rồi đính kèm file.",
+    "attachFailedPermission": "Tài khoản của bạn chưa có quyền tải file lên để AI phân tích.",
+    "attachFailedTooLarge": "File vượt quá giới hạn upload của hệ thống.",
+    "attachFailedFileServiceUnavailable": "Dịch vụ file đang tạm thời không sẵn sàng. Vui lòng thử lại sau hoặc báo quản trị viên kiểm tra file-service.",
+    "attachFailedNetwork": "Không kết nối được server upload file. Vui lòng thử lại sau.",
+    "attachFailedWithReason": "Không thể đính kèm file: {reason}",
+    "unsupportedFilesTitle": "Một số file chưa được đính kèm",
+    "attachmentRejectedUnsupported": "{name} chưa phải định dạng AI có thể đọc.",
+    "attachmentRejectedTooLarge": "{name} có dung lượng {size}; giới hạn là {limit}.",
+    "supportedFilesHint": "Hỗ trợ: PDF, Word, PowerPoint, Excel, CSV/text/code và ảnh có chữ rõ.",
+    "attachmentOpenFailed": "Không thể mở file này. Vui lòng thử lại sau.",
+    "instructionsSavedTitle": "Đã lưu chỉ dẫn",
+    "instructionsSavedDesc": "Chỉ dẫn sẽ áp dụng cho các phản hồi AI tiếp theo.",
+    "streamingFailed": "Streaming bị lỗi",
+    "feedbackThanksTitle": "Cảm ơn phản hồi của bạn!",
+    "feedbackThanksDesc": "Rất vui vì câu trả lời này hữu ích.",
+    "feedbackImproveTitle": "Mình sẽ cải thiện",
+    "feedbackImproveDesc": "Phản hồi của bạn giúp hệ thống tốt hơn.",
+    "noCsvDataTitle": "Không có dữ liệu để xuất",
+    "noCsvDataDesc": "Truy vấn này chưa có bảng dữ liệu để xuất CSV.",
+    "narrowScreenTitle": "Màn hình hơi hẹp",
+    "narrowScreenDesc": "Thu nhỏ sidebar hoặc mở rộng cửa sổ trình duyệt để hiển thị analysis workspace.",
+    "noTableCopyTitle": "Không có bảng để sao chép",
+    "noTableCopyDesc": "Truy vấn này chưa có dữ liệu bảng.",
+    "tableCopiedTitle": "Đã sao chép bảng",
+    "tableCopiedMarkdownDesc": "Đã sao chép dạng Markdown.",
+    "tableCopiedSheetDesc": "Có thể dán vào Excel hoặc Google Sheets.",
+    "tableCopyFailed": "Không thể sao chép bảng. Vui lòng thử lại.",
+    "removedFromSavedTitle": "Đã bỏ lưu",
+    "removedFromSavedDesc": "Phân tích này không còn trong danh sách đã lưu.",
+    "nothingToSaveTitle": "Không có gì để lưu",
+    "nothingToSaveDesc": "Câu trả lời này không có bảng hoặc biểu đồ để lưu.",
+    "savedAnalysisFallback": "Phân tích đã lưu",
+    "analysisSavedTitle": "Đã lưu phân tích",
+    "analysisSavedDesc": "Bạn có thể mở lại trong mục Phân tích đã lưu ở sidebar.",
+    "chartTypeChangedTitle": "Đã đổi loại biểu đồ",
+    "chartTypeChangedDesc": "Đang hiển thị dữ liệu dưới dạng biểu đồ {type}.",
+    "csvExportedTitle": "Đã xuất CSV",
+    "csvExportedDesc": "File tải xuống sẽ bắt đầu sau ít giây.",
+    "noSqlCopyTitle": "Không có SQL để sao chép",
+    "noSqlCopyDesc": "Câu trả lời này không có câu SQL.",
+    "sqlCopiedTitle": "Đã sao chép SQL",
+    "sqlCopiedDesc": "Câu truy vấn đã nằm trong clipboard.",
+    "sqlCopyFailed": "Không thể sao chép SQL. Vui lòng thử lại.",
+    "clearAllPartialDeleted": "Đã xóa {deleted}/{total} phiên. Một số phiên chưa xóa được.",
+    "clearAllDeleted": "Đã xóa {count} phiên.",
+    "sidebar": {
+      "expand": "Mở rộng sidebar",
+      "collapse": "Thu gọn sidebar",
+      "dragResize": "Kéo để đổi kích thước",
+      "autoRoutingTitle": "Tự chọn luồng",
+      "autoRoutingDesc": "AI tự chọn luồng phân tích phù hợp với câu hỏi của bạn.",
+      "instructionsLabel": "Chỉ dẫn",
+      "instructionsPlaceholder": "VD: Trả lời bằng tiếng Việt, ngắn gọn, nêu giả định khi phân tích dữ liệu.",
+      "instructionsHelp": "Các chỉ dẫn này áp dụng cho những phản hồi AI tiếp theo trong cuộc trò chuyện.",
+      "saveInstructions": "Lưu",
+      "resetInstructions": "Hoàn tác",
+      "instructionsUnsaved": "Chưa lưu thay đổi",
+      "instructionsSaved": "Đã lưu",
+      "instructionsNotSaved": "Chưa lưu",
+      "hideConversations": "Ẩn cuộc trò chuyện",
+      "showConversations": "Hiện cuộc trò chuyện",
+      "savedAnalyses": "Phân tích đã lưu",
+      "hideSavedAnalyses": "Ẩn phân tích đã lưu",
+      "showSavedAnalyses": "Hiện phân tích đã lưu",
+      "learner": "Người học",
+      "instructor": "Giảng viên",
+      "analyst": "Phân tích dữ liệu",
+      "answerRole": "Vai trò trả lời",
+      "responseDepth": "Mức độ chi tiết",
+      "concise": "Ngắn gọn",
+      "balanced": "Cân bằng",
+      "detailed": "Chuyên sâu"
+    },
+    "welcomePanel": {
+      "eyebrow": "Không gian phân tích · {brand}",
+      "description": "Hãy hỏi như đang hỏi một đồng nghiệp. Bạn sẽ nhận được câu trả lời kèm bảng, biểu đồ và SQL nguồn để mọi kết luận đều có thể kiểm chứng.",
+      "tryStartingPoint": "Thử một gợi ý",
+      "suggestion1": "Khóa học nào có tỷ lệ hoàn thành cao nhất trong quý trước?",
+      "suggestion2": "Vẽ biểu đồ đường số lượt ghi danh theo tháng trong năm qua.",
+      "suggestion3": "So sánh điểm quiz trung bình giữa các lộ trình học.",
+      "suggestion4": "Liệt kê 10 bài học có thời lượng xem trung bình cao nhất."
+    },
+    "composer": {
+      "attachFiles": "Đính kèm file",
+      "placeholder": "Hỏi một câu về dữ liệu của bạn...",
+      "fileReady": "{count} file sẵn sàng để phân tích",
+      "filesReady": "{count} file sẵn sàng để phân tích",
+      "attachedHelp": "Đã đính kèm. AI sẽ đọc nội dung hoặc metadata của file khi bạn gửi tin nhắn tiếp theo.",
+      "refining": "Đang làm rõ",
+      "refineHelp": "Câu hỏi tiếp theo sẽ làm rõ phân tích này.",
+      "startNewTopic": "Bắt đầu chủ đề mới",
+      "previewAttachment": "Xem trước file đính kèm",
+      "removeFile": "Gỡ file",
+      "status": "Trạng thái"
+    },
+    "messageLabels": {
+      "you": "Bạn",
+      "analysis": "phân tích",
+      "response": "phản hồi",
+      "workspaceActive": "Workspace đang mở",
+      "openInWorkspace": "Mở trong workspace",
+      "clarificationSelected": "Đã chọn câu làm rõ.",
+      "route": "Luồng:",
+      "routeTitle": "Cách trợ lý định tuyến yêu cầu này",
+      "intent": "Ý định:",
+      "intentTitle": "Trợ lý hiểu bạn đang hỏi gì",
+      "tokensTitle": "Số token dùng cho phản hồi này",
+      "confidenceTitle": "Độ tự tin của trợ lý về câu trả lời",
+      "analysisWorkspaceDesc": "Mở bảng, biểu đồ, SQL và nguồn trong workspace bên cạnh.",
+      "loadingConversation": "Đang tải cuộc trò chuyện..."
+    },
+    "attachmentPreview": {
+      "aria": "Xem trước file đính kèm",
+      "closeAria": "Đóng xem trước file đính kèm",
+      "title": "Xem trước file đính kèm",
+      "file": "File",
+      "bytes": "{count} byte",
+      "open": "Mở",
+      "closeTitle": "Đóng xem trước",
+      "truncated": "Nội dung xem trước đã được rút gọn. AI sẽ nhận phần nội dung giới hạn này để phân tích.",
+      "unavailableTitle": "Không có preview",
+      "unavailableDesc": "Loại file này chưa xem trước trực tiếp trong trình duyệt được. Bấm Mở để xem hoặc tải file gốc."
+    },
+    "runtime": {
+      "thinking": "Đang suy nghĩ",
+      "howBuilt": "Câu trả lời này được tạo như thế nào",
+      "traceId": "Trace ID:",
+      "traceIdTitle": "Gửi mã này cho support nếu có điểm bất thường",
+      "reasoningSteps": "Các bước suy luận",
+      "agentTrace": "Agent trace",
+      "live": "đang chạy",
+      "show": "Hiện",
+      "hide": "Ẩn",
+      "agentStep": "Bước agent",
+      "completedStep": "Đã hoàn tất bước điều phối.",
+      "reasoning": "Suy luận"
+    },
+    "chart": {
+      "title": "Biểu đồ",
+      "waiting": "Đang chờ dữ liệu biểu đồ...",
+      "noData": "Không có dữ liệu cho biểu đồ này.",
+      "noDataDesc": "Kết quả hiện tại không có đủ dữ liệu số để vẽ biểu đồ.",
+      "allZero": "Tất cả giá trị biểu đồ đều là 0. Panel vẫn hiển thị để bạn kiểm tra trạng thái hiện tại.",
+      "singleCategory": "Biểu đồ chỉ có một nhóm dữ liệu, nên khả năng so sánh sẽ bị giới hạn.",
+      "series": "Chuỗi {index}",
+      "seriesLabel": "Chuỗi",
+      "categories": "Nhóm",
+      "dataPoints": "Điểm dữ liệu",
+      "downloadPng": "Tải biểu đồ PNG"
+    },
+    "queryResultPanel": {
+      "title": "Kết quả truy vấn",
+      "copyTableTitle": "Sao chép bảng (dán vào Excel / Sheets)",
+      "copy": "Sao chép",
+      "downloadCsvTitle": "Tải CSV",
+      "csv": "CSV",
+      "scope": "Phạm vi",
+      "rowsLoaded": "Dòng đã tải",
+      "columns": "Cột",
+      "none": "Không có",
+      "showingRows": "Đang hiển thị {start}-{end} / {total} dòng đã tải",
+      "rowsPerPage": "Dòng / trang",
+      "prev": "Trước",
+      "next": "Sau",
+      "sources": "Nguồn",
+      "noRows": "Truy vấn đã chạy, nhưng không có dòng nào khớp bộ lọc hiện tại."
+    },
+    "humanized": {
+      "dataQuestion": "Câu hỏi dữ liệu",
+      "chartRequest": "Yêu cầu biểu đồ",
+      "advice": "Tư vấn",
+      "conversation": "Trò chuyện",
+      "clarifyingQuestion": "Câu hỏi làm rõ",
+      "autoRouted": "Tự định tuyến",
+      "advisor": "Tư vấn",
+      "analytics": "Phân tích",
+      "myData": "Dữ liệu của tôi",
+      "platformWide": "Toàn hệ thống",
+      "dataScope": "Phạm vi dữ liệu",
+      "directQuery": "Truy vấn trực tiếp",
+      "llmPlanner": "LLM planner"
+    },
+    "sqlPanel": {
+      "noSql": "Không có SQL cho kết quả này.",
+      "eyebrow": "SQL & logic",
+      "title": "Xem trước truy vấn an toàn",
+      "description": "Kiểm tra cách trợ lý truy vấn dữ liệu trước khi tin vào kết quả.",
+      "copySql": "Sao chép SQL",
+      "tables": "Bảng",
+      "rowsReturned": "Dòng trả về",
+      "queryExplanation": "Giải thích truy vấn",
+      "logicSummary": "Tóm tắt logic",
+      "tablesReferenced": "Bảng được tham chiếu",
+      "runtimePolicy": "Chính sách runtime",
+      "yourRole": "Vai trò của bạn",
+      "maxRows": "Số dòng tối đa",
+      "personalData": "Dữ liệu cá nhân",
+      "included": "Có bao gồm",
+      "excluded": "Không bao gồm",
+      "rawSql": "SQL thô",
+      "collapseStatement": "Thu gọn câu lệnh",
+      "expandStatement": "Mở rộng để kiểm tra câu lệnh"
+    },
+    "scopeBadge": {
+      "personalTitle": "Truy vấn trả về dữ liệu cá nhân của bạn",
+      "platformTitle": "Truy vấn trả về dữ liệu toàn hệ thống",
+      "unknownTitle": "Chưa xác định phạm vi dữ liệu"
+    },
+    "followUps": {
+      "next": "Tiếp theo",
+      "nextSteps": "Bước tiếp theo",
+      "chartLine": "Chuyển sang biểu đồ đường",
+      "chartBar": "Chuyển sang biểu đồ cột",
+      "chartPie": "Chuyển sang biểu đồ tròn",
+      "chartChangeDesc": "Hiển thị lại dữ liệu hiện tại dưới dạng biểu đồ {type}.",
+      "scopePlatform": "So sánh với toàn hệ thống",
+      "scopePlatformDesc": "Chạy lại truy vấn trên dữ liệu toàn hệ thống để đối chiếu.",
+      "scopePlatformPrompt": "So sánh {metric} của tôi với toàn hệ thống",
+      "scopePersonal": "Chỉ lấy dữ liệu của tôi",
+      "scopePersonalDesc": "Thu hẹp lại truy vấn về dữ liệu cá nhân của bạn.",
+      "scopePersonalPrompt": "Chỉ lấy {metric} của tôi",
+      "explainSql": "Giải thích câu SQL này",
+      "explainSqlDesc": "Nhờ trợ lý mô tả từng bước của câu SQL vừa chạy.",
+      "explainSqlPrompt": "Giải thích chi tiết câu SQL vừa chạy: từng bước làm gì, tại sao dùng các mệnh đề JOIN và WHERE như vậy.",
+      "exportCsv": "Xuất CSV",
+      "exportCsvDesc": "Tải xuống toàn bộ kết quả dạng CSV.",
+      "copySql": "Sao chép SQL",
+      "copySqlDesc": "Sao chép câu SQL đã chạy vào clipboard."
+    },
+    "analysisWorkspace": {
+      "title": "Analysis workspace",
+      "emptyTitle": "Bảng, biểu đồ và SQL.",
+      "emptyDesc": "Hỏi trợ lý một câu về dữ liệu. Khi có output có cấu trúc, bằng chứng sẽ mở ở đây, có thể kiểm chứng và đặt cạnh phần suy luận.",
+      "fallbackTitle": "Phân tích",
+      "dataPreview": "Xem dữ liệu",
+      "sqlQuery": "Câu SQL",
+      "advanced": "Nâng cao",
+      "chart": "Biểu đồ",
+      "sources": "Nguồn",
+      "saved": "Đã lưu",
+      "save": "Lưu",
+      "saveThis": "Lưu phân tích này",
+      "expandFull": "Mở rộng workspace",
+      "hide": "Ẩn workspace",
+      "fullScreen": "Toàn màn hình",
+      "fullScreenTitle": "Mở workspace toàn màn hình để có thêm không gian",
+      "exportCsv": "Xuất CSV",
+      "openSource": "Mở nguồn",
+      "noSources": "Không có nguồn nào được ghi nhận cho câu trả lời này.",
+      "readOnlySaved": "Chỉ đọc (đã lưu)",
+      "prompt": "Prompt",
+      "removeFromSaved": "Bỏ khỏi danh sách đã lưu",
+      "saveAnalysis": "Lưu phân tích",
+      "remove": "Gỡ",
+      "minimizeTitle": "Thu nhỏ workspace (Esc)",
+      "closeTitle": "Đóng workspace",
+      "answer": "Câu trả lời",
+      "aria": "Analysis workspace",
+      "workspaceTooNarrow": "Workspace đang ẩn - mở rộng cửa sổ hoặc thu gọn sidebar để hiển thị",
+      "open": "Mở workspace",
+      "relatedCourses": "Khóa học liên quan",
+      "relatedPaths": "Lộ trình liên quan",
+      "coursesCountLabel": "khóa học"
+    }
   },
   "AiDashboard": {
+    "PageEyebrow": "Admin / Dashboard",
     "title": "AI Dashboard",
+    "emptyValue": "-",
+    "yes": "Có",
+    "no": "Không",
+    "toasts": {
+      "reindexSuccess": "Đã reindex thành công"
+    },
+    "tabs": {
+      "overview": "Tổng quan",
+      "advanced": "Nâng cao"
+    },
+    "overview": {
+      "systemStatus": {
+        "label": "Trạng thái hệ thống",
+        "online": "Hoạt động",
+        "issue": "Có vấn đề"
+      },
+      "totalConversations": {
+        "label": "Tổng số hội thoại",
+        "successful": "{count} thành công"
+      },
+      "aiCost": {
+        "label": "Chi phí AI (7 ngày)",
+        "tokensUsed": "{count} tokens đã dùng"
+      },
+      "knowledgeBase": {
+        "label": "Kho tri thức",
+        "indexed": "{courses} khóa học, {lessons} bài học đã index"
+      },
+      "pendingReview": {
+        "title": "Nội dung chờ duyệt",
+        "description": "Learning path và bài tập do AI tạo đang chờ bạn duyệt trước khi xuất bản",
+        "empty": "Đang trống - chưa có nội dung nào cần duyệt",
+        "learningPath": "Lộ trình học",
+        "generatedDraft": "Bản nháp do AI tạo",
+        "approve": "Duyệt",
+        "reject": "Từ chối",
+        "columns": {
+          "type": "Loại",
+          "description": "Mô tả",
+          "created": "Ngày tạo",
+          "actions": "Thao tác"
+        }
+      },
+      "quickLinks": {
+        "analytics": {
+          "title": "Phân tích AI",
+          "description": "Chi phí, xu hướng sử dụng và hiệu năng"
+        },
+        "traces": {
+          "title": "Theo dõi AI",
+          "description": "Xem từng cuộc hội thoại chi tiết"
+        },
+        "providers": {
+          "title": "Nhà cung cấp AI",
+          "description": "Chuyển model và quản lý API key"
+        }
+      }
+    },
+    "advanced": {
+      "vectorDb": {
+        "title": "Quản lý vector database",
+        "description": "Reindex dữ liệu khóa học và bài học từ PostgreSQL sang Qdrant. Qdrant v{version}",
+        "reindexAll": "Reindex tất cả",
+        "columns": {
+          "collection": "Collection",
+          "vectors": "Số vector",
+          "status": "Trạng thái"
+        }
+      },
+      "runtime": {
+        "chatTotal": "Tổng chat",
+        "chatTotalDetail": "Thành công: {success} | Thất bại: {failed}",
+        "avgLatency": "Độ trễ trung bình",
+        "avgLatencyDetail": "P95: {p95}ms",
+        "legacyFallback": "Legacy fallback",
+        "legacyFallbackDetail": "Mock: {mock}",
+        "tokensTotal": "Tổng tokens",
+        "tokensTotalDetail": "TB/chat: {avg}"
+      },
+      "recentRuns": {
+        "title": "Các lượt chat gần đây",
+        "description": "Pipeline, intent, độ trễ và tokens",
+        "ok": "OK",
+        "fail": "FAIL",
+        "empty": "Chưa có lượt chat nào",
+        "columns": {
+          "pipeline": "Pipeline",
+          "intent": "Intent",
+          "latency": "Độ trễ",
+          "tokens": "Tokens",
+          "status": "Trạng thái"
+        }
+      },
+      "providerConfig": {
+        "title": "Cấu hình provider",
+        "requestedProvider": "Provider được yêu cầu",
+        "effectiveProvider": "Provider đang hiệu lực",
+        "chatModel": "Model chat",
+        "embeddingModel": "Model embedding",
+        "mockFallback": "Mock fallback",
+        "status": "Trạng thái",
+        "manageProviders": "Quản lý provider ->"
+      }
+    },
+    "dialog": {
+      "title": "Hoàn tất reindex",
+      "success": "Thành công",
+      "indexed": "Đã index",
+      "failed": "Thất bại",
+      "duration": "Thời gian"
+    },
     "description": "Quản lý và giám sát hệ thống AI",
     "pendingDrafts": "Drafts chờ duyệt",
     "aiContent": "Bài tập & lộ trình AI",
@@ -1143,6 +2483,207 @@
     "failed": "Thất bại",
     "duration": "Thời gian"
   },
+  "AiProviders": {
+    "PageEyebrow": "Admin / Nhà cung cấp AI",
+    "Title": "Quản lý nhà cung cấp AI",
+    "Description": "Quản lý nhà cung cấp LLM và chuyển mô hình ngay khi hệ thống đang chạy",
+    "title": "Quản lý nhà cung cấp AI",
+    "description": "Quản lý nhà cung cấp LLM và chuyển mô hình ngay khi hệ thống đang chạy",
+    "loading": "Đang tải...",
+    "emptyValue": "—",
+    "tabs": {
+      "overview": "Tổng quan",
+      "advanced": "Nâng cao"
+    },
+    "summary": {
+      "activeProvider": "Nhà cung cấp đang hoạt động",
+      "mockMode": "Chế độ mock",
+      "live": "Đang chạy thật",
+      "chatModel": "Mô hình chat",
+      "embeddingModel": "Embedding: {model}",
+      "providerHealth": "Tình trạng nhà cung cấp"
+    },
+    "health": {
+      "online": "Hoạt động",
+      "offline": "Mất kết nối",
+      "noKey": "Chưa có API key"
+    },
+    "switcher": {
+      "title": "Chuyển nhà cung cấp / mô hình",
+      "description": "Mô hình được tải từ API key hiện có. Thay đổi có hiệu lực ngay.",
+      "provider": "Nhà cung cấp",
+      "chatModel": "Mô hình chat",
+      "embeddingModelLabel": "Mô hình embedding",
+      "selectProvider": "Chọn nhà cung cấp...",
+      "selectChatModel": "Chọn mô hình chat...",
+      "keepCurrent": "Giữ cấu hình hiện tại",
+      "applyChanges": "Áp dụng thay đổi",
+      "switching": "Đang chuyển...",
+      "modelCount": "({count} mô hình)"
+    },
+    "toast": {
+      "updatedTitle": "Đã cập nhật nhà cung cấp",
+      "updatedDescription": "{provider} / {model}",
+      "failedTitle": "Không thể chuyển nhà cung cấp",
+      "failedDescription": "Vui lòng kiểm tra cấu hình và thử lại.",
+      "reindexSuccessTitle": "Đã reindex xong",
+      "reindexSuccessDescription": "Đã dựng lại knowledge index.",
+      "reindexFailedTitle": "Reindex thất bại",
+      "reindexFailedDescription": "Không thể dựng lại knowledge index."
+    },
+    "knowledgeIndex": {
+      "title": "Knowledge index",
+      "description": "Dựng lại vector khóa học và bài học trong Qdrant cho tìm kiếm AI và truy xuất ngữ cảnh chat.",
+      "loadStats": "Tải thống kê",
+      "refreshStats": "Làm mới thống kê",
+      "reindexBlogs": "Reindex Blogs",
+      "reindexAll": "Reindex All",
+      "reindexing": "Đang reindex...",
+      "health": "Tình trạng Qdrant",
+      "healthy": "Khỏe",
+      "unhealthy": "Có vấn đề",
+      "notLoaded": "Chưa tải",
+      "version": "Phiên bản Qdrant",
+      "collections": "Collections",
+      "totalVectors": "Tổng vectors",
+      "lastResult": "Kết quả reindex gần nhất",
+      "indexed": "Đã index",
+      "failed": "Thất bại",
+      "duration": "Thời gian",
+      "columns": {
+        "collection": "Collection",
+        "vectors": "Vectors",
+        "points": "Points",
+        "status": "Trạng thái"
+      }
+    },
+    "allModels": {
+      "title": "Toàn bộ mô hình khả dụng",
+      "modelCount": "{count} mô hình",
+      "active": "Đang dùng",
+      "columns": {
+        "modelId": "Mô hình",
+        "provider": "Nhà cung cấp",
+        "type": "Loại",
+        "context": "Ngữ cảnh",
+        "status": "Trạng thái"
+      }
+    },
+    "healthRaw": {
+      "title": "Kiểm tra sức khỏe provider (raw)"
+    },
+    "metadataRaw": {
+      "title": "Metadata provider (raw)"
+    }
+  },
+  "AiAnalytics": {
+    "PageEyebrow": "Admin / Phân tích AI",
+    "Title": "Phân tích AI",
+    "Description": "Tổng quan mức dùng, chi phí và hiệu năng của hệ AI",
+    "title": "Phân tích AI",
+    "description": "Tổng quan mức dùng, chi phí và hiệu năng của hệ AI",
+    "tabs": {
+      "overview": "Tổng quan",
+      "advanced": "Nâng cao"
+    },
+    "range": {
+      "last24h": "24 giờ qua",
+      "last7Days": "7 ngày qua",
+      "last14Days": "14 ngày qua",
+      "last30Days": "30 ngày qua"
+    },
+    "kpis": {
+      "conversations": "Cuộc hội thoại",
+      "totalCost": "Tổng chi phí",
+      "avgResponse": "Phản hồi trung bình",
+      "successRate": "Tỷ lệ thành công"
+    },
+    "charts": {
+      "usagePerDay": "Lượt dùng theo ngày",
+      "whatUsersAskAbout": "Người dùng đang hỏi gì",
+      "costPerDay": "Chi phí theo ngày",
+      "modelUsage": "Tần suất dùng model"
+    },
+    "series": {
+      "conversations": "Cuộc hội thoại",
+      "cost": "Chi phí ($)",
+      "tokens": "Tokens",
+      "calls": "Lượt gọi"
+    },
+    "advanced": {
+      "totalTokens": "Tổng tokens",
+      "errorRate": "Tỷ lệ lỗi",
+      "promptTokens": "Prompt tokens",
+      "completionTokens": "Completion tokens",
+      "embeddingTokens": "Embedding tokens"
+    },
+    "topUsers": {
+      "title": "Top người dùng",
+      "noData": "Chưa có dữ liệu",
+      "columns": {
+        "userId": "User ID",
+        "traces": "Số trace",
+        "tokens": "Tokens",
+        "cost": "Chi phí"
+      }
+    }
+  },
+  "AiTraces": {
+    "PageEyebrow": "Admin / Theo dõi AI",
+    "Title": "Theo dõi hội thoại AI",
+    "Description": "Đang theo dõi {count} cuộc hội thoại AI",
+    "title": "Theo dõi hội thoại AI",
+    "trackedCount": "{count} cuộc hội thoại đã được theo dõi",
+    "openLangfuse": "Mở Langfuse",
+    "loading": "Đang tải...",
+    "noConversations": "Chưa có cuộc hội thoại nào",
+    "recentConversations": "Cuộc hội thoại gần đây",
+    "advancedTraces": "Trace kỹ thuật",
+    "emptyValue": "—",
+    "pageSummary": "Trang {page}/{total} • {count} kết quả",
+    "tabs": {
+      "overview": "Tổng quan",
+      "advanced": "Nâng cao"
+    },
+    "columns": {
+      "time": "Thời gian",
+      "userPrompt": "Người dùng hỏi gì",
+      "type": "Loại",
+      "responseTime": "Thời gian phản hồi",
+      "cost": "Chi phí",
+      "actions": "Thao tác",
+      "name": "Tên trace",
+      "user": "Người dùng",
+      "intent": "Ý định",
+      "model": "Mô hình",
+      "latency": "Độ trễ",
+      "observations": "Bước"
+    },
+    "intent": {
+      "courseAdvice": "Tư vấn khóa học",
+      "learningQA": "Hỏi đáp học tập",
+      "dataQuery": "Truy vấn dữ liệu",
+      "chartRequest": "Yêu cầu biểu đồ",
+      "fileAnalysis": "Phân tích file",
+      "chat": "Trò chuyện",
+      "followUp": "Làm rõ",
+      "aiCall": "Lượt gọi AI",
+      "fullChat": "Chat orchestration"
+    },
+    "detail": {
+      "title": "Chi tiết cuộc hội thoại",
+      "responseTime": "Thời gian phản hồi",
+      "cost": "Chi phí",
+      "steps": "Số bước",
+      "user": "Người dùng",
+      "userAsked": "Người dùng hỏi",
+      "aiAnswered": "AI trả lời",
+      "processingSteps": "Các bước xử lý ({count})",
+      "tokens": "Tokens: {count}",
+      "stepCost": "Chi phí: ${cost}",
+      "viewFullTrace": "Xem trace đầy đủ trên Langfuse"
+    }
+  },
   "AiDrafts": {
     "title": "Drafts từ AI",
     "pendingPaths": "Lộ trình chờ duyệt",
@@ -1181,7 +2722,13 @@
     "typeProgress": "Tiến độ",
     "typeComment": "Bình luận",
     "typeSystem": "Hệ thống",
-    "typeOther": "Khác"
+    "typeOther": "Khác",
+    "markRead": "Đánh dấu đã đọc",
+    "delete": "Xóa thông báo",
+    "deleteAll": "Xóa tất cả",
+    "deleteAllConfirmTitle": "Xóa tất cả thông báo?",
+    "deleteAllConfirmDesc": "Thao tác này sẽ xóa toàn bộ thông báo của bạn và không thể hoàn tác.",
+    "cancel": "Hủy"
   },
   "ContactPage": {
     "heroTitle": "Liên Hệ Với Chúng Tôi",
@@ -1204,6 +2751,154 @@
     "messageSentDescription": "Chúng tôi sẽ phản hồi sớm nhất có thể.",
     "visitOffice": "Ghé Thăm Văn Phòng"
   },
+  "ManageDashboard": {
+    "eyebrow": "Không gian hệ thống",
+    "title": "Bảng điều khiển hệ thống",
+    "description": "Trang vào chính dựa trên quyền thực tế, chỉ hiển thị những khu vực tài khoản này có thể dùng.",
+    "loading": "Đang tải bảng điều khiển...",
+    "accountFallback": "tài khoản này",
+    "open": "Mở",
+    "status": {
+      "active": "Đang hoạt động",
+      "unknown": "Không xác định"
+    },
+    "roles": {
+      "superAdmin": "Quản trị cao nhất",
+      "admin": "Quản trị viên",
+      "instructor": "Giảng viên",
+      "learner": "Học viên",
+      "none": "Chưa có vai trò"
+    },
+    "badges": {
+      "manage": "Quản trị"
+    },
+    "summary": {
+      "role": {
+        "title": "Vai trò hiện tại",
+        "description": "Đang đăng nhập với tên {name}"
+      },
+      "areas": {
+        "title": "Khu vực có thể truy cập",
+        "description": "{count} module quản trị có thể mở"
+      },
+      "permissions": {
+        "title": "Quyền hiệu lực",
+        "description": "Trên {count} nhóm tài nguyên"
+      },
+      "status": {
+        "title": "Trạng thái tài khoản",
+        "description": "Trạng thái trả về từ dịch vụ hồ sơ người dùng"
+      }
+    },
+    "roleFocus": {
+      "admin": {
+        "title": "Trọng tâm quản trị",
+        "description": "Đi nhanh vào người dùng, vai trò, nội dung, tài chính, tệp và các công cụ nền tảng mà vai trò này được mở."
+      },
+      "instructor": {
+        "title": "Trọng tâm giảng viên",
+        "description": "Ưu tiên vận hành khóa học, lộ trình học, nội dung cho học viên và các khu vực tài chính được cấp quyền."
+      },
+      "learner": {
+        "title": "Không gian học tập",
+        "description": "Dùng bảng điều khiển như điểm vào gọn gàng cho tiến độ học, khóa học, lộ trình, AI chat, thông báo và cài đặt."
+      },
+      "general": {
+        "title": "Trọng tâm làm việc",
+        "description": "Trang này chỉ hiển thị những module đã được cấp cho tài khoản."
+      }
+    },
+    "next": {
+      "title": "Bước tiếp theo gợi ý",
+      "description": "Điểm đến hữu ích đầu tiên dựa trên vai trò và quyền hiệu lực của tài khoản."
+    },
+    "modules": {
+      "title": "Module quản trị có thể truy cập",
+      "description": "Danh sách này khớp với quyền của sidebar, nên module bị ẩn sẽ không bị giới thiệu nhầm.",
+      "emptyTitle": "Không có module quản trị bổ sung",
+      "emptyDescription": "Tài khoản này hiện chỉ có quyền vào bảng điều khiển. Các thao tác học tập và hồ sơ vẫn có ở phía trên."
+    },
+    "moduleDescriptions": {
+      "aiAnalytics": "Xem mức dùng AI, tín hiệu chi phí và hoạt động AI ở cấp nền tảng.",
+      "aiTraces": "Kiểm tra trace AI và chẩn đoán từng lần chạy khi được cấp quyền AI.",
+      "aiProviders": "Quản lý cấu hình provider và định tuyến model cho dịch vụ AI.",
+      "revenue": "Theo dõi tín hiệu doanh thu, chính sách và hiệu quả tài chính.",
+      "payouts": "Duyệt vận hành payout và quy trình đối soát.",
+      "accounts": "Tạo, cập nhật và quản trị tài khoản nền tảng.",
+      "instructorApplications": "Duyệt hồ sơ ứng tuyển giảng viên và quyết định onboarding.",
+      "roles": "Bảo trì định nghĩa vai trò và các gói quyền đi kèm.",
+      "blogsAdmin": "Quản lý bài viết và nội dung học tập công khai.",
+      "filesAdmin": "Tải lên, sắp xếp, xem trước và quản trị tệp nền tảng.",
+      "permissions": "Kiểm tra danh mục quyền và override theo từng người dùng.",
+      "manageCourses": "Quản lý khóa học, xuất bản, chương trình học và nội dung bài học.",
+      "learningPathsAdmin": "Thiết kế và bảo trì các lộ trình học có hướng dẫn.",
+      "default": "Mở khu vực quản trị này."
+    },
+    "learnerActions": {
+      "myLearning": {
+        "title": "Học của tôi",
+        "description": "Tiếp tục các khóa đã đăng ký và theo dõi tiến độ học."
+      },
+      "courses": {
+        "title": "Duyệt khóa học",
+        "description": "Tìm khóa học phù hợp với kỹ năng bạn muốn xây dựng."
+      },
+      "paths": {
+        "title": "Lộ trình học",
+        "description": "Đi theo lộ trình có cấu trúc thay vì tự chọn từng khóa."
+      },
+      "aiChat": {
+        "title": "Trợ lý học tập AI",
+        "description": "Đặt câu hỏi, phân tích tài liệu và nhận hỗ trợ học tập."
+      },
+      "notifications": {
+        "title": "Thông báo",
+        "description": "Xem cập nhật về tài khoản, khóa học và hệ thống."
+      },
+      "settings": {
+        "title": "Cài đặt",
+        "description": "Điều chỉnh ngôn ngữ, giao diện và tùy chọn chủ đề."
+      }
+    },
+    "attention": {
+      "title": "Điểm cần chú ý",
+      "description": "Những nội dung dashboard nên nhấn mạnh theo bộ quyền hiện tại.",
+      "role": {
+        "admin": {
+          "title": "Phạm vi toàn hệ thống",
+          "description": "Vai trò này có thể thấy các khu vực liên hệ toàn hệ thống dựa trên danh mục quyền được cấp."
+        },
+        "instructor": {
+          "title": "Vận hành giảng dạy",
+          "description": "Dashboard ưu tiên việc dạy học và nội dung trước các điều khiển chỉ dành cho admin."
+        },
+        "learner": {
+          "title": "Điểm vào an toàn cho học viên",
+          "description": "Học viên thấy hành động học tập trước, không thấy analytics quản trị hoặc panel hạ tầng AI."
+        },
+        "general": {
+          "title": "Phạm vi giới hạn theo quyền",
+          "description": "Trang được dựng từ quyền hiệu lực thay vì một bố cục admin cố định."
+        }
+      },
+      "limited": {
+        "title": "Chỉ có quyền dashboard",
+        "description": "Chưa có module quản trị bổ sung, nên sidebar nên giữ tối giản."
+      },
+      "curriculum": {
+        "title": "Có quyền vận hành chương trình học",
+        "description": "Liên kết khóa học và lộ trình học xuất hiện vì tài khoản có quyền tương ứng."
+      },
+      "governance": {
+        "title": "Có quyền kiểm soát truy cập",
+        "description": "Module tài khoản, vai trò hoặc quyền hạn đang hiển thị để quản lý định danh và phân quyền."
+      },
+      "ai": {
+        "title": "Công cụ AI được tách riêng",
+        "description": "Khu vực AI chỉ xuất hiện như module bình thường khi vai trò có quyền AI rõ ràng."
+      }
+    }
+  },
   "SettingsPage": {
     "title": "Cài Đặt",
     "description": "Quản lý tùy chọn ứng dụng của bạn",
@@ -1216,11 +2911,52 @@
     "themeMode": "Chế Độ Giao Diện",
     "themeModeDescription": "Chuyển đổi giữa chế độ sáng và tối",
     "colorTheme": "Màu Chủ Đề",
-    "colorThemeDescription": "Chọn bảng màu ưa thích"
+    "colorThemeDescription": "Chọn bảng màu ưa thích",
+    "ThemeStudio": {
+      "conceptTitle": "Concept chủ đề",
+      "conceptDescription": "Chọn nhanh một hướng màu hoàn chỉnh cho button, nền, chữ, card và màu nhấn.",
+      "customTitle": "Tùy chỉnh màu toàn hệ thống",
+      "customDescription": "Chỉnh sâu các token màu dùng chung trên toàn ứng dụng.",
+      "reset": "Đặt lại TechHub Blue",
+      "previewTitle": "Xem trước trực tiếp",
+      "previewDescription": "Mẫu này dùng cùng token màu với các màn hình thật.",
+      "previewPrimary": "Chính",
+      "previewSecondary": "Phụ",
+      "previewOutline": "Viền",
+      "concepts": {
+        "default": "TechHub Blue",
+        "green": "Learning Teal",
+        "orange": "Business Amber",
+        "purple": "Executive Purple",
+        "pink": "Product Rose",
+        "ocean": "Ocean Cyan",
+        "forest": "Forest Lime",
+        "slate": "Slate Coral",
+        "custom": "Bảng màu tùy chỉnh"
+      },
+      "fields": {
+        "primary": "Màu button toàn hệ thống",
+        "primaryForeground": "Màu chữ trên button",
+        "background": "Màu nền toàn hệ thống",
+        "foreground": "Màu chữ toàn hệ thống",
+        "card": "Màu nền card/panel",
+        "cardForeground": "Màu chữ trong card",
+        "secondary": "Màu nền phụ",
+        "secondaryForeground": "Màu chữ nền phụ",
+        "muted": "Màu nền mờ",
+        "mutedForeground": "Màu chữ phụ",
+        "accent": "Màu nhấn",
+        "accentForeground": "Màu chữ trên màu nhấn",
+        "border": "Màu viền",
+        "input": "Màu ô nhập liệu",
+        "ring": "Màu focus"
+      }
+    }
   },
   "ProfilePage": {
     "title": "Hồ Sơ",
     "subtitle": "Quản lý thông tin tài khoản và bảo mật",
+    "viewPublicProfile": "Xem trang công khai",
     "profileTab": "Thông Tin Hồ Sơ",
     "passwordTab": "Đổi Mật Khẩu",
     "profileInfo": "Thông Tin Hồ Sơ",

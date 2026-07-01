@@ -6,6 +6,7 @@ import {
   AssignPermissionsBodyType,
   AssignRolesBodyType,
 } from "@/schemaValidations/role.schema";
+import { UpsertUserPermissionBodyType } from "@/schemaValidations/permission.schema";
 
 // Get all roles
 export const useGetRoles = () => {
@@ -98,6 +99,79 @@ export const useGetUserRoles = (userId: string, enabled: boolean = true) => {
     queryKey: ["user-roles", userId],
     queryFn: () => roleApiRequest.getUserRoles(userId),
     enabled: enabled && !!userId,
+  });
+};
+
+export const useGetUserPermissionOverrides = (
+  userId: string,
+  enabled: boolean = true
+) => {
+  return useQuery({
+    queryKey: ["user-permission-overrides", userId],
+    queryFn: () => roleApiRequest.getUserPermissionOverrides(userId),
+    enabled: enabled && !!userId,
+  });
+};
+
+export const useGetUserPermissionCatalog = (
+  userId: string,
+  params: { page: number; size: number; search?: string },
+  enabled: boolean = true
+) => {
+  return useQuery({
+    queryKey: ["user-permission-catalog", userId, params],
+    queryFn: () => roleApiRequest.getUserPermissionCatalog(userId, params),
+    enabled: enabled && !!userId,
+  });
+};
+
+export const useUpsertUserPermissionMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      userId,
+      body,
+    }: {
+      userId: string;
+      body: UpsertUserPermissionBodyType;
+    }) => roleApiRequest.upsertUserPermission(userId, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["user-permission-overrides", variables.userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["user-permissions", variables.userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["user-permission-catalog", variables.userId],
+      });
+    },
+  });
+};
+
+export const useDeleteUserPermissionOverrideMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      userId,
+      permissionId,
+    }: {
+      userId: string;
+      permissionId: string;
+    }) => roleApiRequest.deleteUserPermissionOverride(userId, permissionId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["user-permission-overrides", variables.userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["user-permissions", variables.userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["user-permission-catalog", variables.userId],
+      });
+    },
   });
 };
 

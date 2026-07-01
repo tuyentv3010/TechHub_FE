@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/components/ui/use-toast";
@@ -8,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Upload, ImageIcon, Lock, User as UserIcon } from "lucide-react";
+import { Loader2, Upload, ImageIcon, Lock, User as UserIcon, GraduationCap } from "lucide-react";
+import instructorProfileApi, { InstructorProfile } from "@/apiRequests/instructor-profile";
+import InstructorProfileView from "@/components/instructor-profile-view";
 import { useAccountProfile, useUpdateProfileMutation } from "@/queries/useAccount";
 import { UpdateProfileBody, UpdateProfileBodyType } from "@/schemaValidations/account.schema";
 import { ChangePasswordBody, ChangePasswordBodyType } from "@/schemaValidations/password.schema";
@@ -19,6 +22,7 @@ import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useTranslations } from "next-intl";
+import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
 
 export default function ProfilePage() {
   const t = useTranslations("ProfilePage");
@@ -27,10 +31,24 @@ export default function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [showAvatarLibrary, setShowAvatarLibrary] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [instructorProfile, setInstructorProfile] = useState<InstructorProfile | null>(null);
+
+  useEffect(() => {
+    instructorProfileApi
+      .getMine()
+      .then((res: any) => {
+        const data = res?.payload?.data || res?.payload;
+        if (data) setInstructorProfile(data);
+      })
+      .catch(() => setInstructorProfile(null));
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const account = profileData?.payload?.data;
   const userId = account?.id || '';
+  const isInstructor = (account?.roles || []).some(
+    (role: string) => role?.toUpperCase() === "INSTRUCTOR",
+  );
 
   // Profile form
   const profileForm = useForm<UpdateProfileBodyType>({
@@ -89,8 +107,14 @@ export default function ProfilePage() {
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        profileForm.setValue('avatar', response.payload.data.cloudinarySecureUrl);
+      // Use the authenticated proxy URL (the minio bucket is not public, so a direct
+      // minio URL would 403). resolveManagedFileUrl prefers /api/proxy/files/{id}/...
+      const avatarUrl = response.payload?.data
+        ? resolveManagedFileUrl(response.payload.data, userId, "content")
+        : null;
+
+      if (avatarUrl) {
+        profileForm.setValue('avatar', avatarUrl);
         toast({ description: "Avatar uploaded successfully" });
       }
     } catch (error: any) {
@@ -156,17 +180,33 @@ export default function ProfilePage() {
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">{t("title")}</h1>
-        <p className="text-muted-foreground">{t("subtitle")}</p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
+        </div>
+        {isInstructor && userId && (
+          <Button asChild variant="outline">
+            <Link href={`/instructor/${userId}`}>
+              <GraduationCap className="mr-2 h-4 w-4" />
+              {t("viewPublicProfile")}
+            </Link>
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className={`grid w-full ${instructorProfile ? "grid-cols-3" : "grid-cols-2"}`}>
           <TabsTrigger value="profile">
             <UserIcon className="w-4 h-4 mr-2" />
             {t("profileTab")}
           </TabsTrigger>
+          {instructorProfile && (
+            <TabsTrigger value="instructor">
+              <GraduationCap className="w-4 h-4 mr-2" />
+              Hồ sơ giảng viên
+            </TabsTrigger>
+          )}
           <TabsTrigger value="password">
             <Lock className="w-4 h-4 mr-2" />
             {t("passwordTab")}
@@ -187,7 +227,7 @@ export default function ProfilePage() {
                   <div className="flex items-start gap-6">
                     <Avatar className="h-24 w-24">
                       <AvatarImage 
-                        src={profileForm.watch('avatar') || undefined} 
+                        src={normalizePersistedMediaUrl(profileForm.watch('avatar')) || undefined}
                         alt={account?.username}
                         className="object-cover"
                       />
@@ -271,7 +311,7 @@ export default function ProfilePage() {
                       {account?.roles?.map((role: string) => (
                         <span
                           key={role} 
-                          className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/20 px-3 py-1 text-sm font-medium text-blue-700 dark:text-blue-300"
+                          className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
                         >
                           {role}
                         </span>
@@ -299,6 +339,22 @@ export default function ProfilePage() {
         </TabsContent>
 
         {/* Password Tab */}
+        {instructorProfile && (
+          <TabsContent value="instructor">
+            <Card>
+              <CardHeader>
+                <CardTitle>Hồ sơ giảng viên</CardTitle>
+                <CardDescription>
+                  Thông tin được trích xuất tự động từ đơn ứng tuyển. Liên hệ admin nếu cần chỉnh sửa.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <InstructorProfileView profile={instructorProfile} variant="full" />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
         <TabsContent value="password">
           <Card>
             <CardHeader>
@@ -392,7 +448,10 @@ export default function ProfilePage() {
         open={showAvatarLibrary}
         onOpenChange={setShowAvatarLibrary}
         onSelectFile={(file) => {
-          profileForm.setValue('avatar', file.cloudinarySecureUrl);
+          const avatarUrl = resolveManagedFileUrl(file, userId, "content");
+          if (avatarUrl) {
+            profileForm.setValue('avatar', avatarUrl);
+          }
           setShowAvatarLibrary(false);
         }}
         userId={userId}

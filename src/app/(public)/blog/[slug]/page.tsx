@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, type MouseEvent } from "react";
 import { format } from "date-fns";
 import dynamic from "next/dynamic";
 import {
   ArrowUp,
+  ArrowRight,
+  BookOpen,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -35,6 +37,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import {
   useAddBlogCommentMutation,
@@ -43,6 +52,7 @@ import {
 } from "@/queries/useBlog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGetAccount } from "@/queries/useAccount";
+import { useGetCourseById } from "@/queries/useCourse";
 import {
   buildContentWithToc,
   estimateReadingTime,
@@ -50,7 +60,132 @@ import {
   parseMarkdownToHtml,
   extractIdFromSlug,
 } from "@/lib/blog";
+import { createCourseSlug, formatCourseLevel } from "@/lib/course";
+import { normalizePublicMediaUrl } from "@/lib/file-media";
 import type { Blog, BlogComment, TocItem, BlogAttachment } from "@/types/blog.types";
+
+type BlogCommentSocketEvent = {
+  eventType?: "CREATED" | "REPLIED" | "UPDATED" | "DELETED";
+  payload?: Partial<BlogComment> & {
+    commentId?: string;
+    createdAt?: string;
+  };
+  comment?: BlogComment;
+  id?: string;
+  commentId?: string;
+  content?: string;
+  userId?: string;
+  parentId?: string | null;
+  created?: string;
+  createdAt?: string;
+  replies?: BlogComment[];
+};
+
+const normalizeSocketComment = (event: BlogCommentSocketEvent): BlogComment | null => {
+  const source = event.comment ?? event.payload ?? event;
+  const id = source.id ?? event.commentId;
+  const content = source.content;
+  const userId = source.userId;
+  const created = source.created ?? source.createdAt ?? event.created ?? event.createdAt;
+
+  if (!id || !content || !userId || !created) {
+    return null;
+  }
+
+  return {
+    id: String(id),
+    content,
+    userId,
+    parentId: source.parentId ?? null,
+    created,
+    replies: source.replies ?? [],
+  };
+};
+
+const replaceCommentInTree = (
+  comments: BlogComment[],
+  incoming: BlogComment
+): { comments: BlogComment[]; found: boolean } => {
+  let found = false;
+  const next = comments.map((comment) => {
+    if (comment.id === incoming.id) {
+      found = true;
+      return {
+        ...comment,
+        ...incoming,
+        replies: incoming.replies?.length ? incoming.replies : comment.replies ?? [],
+      };
+    }
+
+    const childResult = replaceCommentInTree(comment.replies ?? [], incoming);
+    if (childResult.found) {
+      found = true;
+      return { ...comment, replies: childResult.comments };
+    }
+
+    return comment;
+  });
+
+  return { comments: next, found };
+};
+
+const addReplyToTree = (
+  comments: BlogComment[],
+  incoming: BlogComment
+): { comments: BlogComment[]; foundParent: boolean } => {
+  let foundParent = false;
+  const next = comments.map((comment) => {
+    if (comment.id === incoming.parentId) {
+      foundParent = true;
+      const replies = comment.replies ?? [];
+      const exists = replies.some((reply: BlogComment) => reply.id === incoming.id);
+      return {
+        ...comment,
+        replies: exists ? replies : [...replies, incoming],
+      };
+    }
+
+    const childResult = addReplyToTree(comment.replies ?? [], incoming);
+    if (childResult.foundParent) {
+      foundParent = true;
+      return { ...comment, replies: childResult.comments };
+    }
+
+    return comment;
+  });
+
+  return { comments: next, foundParent };
+};
+
+const upsertCommentInTree = (
+  comments: BlogComment[],
+  incoming: BlogComment
+): BlogComment[] => {
+  const replaceResult = replaceCommentInTree(comments, incoming);
+  if (replaceResult.found) {
+    return replaceResult.comments;
+  }
+
+  if (incoming.parentId) {
+    const replyResult = addReplyToTree(comments, incoming);
+    if (replyResult.foundParent) {
+      return replyResult.comments;
+    }
+  }
+
+  return [incoming, ...comments];
+};
+
+const removeCommentFromTree = (
+  comments: BlogComment[],
+  commentId: string
+): BlogComment[] =>
+  comments
+    .filter((comment) => comment.id !== commentId)
+    .map((comment) => ({
+      ...comment,
+      replies: removeCommentFromTree(comment.replies ?? [], commentId),
+    }));
 
 const ShareButton = ({
   label,
@@ -80,6 +215,157 @@ const ShareButton = ({
     <button onClick={onClick} className={className} title={label}>
       <Icon className="h-5 w-5" />
     </button>
+  );
+};
+
+type BlogRelatedLesson = {
+  id: string;
+  title: string;
+  chapterTitle?: string;
+};
+
+const getRelatedLessons = (
+  chapters: unknown,
+  selectedLessonIds: string[]
+): BlogRelatedLesson[] => {
+  if (!Array.isArray(chapters) || selectedLessonIds.length === 0) {
+    return [];
+  }
+
+  const selected = new Set(selectedLessonIds);
+  return chapters.flatMap((chapter: any) => {
+    const lessons = Array.isArray(chapter?.lessons) ? chapter.lessons : [];
+    return lessons
+      .filter((lesson: any) => lesson?.id && selected.has(String(lesson.id)))
+      .map((lesson: any) => ({
+        id: String(lesson.id),
+        title: String(lesson.title),
+        chapterTitle: chapter?.title ? String(chapter.title) : undefined,
+      }));
+  });
+};
+
+const RelatedCourseCard = ({
+  courseId,
+  relatedLessonIds,
+}: {
+  courseId: string;
+  relatedLessonIds: string[];
+}) => {
+  const { data, isLoading } = useGetCourseById(courseId);
+  const courseDetail = data?.payload?.data;
+  const summary = courseDetail?.summary;
+  const lessons = getRelatedLessons(courseDetail?.chapters, relatedLessonIds);
+
+  if (isLoading) {
+    return <Skeleton className="h-32 w-full rounded-xl" />;
+  }
+
+  if (!summary) {
+    return null;
+  }
+
+  const courseSlug = createCourseSlug(summary.title, summary.id);
+  const thumbnailUrl = normalizePublicMediaUrl(
+    summary.thumbnail?.secureUrl || summary.thumbnail?.url
+  );
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
+      <div className="flex gap-4 p-4">
+        {thumbnailUrl ? (
+          <img
+            src={thumbnailUrl}
+            alt={summary.title}
+            className="h-20 w-28 shrink-0 rounded-lg object-cover"
+          />
+        ) : (
+          <div className="flex h-20 w-28 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <BookOpen className="h-6 w-6" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{formatCourseLevel(summary.level)}</Badge>
+            <Badge variant="secondary">{summary.language}</Badge>
+          </div>
+          <h3 className="mt-2 line-clamp-2 text-base font-semibold">
+            {summary.title}
+          </h3>
+          {summary.description && (
+            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+              {summary.description}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {lessons.length > 0 && (
+        <div className="border-t border-border/60 px-4 py-3">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Lessons mentioned
+          </div>
+          <div className="space-y-2">
+            {lessons.map((lesson) => (
+              <div key={lesson.id} className="flex items-start gap-2 text-sm">
+                <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div className="min-w-0">
+                  <div className="font-medium">{lesson.title}</div>
+                  {lesson.chapterTitle && (
+                    <div className="text-xs text-muted-foreground">
+                      {lesson.chapterTitle}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="border-t border-border/60 px-4 py-3">
+        <Button asChild size="sm" className="gap-2">
+          <Link href={`/courses/${courseSlug}`}>
+            Continue learning
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const RelatedLearningSection = ({ blog }: { blog: Blog }) => {
+  const relatedCourseIds = blog.relatedCourseIds || [];
+  const relatedLessonIds = blog.relatedLessonIds || [];
+
+  if (relatedCourseIds.length === 0 && relatedLessonIds.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-2xl border border-muted/40 bg-card/60 p-4 sm:p-6">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <BookOpen className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="text-lg font-semibold">Continue learning</h2>
+          <p className="text-sm text-muted-foreground">
+            Courses and lessons connected to this article.
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-4">
+        {relatedCourseIds.map((courseId) => (
+          <RelatedCourseCard
+            key={courseId}
+            courseId={courseId}
+            relatedLessonIds={relatedLessonIds}
+          />
+        ))}
+      </div>
+    </section>
   );
 };
 
@@ -166,9 +452,16 @@ const CommentItem = ({
   const [showReplies, setShowReplies] = useState(true);
   const hasReplies = comment.replies && comment.replies.length > 0;
   const isReplying = activeReplyId === comment.id;
+  const { data: commentUserResponse } = useGetAccount({
+    id: comment.userId,
+    enabled: !!comment.userId,
+  });
+  const displayName =
+    commentUserResponse?.payload?.data?.username ||
+    `@${comment.userId.slice(0, 8)}`;
   return (
     <div className="space-y-3">
-      <div className={`flex gap-3 ${depth > 0 ? "ml-12" : ""}`}>
+      <div className={`flex gap-2 sm:gap-3 ${depth > 0 ? "ml-4 sm:ml-12" : ""}`}>
         {/* Avatar */}
         <div className="flex-shrink-0">
           <CommentUserInfo userId={comment.userId} />
@@ -179,7 +472,7 @@ const CommentItem = ({
           {/* Username & Time */}
           <div className="flex items-center gap-2 text-xs">
             <span className="font-medium text-foreground">
-              @{comment.userId.slice(0, 8)}
+              {displayName}
             </span>
             <span className="text-muted-foreground">
               {format(new Date(comment.created), "dd/MM/yyyy")}
@@ -329,6 +622,7 @@ export default function BlogDetailPage() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [showEmojiPickerMain, setShowEmojiPickerMain] = useState(false);
+  const [showTocMobile, setShowTocMobile] = useState(false);
   const mainTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const insertEmojiAtCursor = (
@@ -400,10 +694,44 @@ export default function BlogDetailPage() {
         client.subscribe(destination, (message) => {
           console.log("[WebSocket] Received message:", message.body);
           try {
-            const newComment = JSON.parse(message.body);
-            console.log("[WebSocket] New comment received:", newComment);
-            
-            // Invalidate comments query to refetch
+            const event = JSON.parse(message.body) as BlogCommentSocketEvent;
+            console.log("[WebSocket] Comment event received:", event);
+
+            const eventType = event.eventType ?? "CREATED";
+            if (eventType === "DELETED") {
+              const deletedCommentId = event.commentId ?? event.id ?? event.payload?.id;
+              if (deletedCommentId) {
+                queryClient.setQueryData(["blog-comments", blogId], (old: any) => {
+                  const currentComments = old?.payload?.data;
+                  if (!Array.isArray(currentComments)) return old;
+
+                  return {
+                    ...old,
+                    payload: {
+                      ...old.payload,
+                      data: removeCommentFromTree(currentComments, String(deletedCommentId)),
+                    },
+                  };
+                });
+              }
+            } else {
+              const incomingComment = normalizeSocketComment(event);
+              if (incomingComment) {
+                queryClient.setQueryData(["blog-comments", blogId], (old: any) => {
+                  const currentComments = old?.payload?.data;
+                  if (!Array.isArray(currentComments)) return old;
+
+                  return {
+                    ...old,
+                    payload: {
+                      ...old.payload,
+                      data: upsertCommentInTree(currentComments, incomingComment),
+                    },
+                  };
+                });
+              }
+            }
+
             queryClient.invalidateQueries({ queryKey: ["blog-comments", blogId] });
             
             toast({
@@ -596,10 +924,20 @@ export default function BlogDetailPage() {
     return comments.reduce((total: number, comment: BlogComment) => total + countReplies(comment), 0);
   }, [comments]);
 
-  const handleScrollToHeading = (item: TocItem) => {
+  const handleScrollToHeading = (
+    event: MouseEvent<HTMLAnchorElement>,
+    item: TocItem
+  ) => {
+    event.preventDefault();
+
     const element = document.getElementById(item.id);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      const headerOffset = 96;
+      const top =
+        element.getBoundingClientRect().top + window.scrollY - headerOffset;
+
+      window.history.pushState(null, "", `#${item.id}`);
+      window.scrollTo({ top, behavior: "smooth" });
     }
   };
 
@@ -621,7 +959,7 @@ export default function BlogDetailPage() {
 
   if (isLoading || !blog) {
     return (
-      <main className="container mx-auto px-4 py-20">
+      <main className="container mx-auto px-4 py-10 sm:py-20">
         <div className="grid gap-6 lg:grid-cols-[80px_minmax(0,1fr)_260px]">
           <div className="hidden lg:block" />
           <div className="space-y-6">
@@ -630,7 +968,7 @@ export default function BlogDetailPage() {
             <Skeleton className="h-[400px] w-full rounded-2xl" />
             <Skeleton className="h-20 w-full rounded-2xl" />
           </div>
-          <div className="space-y-4">
+          <div className="hidden space-y-4 lg:block">
             <Skeleton className="h-6 w-32" />
             <Skeleton className="h-48 w-full rounded-2xl" />
           </div>
@@ -642,7 +980,7 @@ export default function BlogDetailPage() {
   const tags = normalizeTags(blog.tags ?? []);
 
   return (
-    <main className="relative bg-background pb-24 pt-16">
+    <main className="relative bg-background pb-16 pt-10 sm:pb-24 sm:pt-16">
       <article className="container mx-auto px-4">
         {/* Breadcrumb */}
         <div className="mb-6">
@@ -654,12 +992,12 @@ export default function BlogDetailPage() {
           </Link>
         </div>
 
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-10">
           {/* Content Column */}
-          <section className="order-2 lg:order-1 space-y-8">
+          <section className="order-2 min-w-0 space-y-6 sm:space-y-8 lg:order-1">
             {/* Title & Meta */}
             <div className="space-y-3">
-              <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
+              <h1 className="break-words text-2xl font-semibold leading-tight sm:text-3xl md:text-5xl">
                 {blog.title}
               </h1>
               <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -697,16 +1035,18 @@ export default function BlogDetailPage() {
             </div>
 
             {/* Blog Content */}
-            <div className="prose prose-lg max-w-none dark:prose-invert prose-headings:scroll-mt-24 prose-img:rounded-2xl">
+            <div className="prose max-w-none break-words dark:prose-invert prose-headings:scroll-mt-24 prose-pre:overflow-x-auto prose-img:rounded-2xl lg:prose-lg [&_img]:h-auto [&_img]:max-w-full [&_table]:block [&_table]:overflow-x-auto">
               <div
                 dangerouslySetInnerHTML={{ __html: preparedContent.html }}
-                className="leading-relaxed text-muted-foreground"
+                className="rich-content leading-relaxed text-muted-foreground [&_.blog-heading-number]:mr-3 [&_.blog-heading-number]:inline-flex [&_.blog-heading-number]:h-8 [&_.blog-heading-number]:min-w-8 [&_.blog-heading-number]:items-center [&_.blog-heading-number]:justify-center [&_.blog-heading-number]:rounded-lg [&_.blog-heading-number]:bg-primary/10 [&_.blog-heading-number]:px-2 [&_.blog-heading-number]:text-sm [&_.blog-heading-number]:font-semibold [&_.blog-heading-number]:text-primary [&_figure]:my-8 [&_h2]:mt-12 [&_h2]:border-t [&_h2]:border-border/60 [&_h2]:pt-8 [&_h3]:mt-8 [&_p]:my-4"
               />
             </div>
 
+            <RelatedLearningSection blog={blog} />
+
             {/* Attachments */}
             {blog.attachments && blog.attachments.length > 0 && (
-              <section className="rounded-2xl border border-muted/40 bg-card/60 p-6">
+              <section className="rounded-2xl border border-muted/40 bg-card/60 p-4 sm:p-6">
                 <h2 className="text-lg font-semibold">Tệp đính kèm</h2>
                 <p className="text-sm text-muted-foreground">
                   Tải về tài liệu hoặc hình ảnh liên quan.
@@ -738,7 +1078,7 @@ export default function BlogDetailPage() {
             )}
 
             {/* Share Section */}
-            <section className="rounded-2xl border border-muted/40 bg-card/60 p-6">
+            <section className="rounded-2xl border border-muted/40 bg-card/60 p-4 sm:p-6">
               <h2 className="text-lg font-semibold mb-4">Chia sẻ bài viết</h2>
               <div className="flex flex-wrap gap-3">
                 {shareItems.map((item) => (
@@ -748,50 +1088,58 @@ export default function BlogDetailPage() {
             </section>
 
             {/* Comments Section */}
-            <section className="space-y-6 rounded-2xl border border-muted/40 bg-card/60 p-6">
+            <section className="space-y-6 rounded-2xl border border-muted/40 bg-card/60 p-4 sm:p-6">
               {/* Header with count and sort */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-lg font-semibold">
-                  <MessageCircle className="h-5 w-5" />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-base font-semibold">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <MessageCircle className="h-4 w-4" />
+                  </span>
                   <span>{totalCommentCount} Bình luận</span>
                 </div>
-                <select
+                <Select
                   value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
-                  className="text-sm rounded-lg border border-muted bg-background px-3 py-1.5 text-muted-foreground hover:bg-muted/50 transition"
+                  onValueChange={(value) => setSortOrder(value as "newest" | "oldest")}
                 >
-                  <option value="newest">Mới nhất</option>
-                  <option value="oldest">Cũ nhất</option>
-                </select>
+                  <SelectTrigger
+                    aria-label="Comment sort order"
+                    className="h-9 w-[140px] rounded-lg text-sm"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Mới nhất</SelectItem>
+                    <SelectItem value="oldest">Cũ nhất</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* New Comment Input */}
-              <div className="space-y-3">
-                <div className="relative">
-                  <Textarea
-                    placeholder="Chia sẻ cảm nhận của bạn..."
-                    value={commentContent}
-                    onChange={(event) => setCommentContent(event.target.value)}
-                    rows={3}
-                    ref={mainTextareaRef}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowEmojiPickerMain((s) => !s)}
-                    className="absolute right-2 bottom-2 inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:text-foreground"
-                    title="Chèn emoji"
-                  >
-                    <Smile className="h-5 w-5" />
-                  </button>
-
-                  {showEmojiPickerMain && (
-                    <div className="absolute right-0 bottom-12 z-50">
-                      <EmojiPicker onEmojiClick={(e: any) => { insertEmojiAtCursor(mainTextareaRef.current, e.emoji, setCommentContent); setShowEmojiPickerMain(false); }} />
-                    </div>
-                  )}
-                </div>
-                <div className="flex justify-end">
+              <div className="rounded-xl border bg-background transition focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring/30">
+                <Textarea
+                  placeholder="Chia sẻ cảm nhận của bạn..."
+                  value={commentContent}
+                  onChange={(event) => setCommentContent(event.target.value)}
+                  rows={3}
+                  ref={mainTextareaRef}
+                  className="min-h-[92px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
+                />
+                <div className="flex items-center justify-between border-t border-border/60 px-3 py-2">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPickerMain((s) => !s)}
+                      className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                      title="Chèn emoji"
+                    >
+                      <Smile className="h-5 w-5" />
+                    </button>
+                    {showEmojiPickerMain && (
+                      <div className="absolute bottom-full left-0 z-50 mb-2">
+                        <EmojiPicker onEmojiClick={(e: any) => { insertEmojiAtCursor(mainTextareaRef.current, e.emoji, setCommentContent); setShowEmojiPickerMain(false); }} />
+                      </div>
+                    )}
+                  </div>
                   <Button
                     onClick={handleSubmitComment}
                     disabled={addCommentMutation.isPending || !commentContent.trim()}
@@ -815,9 +1163,10 @@ export default function BlogDetailPage() {
                     ))}
                   </div>
                 ) : sortedComments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    Hãy là người đầu tiên chia sẻ cảm nghĩ của bạn.
-                  </p>
+                  <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-10 text-center text-sm text-muted-foreground">
+                    <MessageCircle className="h-6 w-6 opacity-40" />
+                    <span>Hãy là người đầu tiên chia sẻ cảm nghĩ của bạn.</span>
+                  </div>
                 ) : (
                   sortedComments.map((comment: BlogComment) => (
                     <CommentItem
@@ -839,33 +1188,47 @@ export default function BlogDetailPage() {
 
           {/* Sidebar - Mục lục */}
           <aside className="order-1 lg:order-2">
-            <div className="sticky top-24 space-y-6">
+            <div className="lg:sticky lg:top-24 space-y-6">
               {/* Table of Contents */}
-              <div className="rounded-2xl border border-muted/40 bg-card/70 p-6">
-                <h2 className="text-lg font-semibold mb-2">Mục Lục</h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Các nội dung chính trong bài viết này.
-                </p>
-                <div className="space-y-1">
-                  {preparedContent.toc.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Bài viết chưa có cấu trúc tiêu đề rõ ràng.
-                    </p>
-                  ) : (
-                    preparedContent.toc.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => handleScrollToHeading(item)}
-                        className="block w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-muted/60 hover:text-primary"
-                        style={{ paddingLeft: `${(item.level - 1) * 12 + 12}px` }}
-                      >
-                        {item.level === 1 && "1. "}
-                        {item.level === 2 && "2. "}
-                        {item.level === 3 && "3. "}
-                        {item.text}
-                      </button>
-                    ))
-                  )}
+              <div className="rounded-2xl border border-muted/40 bg-card/70 p-4 sm:p-6">
+                {/* Header doubles as a collapse toggle on mobile; always expanded on desktop */}
+                <button
+                  type="button"
+                  onClick={() => setShowTocMobile((s) => !s)}
+                  aria-expanded={showTocMobile}
+                  className="flex w-full items-center justify-between gap-2 text-left lg:pointer-events-none"
+                >
+                  <h2 className="text-lg font-semibold">Mục Lục</h2>
+                  <ChevronDown
+                    className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform lg:hidden ${
+                      showTocMobile ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                <div className={`${showTocMobile ? "block" : "hidden"} lg:block`}>
+                  <p className="mb-4 mt-3 text-sm text-muted-foreground">
+                    Các nội dung chính trong bài viết này.
+                  </p>
+                  <div className="space-y-1">
+                    {preparedContent.toc.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Bài viết chưa có cấu trúc tiêu đề rõ ràng.
+                      </p>
+                    ) : (
+                      preparedContent.toc.map((item, index) => (
+                        <a
+                          key={item.id}
+                          href={`#${item.id}`}
+                          onClick={(event) => handleScrollToHeading(event, item)}
+                          className="block w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-muted/60 hover:text-primary"
+                          style={{ paddingLeft: `${Math.max(item.level - 2, 0) * 12 + 12}px` }}
+                        >
+                          {item.number ?? `${index + 1}`}.{" "}
+                          {item.text}
+                        </a>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

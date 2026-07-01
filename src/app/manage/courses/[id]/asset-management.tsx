@@ -58,6 +58,7 @@ import {
   UpdateAssetBody,
   AssetItemType,
 } from "@/schemaValidations/course.schema";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 interface AssetManagementProps {
   courseId: string;
@@ -120,49 +121,53 @@ export default function AssetManagement({
         </div>
       ) : (
         <div className="space-y-1.5">
-          {assets.map((asset) => (
-            <div
-              key={asset.id}
-              className="flex items-center gap-2 p-2 border rounded hover:bg-accent/20 transition-colors"
-            >
-              <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-move" />
-              <AssetTypeIcon type={asset.type} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-xs truncate">{asset.title}</span>
-                  <Badge variant="outline" className="text-[10px] py-0">
-                    {t(`AssetType.${asset.type}`)}
-                  </Badge>
+          {assets.map((asset) => {
+            const assetUrl = normalizePersistedMediaUrl(asset.url) || asset.url;
+
+            return (
+              <div
+                key={asset.id}
+                className="flex items-center gap-2 p-2 border rounded hover:bg-accent/20 transition-colors"
+              >
+                <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-move" />
+                <AssetTypeIcon type={asset.type} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-xs truncate">{asset.title}</span>
+                    <Badge variant="outline" className="text-[10px] py-0">
+                      {t(`AssetType.${asset.type}`)}
+                    </Badge>
+                  </div>
+                  <a
+                    href={assetUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-blue-600 hover:underline truncate block"
+                  >
+                    {assetUrl}
+                  </a>
                 </div>
-                <a
-                  href={asset.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-blue-600 hover:underline truncate block"
-                >
-                  {asset.url}
-                </a>
+                <div className="flex gap-0.5">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0"
+                    onClick={() => setEditAsset(asset)}
+                  >
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 text-destructive"
+                    onClick={() => setDeleteAsset(asset)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-0.5">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 w-6 p-0"
-                  onClick={() => setEditAsset(asset)}
-                >
-                  <Edit className="h-3 w-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 w-6 p-0 text-destructive"
-                  onClick={() => setDeleteAsset(asset)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -271,16 +276,21 @@ function AddAssetDialog({
 
   const onSubmit = async (data: CreateAssetBodyType) => {
     if (createMutation.isPending) return;
+    const body = {
+      ...data,
+      externalUrl: normalizePersistedMediaUrl(data.externalUrl) || data.externalUrl,
+    };
+
     try {
       await createMutation.mutateAsync({
         courseId,
         chapterId,
         lessonId,
-        body: data,
+        body,
       });
       toast({
         title: t("CreateSuccess"),
-        description: t("AssetCreated", { title: data.title }),
+        description: t("AssetCreated", { title: body.title }),
       });
       form.reset();
       onOpenChange(false);
@@ -402,20 +412,25 @@ function EditAssetDialog({
     defaultValues: {
       assetType: asset.type,
       title: asset.title,
-      externalUrl: asset.url,
+      externalUrl: normalizePersistedMediaUrl(asset.url) || asset.url,
       orderIndex: asset.order,
     },
   });
 
   const onSubmit = async (data: UpdateAssetBodyType) => {
     if (updateMutation.isPending) return;
+    const body = {
+      ...data,
+      externalUrl: normalizePersistedMediaUrl(data.externalUrl) || data.externalUrl,
+    };
+
     try {
       await updateMutation.mutateAsync({
         courseId,
         chapterId,
         lessonId,
         assetId: asset.id,
-        body: data,
+        body,
       });
       toast({
         title: t("UpdateSuccess"),

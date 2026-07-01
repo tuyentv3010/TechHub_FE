@@ -1,4 +1,46 @@
 {
+  "instructor": {
+    "eyebrow": "講師",
+    "avatarAlt": "{name}のプロフィール写真",
+    "yearsExperience": "{years}+ 年の経験",
+    "statsAria": "講師の統計",
+    "stats": {
+      "courses": "コース",
+      "students": "受講生",
+      "rating": "平均評価",
+      "years": "経験年数"
+    },
+    "about": {
+      "title": "紹介"
+    },
+    "skills": "スキル",
+    "languages": "言語",
+    "tabs": {
+      "courses": "コース",
+      "experience": "経験",
+      "education": "学歴",
+      "projects": "プロジェクト",
+      "certifications": "認定資格"
+    },
+    "empty": {
+      "courses": {
+        "title": "公開済みコースはまだありません",
+        "body": "この講師はまだコースを公開していません。しばらくしてからもう一度ご確認ください。"
+      }
+    },
+    "project": {
+      "openAria": "{name}プロジェクトを開く"
+    },
+    "cert": {
+      "verify": "確認",
+      "verifyAria": "{name}の認定資格を確認"
+    },
+    "course": {
+      "lessons": "{count} レッスン",
+      "hours": "{count} 時間",
+      "students": "{count} 受講生"
+    }
+  },
   "common": {
     "loading": "読み込み中...",
     "save": "保存",
@@ -31,6 +73,43 @@
     "profile": "プロフィール",
     "settings": "設定",
     "logout": "ログアウト"
+  },
+  "AdminNav": {
+    "instructorApplications": "講師応募",
+    "aiAnalytics": "AI分析",
+    "aiTraces": "AIトレース",
+    "aiProviders": "AIプロバイダー",
+    "dashboard": "ダッシュボード",
+    "revenue": "売上",
+    "payouts": "支払い",
+    "accounts": "アカウント",
+    "roles": "ロール",
+    "blogsAdmin": "ブログ",
+    "filesAdmin": "ファイル",
+    "permissions": "権限",
+    "manageCourses": "コース",
+    "learningPathsAdmin": "学習パス",
+    "settings": "設定",
+    "systemPreferences": "システム設定",
+    "curriculumStudio": "カリキュラムスタジオ",
+    "executiveConsole": "管理コンソール",
+    "architecturalCurator": "カリキュラム管理",
+    "commandDeck": "オペレーションデッキ",
+    "backToHomepage": "ホームへ戻る",
+    "session": "セッション",
+    "loadingNavigation": "ナビゲーションを読み込み中..."
+  },
+  "AdminShell": {
+    "workspaceEyebrow": "管理ワークスペース",
+    "workspaceDescription": "運用、コンテンツ、プラットフォーム管理",
+    "courseEyebrow": "カリキュラムスタジオ",
+    "courseDescription": "コース運営と公開のためのワークスペース",
+    "payoutEyebrow": "支払い管理",
+    "payoutDescription": "精算確認と支払いオペレーション",
+    "revenueEyebrow": "売上管理",
+    "revenueDescription": "分析、ポリシー、財務モニタリング",
+    "pathEyebrow": "学習パススタジオ",
+    "pathDescription": "パス設計とオーケストレーション用ワークスペース"
   },
   "homepage": {
     "welcomeBack": "おかえりなさい {name}さん！ 👋",
@@ -142,7 +221,100 @@
     "enrollError": "登録失敗",
     "enrollErrorMessage": "ログインして再度お試しください。",
     "free": "無料",
-    "startLearning": "学習開始"
+    "startLearning": "学習開始",
+    "viewDetails": "詳細を見る",
+    "bestseller": "ベストセラー",
+    "new": "新着",
+    "freeLearning": "無料で学習",
+    "discountedPrice": "割引価格",
+    "tuitionFee": "受講料",
+    "discountUntil": "{date}まで割引",
+    "lessonsCount": "{count} レッスン",
+    "hoursCount": "{count} 時間",
+    "studentsCount": "{count} 人の学習者",
+    "catalogHeroTitle": "目標に合うコースを見つけましょう",
+    "catalogHeroSubtitle": "スキル、レベル、言語、受講料で絞り込み、次に学ぶべきコースを選べます。",
+    "searchTitle": "何を学びたいですか？",
+    "searchDescription": "コース名、技術、伸ばしたいスキルで検索できます。",
+    "searchPlaceholder": "コース、スキル、技術を検索...",
+    "searchButton": "検索",
+    "allLevels": "すべてのレベル",
+    "allLanguages": "すべての言語",
+    "vietnamese": "ベトナム語",
+    "english": "英語",
+    "japanese": "日本語",
+    "sortNewest": "新着順",
+    "sortPopular": "学習者が多い順",
+    "sortRating": "評価が高い順",
+    "sortPriceAsc": "価格が低い順",
+    "sortPriceDesc": "価格が高い順",
+    "activeFilters": "{count} 件のフィルターを適用中",
+    "noFilters": "すべてのコースを表示中",
+    "advancedFilters": "フィルター",
+    "filterTitle": "コースフィルター",
+    "filterDescription": "受講料、スキル、タグでコースを絞り込みます。",
+    "priceRange": "受講料範囲",
+    "priceAll": "すべて",
+    "priceFree": "無料",
+    "priceUnder500": "$500未満",
+    "priceUnder1000": "$1000未満",
+    "pricePremium": "$500以上",
+    "clearFilters": "フィルターをクリア",
+    "appliedFilters": "適用中:",
+    "resultCount": "{count} 件のコースが見つかりました",
+    "emptyTitle": "コースが見つかりません",
+    "emptyDescription": "別のキーワード、レベル、または少ないフィルターでお試しください。",
+    "previous": "前へ",
+    "next": "次へ"
+  },
+  "CourseComments": {
+    "count": "{count} 件のコメント",
+    "sortNewest": "新しい順",
+    "sortOldest": "古い順",
+    "commentPlaceholder": "感想を共有してください...",
+    "insertEmoji": "絵文字を挿入",
+    "submitComment": "コメント",
+    "empty": "最初に感想を共有しましょう。",
+    "reply": "返信",
+    "replyPlaceholder": "返信を書く...",
+    "cancel": "キャンセル",
+    "submitReply": "返信",
+    "replyCount": "{count} 件の返信",
+    "emptyCommentTitle": "コメント内容を入力してください",
+    "emptyReplyTitle": "返信内容を入力してください",
+    "newCourseCommentTitle": "新しいコメント",
+    "newCourseCommentDescription": "このコースに新しいコメントが投稿されました。",
+    "newLessonCommentDescription": "このレッスンに新しいコメントが投稿されました。",
+    "submitCommentErrorTitle": "コメントを送信できません",
+    "submitReplyErrorTitle": "返信を送信できません",
+    "submitCommentSuccessTitle": "コメントを送信しました",
+    "submitReplySuccessTitle": "返信を送信しました",
+    "tryAgainDescription": "もう一度お試しください。",
+    "loginAndRetryDescription": "ログインしてもう一度お試しください。",
+    "lessonDiscussionTitle": "Q&A - {title}",
+    "openDiscussion": "Q&A を開く",
+    "userAvatarAlt": "ユーザー"
+  },
+  "VideoPlayer": {
+    "byInstructor": "{name} より",
+    "playShortcut": "再生 (K)",
+    "pauseShortcut": "一時停止 (K)",
+    "rewind10": "10秒戻る",
+    "forward10": "10秒進む",
+    "cannotSkipUnwatchedVideo": "未視聴部分にはスキップできません",
+    "muteShortcut": "ミュート (M)",
+    "unmuteShortcut": "ミュート解除 (M)",
+    "quality": "画質",
+    "captions": "字幕",
+    "captionsShortcut": "字幕 (C)",
+    "settings": "設定",
+    "playbackSpeed": "再生速度",
+    "speed": "速度",
+    "normalSpeed": "標準",
+    "on": "オン",
+    "off": "オフ",
+    "fullscreenShortcut": "全画面 (F)",
+    "exitFullscreenShortcut": "全画面を終了 (F)"
   },
   "NavItem": {
     "home": "ホーム",
@@ -262,11 +434,27 @@
   "Footer": {
     "title": "TechHub",
     "description": "トップのオンライン学習プラットフォーム",
-    "allRightsReserved": "All rights reserved",
+    "allRightsReserved": "すべての権利を保有します",
     "privacyPolicy": "プライバシーポリシー",
     "termsOfService": "利用規約",
     "ConditionService": "利用規約",
-    "AboutWe": "私たちについて"
+    "AboutWe": "私たちについて",
+    "logoAlt": "TechHub ロゴ",
+    "brandDescription": "TechHub は、テクノロジーを学ぶためのオンライン学習プラットフォームです。質の高いコース、個別最適化された学習パス、活発な学習コミュニティを提供します。",
+    "skillsTitle": "スキル",
+    "noSkillsAvailable": "スキルはまだありません。",
+    "quickLinksTitle": "クイックリンク",
+    "quickLinks": {
+      "about": "私たちについて",
+      "contact": "お問い合わせ",
+      "courses": "コース",
+      "learningPaths": "学習パス",
+      "blog": "ブログ・ニュース"
+    },
+    "latestPostsTitle": "最新記事",
+    "noLatestPosts": "最新記事はまだありません。",
+    "blogImageAlt": "ブログ画像",
+    "copyrightPrefix": "Copyright © {year}"
   },
   "HomePage": {
     "title": "TechHub - プログラミング学習プラットフォーム",
@@ -366,7 +554,170 @@
     "title": "プライバシーポリシー",
     "lastUpdated": "最終更新"
   },
+  "Legal": {
+    "backButton": {
+      "label": "戻る",
+      "ariaLabel": "前のページまたはホームページに戻る"
+    },
+    "finePrint": {
+      "prefix": "続行すると、次の内容に同意したものとみなされます:",
+      "termsOfService": "利用規約",
+      "and": "および",
+      "privacyPolicy": "プライバシーポリシー"
+    },
+    "terms": {
+      "metadataTitle": "利用規約 | TechHub",
+      "metadataDescription": "TechHub 学習プラットフォームの利用条件です。",
+      "eyebrow": "TechHub 法務",
+      "title": "利用規約",
+      "description": "この規約は、TechHub の利用方法、学習、支払い、コンテンツ利用、学習支援機能の利用に関する権利と責任を説明します。",
+      "lastUpdatedLabel": "最終更新",
+      "lastUpdated": "2026年5月11日",
+      "sections": [
+        {
+          "title": "アカウントとアクセス",
+          "paragraphs": [
+            "登録時には正確な情報を提供し、アカウント、パスワード、ログインセッション、およびアカウントで発生するすべての操作を適切に管理する必要があります。"
+          ],
+          "bullets": [
+            "学習プランまたはコースで許可されていない場合、アカウントを他人と共有しないでください。",
+            "不正アクセスやアカウント漏えいの疑いがある場合は TechHub に通知してください。"
+          ]
+        },
+        {
+          "title": "コースコンテンツ",
+          "paragraphs": [
+            "講師または TechHub が提供する教材、動画、課題、質問、学習パス、その他のコンテンツは、プラットフォーム内での個人学習を目的として提供されます。"
+          ],
+          "bullets": [
+            "許可なくコースコンテンツを複製、再配布、再販売、公開しないでください。",
+            "第三者の知的財産権を侵害しない範囲で、自分のメモや提出物を保持できます。"
+          ]
+        },
+        {
+          "title": "支払いと登録",
+          "paragraphs": [
+            "各コースの価格、特典、アクセス条件は支払い前に表示されます。取引は TechHub と連携する決済ゲートウェイまたはサービスパートナーによって処理される場合があります。"
+          ],
+          "bullets": [
+            "コースへのアクセスは、支払い状況、返金、または各プログラムのポリシーに依存する場合があります。",
+            "取引エラーや、請求済みで登録されていない場合は、確認のためサポートに連絡してください。"
+          ]
+        },
+        {
+          "title": "利用上のルール",
+          "paragraphs": [
+            "他の学習者、講師、プラットフォームの運用を尊重して TechHub を利用することに同意します。"
+          ],
+          "bullets": [
+            "スパム、詐欺、嫌がらせ、違法コンテンツ、他者のプライバシーを侵害する内容を投稿しないでください。",
+            "攻撃、スキャン、脆弱性の悪用、異常な自動化、サービス妨害を行わないでください。"
+          ]
+        },
+        {
+          "title": "AI 機能",
+          "paragraphs": [
+            "TechHub の一部機能では、コース推薦、内容説明、学習支援、下書き作成のために AI を使用する場合があります。AI の出力は補助的なものであり、確認が必要な場合があります。"
+          ],
+          "bullets": [
+            "重要な判断において、AI の出力を唯一の専門的助言として利用しないでください。",
+            "処理する権限がない機密情報、秘密情報、または他者のデータを入力しないでください。"
+          ]
+        },
+        {
+          "title": "停止または終了",
+          "paragraphs": [
+            "TechHub は、規約違反、セキュリティリスク、支払い不正、または他のユーザーに影響する行為を検出した場合、アクセスを一時停止または制限することがあります。"
+          ]
+        },
+        {
+          "title": "変更とお問い合わせ",
+          "paragraphs": [
+            "TechHub は、製品、運用、法的要件の変更を反映するために本規約を更新する場合があります。重要な変更がある場合、適切な方法で通知するよう努めます。",
+            "利用規約についてサポートが必要な場合は、TechHub のお問い合わせページからご連絡ください。"
+          ]
+        }
+      ]
+    },
+    "privacy": {
+      "metadataTitle": "プライバシーポリシー | TechHub",
+      "metadataDescription": "TechHub がユーザーデータを収集、利用、保護する方法です。",
+      "eyebrow": "TechHub プライバシー",
+      "title": "プライバシーポリシー",
+      "description": "このポリシーは、TechHub が収集するデータ、利用目的、共有される場合、および学習プラットフォーム利用時の選択肢を説明します。",
+      "lastUpdatedLabel": "最終更新",
+      "lastUpdated": "2026年5月11日",
+      "sections": [
+        {
+          "title": "収集する情報",
+          "paragraphs": [
+            "TechHub は、アカウント作成、コース運営、支払いサポート、学習体験のパーソナライズ、システム保護に必要な情報を収集します。"
+          ],
+          "bullets": [
+            "メール、ユーザー名、ロール、認証状態、提供されたプロフィール画像などのアカウント情報。",
+            "登録コース、進捗、提出物、テスト結果、学習パス、プラットフォーム内の操作などの学習データ。",
+            "端末、ブラウザ、IP アドレス、ログインセッションログ、セキュリティイベントなどの技術データ。",
+            "支払い確認、照合、ユーザーサポートに必要な範囲の取引情報。"
+          ]
+        },
+        {
+          "title": "情報の利用方法",
+          "bullets": [
+            "TechHub の学習機能を提供、維持、改善するため。",
+            "ログイン、認証、コース登録、支払い、カスタマーサポートを処理するため。",
+            "コース推薦、学習パス、通知、コンテンツ体験をパーソナライズするため。",
+            "不正、悪用、技術的エラー、セキュリティリスクを検出するため。"
+          ]
+        },
+        {
+          "title": "情報の共有",
+          "paragraphs": [
+            "TechHub は個人データを販売しません。プラットフォーム運営に必要な場合、または有効な要求がある場合に限り情報を共有します。"
+          ],
+          "bullets": [
+            "インフラ、ホスティング、分析、メール、決済、運用支援の提供者。",
+            "コース、学習進捗、提出物、サポート依頼を処理するために必要な講師または管理者。",
+            "法律で求められる場合、または TechHub とユーザーの正当な権利を保護するための権限ある機関。"
+          ]
+        },
+        {
+          "title": "Cookie と類似技術",
+          "paragraphs": [
+            "TechHub は、ログインセッションの維持、表示や言語設定の保存、パフォーマンス改善のために Cookie またはブラウザストレージを使用する場合があります。"
+          ]
+        },
+        {
+          "title": "保存とデータ保護",
+          "paragraphs": [
+            "当社は、運用、法務、セキュリティ、ユーザーサポートに必要な期間データを保持します。TechHub は、不正アクセス、紛失、悪用のリスクを減らすため、合理的な技術的および組織的対策を講じます。"
+          ]
+        },
+        {
+          "title": "ユーザーの選択肢",
+          "bullets": [
+            "プロフィールまたは設定ページで一部のアカウント情報を更新できます。",
+            "システムおよび規制の範囲内で、データへのアクセス、修正、削除に関するサポートを依頼できます。",
+            "個人端末でない場合は、ログアウトしてブラウザのセッションデータを削除できます。"
+          ]
+        },
+        {
+          "title": "AI 機能と学習データ",
+          "paragraphs": [
+            "AI 機能を使用する場合、TechHub は入力内容と関連する学習コンテキストを処理し、回答または推薦を生成することがあります。権限がない限り、機密情報、秘密情報、または他者の個人データを入力しないでください。"
+          ]
+        },
+        {
+          "title": "ポリシーの更新とお問い合わせ",
+          "paragraphs": [
+            "このポリシーは、TechHub の製品、データ処理、またはコンプライアンス要件の変更に応じて更新される場合があります。重要な変更がある場合、適切な方法で通知するよう努めます。",
+            "プライバシーまたは個人データについて質問がある場合は、TechHub のお問い合わせページからご連絡ください。"
+          ]
+        }
+      ]
+    }
+  },
   "ManageAccount": {
+    "PageEyebrow": "Admin / アカウント",
     "Title": "アカウント管理",
     "Description": "ユーザーアカウントと権限を管理",
     "CreateAccount": "アカウント作成",
@@ -417,7 +768,33 @@
     "NoRoleSelected": "役割が選択されていません",
     "RoleNote": "役割を変更するには管理者に連絡してください",
     "FilterEmails": "メールで絞り込み",
-    "FilterName": "名前で絞り込み"
+    "FilterName": "名前で絞り込み",
+    "PermissionOverrides": {
+      "Title": "\u6a29\u9650\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9",
+      "PermissionCount": "{count} \u4ef6\u306e\u6a29\u9650",
+      "SearchPlaceholder": "\u6a29\u9650\u3092\u691c\u7d22",
+      "Refreshing": "\u66f4\u65b0\u4e2d...",
+      "PageLoadNote": "\u3053\u306e\u30da\u30fc\u30b8\u306e\u307f\u30b5\u30fc\u30d0\u30fc\u304b\u3089\u8aad\u307f\u8fbc\u307e\u308c\u3066\u3044\u307e\u3059\u3002",
+      "PageStatus": "{page} / {totalPages} \u30da\u30fc\u30b8",
+      "Loading": "\u6a29\u9650\u3092\u8aad\u307f\u8fbc\u307f\u4e2d...",
+      "CatalogLoadTitle": "\u6a29\u9650\u30ab\u30bf\u30ed\u30b0\u3092\u8aad\u307f\u8fbc\u3081\u307e\u305b\u3093\u3067\u3057\u305f\u3002",
+      "CatalogLoadFallback": "\u5c11\u3057\u6642\u9593\u3092\u304a\u3044\u3066\u518d\u8a66\u884c\u3057\u3066\u304f\u3060\u3055\u3044\u3002\u30a2\u30ab\u30a6\u30f3\u30c8\u6a29\u9650\u306e\u5909\u66f4\u306f\u4fdd\u5b58\u3055\u308c\u3066\u3044\u307e\u305b\u3093\u3002",
+      "CatalogLoadHint": "\u554f\u984c\u304c\u7d9a\u304f\u5834\u5408\u306f\u3001\u30b7\u30b9\u30c6\u30e0\u7ba1\u7406\u8005\u306b\u9023\u7d61\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+      "HttpStatus": "HTTP {status}",
+      "NoPermissions": "\u6a29\u9650\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3002",
+      "AllowedOverride": "\u8a31\u53ef\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9",
+      "DeniedOverride": "\u62d2\u5426\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9",
+      "AllowedByRole": "\u30ed\u30fc\u30eb\u306b\u3088\u308a\u8a31\u53ef",
+      "DeniedByRole": "\u30ed\u30fc\u30eb\u306b\u3088\u308a\u62d2\u5426",
+      "AllowToast": "\u6a29\u9650\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9\u3092\u8a31\u53ef\u306b\u8a2d\u5b9a\u3057\u307e\u3057\u305f\u3002",
+      "DenyToast": "\u6a29\u9650\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9\u3092\u62d2\u5426\u306b\u8a2d\u5b9a\u3057\u307e\u3057\u305f\u3002",
+      "ResetToast": "\u6a29\u9650\u30aa\u30fc\u30d0\u30fc\u30e9\u30a4\u30c9\u3092\u30ea\u30bb\u30c3\u30c8\u3057\u307e\u3057\u305f\u3002",
+      "Allow": "\u8a31\u53ef",
+      "Deny": "\u62d2\u5426",
+      "Reset": "\u30ea\u30bb\u30c3\u30c8",
+      "Previous": "\u524d\u3078",
+      "Next": "\u6b21\u3078"
+    }
   },
   "DropdownAvatar": {
     "UnknownUser": "不明なユーザー",
@@ -455,7 +832,491 @@
     "Of": "/"
   }
   ,
+  "ManageRole": {
+    "PageEyebrow": "Admin / 役割",
+    "Title": "役割管理",
+    "Description": "システム全体の役割定義と権限割り当てを管理します。",
+    "NameColumn": "名前",
+    "DescriptionColumn": "説明",
+    "StatusColumn": "状態",
+    "PermissionCountColumn": "権限",
+    "PermissionCount": "{count} 件の権限",
+    "ActionsColumn": "操作",
+    "SearchPlaceholder": "役割、説明、権限を検索...",
+    "AddRole": "役割を追加",
+    "EditRole": "役割を編集",
+    "AddRoleDescription": "新しい役割を作成し、権限を割り当てます。",
+    "EditRoleDescription": "役割情報と割り当て済み権限を更新します。",
+    "NameLabel": "名前",
+    "NamePlaceholder": "ADMIN",
+    "DescriptionLabel": "説明",
+    "DescriptionPlaceholder": "システム管理者",
+    "StatusLabel": "状態",
+    "PermissionsLabel": "権限",
+    "SelectedCount": "{count} 件選択中",
+    "UpdateRole": "役割を更新",
+    "DeleteDialogTitle": "役割を削除",
+    "DeleteDialogDescription": "役割「{name}」を削除してもよろしいですか。この操作は元に戻せません。",
+    "DeleteSuccess": "役割を削除しました",
+    "DeleteFailed": "役割を削除できませんでした",
+    "RoleDeleted": "役割「{name}」を削除しました。",
+    "RoleCreated": "役割を作成しました。",
+    "RoleUpdated": "役割を更新しました。",
+    "CreateFailed": "役割を作成できませんでした。",
+    "UpdateFailed": "役割を更新できませんでした。",
+    "NoResults": "役割が見つかりません。",
+    "ErrorLabel": "エラー",
+    "UnknownError": "不明なエラーが発生しました。",
+    "Edit": "編集",
+    "Delete": "削除",
+    "Cancel": "キャンセル",
+    "Continue": "続行",
+    "Active": "有効",
+    "Inactive": "無効"
+  },
+  "ManagePermission": {
+    "PageEyebrow": "Admin / 権限",
+    "Title": "権限マトリクス",
+    "Description": "ポリシーモデルを変更せずに、エンドポイント単位のアクセス権限を管理します。",
+    "NameColumn": "名前",
+    "DescriptionColumn": "説明",
+    "MethodColumn": "Method",
+    "UrlColumn": "URL",
+    "ResourceColumn": "Resource",
+    "ActionsColumn": "操作",
+    "SearchPlaceholder": "権限、URL、method、resourceを検索...",
+    "ExpandGroup": "権限グループを開く",
+    "CollapseGroup": "権限グループを閉じる",
+    "FilterMethod": "Methodで絞り込み",
+    "FilterResource": "Resourceで絞り込み",
+    "AllOption": "すべて",
+    "AddPermission": "権限を追加",
+    "EditPermission": "権限を編集",
+    "UpdatePermission": "権限を更新",
+    "AddPermissionDescription": "アクセス制御システム用の新しい権限を作成します。",
+    "EditPermissionDescription": "アクセス制御システム内の権限情報を更新します。",
+    "NameLabel": "名前",
+    "NamePlaceholder": "USER_READ_ALL",
+    "DescriptionLabel": "説明",
+    "DescriptionPlaceholder": "全ユーザーを取得",
+    "MethodLabel": "Method",
+    "MethodPlaceholder": "Methodを選択",
+    "ResourceLabel": "Resource",
+    "ResourcePlaceholder": "Resourceを選択",
+    "UrlLabel": "URL",
+    "UrlPlaceholder": "/api/users",
+    "StatusLabel": "状態",
+    "Active": "有効",
+    "Inactive": "無効",
+    "DeleteDialogTitle": "権限を削除",
+    "DeleteDialogDescription": "権限「{name}」を削除してもよろしいですか。この操作は元に戻せません。",
+    "DeleteSuccess": "権限を削除しました",
+    "DeleteFailed": "権限を削除できませんでした",
+    "PermissionDeleted": "権限「{name}」を削除しました。",
+    "PermissionCreated": "権限を作成しました。",
+    "PermissionUpdated": "権限を更新しました。",
+    "CreateFailed": "権限を作成できませんでした。",
+    "UpdateFailed": "権限を更新できませんでした。",
+    "NoResults": "権限が見つかりません。",
+    "Loading": "読み込み中...",
+    "ErrorLabel": "エラー",
+    "UnknownError": "不明なエラーが発生しました。",
+    "Edit": "編集",
+    "Delete": "削除",
+    "Cancel": "キャンセル",
+    "Continue": "続行"
+  },
+  "ManageFile": {
+    "PageEyebrow": "Admin / ファイル",
+    "Title": "ファイル管理",
+    "Description": "共有メディアライブラリの閲覧、アップロード、整理を行います。",
+    "TotalFiles": "総ファイル数",
+    "TotalSize": "総容量",
+    "Images": "画像",
+    "Videos": "動画",
+    "SearchPlaceholder": "ファイルを検索...",
+    "AllFolders": "すべてのフォルダ",
+    "AllFiles": "すべてのファイル",
+    "Upload": "アップロード",
+    "Cancel": "キャンセル",
+    "Create": "作成",
+    "FolderDialogTitle": "フォルダを選択",
+    "FolderDialogDescription": "ファイルを絞り込むフォルダを選択するか、新しいフォルダを作成します。",
+    "CreateFolder": "フォルダを作成",
+    "FolderNamePlaceholder": "フォルダ名...",
+    "SubfolderNamePlaceholder": "サブフォルダ名...",
+    "CreateFolderSuccess": "フォルダを作成しました。",
+    "CreateFolderError": "フォルダを作成できませんでした。",
+    "CreateSubfolderSuccess": "サブフォルダを作成しました。",
+    "CreateSubfolderError": "サブフォルダを作成できませんでした。",
+    "NoFolders": "フォルダはまだありません。",
+    "FolderFileCount": "（{count} 件）",
+    "UploadDialogTitle": "ファイルをアップロード",
+    "UploadDialogDescription": "アップロードするファイルを選択してください。画像、動画、ドキュメント、音声に対応しています。",
+    "SelectFilesLabel": "ファイルを選択",
+    "FileListLabel": "選択済みファイル（{count}）",
+    "TagsHint": "（カンマ区切り）",
+    "TagsPlaceholder": "例: blog, 2024, featured",
+    "DescriptionPlaceholder": "ファイルの説明を入力...",
+    "UploadTargetHint": "ファイルは選択したフォルダにアップロードされます。",
+    "UploadRequired": "アップロードするファイルを少なくとも1つ選択してください。",
+    "MissingUserInfo": "現在のユーザー情報を取得できませんでした。",
+    "UploadCompleted": "{count} 件のファイルをアップロードしました。",
+    "UploadFailed": "ファイルをアップロードできませんでした。",
+    "Uploading": "アップロード中...",
+    "PreviewColumn": "プレビュー",
+    "FileNameColumn": "ファイル名",
+    "TypeColumn": "種類",
+    "SizeColumn": "サイズ",
+    "FolderColumn": "フォルダ",
+    "CreatedAtColumn": "作成日",
+    "Loading": "読み込み中...",
+    "EmptyState": "ファイルがありません。",
+    "RootFolder": "ルート",
+    "Actions": "操作",
+    "PreviewAction": "詳細を見る",
+    "DownloadAction": "ダウンロード",
+    "DeleteAction": "削除",
+    "DeleteDialogTitle": "ファイルを削除",
+    "DeleteDialogDescription": "ファイル「{name}」を削除してもよろしいですか。この操作は元に戻せません。",
+    "PreviewDialogDescription": "ファイル詳細",
+    "BrowserUnsupportedVideo": "このブラウザは動画再生に対応していません。",
+    "BrowserUnsupportedAudio": "このブラウザは音声再生に対応していません。",
+    "DocumentLabel": "ドキュメント",
+    "AttachmentLabel": "添付ファイル",
+    "DocumentPreviewHint": "ファイル情報を確認するか、ダウンロードして完全な内容を開いてください。",
+    "FileTypeLabel": "ファイル種類",
+    "SizeLabel": "サイズ",
+    "DimensionsLabel": "寸法",
+    "DurationLabel": "長さ",
+    "FormatLabel": "形式",
+    "DescriptionLabel": "説明",
+    "TagsLabel": "タグ",
+    "NotAvailable": "N/A",
+    "PermissionDeniedTitle": "権限がありません",
+    "DeletePermissionDenied": "ファイルを削除する権限がありません。",
+    "DownloadPermissionDenied": "ファイルをダウンロードする権限がありません。",
+    "UploadPermissionDenied": "ファイルをアップロードする権限がありません。",
+    "SuccessTitle": "成功",
+    "ErrorTitle": "エラー",
+    "DeleteSuccess": "ファイルを削除しました。",
+    "DeleteError": "ファイルを削除できませんでした。",
+    "DownloadSuccess": "ファイルをダウンロードしました。",
+    "DownloadError": "ファイルをダウンロードできませんでした。",
+    "FileType": {
+      "IMAGE": "画像",
+      "VIDEO": "動画",
+      "DOCUMENT": "ドキュメント",
+      "AUDIO": "音声",
+      "OTHER": "ファイル"
+    },
+    "ProcessingStatus": {
+      "READY": "準備完了",
+      "PROCESSING": "処理中",
+      "FAILED": "失敗"
+    }
+  },
+  "ManageRevenue": {
+    "NotAvailable": "N/A",
+    "UnknownUser": "不明なユーザー",
+    "UnknownCourse": "不明なコース",
+    "PaymentRecord": "決済レコード",
+    "PageEyebrow": "収益コントロール",
+    "Title": "収益分析",
+    "DescriptionAdmin": "売上、注文、プラットフォーム取り分をリアルタイムで監視します。",
+    "DescriptionInstructor": "コース収益を日次で追跡し、現在の分配比率を確認します。",
+    "RoleLabel": "ロール",
+    "InstructorIdLabel": "講師ID",
+    "Unauthenticated": "認証を待機しています。現在のロールが確定すると収益ダッシュボードが読み込まれます。",
+    "FilterTitle": "収益フィルター",
+    "FilterDescription": "日付範囲、講師、財務データの更新条件を調整します。",
+    "InstructorIdPlaceholder": "講師ID",
+    "Reset": "リセット",
+    "RefreshData": "データを更新",
+    "SummaryGrossRevenue": "総売上",
+    "SummarySystemShare": "システム取り分",
+    "SummaryInstructorRevenue": "講師収益",
+    "SummarySuccessfulOrders": "成功した注文",
+    "SummaryItemsSold": "販売済みアイテム",
+    "ActivePolicyTitle": "有効な収益ポリシー",
+    "ActivePolicyDescription": "payment-service により解決された現在のポリシーです。",
+    "ScopeLabel": "スコープ",
+    "InstructorRateLabel": "講師比率",
+    "AdminRateLabel": "管理者比率",
+    "VersionLabel": "バージョン",
+    "Updating": "更新中...",
+    "CreatePolicyTitle": "収益ポリシーを作成",
+    "CreatePolicyDescription": "スコープと有効期間に応じて新しい分配ポリシーを作成します。",
+    "ScopeField": "スコープ",
+    "ScopeGlobal": "グローバル",
+    "ScopeInstructor": "講師",
+    "ScopeCourse": "コース",
+    "InstructorRateField": "講師比率 (0-1)",
+    "EffectiveFrom": "有効開始",
+    "EffectiveTo": "有効終了（任意）",
+    "CreatePolicy": "ポリシーを作成",
+    "CreatingPolicy": "作成中...",
+    "RevenueByDayTitle": "日次収益",
+    "RevenueByDayDescription": "analytics-service から取得した gross、講師、管理者の収益です。",
+    "RevenueSplitTitle": "収益分配",
+    "RevenueSplitDescriptionAdmin": "analytics の予測に基づく分配比率です。",
+    "RevenueSplitDescriptionInstructor": "現在の有効ポリシーに基づく推定分配です。",
+    "RecentTransactionsTitle": "最近の取引",
+    "RecentTransactionsDescription": "最新の取引一覧です。行を開くと決済詳細を確認できます。",
+    "TransactionSearchPlaceholder": "取引、ユーザー、コースを検索...",
+    "AllStatuses": "すべてのステータス",
+    "StatusCompleted": "完了",
+    "StatusSuccess": "成功",
+    "StatusPending": "保留",
+    "StatusProcessing": "処理中",
+    "StatusFailed": "失敗",
+    "StatusCancelled": "キャンセル済み",
+    "IdColumn": "ID",
+    "UserColumn": "ユーザー",
+    "CourseColumn": "コース",
+    "GrossColumn": "Gross",
+    "SplitColumn": "分配",
+    "StatusColumn": "ステータス",
+    "ActionColumn": "操作",
+    "NoTransactions": "現在のフィルターに一致する取引はありません。",
+    "View": "表示",
+    "PageSummary": "ページ {page} / {total} - 合計 {count} 件",
+    "TopPerformersTitle": "上位パフォーマンス",
+    "TopPerformersDescription": "現在のフィルター内で最も売上の高い日です。",
+    "NoTopData": "収益データはまだありません。",
+    "OrdersCount": "{count} 件の注文",
+    "DailyProjectionTitle": "日次予測",
+    "DailyProjectionDescription": "analytics-service から取得した日次予測テーブルです。",
+    "PolicyScopeLabel": "ポリシースコープ",
+    "LoadedPolicies": "スコープ {scope} のポリシーを {count} 件読み込みました",
+    "Refreshing": "更新中...",
+    "DateColumn": "日付",
+    "InstructorColumn": "講師",
+    "AdminColumn": "管理者",
+    "OrdersColumn": "注文数",
+    "PolicyColumn": "ポリシー",
+    "LoadingData": "データを読み込み中...",
+    "NoDataInRange": "選択した期間にはデータがありません。",
+    "DashboardLoadError": "収益ダッシュボードを読み込めませんでした。後でもう一度お試しください。",
+    "TransactionsLoadError": "取引一覧を読み込めませんでした。決済履歴エンドポイントとアクセス権限を確認してください。",
+    "TransactionDetailTitle": "取引詳細",
+    "CopyTransactionIdTitle": "取引IDをコピー",
+    "CopyPayloadTitle": "ペイロードをコピー",
+    "DetailLoadError": "取引詳細を読み込めませんでした。決済詳細エンドポイントがまだ利用できない可能性があります。",
+    "EventTimelineTitle": "イベントタイムライン",
+    "TimelineCreated": "作成",
+    "TimelinePaid": "支払い済み",
+    "TimelineCompleted": "完了",
+    "PaymentMethodLabel": "支払い方法",
+    "TotalAmountLabel": "合計金額",
+    "NetAmountHint": "金額は payment detail に基づいて反映されています。",
+    "BuyerInfoTitle": "購入者情報",
+    "CopyUserId": "ユーザーIDをコピー",
+    "PurchasedItemsTitle": "購入済みアイテム",
+    "ItemTitleColumn": "アイテム名",
+    "GrossPriceColumn": "Gross 価格",
+    "RevenueSplitBreakdownTitle": "収益分配の内訳",
+    "InstructorEarnings": "講師収益 ({rate}%)",
+    "PlatformFee": "プラットフォーム手数料 ({rate}%)",
+    "SplitSourceLabel": "分配ソース",
+    "SplitSourceFromDetail": "payment detail から取得",
+    "SplitSourceEstimated": "有効ポリシーから推定",
+    "SplitSourceUnavailable": "利用不可",
+    "RawPayloadTitle": "生ペイロード",
+    "CopyTransactionId": "取引IDをコピー",
+    "OpenRevenuePage": "収益ページを開く",
+    "RefreshErrorTitle": "データを更新できませんでした",
+    "RefreshErrorDescription": "収益ダッシュボードを更新できませんでした。",
+    "InvalidRateTitle": "無効な比率です",
+    "InvalidRateDescription": "講師比率は 0 から 1 の間である必要があります。",
+    "MissingInstructorTitle": "講師IDが不足しています",
+    "MissingInstructorDescription": "講師スコープには instructor ID が必要です。",
+    "MissingCourseTitle": "コースIDが不足しています",
+    "MissingCourseDescription": "コーススコープには course ID が必要です。",
+    "CreatePolicySuccessTitle": "ポリシーを作成しました",
+    "CreatePolicySuccessDescription": "新しい収益分配ポリシーが選択した有効期間で適用されました。",
+    "CreatePolicyErrorTitle": "ポリシーを作成できませんでした",
+    "CreatePolicyErrorDescription": "入力内容を確認して、もう一度お試しください。"
+  },
+  "ManagePayout": {
+    "NotAvailable": "N/A",
+    "PageEyebrow": "支払いコントロール",
+    "Title": "支払い",
+    "Description": "支払いリクエストの確認、バッチ作成、sandbox settlement の追跡を行います。",
+    "Unauthenticated": "認証を待機しています。現在のロールが確定すると支払いダッシュボードが読み込まれます。",
+    "CreateBatch": "バッチを作成",
+    "SummaryTotalEarned": "累計収益",
+    "SummaryPendingPayout": "保留中の支払い",
+    "SummaryAvailableBalance": "利用可能残高",
+    "SummaryOpenRequests": "未処理リクエスト",
+    "UpdatedProjection": "payout-service の予測から更新",
+    "BalanceTitleAdmin": "講師 {id}",
+    "BalanceTitleInstructor": "自分の支払い残高",
+    "BalanceDescriptionAdmin": "講師を選択して残高を確認し、支払いリクエストを審査します。",
+    "BalanceDescriptionInstructor": "利用可能残高を確認し、sandbox データから支払いリクエストを作成します。",
+    "LifetimeEarned": "累計収益",
+    "CurrentPending": "現在の保留額",
+    "Available": "利用可能",
+    "InstructorIdPlaceholder": "講師ID",
+    "Sending": "送信中...",
+    "RequestPayout": "支払いを申請",
+    "AmountPlaceholder": "金額",
+    "NotePlaceholder": "finance / admin 向けメモ",
+    "Submit": "送信",
+    "BatchManagementTitle": "バッチ管理",
+    "BatchManagementDescription": "月次および手動 settlement バッチです。",
+    "NoBatches": "支払いバッチはまだありません。",
+    "ViewAllBatches": "すべてのバッチを表示",
+    "AttentionRequired": "要対応",
+    "AttentionDescription": "{count} 件の支払いリクエストが審査待ちです。講師への影響を避けるため手動で処理してください。",
+    "QueueTitle": "支払いキュー",
+    "QueueDescription": "リクエストを確認し、承認・却下・支払い済みに更新します。",
+    "AllRequests": "すべてのリクエスト",
+    "PendingOnly": "保留のみ",
+    "InstructorColumn": "講師",
+    "RequestedColumn": "申請額",
+    "BatchColumn": "バッチ",
+    "DateColumn": "日付",
+    "StatusColumn": "ステータス",
+    "ActionColumn": "操作",
+    "NoRequests": "現在のフィルターに一致する支払いリクエストはありません。",
+    "NoNoteProvided": "メモなし",
+    "Unassigned": "未割り当て",
+    "LedgerTitle": "取引レジャー",
+    "LedgerDescription": "リクエストとバッチから生成された支払いイベントです。",
+    "Refresh": "更新",
+    "RefColumn": "参照",
+    "TypeColumn": "種別",
+    "DescriptionColumn": "説明",
+    "AmountColumn": "金額",
+    "TimestampColumn": "時刻",
+    "NoLedgerRows": "レジャー行はまだありません。",
+    "BatchBuilderTitle": "バッチビルダー",
+    "BatchBuilderDescription": "sandbox モードで月次または手動の支払いバッチを作成します。",
+    "MonthlyBatchTitle": "月次バッチ",
+    "MonthlyBatchDescription": "今月分のバッチを自動作成します。",
+    "PeriodLabel": "期間",
+    "CreateMonthlyBatch": "月次バッチを作成",
+    "CreateMonthlyBatchLoading": "作成中...",
+    "ManualBatchTitle": "手動バッチ",
+    "ManualBatchDescription": "臨時 settlement 用のカスタム日付範囲を選択します。",
+    "BatchNamePlaceholder": "バッチ名",
+    "CreateManualBatch": "手動バッチを作成",
+    "CreateManualBatchLoading": "作成中...",
+    "DetailTitle": "支払いリクエスト詳細",
+    "DetailDescription": "リクエスト、承認メモ、支払い参照情報を確認します。",
+    "CreatedLabel": "作成",
+    "ApprovedLabel": "承認",
+    "PaidLabel": "支払い済み",
+    "MethodLabel": "方法",
+    "TypeLabel": "タイプ",
+    "RequestedAmountLabel": "申請金額",
+    "ReviewNoteLabel": "審査メモ",
+    "PaymentReferenceLabel": "支払い参照",
+    "NoReviewNote": "審査メモなし",
+    "NoRequestNote": "リクエストメモはありません。",
+    "RequestNotesTitle": "リクエストメモ",
+    "RequestNotesDescription": "支払いワークフロー内の審査メモと settlement メモです。",
+    "AddReviewNotePlaceholder": "審査メモを追加",
+    "PaymentReferencePlaceholder": "支払い済みにするための参照番号",
+    "Reject": "却下",
+    "Approve": "承認",
+    "IssueInvoiceAndTransfer": "請求書発行して送金",
+    "MarkPaid": "支払い済みにする",
+    "OverviewStatsTitle": "概要ステータス",
+    "OverviewStatsDescription": "現在の支払いワークフローの運用状況を素早く確認します。",
+    "ApprovedRequestsCount": "{count} 件の承認済みリクエスト",
+    "RequestedSum": "申請合計",
+    "LoadedRequests": "読み込み済みリクエスト",
+    "BatchCount": "バッチ数",
+    "FooterBanner": "Settlement は sandbox モードで実行されています。支払い済みは監査用アクションです。",
+    "RefreshAll": "すべて更新",
+    "SandboxWire": "Sandbox Wire",
+    "ManualSettlement": "手動 settlement",
+    "InvoiceListTitle": "支払い請求書",
+    "InvoiceListDescription": "各支払いリクエストごとに生成された請求書と送金参照を表示します。",
+    "NoInvoices": "支払い請求書はまだありません。",
+    "InvoiceLabel": "請求書番号",
+    "InvoiceStatusLabel": "請求書ステータス",
+    "DownloadInvoicePdf": "PDFをダウンロード",
+    "DownloadingInvoice": "ダウンロード中...",
+    "DownloadInvoiceSuccessTitle": "請求書をダウンロードしました",
+    "DownloadInvoiceErrorTitle": "請求書をダウンロードできませんでした",
+    "AutoTransferMode": "自動送金",
+    "InvoiceDrivenSettlement": "請求書ベース settlement",
+    "RequestForInstructor": "講師 {id} の支払いリクエスト",
+    "ApprovedDescription": "支払いリクエストが承認されました",
+    "PaidVia": "{reference} 経由で支払い",
+    "MarkedAsPaid": "支払い済みに設定",
+    "BatchDescription": "{name} • {count} 件のリクエスト",
+    "CopyRequestIdSuccess": "リクエストIDをコピーしました",
+    "RefreshErrorTitle": "支払いデータを読み込めませんでした",
+    "RefreshErrorDescription": "しばらくしてからもう一度お試しください。",
+    "InvalidAmountTitle": "無効な金額です",
+    "InvalidAmountDescription": "0 より大きい金額を入力してください。",
+    "ExceedAvailableTitle": "利用可能残高を超えています",
+    "ExceedAvailableDescription": "申請金額は利用可能残高を超えることはできません。",
+    "CreateRequestSuccessTitle": "支払いリクエストを作成しました",
+    "CreateRequestSuccessDescription": "新しい支払いリクエストが送信されました。",
+    "CreateRequestErrorTitle": "支払いリクエストを作成できませんでした",
+    "CreateRequestErrorDescription": "入力内容を確認して、もう一度お試しください。",
+    "ApproveSuccessTitle": "支払いリクエストを承認しました",
+    "ApproveErrorTitle": "支払いリクエストを承認できませんでした",
+    "RejectSuccessTitle": "支払いリクエストを却下しました",
+    "RejectErrorTitle": "支払いリクエストを却下できませんでした",
+    "MissingPaymentReferenceTitle": "支払い参照が不足しています",
+    "MissingPaymentReferenceDescription": "支払い済みにする前に参照番号を入力してください。",
+    "MarkPaidSuccessTitle": "支払い済みに更新しました",
+    "MarkPaidErrorTitle": "支払い済みに更新できませんでした",
+    "MonthlyBatchSuccessTitle": "月次バッチを作成しました",
+    "MonthlyBatchErrorTitle": "月次バッチを作成できませんでした",
+    "MissingDateRangeTitle": "日付範囲が不足しています",
+    "MissingDateRangeDescription": "手動バッチには開始日と終了日の両方が必要です。",
+    "ManualBatchSuccessTitle": "手動バッチを作成しました",
+    "ManualBatchErrorTitle": "手動バッチを作成できませんでした"
+  },
+  "ManageInstructorApplication": {
+    "Title": "講師応募",
+    "Description": "AIでスキャンしたCVを確認し、新しい講師を承認します。",
+    "ListLoadError": "講師応募一覧を読み込めませんでした",
+    "DetailLoadError": "応募詳細を読み込めませんでした",
+    "ApproveSuccess": "応募を承認しました。ユーザーにINSTRUCTORロールが付与されました。",
+    "ApproveError": "応募を承認できませんでした",
+    "RejectRequiresReason": "応募を却下するには理由が必要です",
+    "RejectSuccess": "応募を却下しました",
+    "RejectError": "応募を却下できませんでした",
+    "StatusAll": "すべて",
+    "StatusPending": "保留中",
+    "StatusApproved": "承認済み",
+    "StatusRejected": "却下済み",
+    "StatusProcessed": "処理済み",
+    "StatusFailed": "失敗",
+    "ApplicantColumn": "応募者",
+    "EmailColumn": "メール",
+    "SubmittedAtColumn": "応募日時",
+    "AiColumn": "AI",
+    "AdminColumn": "Admin",
+    "ActionColumn": "操作",
+    "Loading": "読み込み中...",
+    "NoApplications": "応募はまだありません。",
+    "NotAvailable": "N/A",
+    "View": "表示",
+    "DetailTitle": "応募詳細",
+    "ApplicantLabel": "応募者",
+    "OriginalCvLabel": "元のCV",
+    "OpenCv": "新しいタブでCVを開く",
+    "AiStatusLabel": "AIステータス",
+    "AiErrorPrefix": "AIエラー: {error}",
+    "AiExtractedDataLabel": "AI抽出データ",
+    "ReviewNotePlaceholder": "承認メモ / 却下理由",
+    "ApproveButton": "承認（INSTRUCTORロール付与）",
+    "Reject": "却下",
+    "ApproveBlockedByAi": "AIによるCVスキャンが完了するまで承認できません。",
+    "AlreadyProcessed": "応募はすでに{status}です。メモ: {note}",
+    "NoNote": "メモなし"
+  },
   "ManageBlog": {
+    "PageEyebrow": "Admin / ブログ",
     "Title": "ブログ管理",
     "Description": "ブログの作成・編集・公開を管理",
     "ID": "ID",
@@ -495,9 +1356,56 @@
     "TagsPlaceholder": "入力してEnterキーでタグを追加",
     "ContentPlaceholder": "内容を書き始めてください...（コンピュータまたはURLから画像と動画アップロード対応）"
   },
+  "Submission": {
+    "essayHeading": "記述式の課題",
+    "count": "{count} 件",
+    "questionLabel": "問 {index}.",
+    "answerPlaceholder": "回答を入力してください...",
+    "submit": "提出",
+    "resubmit": "再提出",
+    "statusPending": "採点待ち",
+    "statusGraded": "採点済み",
+    "instructorFeedback": "講師からのフィードバック",
+    "hintGraded": "再度採点を受けるために再提出できます。",
+    "hintPending": "提出済み — 採点待ちです。引き続き更新できます。",
+    "hintNew": "回答は講師が手動で採点します。",
+    "emptyContentTitle": "内容がありません",
+    "emptyContentDesc": "提出する前に回答を入力してください。",
+    "submitSuccessTitle": "提出しました",
+    "submitSuccessDesc": "回答が講師に送信されました。",
+    "submitErrorTitle": "提出に失敗しました",
+    "genericError": "エラーが発生しました。",
+    "viewSubmissions": "提出物を見る",
+    "dialogTitle": "受講者の提出物",
+    "loading": "提出物を読み込み中...",
+    "empty": "まだ誰も提出していません。",
+    "selected": "選択した回答:",
+    "correctAnswer": "正解:",
+    "blank": "(空欄)",
+    "gradeLabel": "点数 (0〜100)",
+    "feedbackLabel": "フィードバック",
+    "feedbackPlaceholder": "受講者へのフィードバック...",
+    "saveGrade": "採点を保存",
+    "invalidGradeTitle": "無効な点数",
+    "invalidGradeDesc": "点数は0〜100の範囲で入力してください。",
+    "savedTitle": "保存しました",
+    "savedDesc": "点数とフィードバックを保存しました。",
+    "saveErrorTitle": "保存に失敗しました",
+    "passed": "合格",
+    "notPassed": "不合格",
+    "learnerFallback": "受講者 {id}",
+    "summary": "{done}/{total} 人が提出済み",
+    "statusNotSubmitted": "未提出",
+    "notSubmittedHint": "この受講者はまだ提出していません。"
+  },
   "ManageCourse": {
+    "ViewSubmissions": "提出物を見る / 採点",
+    "PageEyebrow": "Studio / コースライブラリ",
     "Title": "コース管理",
     "Description": "コースの作成・編集・公開を管理",
+    "TabCourses": "コース",
+    "TabSkills": "スキル",
+    "TabTags": "タグ",
     "TitleColumn": "タイトル",
     "ThumbnailColumn": "サムネイル",
     "IntroVideoColumn": "紹介ビデオ",
@@ -565,6 +1473,7 @@
     "StatusLabel": "ステータス",
     "CategoriesLabel": "カテゴリー",
     "CategoriesPlaceholder": "カテゴリーを入力してEnterを押す",
+    "SkillsLabel": "スキル",
     "TagsLabel": "タグ",
     "TagsPlaceholder": "タグを入力してEnterを押す",
     "ObjectivesLabel": "学習目標",
@@ -681,12 +1590,15 @@
     "CompletedOn": "完了日",
     "LastPosition": "最後の位置",
     "MarkComplete": "完了にする",
+    "VideoGateTitle": "条件を満たしていません",
+    "VideoGateDescription": "このレッスンを完了するには、先にスキップせずに動画の80%以上を視聴してください。",
     "Success": "成功",
     "LessonMarkedComplete": "レッスンを完了にしました",
     "NoProgressData": "進捗データがありません",
     "CourseContent": "コースコンテンツ",
     "Progress": "進捗",
     "ChaptersAndLessons": "チャプターとレッスン",
+    "BackToCourses": "コース一覧に戻る",
     "ManageChaptersLessonsDescription": "詳細なコースコンテンツを管理",
     "NoChaptersYet": "チャプターがありません。最初のチャプターを作成しましょう！",
     "AssetsFor": "アセット：",
@@ -740,7 +1652,9 @@
     "TestCaseOutput": "期待される出力",
     "TestCaseWeight": "重み",
     "TestCaseTimeout": "タイムアウト（秒）",
-    "Error": "エラー"
+    "Error": "エラー",
+    "ManageSkills": "スキル管理",
+    "ManageTags": "タグ管理"
   },
   "CourseOnboarding": {
     "step1": {
@@ -785,8 +1699,8 @@
       "content": "こんにちは{userName}さん！TechHubのAIアシスタントです。このAIチャットページの使い方をご案内します。始めましょう！"
     },
     "step2": {
-      "title": "チャットモード 🎯",
-      "content": "ここでチャットモードを選択します。「一般Q&A」で何でも質問でき、「学習アドバイザー」であなたに合った学習パスやコースをAIが提案します！"
+      "title": "ワークスペースツール",
+      "content": "ここにはガイドと応答設定があります。AIへの個別指示を追加したい場合は、設定パネルを開いてください。"
     },
     "step3": {
       "title": "メッセージ入力 💬",
@@ -812,6 +1726,7 @@
     "tourButton": "ガイド"
   },
   "ManageLearningPath": {
+    "PageEyebrow": "Studio / 学習パス",
     "Title": "学習パス管理",
     "Description": "学習パスの作成と管理",
     "TableTitle": "タイトル",
@@ -1062,9 +1977,180 @@
     "sessionDeleted": "セッションが削除されました",
     "sessionDeletedSuccess": "セッションが正常に削除されました",
     "deleteSession": "セッションを削除",
-    "errorDelete": "セッションを削除できませんでした"
+    "errorDelete": "セッションを削除できませんでした",
+    "newDraft": "New draft",
+    "newDraftWithFiles": "New draft ({count} files)",
+    "fileAnalysisSession": "File analysis",
+    "attachmentsCount": "{count} attachments",
+    "attachedFile": "Attached file",
+    "unknownFile": "Unknown file",
+    "ready": "Ready",
+    "yes": "Yes",
+    "no": "No",
+    "defaultUserName": "you",
+    "loginBeforeAttach": "Please login before attaching files to AI chat.",
+    "loginBeforeChat": "Please login before chatting with AI.",
+    "loginBeforeSession": "Please login before creating a session.",
+    "attachedInAiChat": "Attached in AI chat",
+    "attachedFileAnalysisPrompt": "Analyse {count} attached file(s).",
+    "filesAttachedTitle": "Files attached",
+    "filesAttachedDesc": "{count} file(s) are ready for AI analysis.",
+    "attachFailed": "Failed to attach one or more files for AI analysis.",
+    "attachFailedAuth": "Your login session is expired or missing a token. Please sign in again, then attach the file.",
+    "attachFailedPermission": "Your account does not have permission to upload files for AI analysis.",
+    "attachFailedTooLarge": "The file exceeds the system upload limit.",
+    "attachFailedFileServiceUnavailable": "The file service is temporarily unavailable. Please try again later or ask an administrator to check file-service.",
+    "attachFailedNetwork": "Could not connect to the file upload server. Please try again later.",
+    "attachFailedWithReason": "Could not attach the file: {reason}",
+    "unsupportedFilesTitle": "Some files were not attached",
+    "attachmentRejectedUnsupported": "{name} is not a supported AI attachment.",
+    "attachmentRejectedTooLarge": "{name} is {size}; the limit is {limit}.",
+    "supportedFilesHint": "Supported: PDF, Word, PowerPoint, Excel, CSV/text/code files, and images with readable text.",
+    "attachmentOpenFailed": "Could not open this file. Please try again later.",
+    "instructionsSavedTitle": "Instructions saved",
+    "instructionsSavedDesc": "They will apply to the next AI responses.",
+    "sidebar": {
+      "expand": "サイドバーを展開",
+      "collapse": "サイドバーを折りたたむ",
+      "dragResize": "ドラッグしてサイズ変更",
+      "autoRoutingTitle": "自動ルーティング",
+      "autoRoutingDesc": "AI が質問に適した分析ルートを自動で選択します。",
+      "instructionsLabel": "指示",
+      "instructionsPlaceholder": "例: 日本語で簡潔に回答し、データ分析では前提を明記してください。",
+      "instructionsHelp": "この指示は、この会話内の以降の AI 応答に適用されます。",
+      "saveInstructions": "保存",
+      "resetInstructions": "リセット",
+      "instructionsUnsaved": "未保存の変更があります",
+      "instructionsSaved": "保存済み",
+      "instructionsNotSaved": "未保存",
+      "hideConversations": "会話を非表示",
+      "showConversations": "会話を表示",
+      "savedAnalyses": "保存済み分析",
+      "hideSavedAnalyses": "保存済み分析を非表示",
+      "showSavedAnalyses": "保存済み分析を表示",
+      "learner": "学習者",
+      "instructor": "講師",
+      "analyst": "データアナリスト",
+      "answerRole": "回答ロール",
+      "responseDepth": "回答の詳しさ",
+      "concise": "簡潔",
+      "balanced": "標準",
+      "detailed": "詳しく"
+    }
   },
   "AiDashboard": {
+    "emptyValue": "-",
+    "yes": "はい",
+    "no": "いいえ",
+    "toasts": {
+      "reindexSuccess": "再インデックスが完了しました"
+    },
+    "tabs": {
+      "overview": "概要",
+      "advanced": "詳細"
+    },
+    "overview": {
+      "systemStatus": {
+        "label": "システム状態",
+        "online": "稼働中",
+        "issue": "問題あり"
+      },
+      "totalConversations": {
+        "label": "総会話数",
+        "successful": "{count} 件成功"
+      },
+      "aiCost": {
+        "label": "AIコスト (7日間)",
+        "tokensUsed": "{count} tokens 使用"
+      },
+      "knowledgeBase": {
+        "label": "ナレッジベース",
+        "indexed": "{courses} コース、{lessons} レッスンをインデックス済み"
+      },
+      "pendingReview": {
+        "title": "レビュー待ちコンテンツ",
+        "description": "公開前に承認が必要な AI 生成の学習パスと演習です",
+        "empty": "現在レビュー待ちのコンテンツはありません",
+        "learningPath": "学習パス",
+        "generatedDraft": "AI 生成ドラフト",
+        "approve": "承認",
+        "reject": "却下",
+        "columns": {
+          "type": "種類",
+          "description": "説明",
+          "created": "作成日",
+          "actions": "操作"
+        }
+      },
+      "quickLinks": {
+        "analytics": {
+          "title": "AI分析",
+          "description": "コスト、利用傾向、パフォーマンスを確認"
+        },
+        "traces": {
+          "title": "AIトレース",
+          "description": "個別の会話を詳しく確認"
+        },
+        "providers": {
+          "title": "AIプロバイダー",
+          "description": "モデル切替と API キー管理"
+        }
+      }
+    },
+    "advanced": {
+      "vectorDb": {
+        "title": "ベクターデータベース管理",
+        "description": "PostgreSQL から Qdrant へコースとレッスンを再インデックスします。Qdrant v{version}",
+        "reindexAll": "すべて再インデックス",
+        "columns": {
+          "collection": "コレクション",
+          "vectors": "ベクトル数",
+          "status": "状態"
+        }
+      },
+      "runtime": {
+        "chatTotal": "総チャット数",
+        "chatTotalDetail": "成功: {success} | 失敗: {failed}",
+        "avgLatency": "平均レイテンシ",
+        "avgLatencyDetail": "P95: {p95}ms",
+        "legacyFallback": "レガシーフォールバック",
+        "legacyFallbackDetail": "Mock: {mock}",
+        "tokensTotal": "総トークン数",
+        "tokensTotalDetail": "平均/チャット: {avg}"
+      },
+      "recentRuns": {
+        "title": "最近のチャット実行",
+        "description": "パイプライン、インテント、レイテンシ、トークン",
+        "ok": "OK",
+        "fail": "FAIL",
+        "empty": "まだチャット実行はありません",
+        "columns": {
+          "pipeline": "パイプライン",
+          "intent": "インテント",
+          "latency": "レイテンシ",
+          "tokens": "トークン",
+          "status": "状態"
+        }
+      },
+      "providerConfig": {
+        "title": "プロバイダー設定",
+        "requestedProvider": "要求されたプロバイダー",
+        "effectiveProvider": "有効なプロバイダー",
+        "chatModel": "チャットモデル",
+        "embeddingModel": "埋め込みモデル",
+        "mockFallback": "Mock fallback",
+        "status": "状態",
+        "manageProviders": "プロバイダー管理 ->"
+      }
+    },
+    "dialog": {
+      "title": "再インデックス完了",
+      "success": "成功",
+      "indexed": "インデックス済み",
+      "failed": "失敗",
+      "duration": "所要時間"
+    },
+    "PageEyebrow": "Admin / ダッシュボード",
     "title": "AIダッシュボード",
     "description": "AIシステムの管理と監視",
     "pendingDrafts": "承認待ちの下書き",
@@ -1131,6 +2217,207 @@
     "failed": "失敗",
     "duration": "所要時間"
   },
+  "AiProviders": {
+    "PageEyebrow": "Admin / AIプロバイダー",
+    "Title": "AIプロバイダー管理",
+    "Description": "LLMプロバイダーと実行中のモデル切り替えを管理します",
+    "title": "AIプロバイダー管理",
+    "description": "LLMプロバイダーと実行中のモデル切り替えを管理します",
+    "loading": "読み込み中...",
+    "emptyValue": "—",
+    "tabs": {
+      "overview": "概要",
+      "advanced": "詳細"
+    },
+    "summary": {
+      "activeProvider": "現在のプロバイダー",
+      "mockMode": "モックモード",
+      "live": "本番接続中",
+      "chatModel": "チャットモデル",
+      "embeddingModel": "埋め込み: {model}",
+      "providerHealth": "プロバイダー状態"
+    },
+    "health": {
+      "online": "稼働中",
+      "offline": "オフライン",
+      "noKey": "APIキー未設定"
+    },
+    "switcher": {
+      "title": "プロバイダー / モデル切り替え",
+      "description": "利用可能なAPIキーからモデルを取得します。変更はすぐに反映されます。",
+      "provider": "プロバイダー",
+      "chatModel": "チャットモデル",
+      "embeddingModelLabel": "埋め込みモデル",
+      "selectProvider": "プロバイダーを選択...",
+      "selectChatModel": "チャットモデルを選択...",
+      "keepCurrent": "現在の設定を維持",
+      "applyChanges": "変更を適用",
+      "switching": "切り替え中...",
+      "modelCount": "({count}モデル)"
+    },
+    "toast": {
+      "updatedTitle": "プロバイダーを更新しました",
+      "updatedDescription": "{provider} / {model}",
+      "failedTitle": "プロバイダーを切り替えできません",
+      "failedDescription": "設定を確認してから再試行してください。",
+      "reindexSuccessTitle": "再インデックス完了",
+      "reindexSuccessDescription": "Knowledge index を再構築しました。",
+      "reindexFailedTitle": "再インデックス失敗",
+      "reindexFailedDescription": "Knowledge index を再構築できませんでした。"
+    },
+    "knowledgeIndex": {
+      "title": "Knowledge index",
+      "description": "AI検索とチャット検索用に、Qdrant のコースとレッスンベクトルを再構築します。",
+      "loadStats": "統計を読み込む",
+      "refreshStats": "統計を更新",
+      "reindexBlogs": "Reindex Blogs",
+      "reindexAll": "Reindex All",
+      "reindexing": "再インデックス中...",
+      "health": "Qdrant状態",
+      "healthy": "正常",
+      "unhealthy": "問題あり",
+      "notLoaded": "未読み込み",
+      "version": "Qdrantバージョン",
+      "collections": "Collections",
+      "totalVectors": "総ベクトル数",
+      "lastResult": "最新の再インデックス結果",
+      "indexed": "Indexed",
+      "failed": "Failed",
+      "duration": "Duration",
+      "columns": {
+        "collection": "Collection",
+        "vectors": "Vectors",
+        "points": "Points",
+        "status": "状態"
+      }
+    },
+    "allModels": {
+      "title": "利用可能なモデル一覧",
+      "modelCount": "{count}モデル",
+      "active": "使用中",
+      "columns": {
+        "modelId": "モデル",
+        "provider": "プロバイダー",
+        "type": "種別",
+        "context": "コンテキスト",
+        "status": "状態"
+      }
+    },
+    "healthRaw": {
+      "title": "プロバイダー接続状態 (raw)"
+    },
+    "metadataRaw": {
+      "title": "プロバイダーメタデータ (raw)"
+    }
+  },
+  "AiAnalytics": {
+    "PageEyebrow": "Admin / AI分析",
+    "Title": "AI分析",
+    "Description": "AIプラットフォームの利用量、コスト、性能を確認します",
+    "title": "AI分析",
+    "description": "AIプラットフォームの利用量、コスト、性能を確認します",
+    "tabs": {
+      "overview": "概要",
+      "advanced": "詳細"
+    },
+    "range": {
+      "last24h": "過去24時間",
+      "last7Days": "過去7日間",
+      "last14Days": "過去14日間",
+      "last30Days": "過去30日間"
+    },
+    "kpis": {
+      "conversations": "会話数",
+      "totalCost": "総コスト",
+      "avgResponse": "平均応答時間",
+      "successRate": "成功率"
+    },
+    "charts": {
+      "usagePerDay": "日別利用量",
+      "whatUsersAskAbout": "ユーザーの質問傾向",
+      "costPerDay": "日別コスト",
+      "modelUsage": "モデル利用状況"
+    },
+    "series": {
+      "conversations": "会話数",
+      "cost": "コスト ($)",
+      "tokens": "Tokens",
+      "calls": "呼び出し回数"
+    },
+    "advanced": {
+      "totalTokens": "総トークン数",
+      "errorRate": "エラー率",
+      "promptTokens": "プロンプトトークン",
+      "completionTokens": "出力トークン",
+      "embeddingTokens": "埋め込みトークン"
+    },
+    "topUsers": {
+      "title": "上位ユーザー",
+      "noData": "データがありません",
+      "columns": {
+        "userId": "ユーザーID",
+        "traces": "トレース数",
+        "tokens": "トークン",
+        "cost": "コスト"
+      }
+    }
+  },
+  "AiTraces": {
+    "PageEyebrow": "Admin / AIトレース",
+    "Title": "AIトレース",
+    "Description": "{count}件のAI会話を追跡中",
+    "title": "AIトレース",
+    "trackedCount": "{count}件の会話を追跡中",
+    "openLangfuse": "Langfuse を開く",
+    "loading": "読み込み中...",
+    "noConversations": "会話はまだありません",
+    "recentConversations": "最近の会話",
+    "advancedTraces": "詳細トレース",
+    "emptyValue": "—",
+    "pageSummary": "Page {page}/{total} • {count} results",
+    "tabs": {
+      "overview": "概要",
+      "advanced": "詳細"
+    },
+    "columns": {
+      "time": "時刻",
+      "userPrompt": "ユーザーの質問",
+      "type": "種別",
+      "responseTime": "応答時間",
+      "cost": "コスト",
+      "actions": "操作",
+      "name": "トレース名",
+      "user": "ユーザー",
+      "intent": "インテント",
+      "model": "モデル",
+      "latency": "レイテンシ",
+      "observations": "観測"
+    },
+    "intent": {
+      "courseAdvice": "コース提案",
+      "learningQA": "学習Q&A",
+      "dataQuery": "データ照会",
+      "chartRequest": "チャート要求",
+      "fileAnalysis": "ファイル分析",
+      "chat": "チャット",
+      "followUp": "確認質問",
+      "aiCall": "AI呼び出し",
+      "fullChat": "全体チャット"
+    },
+    "detail": {
+      "title": "会話詳細",
+      "responseTime": "応答時間",
+      "cost": "コスト",
+      "steps": "ステップ数",
+      "user": "ユーザー",
+      "userAsked": "ユーザー入力",
+      "aiAnswered": "AI応答",
+      "processingSteps": "処理ステップ ({count})",
+      "tokens": "Tokens: {count}",
+      "stepCost": "コスト: ${cost}",
+      "viewFullTrace": "Langfuseで完全なトレースを見る"
+    }
+  },
   "AiDrafts": {
     "title": "AI下書き",
     "pendingPaths": "承認待ちのラーニングパス",
@@ -1161,7 +2448,13 @@
     "typeProgress": "進捗",
     "typeComment": "コメント",
     "typeSystem": "システム",
-    "typeOther": "その他"
+    "typeOther": "その他",
+    "markRead": "既読にする",
+    "delete": "削除",
+    "deleteAll": "すべて削除",
+    "deleteAllConfirmTitle": "すべての通知を削除しますか？",
+    "deleteAllConfirmDesc": "すべての通知が削除されます。この操作は元に戻せません。",
+    "cancel": "キャンセル"
   },
   "ContactPage": {
     "heroTitle": "お問い合わせ",
@@ -1184,6 +2477,154 @@
     "messageSentDescription": "できるだけ早くご返信いたします。",
     "visitOffice": "オフィスを訪問"
   },
+  "ManageDashboard": {
+    "eyebrow": "システムワークスペース",
+    "title": "システムダッシュボード",
+    "description": "このアカウントが実際に使える領域だけを表示する、権限ベースの入口です。",
+    "loading": "ダッシュボードを読み込み中...",
+    "accountFallback": "このアカウント",
+    "open": "開く",
+    "status": {
+      "active": "有効",
+      "unknown": "不明"
+    },
+    "roles": {
+      "superAdmin": "スーパー管理者",
+      "admin": "管理者",
+      "instructor": "講師",
+      "learner": "学習者",
+      "none": "ロールなし"
+    },
+    "badges": {
+      "manage": "管理"
+    },
+    "summary": {
+      "role": {
+        "title": "現在のロール",
+        "description": "{name} としてログイン中"
+      },
+      "areas": {
+        "title": "利用可能な領域",
+        "description": "{count} 個の管理モジュールを開けます"
+      },
+      "permissions": {
+        "title": "有効な権限",
+        "description": "{count} 個のリソースグループに適用"
+      },
+      "status": {
+        "title": "アカウント状態",
+        "description": "ユーザープロファイルサービスから返された状態"
+      }
+    },
+    "roleFocus": {
+      "admin": {
+        "title": "管理の重点",
+        "description": "ユーザー管理、コンテンツ運用、財務、ファイル、プラットフォーム機能へすばやく移動できます。"
+      },
+      "instructor": {
+        "title": "講師の重点",
+        "description": "コース運用、学習パス、学習者向けコンテンツ、許可された財務領域を優先します。"
+      },
+      "learner": {
+        "title": "学習ワークスペース",
+        "description": "学習状況、コース、学習パス、AIチャット、通知、設定への入口として使えます。"
+      },
+      "general": {
+        "title": "ワークスペースの重点",
+        "description": "このアカウントに付与されたモジュールだけを表示します。"
+      }
+    },
+    "next": {
+      "title": "次のおすすめ",
+      "description": "ロールと有効な権限から、最初に使いやすい移動先を表示します。"
+    },
+    "modules": {
+      "title": "アクセス可能な管理モジュール",
+      "description": "サイドバーと同じ権限判定を使うため、使えないモジュールは表示しません。",
+      "emptyTitle": "追加の管理モジュールはありません",
+      "emptyDescription": "このアカウントは現在ダッシュボードのみ利用できます。学習とプロフィールの操作は上に表示されています。"
+    },
+    "moduleDescriptions": {
+      "aiAnalytics": "AI利用量、コストの兆候、プラットフォーム全体のAI活動を確認します。",
+      "aiTraces": "AI権限がある場合に、トレースと実行単位の診断を確認します。",
+      "aiProviders": "AIサービスのプロバイダー設定とモデルルーティングを管理します。",
+      "revenue": "売上シグナル、ポリシー、財務パフォーマンスを監視します。",
+      "payouts": "支払い運用と精算ワークフローを確認します。",
+      "accounts": "プラットフォームアカウントを作成、更新、管理します。",
+      "instructorApplications": "講師応募とオンボーディング判断を確認します。",
+      "roles": "ロール定義と権限セットを保守します。",
+      "blogsAdmin": "公開記事と学習コンテンツを管理します。",
+      "filesAdmin": "プラットフォームのファイルをアップロード、整理、プレビュー、管理します。",
+      "permissions": "権限カタログとユーザー別の上書きを監査します。",
+      "manageCourses": "コース、公開、カリキュラム、レッスン内容を管理します。",
+      "learningPathsAdmin": "ガイド付き学習パスを設計、保守します。",
+      "default": "この管理領域を開きます。"
+    },
+    "learnerActions": {
+      "myLearning": {
+        "title": "マイ学習",
+        "description": "登録済みコースを続け、学習進捗を確認します。"
+      },
+      "courses": {
+        "title": "コースを探す",
+        "description": "伸ばしたいスキルに合うコースを見つけます。"
+      },
+      "paths": {
+        "title": "学習パス",
+        "description": "毎回コースを選ぶ代わりに、構造化されたパスに沿って学びます。"
+      },
+      "aiChat": {
+        "title": "AI学習アシスタント",
+        "description": "質問、教材分析、学習サポートに利用します。"
+      },
+      "notifications": {
+        "title": "通知",
+        "description": "アカウント、コース、システムの更新を確認します。"
+      },
+      "settings": {
+        "title": "設定",
+        "description": "言語、外観、テーマ設定を調整します。"
+      }
+    },
+    "attention": {
+      "title": "運用上の注目点",
+      "description": "現在の権限セットでこのダッシュボードが重視すべき内容です。",
+      "role": {
+        "admin": {
+          "title": "システム全体の範囲",
+          "description": "付与された権限カタログに基づいて、横断的な作業領域を表示できます。"
+        },
+        "instructor": {
+          "title": "教育運用",
+          "description": "管理者専用の制御よりも、教育とコンテンツ作業を優先します。"
+        },
+        "learner": {
+          "title": "学習者向けの安全な入口",
+          "description": "学習者には学習アクションを先に表示し、管理分析やAI基盤パネルは表示しません。"
+        },
+        "general": {
+          "title": "権限に限定された範囲",
+          "description": "固定の管理レイアウトではなく、有効な権限からページを構成します。"
+        }
+      },
+      "limited": {
+        "title": "ダッシュボードのみ利用可能",
+        "description": "追加の管理モジュールは付与されていないため、サイドバーは最小限になります。"
+      },
+      "curriculum": {
+        "title": "カリキュラム運用が利用可能",
+        "description": "対応する権限があるため、コースと学習パスのリンクが表示されます。"
+      },
+      "governance": {
+        "title": "ガバナンス制御が利用可能",
+        "description": "アカウント、ロール、権限モジュールが表示され、IDとアクセスを管理できます。"
+      },
+      "ai": {
+        "title": "AIツールは分離されています",
+        "description": "AI領域は、明示的なAI権限がある場合のみ通常のモジュールとして表示されます。"
+      }
+    }
+  },
   "SettingsPage": {
     "title": "設定",
     "description": "アプリケーションの設定を管理",
@@ -1196,7 +2637,47 @@
     "themeMode": "テーマモード",
     "themeModeDescription": "ライトモードとダークモードを切り替え",
     "colorTheme": "カラーテーマ",
-    "colorThemeDescription": "お好みの配色を選択"
+    "colorThemeDescription": "お好みの配色を選択",
+    "ThemeStudio": {
+      "conceptTitle": "テーマコンセプト",
+      "conceptDescription": "ボタン、背景、文字、カード、アクセントまでまとめて配色を選択します。",
+      "customTitle": "全体カラーのカスタマイズ",
+      "customDescription": "アプリ全体で共有されるカラートークンを細かく調整します。",
+      "reset": "TechHub Blueに戻す",
+      "previewTitle": "ライブプレビュー",
+      "previewDescription": "このサンプルは実際の画面と同じトークンを使用します。",
+      "previewPrimary": "Primary",
+      "previewSecondary": "Secondary",
+      "previewOutline": "Outline",
+      "concepts": {
+        "default": "TechHub Blue",
+        "green": "Learning Teal",
+        "orange": "Business Amber",
+        "purple": "Executive Purple",
+        "pink": "Product Rose",
+        "ocean": "Ocean Cyan",
+        "forest": "Forest Lime",
+        "slate": "Slate Coral",
+        "custom": "Custom Palette"
+      },
+      "fields": {
+        "primary": "全体ボタン色",
+        "primaryForeground": "ボタン文字色",
+        "background": "全体背景色",
+        "foreground": "全体文字色",
+        "card": "カードとパネル背景",
+        "cardForeground": "カード文字色",
+        "secondary": "セカンダリ背景",
+        "secondaryForeground": "セカンダリ文字色",
+        "muted": "控えめな背景",
+        "mutedForeground": "控えめな文字色",
+        "accent": "アクセント色",
+        "accentForeground": "アクセント文字色",
+        "border": "境界線色",
+        "input": "入力欄の境界線色",
+        "ring": "フォーカス色"
+      }
+    }
   },
   "ProfilePage": {
     "title": "プロフィール",

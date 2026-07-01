@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function UnauthorizedPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="manage-page flex min-h-[calc(100vh-4rem)] items-center justify-center">
       <UnauthorizedAccess />
     </div>
   );

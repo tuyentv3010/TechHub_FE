@@ -1,921 +1,499 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/components/ui/use-toast";
+import Link from "next/link";
+import { useMemo } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import {
-  useReindexCoursesMutation,
-  useReindexLessonsMutation,
-  useReindexAllMutation,
-  useGetQdrantStats,
-  useGetAiProviderConfig,
-  useUpdateAiProviderConfigMutation,
-  useGetLearningPathDrafts,
-  useApproveLearningPathDraftMutation,
-  useRejectDraftMutation,
-} from "@/queries/useAi";
-import {
-  Database,
-  Loader2,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  FileText,
-  TrendingUp,
-  Clock,
+  ArrowRight,
+  Bell,
+  BookOpen,
+  CheckCircle2,
+  GraduationCap,
+  LayoutDashboard,
+  LibraryBig,
+  MessageSquareText,
+  Palette,
+  ShieldCheck,
   Sparkles,
-  BarChart3,
-  PieChart,
+  UserRound,
+  Users,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useTranslations } from "next-intl";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { Bar, BarChart, Pie, PieChart as RechartsPieChart, Cell, XAxis, YAxis, CartesianGrid } from "recharts";
+import type { LucideIcon } from "lucide-react";
+
+import { AdminPageFrame, AdminSurface } from "@/components/manage/admin-page-frame";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { usePermissions } from "@/hooks/usePermissions";
+import { cn } from "@/lib/utils";
+import { useAccountProfile } from "@/queries/useAccount";
+import menuItems, { canAccessMenuItem, type MenuItem } from "@/app/manage/menuItems";
+
+type DashboardAction = {
+  title: string;
+  description: string;
+  href: string;
+  Icon: LucideIcon;
+  badge?: string;
+};
+
+type RoleMode = "admin" | "instructor" | "learner" | "general";
+
+const ADMIN_PRIORITY = [
+  "accounts",
+  "roles",
+  "permissions",
+  "manageCourses",
+  "learningPathsAdmin",
+  "instructorApplications",
+  "filesAdmin",
+  "blogsAdmin",
+  "revenue",
+  "payouts",
+  "aiAnalytics",
+  "aiTraces",
+  "aiProviders",
+];
+
+const INSTRUCTOR_PRIORITY = [
+  "manageCourses",
+  "learningPathsAdmin",
+  "revenue",
+  "payouts",
+  "filesAdmin",
+  "aiAnalytics",
+];
 
 export default function DashboardPage() {
-  const t = useTranslations("AiDashboard");
-  const { toast } = useToast();
-  const [qdrantStats, setQdrantStats] = useState<any>(null);
-  const [reindexResults, setReindexResults] = useState<any>(null);
-  const [showStatsDialog, setShowStatsDialog] = useState<boolean>(false);
-  const [showResultDialog, setShowResultDialog] = useState<boolean>(false);
-  const [selectedProvider, setSelectedProvider] = useState<"openai" | "gemini">("gemini");
-  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
+  const t = useTranslations("ManageDashboard");
+  const navT = useTranslations("AdminNav");
+  const locale = useLocale();
+  const { data: profileData, isLoading: isProfileLoading } = useAccountProfile();
+  const { permissions, hasPermission, isLoading: isPermissionsLoading } = usePermissions();
 
-  const reindexCoursesMutation = useReindexCoursesMutation();
-  const reindexLessonsMutation = useReindexLessonsMutation();
-  const reindexAllMutation = useReindexAllMutation();
-  const { data: qdrantStatsData, refetch: refetchQdrantStats, isLoading: qdrantStatsLoading } = useGetQdrantStats();
-  const { data: providerConfigData, isLoading: providerConfigLoading } = useGetAiProviderConfig();
-  const updateProviderMutation = useUpdateAiProviderConfigMutation();
+  const account = profileData?.payload?.data;
+  const roles: string[] = Array.isArray(account?.roles) ? account.roles : [];
+  const normalizedRoles = roles.map((role) => role.toUpperCase());
+  const roleMode: RoleMode = normalizedRoles.some((role) => role === "ADMIN" || role === "SUPER_ADMIN")
+    ? "admin"
+    : normalizedRoles.includes("INSTRUCTOR")
+      ? "instructor"
+      : normalizedRoles.includes("LEARNER")
+        ? "learner"
+        : "general";
 
-  // Update qdrant stats from query data
-  useEffect(() => {
-    if (qdrantStatsData?.payload?.data) {
-      setQdrantStats(qdrantStatsData.payload.data);
-    }
-  }, [qdrantStatsData]);
+  const accessibleItems = useMemo(() => {
+    return menuItems.filter((item) => canAccessMenuItem(item, hasPermission));
+  }, [hasPermission, permissions]);
 
-  useEffect(() => {
-    const provider = providerConfigData?.payload?.data?.provider;
-    if (provider === "openai" || provider === "gemini") {
-      setSelectedProvider(provider);
-    }
+  const workspaceItems = accessibleItems.filter((item) => item.href !== "/manage/dashboard");
+  const allowedPermissions = permissions.filter((permission) => permission.allowed);
+  const resourceCount = new Set(allowedPermissions.map((permission) => permission.resource).filter(Boolean)).size;
+  const formattedPermissionCount = allowedPermissions.length.toLocaleString(locale);
+  const formattedAreaCount = workspaceItems.length.toLocaleString(locale);
 
-    const providerModels = providerConfigData?.payload?.data?.models;
-    if (provider && providerModels && providerModels[provider]) {
-      setSelectedModel(providerModels[provider]);
-      return;
-    }
+  const roleLabels = roles.length > 0 ? roles.map((role) => getRoleLabel(role, t)) : [t("roles.none")];
+  const displayName = account?.username || account?.email || t("accountFallback");
+  const statusLabel = account?.status || (account?.isActive ? t("status.active") : t("status.unknown"));
 
-    const activeChatModel = providerConfigData?.payload?.data?.activeChatModel;
-    if (activeChatModel) {
-      setSelectedModel(activeChatModel);
-    }
-  }, [providerConfigData]);
+  const manageActions = getRoleManageActions(roleMode, workspaceItems, navT, t);
+  const learnerActions = getLearnerActions(t);
+  const focusActions = roleMode === "learner" || manageActions.length === 0 ? learnerActions : manageActions;
+  const nextAction = focusActions[0] ?? learnerActions[0];
+  const attentionItems = getAttentionItems({
+    roleMode,
+    workspaceItems,
+    permissions: allowedPermissions,
+    t,
+  });
 
-  const modelOptions = useMemo(() => {
-    const supportedModels = providerConfigData?.payload?.data?.supportedChatModels;
-    if (selectedProvider === "openai") {
-      return supportedModels?.openai || ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1"];
-    }
-    return supportedModels?.gemini || ["gemini-2.5-flash", "gemini-2.5-pro"];
-  }, [providerConfigData, selectedProvider]);
-
-  useEffect(() => {
-    if (!modelOptions.includes(selectedModel)) {
-      setSelectedModel(modelOptions[0] || "");
-    }
-  }, [modelOptions, selectedModel]);
-
-  // Get pending drafts
-  const { data: pathDraftsData } = useGetLearningPathDrafts();
-  const pendingDrafts = pathDraftsData?.payload?.data || [];
-  const approvePathDraftMutation = useApproveLearningPathDraftMutation();
-  const rejectDraftMutation = useRejectDraftMutation();
-
-  const handleApproveDraft = async (taskId: string) => {
-    try {
-      await approvePathDraftMutation.mutateAsync(taskId);
-      toast({ title: t("draftApproved") });
-    } catch (error: any) {
-      toast({
-        title: t("error"),
-        description: error?.message || t("draftApproveError"),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleRejectDraft = async (taskId: string) => {
-    try {
-      await rejectDraftMutation.mutateAsync({ taskId });
-      toast({ title: t("draftRejected") });
-    } catch (error: any) {
-      toast({
-        title: t("error"),
-        description: error?.message || t("draftRejectError"),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleReindexCourses = async () => {
-    try {
-      const response = await reindexCoursesMutation.mutateAsync();
-      setReindexResults(response.payload?.data);
-      setShowResultDialog(true);
-      toast({
-        title: t("success"),
-        description: t("reindexCoursesSuccess"),
-      });
-    } catch (error: any) {
-      toast({
-        title: t("error"),
-        description: error?.message || t("reindexCoursesError"),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleReindexLessons = async () => {
-    try {
-      const response = await reindexLessonsMutation.mutateAsync();
-      setReindexResults(response.payload?.data);
-      setShowResultDialog(true);
-      toast({
-        title: t("success"),
-        description: t("reindexLessonsSuccess"),
-      });
-    } catch (error: any) {
-      toast({
-        title: t("error"),
-        description: error?.message || t("reindexLessonsError"),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleReindexAll = async () => {
-    try {
-      const response = await reindexAllMutation.mutateAsync();
-      setReindexResults(response.payload?.data);
-      setShowResultDialog(true);
-      toast({
-        title: t("success"),
-        description: t("reindexAllSuccess"),
-      });
-    } catch (error: any) {
-      toast({
-        title: t("error"),
-        description: error?.message || t("reindexError"),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleGetQdrantStats = async () => {
-    try {
-      const response = await refetchQdrantStats();
-      if (response.data) {
-        setQdrantStats(response.data.payload?.data);
-        setShowStatsDialog(true);
-      }
-    } catch (error: any) {
-      toast({
-        title: t("error"),
-        description: error?.message || t("qdrantStatsError"),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveProvider = async () => {
-    try {
-      await updateProviderMutation.mutateAsync({
-        provider: selectedProvider,
-        chatModel: selectedModel,
-      });
-      toast({
-        title: "Success",
-        description: `AI switched to ${selectedProvider} (${selectedModel})`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to update AI provider",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Prepare chart data
-  const vectorChartData = useMemo(() => {
-    if (!qdrantStats?.collections) return [];
-    return [
-      {
-        name: "Courses",
-        value: qdrantStats.collections.courses?.vectorCount || 0,
-        fill: "hsl(var(--chart-1))",
-      },
-      {
-        name: "Lessons",
-        value: qdrantStats.collections.lessons?.vectorCount || 0,
-        fill: "hsl(var(--chart-2))",
-      },
-    ];
-  }, [qdrantStats]);
-
-  const pieChartData = useMemo(() => {
-    if (!qdrantStats?.collections) return [];
-    const courses = qdrantStats.collections.courses?.vectorCount || 0;
-    const lessons = qdrantStats.collections.lessons?.vectorCount || 0;
-    const total = courses + lessons;
-    if (total === 0) return [];
-    return [
-      {
-        name: "Courses",
-        value: courses,
-        percentage: ((courses / total) * 100).toFixed(1),
-      },
-      {
-        name: "Lessons",
-        value: lessons,
-        percentage: ((lessons / total) * 100).toFixed(1),
-      },
-    ];
-  }, [qdrantStats]);
-
-  const chartConfig = {
-    value: {
-      label: "Vectors",
-    },
-  };
-
-  const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))"];
-  const activeProvider = providerConfigData?.payload?.data?.provider || selectedProvider;
-  const activeModel =
-    providerConfigData?.payload?.data?.activeChatModel ||
-    providerConfigData?.payload?.data?.models?.[activeProvider] ||
-    selectedModel;
+  if (isProfileLoading || isPermissionsLoading) {
+    return (
+      <AdminPageFrame eyebrow={t("eyebrow")} title={t("title")} description={t("description")}>
+        <AdminSurface className="p-6">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <Sparkles className="h-4 w-4 animate-pulse" />
+            {t("loading")}
+          </div>
+        </AdminSurface>
+      </AdminPageFrame>
+    );
+  }
 
   return (
-    <main className="p-4 sm:px-6 sm:py-4 md:p-8 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Sparkles className="h-8 w-8 text-purple-500" />
-          {t("title")}
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          {t("description")}
-        </p>
+    <AdminPageFrame eyebrow={t("eyebrow")} title={t("title")} description={t("description")}>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard
+          title={t("summary.role.title")}
+          value={roleLabels.join(", ")}
+          description={t("summary.role.description", { name: displayName })}
+          Icon={UserRound}
+        />
+        <SummaryCard
+          title={t("summary.areas.title")}
+          value={formattedAreaCount}
+          description={t("summary.areas.description", { count: workspaceItems.length })}
+          Icon={LayoutDashboard}
+        />
+        <SummaryCard
+          title={t("summary.permissions.title")}
+          value={formattedPermissionCount}
+          description={t("summary.permissions.description", { count: resourceCount })}
+          Icon={ShieldCheck}
+        />
+        <SummaryCard
+          title={t("summary.status.title")}
+          value={statusLabel}
+          description={t("summary.status.description")}
+          Icon={CheckCircle2}
+        />
       </div>
 
-      {/* Overview Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("pendingDrafts")}</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{pendingDrafts.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t("aiContent")}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("coursesIndexed")}</CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {qdrantStats?.collections?.courses?.vectorCount || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t("vectorsInQdrant")}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("lessonsIndexed")}</CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {qdrantStats?.collections?.lessons?.vectorCount || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t("vectorsInQdrant")}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("qdrantStatus")}</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 mb-2">
-              {qdrantStats?.healthy ? (
-                <>
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span className="text-lg font-bold">{t("healthy")}</span>
-                </>
-              ) : (
-                <>
-                  <XCircle className="h-5 w-5 text-red-500" />
-                  <span className="text-lg font-bold">{t("unknown")}</span>
-                </>
-              )}
-            </div>
-            <div className="mb-2">
-              <Badge variant="secondary" className="text-[10px]">
-                {`${String(activeProvider).toUpperCase()} · ${activeModel}`}
-              </Badge>
-            </div>
-            <Button
-              variant="link"
-              size="sm"
-              className="p-0 h-auto text-xs"
-              onClick={handleGetQdrantStats}
-              disabled={qdrantStatsLoading}
-            >
-              {qdrantStatsLoading ? t("loading") : t("refresh")}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Vector Count Bar Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Thống kê Vectors theo Collection
-            </CardTitle>
-            <CardDescription>
-              Số lượng vectors được lưu trữ trong Qdrant
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {vectorChartData.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-[300px]">
-                <BarChart data={vectorChartData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="name" 
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                  />
-                  <YAxis 
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                  />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="hsl(var(--chart-1))" />
-                </BarChart>
-              </ChartContainer>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                <p>Không có dữ liệu để hiển thị</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Distribution Pie Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5" />
-              Phân bố Vectors
-            </CardTitle>
-            <CardDescription>
-              Tỷ lệ phân bố giữa Courses và Lessons
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {pieChartData.length > 0 ? (
-              <div className="space-y-4">
-                <ChartContainer config={chartConfig} className="h-[250px]">
-                  <RechartsPieChart>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Pie
-                      data={pieChartData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percentage }) => `${name}: ${percentage}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {pieChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                  </RechartsPieChart>
-                </ChartContainer>
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  {pieChartData.map((item, index) => (
-                    <div key={item.name} className="text-center p-3 rounded-lg bg-muted/50">
-                      <div className="text-2xl font-bold">{item.value}</div>
-                      <div className="text-sm text-muted-foreground">{item.name}</div>
-                      <div className="text-xs text-muted-foreground mt-1">{item.percentage}%</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                <p>Không có dữ liệu để hiển thị</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Detailed Statistics Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            Thống kê chi tiết Qdrant Collections
-          </CardTitle>
-          <CardDescription>
-            Thông tin chi tiết về các collections và trạng thái của chúng
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {qdrantStats?.collections ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Collection</TableHead>
-                    <TableHead className="text-right">Vector Count</TableHead>
-                    <TableHead className="text-right">Points Count</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Health</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(qdrantStats.collections).map(([collectionName, stats]: [string, any]) => (
-                    <TableRow key={collectionName}>
-                      <TableCell className="font-medium capitalize">{collectionName}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        {stats.vectorCount?.toLocaleString() || 0}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {stats.pointsCount?.toLocaleString() || 0}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            stats.status === "green" || stats.status === "ok"
-                              ? "default"
-                              : stats.status === "error"
-                              ? "destructive"
-                              : "secondary"
-                          }
-                        >
-                          {stats.status || "unknown"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {stats.status === "green" || stats.status === "ok" ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-red-500" />
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {qdrantStats.version && (
-                    <TableRow>
-                      <TableCell colSpan={2} className="font-medium">
-                        Qdrant Version
-                      </TableCell>
-                      <TableCell colSpan={3} className="font-mono">
-                        {qdrantStats.version}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Không có dữ liệu thống kê</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Vector Database Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              {t("vectorDbManagement")}
-            </CardTitle>
-            <CardDescription>
-              {t("reindexDescription")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-lg border p-4 space-y-3">
-              <p className="text-sm font-medium">AI Provider</p>
-              <p className="text-xs text-muted-foreground">
-                Runtime switch for chat, stream and embedding services.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Select
-                  value={selectedProvider}
-                  onValueChange={(value) => {
-                    const nextProvider = value as "openai" | "gemini";
-                    setSelectedProvider(nextProvider);
-                    const configuredModel = providerConfigData?.payload?.data?.models?.[nextProvider];
-                    if (configuredModel) {
-                      setSelectedModel(configuredModel);
-                    }
-                  }}
-                  disabled={providerConfigLoading || updateProviderMutation.isPending}
-                >
-                  <SelectTrigger className="sm:w-[220px]">
-                    <SelectValue placeholder="Select provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gemini">Gemini (2.5 Flash)</SelectItem>
-                    <SelectItem value="openai">OpenAI</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={selectedModel}
-                  onValueChange={setSelectedModel}
-                  disabled={providerConfigLoading || updateProviderMutation.isPending || modelOptions.length === 0}
-                >
-                  <SelectTrigger className="sm:w-[260px]">
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {modelOptions.map((model) => (
-                      <SelectItem key={model} value={model}>{model}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  onClick={handleSaveProvider}
-                  disabled={providerConfigLoading || updateProviderMutation.isPending || !selectedModel}
-                  variant="secondary"
-                >
-                  {updateProviderMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save provider"
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-              <Button
-                onClick={handleReindexCourses}
-                disabled={reindexCoursesMutation.isPending}
-                variant="outline"
-                className="justify-start"
-              >
-                {reindexCoursesMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("reindexingCourses")}
-                  </>
-                ) : (
-                  <>
-                    <Database className="mr-2 h-4 w-4" />
-                    {t("reindexCourses")}
-                  </>
-                )}
-              </Button>
-
-              <Button
-                onClick={handleReindexLessons}
-                disabled={reindexLessonsMutation.isPending}
-                variant="outline"
-                className="justify-start"
-              >
-                {reindexLessonsMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("reindexingLessons")}
-                  </>
-                ) : (
-                  <>
-                    <Database className="mr-2 h-4 w-4" />
-                    {t("reindexLessons")}
-                  </>
-                )}
-              </Button>
-
-              <Button
-                onClick={handleReindexAll}
-                disabled={reindexAllMutation.isPending}
-                variant="default"
-                className="justify-start"
-              >
-                {reindexAllMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("reindexingAll")}
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    {t("reindexAll")}
-                  </>
-                )}
-              </Button>
-
-              <Button
-                onClick={handleGetQdrantStats}
-                disabled={qdrantStatsLoading}
-                variant="secondary"
-                className="justify-start"
-              >
-                {qdrantStatsLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("loading")}
-                  </>
-                ) : (
-                  <>
-                    <TrendingUp className="mr-2 h-4 w-4" />
-                    {t("qdrantStats")}
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {reindexResults && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div className="flex-1 text-sm">
-                    <p className="font-medium text-blue-900">{t("latestReindexResults")}</p>
-                    <p className="text-blue-700 mt-1">{reindexResults.message}</p>
-                    {reindexResults.stats && (
-                      <div className="mt-2 text-xs space-y-1">
-                        <p>✓ {t("indexed")}: {reindexResults.stats.indexed}</p>
-                        <p>✗ {t("failed")}: {reindexResults.stats.failed}</p>
-                        {reindexResults.stats.duration && (
-                          <p>⏱ {t("duration")}: {reindexResults.stats.duration}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Pending Drafts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              {t("pendingDrafts")}
-            </CardTitle>
-            <CardDescription>
-              {t("reviewAndApprove")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {pendingDrafts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>{t("noPendingDrafts")}</p>
-            </div>
-          ) : (
-            <ScrollArea className="h-[300px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("type")}</TableHead>
-                      <TableHead>{t("status")}</TableHead>
-                      <TableHead>{t("createdAt")}</TableHead>
-                      <TableHead>{t("actions")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingDrafts.map((draft: any) => (
-                      <TableRow key={draft.taskId}>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {draft.taskType === "LEARNING_PATH_GENERATION" ? "Lộ trình" : draft.taskType}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              draft.status === "DRAFT"
-                                ? "secondary"
-                                : draft.status === "APPROVED"
-                                ? "default"
-                                : "destructive"
-                            }
-                          >
-                            {draft.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {new Date(draft.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            disabled={approvePathDraftMutation.isPending}
-                            onClick={() => handleApproveDraft(draft.taskId)}
-                          >
-                            {approvePathDraftMutation.isPending ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : null}
-                            {t("approve")}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={rejectDraftMutation.isPending}
-                            onClick={() => handleRejectDraft(draft.taskId)}
-                          >
-                            {rejectDraftMutation.isPending ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : null}
-                            {t("reject")}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Qdrant Stats Dialog */}
-      <Dialog open={showStatsDialog} onOpenChange={setShowStatsDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t("qdrantStats")}</DialogTitle>
-            <DialogDescription>
-              {t("qdrantStatsDescription")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {qdrantStats ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <strong>{t("statusLabel")}:</strong>
-                  {qdrantStats.healthy ? (
-                    <Badge className="bg-green-500">{t("healthy")}</Badge>
-                  ) : (
-                    <Badge variant="destructive">Unhealthy</Badge>
-                  )}
-                </div>
-                {qdrantStats.version && (
-                  <div>
-                    <strong>{t("version")}:</strong> {qdrantStats.version}
-                  </div>
-                )}
-                <Separator />
-                <div>
-                  <strong className="text-lg">{t("collection")}s:</strong>
-                  <div className="mt-3 space-y-3">
-                    {Object.entries(qdrantStats.collections || {}).map(
-                      ([collectionName, stats]: [string, any]) => (
-                        <Card key={collectionName}>
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">{collectionName}</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span>{t("vectorCount")}:</span>
-                              <span className="font-medium">{stats.vectorCount}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>{t("pointsCount")}:</span>
-                              <span className="font-medium">{stats.pointsCount}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>{t("statusLabel")}:</span>
-                              <Badge variant="outline">{stats.status}</Badge>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-muted-foreground text-center py-8">
-                {t("noDataQdrant")}
-              </p>
-            )}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+        <AdminSurface className="p-5 md:p-6">
+          <SectionHeading
+            title={t(`roleFocus.${roleMode}.title`)}
+            description={t(`roleFocus.${roleMode}.description`)}
+          />
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {focusActions.slice(0, 6).map((action) => (
+              <ActionTile key={action.href} action={action} />
+            ))}
           </div>
-        </DialogContent>
-      </Dialog>
+        </AdminSurface>
 
-      {/* Reindex Results Dialog */}
-      <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("reindexResults")}</DialogTitle>
-            <DialogDescription>
-              {t("reindexDetails")}
-            </DialogDescription>
-          </DialogHeader>
-          {reindexResults && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                {reindexResults.success ? (
-                  <CheckCircle className="h-6 w-6 text-green-500" />
-                ) : (
-                  <XCircle className="h-6 w-6 text-red-500" />
-                )}
-                <span className="font-medium">{reindexResults.message}</span>
+        <AdminSurface className="p-5 md:p-6">
+          <SectionHeading title={t("next.title")} description={t("next.description")} />
+          <div className="mt-5 rounded-lg border bg-primary/5 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <nextAction.Icon className="h-5 w-5" />
               </div>
-              {reindexResults.stats && (
-                <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>{t("indexed")}:</span>
-                    <span className="font-medium text-green-600">
-                      {reindexResults.stats.indexed}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>{t("failed")}:</span>
-                    <span className="font-medium text-red-600">
-                      {reindexResults.stats.failed}
-                    </span>
-                  </div>
-                  {reindexResults.stats.duration && (
-                    <div className="flex justify-between">
-                      <span>{t("duration")}:</span>
-                      <span className="font-medium">{reindexResults.stats.duration}</span>
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="min-w-0">
+                <p className="font-semibold text-foreground">{nextAction.title}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{nextAction.description}</p>
+              </div>
+            </div>
+            <Button asChild className="mt-4 w-full">
+              <Link href={nextAction.href}>
+                {t("open")}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </AdminSurface>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.45fr)]">
+        <AdminSurface className="p-5 md:p-6">
+          <SectionHeading title={t("modules.title")} description={t("modules.description")} />
+          {workspaceItems.length === 0 ? (
+            <div className="mt-5 rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">{t("modules.emptyTitle")}</p>
+              <p className="mt-1">{t("modules.emptyDescription")}</p>
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {workspaceItems.map((item) => (
+                <ModuleTile key={item.href} item={item} navT={navT} t={t} />
+              ))}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
-    </main>
+        </AdminSurface>
+
+        <AdminSurface className="p-5 md:p-6">
+          <SectionHeading title={t("attention.title")} description={t("attention.description")} />
+          <div className="mt-5 space-y-3">
+            {attentionItems.map((item) => (
+              <div key={item.title} className="rounded-lg border bg-card p-4">
+                <div className="flex items-start gap-3">
+                  <div className={cn("mt-0.5 rounded-md p-2", item.tone)}>
+                    <item.Icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </AdminSurface>
+      </div>
+    </AdminPageFrame>
   );
 }
 
+function SummaryCard({
+  title,
+  value,
+  description,
+  Icon,
+}: {
+  title: string;
+  value: string;
+  description: string;
+  Icon: LucideIcon;
+}) {
+  return (
+    <Card className="border-border/70">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <div className="rounded-md bg-primary/10 p-2 text-primary">
+            <Icon className="h-4 w-4" />
+          </div>
+        </div>
+        <p className="mt-3 truncate text-2xl font-semibold text-foreground">{value}</p>
+        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{description}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SectionHeading({ title, description }: { title: string; description: string }) {
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+function ActionTile({ action }: { action: DashboardAction }) {
+  return (
+    <Link
+      href={action.href}
+      className="group flex min-h-[132px] flex-col justify-between rounded-lg border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-primary/5"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="rounded-md bg-primary/10 p-2 text-primary">
+          <action.Icon className="h-5 w-5" />
+        </div>
+        {action.badge ? <Badge variant="secondary">{action.badge}</Badge> : null}
+      </div>
+      <div className="mt-4">
+        <p className="font-semibold text-foreground">{action.title}</p>
+        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{action.description}</p>
+      </div>
+    </Link>
+  );
+}
+
+function ModuleTile({
+  item,
+  navT,
+  t,
+}: {
+  item: MenuItem;
+  navT: ReturnType<typeof useTranslations<"AdminNav">>;
+  t: ReturnType<typeof useTranslations<"ManageDashboard">>;
+}) {
+  const titleKey = item.titleKey ?? "dashboard";
+
+  return (
+    <Link
+      href={item.href}
+      className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-primary/5"
+    >
+      <div className="flex items-start gap-3">
+        <div className="rounded-md bg-muted p-2 text-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+          <item.Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-semibold text-foreground">{navT(titleKey as never)}</p>
+          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+            {t(getModuleDescriptionKey(titleKey) as never)}
+          </p>
+        </div>
+        <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+      </div>
+    </Link>
+  );
+}
+
+function getRoleLabel(
+  role: string,
+  t: ReturnType<typeof useTranslations<"ManageDashboard">>
+) {
+  const normalized = role.toUpperCase();
+  if (normalized === "SUPER_ADMIN") return t("roles.superAdmin");
+  if (normalized === "ADMIN") return t("roles.admin");
+  if (normalized === "INSTRUCTOR") return t("roles.instructor");
+  if (normalized === "LEARNER") return t("roles.learner");
+
+  return role
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getRoleManageActions(
+  roleMode: RoleMode,
+  workspaceItems: MenuItem[],
+  navT: ReturnType<typeof useTranslations<"AdminNav">>,
+  t: ReturnType<typeof useTranslations<"ManageDashboard">>
+): DashboardAction[] {
+  const priority = roleMode === "instructor" ? INSTRUCTOR_PRIORITY : ADMIN_PRIORITY;
+  const orderedItems = [
+    ...priority
+      .map((key) => workspaceItems.find((item) => item.titleKey === key))
+      .filter(Boolean),
+    ...workspaceItems.filter((item) => !priority.includes(item.titleKey ?? "")),
+  ] as MenuItem[];
+
+  return orderedItems.map((item) => {
+    const titleKey = item.titleKey ?? "dashboard";
+    return {
+      title: navT(titleKey as never),
+      description: t(getModuleDescriptionKey(titleKey) as never),
+      href: item.href,
+      Icon: item.Icon,
+      badge: t("badges.manage"),
+    };
+  });
+}
+
+function getLearnerActions(
+  t: ReturnType<typeof useTranslations<"ManageDashboard">>
+): DashboardAction[] {
+  return [
+    {
+      title: t("learnerActions.myLearning.title"),
+      description: t("learnerActions.myLearning.description"),
+      href: "/my-learning",
+      Icon: GraduationCap,
+    },
+    {
+      title: t("learnerActions.courses.title"),
+      description: t("learnerActions.courses.description"),
+      href: "/courses",
+      Icon: BookOpen,
+    },
+    {
+      title: t("learnerActions.paths.title"),
+      description: t("learnerActions.paths.description"),
+      href: "/learning-paths",
+      Icon: LibraryBig,
+    },
+    {
+      title: t("learnerActions.aiChat.title"),
+      description: t("learnerActions.aiChat.description"),
+      href: "/ai-chat",
+      Icon: MessageSquareText,
+    },
+    {
+      title: t("learnerActions.notifications.title"),
+      description: t("learnerActions.notifications.description"),
+      href: "/notifications",
+      Icon: Bell,
+    },
+    {
+      title: t("learnerActions.settings.title"),
+      description: t("learnerActions.settings.description"),
+      href: "/setting",
+      Icon: Palette,
+    },
+  ];
+}
+
+function getAttentionItems({
+  roleMode,
+  workspaceItems,
+  permissions,
+  t,
+}: {
+  roleMode: RoleMode;
+  workspaceItems: MenuItem[];
+  permissions: Array<{ resource: string; url: string }>;
+  t: ReturnType<typeof useTranslations<"ManageDashboard">>;
+}) {
+  const hasAiAccess = workspaceItems.some((item) => item.titleKey?.startsWith("ai"));
+  const hasUserAdmin = workspaceItems.some((item) =>
+    ["accounts", "roles", "permissions"].includes(item.titleKey ?? "")
+  );
+  const hasCurriculum = workspaceItems.some((item) =>
+    ["manageCourses", "learningPathsAdmin"].includes(item.titleKey ?? "")
+  );
+
+  const items = [
+    {
+      title: t(`attention.role.${roleMode}.title`),
+      description: t(`attention.role.${roleMode}.description`),
+      Icon: roleMode === "learner" ? GraduationCap : ShieldCheck,
+      tone: "bg-primary/10 text-primary",
+    },
+  ];
+
+  if (workspaceItems.length === 0) {
+    items.push({
+      title: t("attention.limited.title"),
+      description: t("attention.limited.description"),
+      Icon: LayoutDashboard,
+      tone: "bg-muted text-muted-foreground",
+    });
+  }
+
+  if (hasCurriculum) {
+    items.push({
+      title: t("attention.curriculum.title"),
+      description: t("attention.curriculum.description"),
+      Icon: BookOpen,
+      tone: "bg-emerald-500/10 text-emerald-600",
+    });
+  }
+
+  if (hasUserAdmin) {
+    items.push({
+      title: t("attention.governance.title"),
+      description: t("attention.governance.description"),
+      Icon: Users,
+      tone: "bg-sky-500/10 text-sky-600",
+    });
+  }
+
+  if (hasAiAccess || permissions.some((permission) => permission.resource.toLowerCase().includes("ai"))) {
+    items.push({
+      title: t("attention.ai.title"),
+      description: t("attention.ai.description"),
+      Icon: Sparkles,
+      tone: "bg-violet-500/10 text-violet-600",
+    });
+  }
+
+  return items.slice(0, 4);
+}
+
+function getModuleDescriptionKey(titleKey: string) {
+  switch (titleKey) {
+    case "aiAnalytics":
+      return "moduleDescriptions.aiAnalytics";
+    case "aiTraces":
+      return "moduleDescriptions.aiTraces";
+    case "aiProviders":
+      return "moduleDescriptions.aiProviders";
+    case "revenue":
+      return "moduleDescriptions.revenue";
+    case "payouts":
+      return "moduleDescriptions.payouts";
+    case "accounts":
+      return "moduleDescriptions.accounts";
+    case "instructorApplications":
+      return "moduleDescriptions.instructorApplications";
+    case "roles":
+      return "moduleDescriptions.roles";
+    case "blogsAdmin":
+      return "moduleDescriptions.blogsAdmin";
+    case "filesAdmin":
+      return "moduleDescriptions.filesAdmin";
+    case "permissions":
+      return "moduleDescriptions.permissions";
+    case "manageCourses":
+      return "moduleDescriptions.manageCourses";
+    case "learningPathsAdmin":
+      return "moduleDescriptions.learningPathsAdmin";
+    default:
+      return "moduleDescriptions.default";
+  }
+}

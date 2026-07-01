@@ -30,6 +30,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGetCourseById, useEnrollCourseMutation, useGetSkills, useGetTags } from "@/queries/useCourse";
 import { useGetAccount } from "@/queries/useAccount";
+import instructorProfileApi, {
+  InstructorProfile,
+} from "@/apiRequests/instructor-profile";
 import {
   extractIdFromSlug,
   formatCourseLevel,
@@ -40,6 +43,7 @@ import {
   formatTagLabel,
 } from "@/lib/course";
 import { useToast } from "@/hooks/use-toast";
+import { normalizePublicMediaUrl, normalizePersistedMediaUrl } from "@/lib/file-media";
 import { 
   useCourseComments, 
   useAddCourseCommentMutation 
@@ -57,6 +61,7 @@ export default function CourseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const t = useTranslations("courses");
+  const commentT = useTranslations("CourseComments");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const slug = params.slug as string;
@@ -75,6 +80,12 @@ export default function CourseDetailPage() {
 
   const course = courseResponse?.payload?.data;
   const courseSummary = course?.summary;
+  const courseThumbnailUrl = normalizePublicMediaUrl(
+    courseSummary?.thumbnail?.secureUrl || courseSummary?.thumbnail?.url
+  );
+  const courseIntroVideoUrl = normalizePublicMediaUrl(
+    courseSummary?.introVideo?.secureUrl || courseSummary?.introVideo?.url
+  );
   const chapters = course?.chapters || [];
 
   // Transform skills/categories from backend format (could be IDs, names, or objects)
@@ -157,8 +168,8 @@ export default function CourseDetailPage() {
             queryClient.invalidateQueries({ queryKey: ["course-comments", courseId] });
             
             toast({
-              title: "Bình luận mới",
-              description: "Có người vừa bình luận trong khóa học này!",
+              title: commentT("newCourseCommentTitle"),
+              description: commentT("newCourseCommentDescription"),
             });
           } catch (e) {
             console.error("[WebSocket] Error parsing message:", e);
@@ -179,13 +190,13 @@ export default function CourseDetailPage() {
       console.log("[WebSocket] Cleaning up connection...");
       client.deactivate();
     };
-  }, [courseId, queryClient, toast]);
+  }, [commentT, courseId, queryClient, toast]);
 
   const handleSubmitComment = (content: string) => {
     if (!courseId) {
       toast({
-        title: "Không thể gửi bình luận",
-        description: "Vui lòng thử lại.",
+        title: commentT("submitCommentErrorTitle"),
+        description: commentT("tryAgainDescription"),
         variant: "destructive",
       });
       return;
@@ -202,13 +213,13 @@ export default function CourseDetailPage() {
       {
         onSuccess: () => {
           toast({
-            title: "Đã gửi bình luận",
+            title: commentT("submitCommentSuccessTitle"),
           });
         },
         onError: () => {
           toast({
-            title: "Không thể gửi bình luận",
-            description: "Vui lòng đăng nhập và thử lại.",
+            title: commentT("submitCommentErrorTitle"),
+            description: commentT("loginAndRetryDescription"),
             variant: "destructive",
           });
         },
@@ -239,8 +250,8 @@ export default function CourseDetailPage() {
   const handleSubmitReply = (parentId: string, content: string) => {
     if (!courseId) {
       toast({
-        title: "Không thể gửi phản hồi",
-        description: "Vui lòng thử lại.",
+        title: commentT("submitReplyErrorTitle"),
+        description: commentT("tryAgainDescription"),
         variant: "destructive",
       });
       return;
@@ -257,13 +268,13 @@ export default function CourseDetailPage() {
       {
         onSuccess: () => {
           toast({
-            title: "Đã gửi phản hồi",
+            title: commentT("submitReplySuccessTitle"),
           });
         },
         onError: () => {
           toast({
-            title: "Không thể gửi phản hồi",
-            description: "Vui lòng đăng nhập và thử lại.",
+            title: commentT("submitReplyErrorTitle"),
+            description: commentT("loginAndRetryDescription"),
             variant: "destructive",
           });
         },
@@ -277,6 +288,36 @@ export default function CourseDetailPage() {
     enabled: !!courseSummary?.instructorId,
   });
   const instructor = instructorResponse?.payload?.data;
+  // Use normalizePersistedMediaUrl (not Public) so internal /api/proxy/files
+  // avatar URLs are kept; Public strips them and the avatar would never show.
+  const instructorAvatarUrl = normalizePersistedMediaUrl(instructor?.avatar);
+
+  // Instructor profile (AI extracted)
+  const [instructorProfile, setInstructorProfile] = useState<InstructorProfile | null>(null);
+  useEffect(() => {
+    const uid = courseSummary?.instructorId;
+    if (!uid) {
+      setInstructorProfile(null);
+      return;
+    }
+    instructorProfileApi
+      .getByUserId(uid)
+      .then((res: any) => {
+        const data = res?.payload?.data || res?.payload;
+        if (data) setInstructorProfile(data);
+      })
+      .catch(() => setInstructorProfile(null));
+  }, [courseSummary?.instructorId]);
+
+  const instructorSkills: string[] = Array.isArray(instructorProfile?.skills)
+    ? (instructorProfile?.skills as string[])
+    : [];
+  const instructorExperience: any[] = Array.isArray(instructorProfile?.experience)
+    ? (instructorProfile?.experience as any[])
+    : [];
+  const instructorEducation: any[] = Array.isArray(instructorProfile?.education)
+    ? (instructorProfile?.education as any[])
+    : [];
 
   const toggleChapter = (chapterId: string) => {
     setExpandedChapters((prev) => {
@@ -356,6 +397,10 @@ export default function CourseDetailPage() {
   const discountPercentage = courseSummary.discountPrice
     ? calculateDiscountPercentage(courseSummary.price, courseSummary.discountPrice)
     : 0;
+  const totalEstimatedDurationMinutes = Number(
+    course.totalEstimatedDurationMinutes ?? 0
+  );
+  const hasTotalEstimatedDuration = totalEstimatedDurationMinutes > 0;
 
   return (
     <main className="min-h-screen bg-background pb-20 pt-6">
@@ -373,7 +418,7 @@ export default function CourseDetailPage() {
             {/* Left Content */}
             <div className="lg:col-span-2">
                 <Image 
-                src={courseSummary.thumbnail?.url || "/courses/Thumbnail.png"} 
+                src={courseThumbnailUrl || "/courses/Thumbnail.png"}
                 alt={courseSummary.title || "Course Thumbnail"} 
                 width={1000}
                 height={600}
@@ -405,20 +450,23 @@ export default function CourseDetailPage() {
                   <BookOpen className="h-5 w-5" />
                   <span>{course.totalLessons} {t("lectures")}</span>
                 </div>
-                {course.totalEstimatedDurationMinutes && (
+                {hasTotalEstimatedDuration && (
                   <div className="flex items-center gap-2">
                     <Clock className="h-5 w-5" />
-                    <span>{formatDuration(course.totalEstimatedDurationMinutes)}</span>
+                    <span>{formatDuration(totalEstimatedDurationMinutes)}</span>
                   </div>
                 )}
               </div>
 
               {/* Instructor */}
               {instructor && (
-                <div className="flex items-center gap-3">
-                  {instructor.avatar ? (
+                <Link
+                  href={`/instructor/${courseSummary?.instructorId || ""}`}
+                  className="flex items-center gap-3 rounded-lg transition hover:bg-white/10 p-1"
+                >
+                  {instructorAvatarUrl ? (
                     <img
-                      src={instructor.avatar}
+                      src={instructorAvatarUrl}
                       alt={instructor.username || instructor.name || "Instructor"}
                       className="h-12 w-12 rounded-full object-cover"
                     />
@@ -429,32 +477,34 @@ export default function CourseDetailPage() {
                   )}
                   <div>
                     <p className="text-sm text-white/80">{t("instructor")}</p>
-                    <p className="font-semibold">{instructor.username || instructor.name}</p>
+                    <p className="font-semibold">
+                      {instructorProfile?.fullName || instructor.username || instructor.name}
+                    </p>
                   </div>
-                </div>
+                </Link>
               )}
             </div>
 
             {/* Right - Payment Card */}
             <div className="lg:col-span-1">
-              <Card className="overflow-hidden shadow-xl">
+              <Card className="overflow-hidden border-border shadow-sm">
                 <CardContent className="p-0">
                   {/* Video/Image Preview */}
-                  {courseSummary.introVideo?.url ? (
+                  {courseIntroVideoUrl ? (
                     <div className="relative aspect-video bg-black">
                       <video
-                        src={courseSummary.introVideo.url}
+                        src={courseIntroVideoUrl}
                         controls
                         className="h-full w-full object-contain"
-                        poster={courseSummary.thumbnail?.url || undefined}
+                        poster={courseThumbnailUrl || undefined}
                       >
                         Your browser does not support the video tag.
                       </video>
                     </div>
-                  ) : courseSummary.thumbnail?.url ? (
+                  ) : courseThumbnailUrl ? (
                     <div className="relative aspect-video">
                       <img
-                        src={courseSummary.thumbnail.url}
+                        src={courseThumbnailUrl}
                         alt={`${courseSummary.title} - Course thumbnail`}
                         className="h-full w-full object-cover"
                       />
@@ -463,7 +513,7 @@ export default function CourseDetailPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex aspect-video items-center justify-center bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900 dark:to-blue-900">
+                    <div className="flex aspect-video items-center justify-center bg-muted">
                       <PlayCircle className="h-16 w-16 text-muted-foreground" />
                     </div>
                   )}
@@ -475,7 +525,7 @@ export default function CourseDetailPage() {
                         const finalPrice = courseSummary.discountPrice ?? courseSummary.price ?? 0;
                         if (finalPrice === 0) {
                           return (
-                            <div className="text-3xl font-bold text-[#3dcbb1]">
+                            <div className="text-3xl font-bold text-primary">
                               {t("free")}
                             </div>
                           );
@@ -484,22 +534,22 @@ export default function CourseDetailPage() {
                           return (
                             <>
                               <div className="flex items-baseline gap-2">
-                                <span className="text-3xl font-bold text-[#3dcbb1]">
-                                  {formatPrice(courseSummary.discountPrice)}
+                                <span className="text-3xl font-bold text-primary">
+                                  {formatPrice(courseSummary.discountPrice, courseSummary.currency)}
                                 </span>
                                 <span className="text-lg text-muted-foreground line-through">
-                                  {formatPrice(courseSummary.price)}
+                                  {formatPrice(courseSummary.price, courseSummary.currency)}
                                 </span>
                               </div>
-                              <Badge className="mt-2 bg-[#3dcbb1] text-white hover:bg-[#35b5a0]">
+                              <Badge className="mt-2 bg-primary text-primary-foreground hover:bg-primary/90">
                                 {discountPercentage}% {t("off")}
                               </Badge>
                             </>
                           );
                         }
                         return (
-                          <div className="text-3xl font-bold text-[#3dcbb1]">
-                            {formatPrice(courseSummary.price)}
+                          <div className="text-3xl font-bold text-primary">
+                            {formatPrice(courseSummary.price, courseSummary.currency)}
                           </div>
                         );
                       })()}
@@ -515,7 +565,7 @@ export default function CourseDetailPage() {
                         }
                       }}
                       disabled={enrollMutation.isPending}
-                      className="mb-3 w-full rounded-full bg-[#3dcbb1] py-6 text-lg font-semibold text-white hover:bg-[#35b5a0]"
+                      className="mb-3 w-full rounded-full bg-primary py-6 text-lg font-semibold text-primary-foreground hover:bg-primary/90"
                     >
                       {course.enrolled 
                         ? t("enterToLearn") 
@@ -548,11 +598,11 @@ export default function CourseDetailPage() {
                           {course.totalLessons} {t("lectures")}
                         </span>
                       </div>
-                      {course.totalEstimatedDurationMinutes && (
+                      {hasTotalEstimatedDuration && (
                         <div className="flex items-center gap-3">
                           <Clock className="h-5 w-5 text-muted-foreground" />
                           <span className="text-sm">
-                            {formatDuration(course.totalEstimatedDurationMinutes)} {t("totalLength")}
+                            {formatDuration(totalEstimatedDurationMinutes)} {t("totalLength")}
                           </span>
                         </div>
                       )}
@@ -581,7 +631,7 @@ export default function CourseDetailPage() {
               <Card>
                 <CardContent className="p-6">
                   <h2 className="mb-4 flex items-center gap-2 text-2xl font-bold">
-                    <Award className="h-6 w-6 text-purple-600" />
+                    <Award className="h-6 w-6 text-primary" />
                     {t("whatYouWillLearn")}
                   </h2>
                   <ul className="grid gap-3 md:grid-cols-2">
@@ -600,7 +650,7 @@ export default function CourseDetailPage() {
             <Card>
               <CardContent className="p-6">
                 <h2 className="mb-4 flex items-center gap-2 text-2xl font-bold">
-                  <BookOpen className="h-6 w-6 text-purple-600" />
+                  <BookOpen className="h-6 w-6 text-primary" />
                   {t("courseContent")}
                 </h2>
                 <div className="space-y-2">
@@ -616,7 +666,7 @@ export default function CourseDetailPage() {
                           className="flex w-full items-center justify-between bg-muted/50 p-4 text-left hover:bg-muted"
                         >
                           <div className="flex items-center gap-3">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-sm font-semibold text-purple-600 dark:bg-purple-900">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
                               {index + 1}
                             </span>
                             <div>
@@ -656,7 +706,7 @@ export default function CourseDetailPage() {
                                       </Badge>
                                     )}
                                   </div>
-                                  {lesson.estimatedDuration && (
+                                  {Number(lesson.estimatedDuration ?? 0) > 0 && (
                                     <span className="text-xs text-muted-foreground">
                                       {formatDuration(lesson.estimatedDuration)}
                                     </span>
@@ -678,13 +728,13 @@ export default function CourseDetailPage() {
               <Card>
                 <CardContent className="p-6">
                   <h2 className="mb-4 flex items-center gap-2 text-2xl font-bold">
-                    <CheckCircle className="h-6 w-6 text-purple-600" />
+                    <CheckCircle className="h-6 w-6 text-primary" />
                     {t("requirements")}
                   </h2>
                   <ul className="space-y-2">
                     {courseSummary.requirements.map((requirement: string, index: number) => (
                       <li key={index} className="flex items-start gap-2">
-                        <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-purple-600" />
+                        <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
                         <span className="text-sm">{requirement}</span>
                       </li>
                     ))}
@@ -698,7 +748,7 @@ export default function CourseDetailPage() {
               <Card>
                 <CardContent className="p-6">
                   <h2 className="mb-4 flex items-center gap-2 text-2xl font-bold">
-                    <FileText className="h-6 w-6 text-purple-600" />
+                    <FileText className="h-6 w-6 text-primary" />
                     {t("description")}
                   </h2>
                   <div className="prose prose-sm max-w-none dark:prose-invert">
@@ -706,6 +756,105 @@ export default function CourseDetailPage() {
                       {courseSummary.description}
                     </p>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Về giảng viên */}
+            {instructorProfile && (
+              <Card>
+                <CardContent className="space-y-4 p-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold">Về giảng viên</h2>
+                    <Link
+                      href={`/instructor/${courseSummary?.instructorId || ""}`}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Xem profile đầy đủ →
+                    </Link>
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    {instructorAvatarUrl ? (
+                      <img
+                        src={instructorAvatarUrl}
+                        alt={instructorProfile.fullName || "Instructor"}
+                        className="h-16 w-16 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold uppercase text-primary">
+                        {(instructorProfile.fullName || "IN").slice(0, 2)}
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <p className="text-lg font-semibold">{instructorProfile.fullName}</p>
+                      {instructorProfile.cvLocation && (
+                        <p className="text-sm text-muted-foreground">{instructorProfile.cvLocation}</p>
+                      )}
+                      {typeof instructorProfile.yearsOfExperience === "number" && (
+                        <p className="text-sm text-muted-foreground">
+                          {instructorProfile.yearsOfExperience} năm kinh nghiệm
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {instructorProfile.cvSummary && (
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      {instructorProfile.cvSummary}
+                    </p>
+                  )}
+
+                  {instructorSkills.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-sm font-semibold">Kỹ năng</p>
+                      <div className="flex flex-wrap gap-2">
+                        {instructorSkills.slice(0, 12).map((s, i) => (
+                          <Badge key={i} variant="secondary">
+                            {s}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {instructorExperience.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-sm font-semibold">Kinh nghiệm</p>
+                      <ul className="space-y-2 text-sm">
+                        {instructorExperience.slice(0, 3).map((e, i) => (
+                          <li key={i}>
+                            <span className="font-medium">{e.role || e.title}</span>
+                            {e.company && <> — {e.company}</>}
+                            {e.duration && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                ({e.duration})
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {instructorEducation.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-sm font-semibold">Học vấn</p>
+                      <ul className="space-y-1 text-sm">
+                        {instructorEducation.slice(0, 3).map((e, i) => (
+                          <li key={i}>
+                            <span className="font-medium">{e.school}</span>
+                            {(e.major || e.degree) && (
+                              <> — {e.major || e.degree}</>
+                            )}
+                            {e.year && (
+                              <span className="ml-2 text-xs text-muted-foreground">({e.year})</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

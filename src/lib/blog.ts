@@ -1,17 +1,25 @@
-import { TocItem } from "@/types/blog.types";
+import type { Blog, BlogAttachment, TocItem } from "@/types/blog.types";
 import { marked } from "marked";
 
 const DEFAULT_WPM = 200;
+const DEFAULT_CHARS_PER_MINUTE = 900;
+const IMAGE_REVIEW_SECONDS = 20;
 const HEADING_REGEX = /<(h[1-4])([^>]*)>([\s\S]*?)<\/\1>/gi;
+const IMAGE_TAG_REGEX = /<img\b[^>]*>/gi;
 const ID_ATTR_REGEX = /id=["']([^"']+)["']/i;
 
 export const slugify = (value: string) => {
-  return value
+  const normalized = value
+    .replace(/[đĐ]/g, "d")
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
+
+  return normalized || "section";
 };
 
 /**
@@ -22,6 +30,33 @@ export const createBlogSlug = (title: string, id: string): string => {
   const titleSlug = slugify(title);
   // Sử dụng full UUID để đảm bảo có thể query được từ backend
   return `${titleSlug}-${id}`;
+};
+
+const resolveBlogImageUrl = (value: unknown): string | null => {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+
+  if (typeof value === "object") {
+    const image = value as {
+      secureUrl?: string;
+      publicUrl?: string;
+      url?: string;
+    };
+    return image.secureUrl || image.publicUrl || image.url || null;
+  }
+
+  return null;
+};
+
+export const getBlogImageUrl = (blog: Blog) => {
+  const thumbnailUrl = resolveBlogImageUrl(blog.thumbnail);
+  if (thumbnailUrl) return thumbnailUrl;
+
+  const imageAttachment = blog.attachments?.find((attachment: BlogAttachment) =>
+    attachment.type?.toLowerCase().startsWith("image")
+  );
+
+  return resolveBlogImageUrl(imageAttachment?.url);
 };
 
 /**
@@ -53,7 +88,19 @@ export const ensureUniqueSlug = (slug: string, used: Set<string>) => {
   return uniqueSlug;
 };
 
-const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
+const stripHtml = (value: string) =>
+  value
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
 
 const extractIdFromAttributes = (rawAttributes: string) => {
   const match = rawAttributes.match(ID_ATTR_REGEX);
@@ -88,7 +135,7 @@ export const extractHeadingsFromHtml = (html: string): TocItem[] => {
 
       const rawId = element.getAttribute("id") || slugify(text);
       const id = ensureUniqueSlug(rawId, usedIds);
-      headings.push({ id, text, level });
+      headings.push({ id, text, level, number: `${headings.length + 1}` });
     });
 
     return headings;
@@ -109,7 +156,7 @@ export const extractHeadingsFromHtml = (html: string): TocItem[] => {
 
     const attrId = extractIdFromAttributes(rawAttributes);
     const slug = ensureUniqueSlug(attrId || slugify(text), usedIds);
-    headings.push({ id: slug, text, level });
+    headings.push({ id: slug, text, level, number: `${headings.length + 1}` });
   }
 
   return headings;
@@ -138,14 +185,15 @@ export const buildContentWithToc = (html: string) => {
 
       const attrId = extractIdFromAttributes(rawAttributes);
       const slug = ensureUniqueSlug(attrId || slugify(text), usedIds);
-      toc.push({ id: slug, text, level });
+      const number = `${toc.length + 1}`;
+      toc.push({ id: slug, text, level, number });
 
       const withoutId = attrId
         ? rawAttributes.replace(ID_ATTR_REGEX, "").trim()
         : rawAttributes.trim();
 
       const normalizedAttrs = withoutId ? ` ${withoutId}` : "";
-      return `<${tag} id="${slug}"${normalizedAttrs}>${innerHtml}</${tag}>`;
+      return `<${tag}${normalizedAttrs} id="${slug}" data-toc-number="${number}"><span aria-hidden="true" class="blog-heading-number">${number}.</span>${innerHtml}</${tag}>`;
     }
   );
 
@@ -159,7 +207,13 @@ export const estimateReadingTime = (content: string) => {
 
   const text = stripHtml(content);
   const words = text.split(/\s+/).filter(Boolean);
-  const minutes = Math.ceil(words.length / DEFAULT_WPM);
+  const wordMinutes = words.length / DEFAULT_WPM;
+  const characterMinutes = text.length / DEFAULT_CHARS_PER_MINUTE;
+  const imageReviewMinutes =
+    (content.match(IMAGE_TAG_REGEX)?.length ?? 0) * (IMAGE_REVIEW_SECONDS / 60);
+  const minutes = Math.ceil(
+    Math.max(wordMinutes, characterMinutes) + imageReviewMinutes
+  );
 
   return minutes > 0 ? minutes : 1;
 };

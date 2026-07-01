@@ -8,7 +8,10 @@
  */
 export const slugify = (value: string) => {
   return value
+    .replace(/[đĐ]/g, "d")
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
@@ -70,11 +73,15 @@ export const formatLanguage = (language: string): string => {
 };
 
 /**
- * Format price thành currency (xx.xx USD)
- * Backend stores prices in USD
+ * Format price theo currency của course (BE-driven). Mặc định VND nếu không truyền.
  */
-export const formatPrice = (price: number): string => {
-  return `${price.toFixed(2)} USD`;
+export const formatPrice = (price: number | null | undefined, currency?: string | null): string => {
+  const amount = price ?? 0;
+  const code = (currency || "VND").toUpperCase();
+  if (code === "USD") {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+  }
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(amount);
 };
 
 /**

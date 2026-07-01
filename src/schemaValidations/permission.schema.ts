@@ -5,8 +5,24 @@ export const HTTP_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"] as const;
 export const PermissionMethod = z.enum(HTTP_METHODS);
 
 // Permission resources
-export const RESOURCES = ["USERS", "ROLES", "PERMISSIONS", "COURSES", "BLOGS", "LEARNING_PATHS"] as const;
-export const PermissionResource = z.enum(RESOURCES);
+export const RESOURCES = [
+  "USERS",
+  "ROLES",
+  "PERMISSIONS",
+  "COURSES",
+  "BLOGS",
+  "LEARNING_PATHS",
+  "ADMIN",
+  "AI",
+  "FILES",
+  "MANAGE",
+  "INSTRUCTOR_APPLICATIONS",
+  "NOTIFICATIONS",
+  "PAYMENT",
+  "PAYOUTS",
+  "REVENUE",
+] as const;
+export const PermissionResource = z.string().min(1).max(100);
 
 // Permission item schema
 export const PermissionSchema = z.object({
@@ -16,7 +32,7 @@ export const PermissionSchema = z.object({
   url: z.string(),
   method: PermissionMethod,
   resource: PermissionResource,
-  source: z.enum(["ROLE", "OVERRIDE"]).optional(),
+  source: z.enum(["ROLE", "OVERRIDE", "USER_OVERRIDE"]).optional(),
   allowed: z.boolean().optional(),
 });
 
@@ -46,6 +62,16 @@ export const UpdatePermissionBody = z.object({
 
 export type UpdatePermissionBodyType = z.TypeOf<typeof UpdatePermissionBody>;
 
+export const UpsertUserPermissionBody = z.object({
+  permissionId: z.string().uuid(),
+  allowed: z.boolean(),
+  active: z.boolean().default(true),
+});
+
+export type UpsertUserPermissionBodyType = z.TypeOf<
+  typeof UpsertUserPermissionBody
+>;
+
 // Permission list response
 export const PermissionListRes = z.object({
   success: z.boolean(),
@@ -60,6 +86,28 @@ export const PermissionListRes = z.object({
 });
 
 export type PermissionListResType = z.TypeOf<typeof PermissionListRes>;
+
+export const PermissionPageRes = z.object({
+  success: z.boolean(),
+  status: z.string(),
+  message: z.string(),
+  data: z.array(PermissionSchema),
+  pagination: z.object({
+    page: z.number(),
+    size: z.number(),
+    totalElements: z.number(),
+    totalPages: z.number(),
+    first: z.boolean(),
+    last: z.boolean(),
+    hasNext: z.boolean(),
+    hasPrevious: z.boolean(),
+  }),
+  timestamp: z.string(),
+  path: z.string(),
+  code: z.number(),
+});
+
+export type PermissionPageResType = z.TypeOf<typeof PermissionPageRes>;
 
 // Permission detail response
 export const PermissionDetailRes = z.object({

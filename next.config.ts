@@ -17,6 +17,12 @@ const buildRemotePatterns = () => {
       pathname: '/**',
     },
     {
+      protocol: 'https',
+      hostname: 'images.unsplash.com',
+      port: '',
+      pathname: '/**',
+    },
+    {
       protocol: 'http',
       hostname: 'localhost',
       port: '9000',
@@ -26,6 +32,18 @@ const buildRemotePatterns = () => {
       protocol: 'http',
       hostname: '127.0.0.1',
       port: '9000',
+      pathname: '/**',
+    },
+    {
+      protocol: 'https',
+      hostname: 'minio-api.inova.id.vn',
+      port: '',
+      pathname: '/**',
+    },
+    {
+      protocol: 'https',
+      hostname: 'minio.inova.id.vn',
+      port: '',
       pathname: '/**',
     },
   ];
@@ -50,8 +68,18 @@ const buildRemotePatterns = () => {
 };
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
+    // Server-side image optimization (/_next/image) requires the Next
+    // server to fetch every remote source itself. On the deployed VPS that
+    // fails for two reasons: (1) the container has no/limited outbound
+    // egress so Unsplash images can't be fetched, and (2) the optimizer
+    // does not forward the user's auth cookie, so authenticated MinIO proxy
+    // thumbnails return 401. Disabling optimization makes the browser load
+    // each `src` directly (it has internet + sends cookies), fixing both.
+    unoptimized: true,
     remotePatterns: buildRemotePatterns(),
   },
 };

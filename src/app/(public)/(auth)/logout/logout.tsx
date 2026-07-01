@@ -40,15 +40,16 @@
 // }
 
 "use client";
-import { getAccessTokenFromLocalStorage, handleErrorApi } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import {
+  handleErrorApi,
+  removeTokenFromLocalStorage,
+} from "@/lib/utils";
 import { useEffect, useRef } from "react";
 import { useLogoutMutation } from "@/queries/useAuth";
 import { useAppContext } from "@/components/app-provider";
 
 export default function Logout() {
-  const router = useRouter();
-  const { setIsAuth, setRole } = useAppContext();
+  const { setIsAuth, setRole, setPermissions } = useAppContext();
   const logoutMutation = useLogoutMutation();
   const ref = useRef<any>(null);
 
@@ -59,18 +60,23 @@ export default function Logout() {
     const performLogout = async () => {
       try {
         await logoutMutation.mutateAsync();
-        localStorage.removeItem("accessToken");
+        removeTokenFromLocalStorage();
         setIsAuth(false);
         setRole(null);
-        router.push("/login");
+        setPermissions(null);
+        window.location.replace("/login");
       } catch (error: any) {
         handleErrorApi({ error });
-        router.push("/login");
+        removeTokenFromLocalStorage();
+        setIsAuth(false);
+        setRole(null);
+        setPermissions(null);
+        window.location.replace("/login");
       }
     };
 
     performLogout();
-  }, [router, logoutMutation, setIsAuth, setRole]);
+  }, [logoutMutation, setIsAuth, setRole, setPermissions]);
 
   return <div>Logging out...</div>;
 }

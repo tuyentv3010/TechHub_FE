@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,27 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
   // Get lessons for selected chapter
   const selectedChapterData = chapters.find((c) => (c as { id: string }).id === selectedChapter) as { lessons?: unknown[] } | undefined;
   const lessons = selectedChapterData?.lessons || [];
+  const selectedLessonData = useMemo(
+    () => (lessons as Array<{ id: string; title: string; contentType?: string; estimatedDuration?: number }>).find((lesson) => lesson.id === selectedLesson),
+    [lessons, selectedLesson]
+  );
+
+  useEffect(() => {
+    if (!selectedLessonData) {
+      return;
+    }
+    const contentType = String(selectedLessonData.contentType || "TEXT").toUpperCase();
+    if (contentType === "CODING") {
+      setSelectedFormats(["CODING", "MCQ"]);
+      setIncludeTestCases(true);
+    } else if (contentType === "QUIZ") {
+      setSelectedFormats(["MCQ"]);
+      setIncludeTestCases(false);
+    } else {
+      setSelectedFormats(["MCQ", "ESSAY"]);
+      setIncludeTestCases(false);
+    }
+  }, [selectedLessonData]);
 
   const handleDifficultyToggle = (difficulty: string) => {
     setSelectedDifficulties((prev) =>
@@ -160,10 +182,10 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
           {t("generateExercises")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="manage-dialog-panel sm:max-w-[600px] max-h-[90vh] overflow-y-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-500" />
+            <Sparkles className="h-5 w-5 text-primary" />
             {t("generateExercises")}
           </DialogTitle>
           <DialogDescription>
@@ -174,7 +196,7 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
           {/* Chapter Selection */}
           <div className="space-y-2">
             <Label htmlFor="chapter">
-              {t("selectChapter")} <span className="text-red-500">*</span>
+              {t("selectChapter")} <span className="text-destructive">*</span>
             </Label>
             <Select value={selectedChapter} onValueChange={(value) => {
               setSelectedChapter(value);
@@ -199,7 +221,7 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
           {/* Lesson Selection */}
           <div className="space-y-2">
             <Label htmlFor="lesson">
-              {t("selectLesson")} <span className="text-red-500">*</span>
+              {t("selectLesson")} <span className="text-destructive">*</span>
             </Label>
             <Select
               value={selectedLesson}
@@ -220,6 +242,21 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
               </SelectContent>
             </Select>
           </div>
+
+          {selectedLessonData && (
+            <div className="rounded-lg border border-dashed border-border bg-muted p-3 text-sm">
+              <p className="font-medium text-foreground">{selectedLessonData.title}</p>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline">{selectedLessonData.contentType || "TEXT"}</Badge>
+                {selectedLessonData.estimatedDuration ? (
+                  <Badge variant="secondary">{selectedLessonData.estimatedDuration}s</Badge>
+                ) : null}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                AI se uu tien format phu hop voi lesson da chon. Ban van co the dieu chinh thu cong neu can.
+              </p>
+            </div>
+          )}
 
           {/* Difficulty Selection */}
           <div className="space-y-2">
@@ -269,7 +306,7 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Variants */}
             <div className="space-y-2">
               <Label htmlFor="variants">{t("variants")}</Label>
@@ -358,7 +395,7 @@ export default function GenerateAiExercise({ courseId, chapters, onSuccess }: Ge
           </div>
 
           {/* Info */}
-          <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-900">
+          <div className="bg-accent p-3 rounded-lg text-sm text-accent-foreground">
             <p className="font-medium mb-1">💡 {tCommon("note")}:</p>
             <ul className="list-disc list-inside space-y-1 text-xs">
               <li>{t("note1")}</li>

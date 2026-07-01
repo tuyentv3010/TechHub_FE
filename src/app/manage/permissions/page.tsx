@@ -1,35 +1,28 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Suspense } from "react";
-import { getTranslations } from "next-intl/server";
-import PermissionTable from "./permission-table";
+import { getLocale, getTranslations } from "next-intl/server";
+
 import TableSkeleton from "@/components/Skeleton";
+import { AdminPageFrame, AdminSurface } from "@/components/manage/admin-page-frame";
+import { getAccessCopy } from "@/lib/access-control";
+
+import PermissionTable from "./permission-table";
 
 export default async function ManagePermissionsPage() {
   const t = await getTranslations("ManagePermission");
-  
+  const locale = await getLocale();
+  const accessCopy = getAccessCopy(locale);
+
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-      <div className="space-y-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quản lý Permissions</CardTitle>
-            <CardDescription>
-              Quản lý các permissions trong hệ thống phân quyền
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Suspense fallback={<TableSkeleton />}>
-              <PermissionTable />
-            </Suspense>
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+    <AdminPageFrame
+      eyebrow={t("PageEyebrow")}
+      title={t("Title")}
+      description={accessCopy.pageDescriptions.permissions}
+    >
+      <AdminSurface className="p-5 md:p-7">
+        <Suspense fallback={<TableSkeleton />}>
+          <PermissionTable />
+        </Suspense>
+      </AdminSurface>
+    </AdminPageFrame>
   );
 }

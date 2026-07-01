@@ -30,6 +30,7 @@ import { handleErrorApi } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import fileApiRequest from "@/apiRequests/file";
+import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
 
 export default function AddEmployee() {
   const t = useTranslations("ManageAccount");
@@ -66,7 +67,7 @@ export default function AddEmployee() {
     if (file) {
       return URL.createObjectURL(file);
     }
-    return avatar;
+    return normalizePersistedMediaUrl(avatar);
   }, [file, avatar]);
 
   const reset = () => {
@@ -184,8 +185,14 @@ export default function AddEmployee() {
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        form.setValue('avatar', response.payload.data.cloudinarySecureUrl);
+      // Use the authenticated proxy URL (/api/proxy/files/{id}/...) instead of a
+      // raw MinIO/presigned URL, which would 403 when rendered in the table.
+      const avatarUrl = response.payload?.data
+        ? resolveManagedFileUrl(response.payload.data, userId, "content")
+        : null;
+
+      if (avatarUrl) {
+        form.setValue('avatar', avatarUrl);
         setFile(undefined);
         toast({ description: "Avatar uploaded successfully" });
       }
@@ -216,14 +223,14 @@ export default function AddEmployee() {
       open={open}
     >
       <DialogTrigger asChild>
-        <Button size="sm" className="h-7 gap-1">
+        <Button size="sm" className="h-9 gap-2 rounded-lg bg-primary px-4 text-primary-foreground shadow-sm hover:bg-primary/90">
           <PlusCircle className="h-3.5 w-3.5" />
           <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
             {t("CreateAccount")}
           </span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-screen overflow-auto">
+      <DialogContent className="manage-dialog-panel sm:max-w-[600px] max-h-screen overflow-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle>{t("CreateAccount")}</DialogTitle>
           <DialogDescription>{t("AddDes")}</DialogDescription>
@@ -254,7 +261,7 @@ export default function AddEmployee() {
                   <FormItem>
                     <div className="flex gap-2 items-start justify-start">
                       <Avatar className="aspect-square w-[100px] h-[100px] rounded-md object-cover">
-                        <AvatarImage src={previewAvatarFromFile} className="object-cover" />
+                        <AvatarImage src={previewAvatarFromFile || undefined} className="object-cover" />
                         <AvatarFallback className="rounded-none">
                           {username || "Avatar"}
                         </AvatarFallback>
@@ -267,7 +274,7 @@ export default function AddEmployee() {
                         className="hidden"
                       />
                       <button
-                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed"
+                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed border-input"
                         type="button"
                         onClick={() => {
                           console.log("Avatar upload button clicked");
@@ -279,7 +286,7 @@ export default function AddEmployee() {
                         <span className="sr-only">Upload</span>
                       </button>
                       <button
-                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed"
+                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed border-input"
                         type="button"
                         onClick={() => setShowAvatarLibrary(true)}
                         disabled={isUploading}
@@ -298,7 +305,7 @@ export default function AddEmployee() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="username">{t("Name")}</Label>
                       <div className="col-span-3 w-full space-y-2">
                         <Input id="username" className="w-full" {...field} />
@@ -313,7 +320,7 @@ export default function AddEmployee() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="email">{t("Email")}</Label>
                       <div className="col-span-3 w-full space-y-2">
                         <Input id="email" className="w-full" {...field} />
@@ -328,7 +335,7 @@ export default function AddEmployee() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="password">{t("Password")}</Label>
                       <div className="col-span-3 w-full space-y-2">
                         <Input
@@ -348,7 +355,7 @@ export default function AddEmployee() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="confirmPassword">
                         {t("ConfirmPassword")}
                       </Label>
@@ -370,7 +377,7 @@ export default function AddEmployee() {
                 name="roles"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="roles">{t("Role")}</Label>
                       <div className="col-span-3 w-full space-y-2">
                         <select
@@ -414,7 +421,10 @@ export default function AddEmployee() {
         open={showAvatarLibrary}
         onOpenChange={setShowAvatarLibrary}
         onSelectFile={(file) => {
-          form.setValue('avatar', file.cloudinarySecureUrl);
+          const avatarUrl = resolveManagedFileUrl(file, userId, "content");
+          if (avatarUrl) {
+            form.setValue('avatar', avatarUrl);
+          }
           setFile(undefined);
           setShowAvatarLibrary(false);
         }}

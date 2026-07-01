@@ -101,7 +101,7 @@ export default function EditLearningPath({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="manage-dialog-panel max-h-[90vh] max-w-2xl overflow-y-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle>{t("Edit")}</DialogTitle>
           <DialogDescription>{t("EditDescription")}</DialogDescription>
@@ -112,10 +112,11 @@ export default function EditLearningPath({
             <Input
               id="title"
               placeholder={t("FormTitlePlaceholder")}
+              className="manage-field"
               {...register("title")}
             />
             {errors.title && (
-              <p className="text-sm text-red-500">{errors.title.message}</p>
+              <p className="text-sm text-destructive">{errors.title.message}</p>
             )}
           </div>
 
@@ -125,10 +126,11 @@ export default function EditLearningPath({
               id="description"
               placeholder={t("FormDescriptionPlaceholder")}
               rows={4}
+              className="manage-field min-h-[8rem]"
               {...register("description")}
             />
             {errors.description && (
-              <p className="text-sm text-red-500">{errors.description.message}</p>
+              <p className="text-sm text-destructive">{errors.description.message}</p>
             )}
           </div>
 
@@ -139,7 +141,7 @@ export default function EditLearningPath({
                 type="button"
                 variant="ghost"
                 onClick={() => setShowSkillManager(true)}
-                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                className="manage-secondary-button ml-2"
               >
                 {t("ManageSkills") || "Manage Skills"}
               </Button>
@@ -152,7 +154,7 @@ export default function EditLearningPath({
                     <button
                       type="button"
                       onClick={() => handleRemoveSkill(skill)}
-                      className="ml-2 hover:text-red-500"
+                      className="ml-2 hover:text-destructive"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -161,15 +163,24 @@ export default function EditLearningPath({
               </div>
             )}
             {errors.skills && (
-              <p className="text-sm text-red-500">{errors.skills.message}</p>
+              <p className="text-sm text-destructive">{errors.skills.message}</p>
             )}
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button
+              type="button"
+              variant="outline"
+              className="manage-secondary-button"
+              onClick={onClose}
+            >
               {t("Cancel")}
             </Button>
-            <Button type="submit" disabled={updateMutation.isPending}>
+            <Button
+              type="submit"
+              className="manage-primary-button"
+              disabled={updateMutation.isPending}
+            >
               {updateMutation.isPending ? t("Updating") : t("Update")}
             </Button>
           </DialogFooter>

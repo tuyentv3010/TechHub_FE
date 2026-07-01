@@ -52,19 +52,20 @@ export interface ApiCourse {
   title: string;
   description: string;
   price: number;
+  currency?: string | null;
   discountPrice: number;
   promoEndDate: string | null;
   status: "PUBLISHED" | "DRAFT" | "ARCHIVED";
   level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
   language: "VI" | "EN";
-  categories: any | null;
+  categories: unknown | null;
   skills: Skill[];
   tags: Tag[];
   objectives: string[];
   requirements: string[];
   instructorId: string;
-  thumbnail: FileInfo;
-  introVideo: FileInfo;
+  thumbnail: FileInfo | null;
+  introVideo: FileInfo | null;
   created: string;
   updated: string;
   active: boolean;
@@ -77,40 +78,49 @@ export interface ApiCourse {
 export interface Course {
   id?: string;
   title: string;
+  description?: string;
   instructor: string;
-  image: string;
+  image: string | null;
   rating: number;
   reviews: number;
   price: number;
+  originalPrice?: number;
   badge?: string;
+  level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | string;
+  language?: "VI" | "EN" | "JA" | string;
   hours?: number;
   lectures?: number;
   lessons?: number;
   students?: number;
   instructorAvatar?: string;
+  instructorId?: string;
   skills?: Skill[];
+  promoEndDate?: string | null;
+  createdAt?: string;
+  currency?: string;
 }
 
 // Course API Response Type
 export type CoursesResponse = ApiResponse<ApiCourse[]>;
 
 // Transform function to convert ApiCourse to Course
-export function transformApiCourse(apiCourse: ApiCourse, additionalData?: any): Course {
+export function transformApiCourse(apiCourse: ApiCourse, additionalData?: unknown): Course {
   // If we have additional data from your sample format, use it
-  if (additionalData) {
+  if (additionalData && typeof additionalData === "object") {
+    const data = additionalData as Partial<Course>;
     return {
-      id: additionalData.id,
-      title: additionalData.title,
-      instructor: additionalData.instructor,
-      image: additionalData.image,
-      rating: additionalData.rating,
-      reviews: additionalData.reviews,
-      price: additionalData.price,
-      badge: additionalData.badge,
-      hours: additionalData.hours,
-      lessons: additionalData.lessons,
-      students: additionalData.students,
-      instructorAvatar: additionalData.instructorAvatar,
+      id: data.id,
+      title: data.title ?? apiCourse.title,
+      instructor: data.instructor ?? "Instructor",
+      image: data.image ?? null,
+      rating: data.rating ?? 0,
+      reviews: data.reviews ?? 0,
+      price: data.price ?? 0,
+      badge: data.badge,
+      hours: data.hours,
+      lessons: data.lessons,
+      students: data.students,
+      instructorAvatar: data.instructorAvatar,
     };
   }
 
@@ -119,12 +129,15 @@ export function transformApiCourse(apiCourse: ApiCourse, additionalData?: any): 
     id: apiCourse.id,
     title: apiCourse.title,
     instructor: "Instructor", // Will be fetched separately
-    image: apiCourse.thumbnail.url,
+    image: apiCourse.thumbnail?.secureUrl || apiCourse.thumbnail?.url || null,
     rating: apiCourse.averageRating || 0,
     reviews: apiCourse.ratingCount,
     price: apiCourse.discountPrice || apiCourse.price,
     badge: apiCourse.level,
     students: apiCourse.totalEnrollments,
+    instructorId: apiCourse.instructorId,
     skills: apiCourse.skills,
+    promoEndDate: apiCourse.promoEndDate,
+    createdAt: apiCourse.created,
   };
 }

@@ -10,11 +10,15 @@ import { Input } from "@/components/ui/input";
 import { BookOpen, TrendingUp, ArrowRight, Search } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { LearningPathItemType } from "@/schemaValidations/learning-path.schema";
+import { PublicPagination } from "@/components/common/public-pagination";
+import { normalizeLearningPathListPayload } from "@/lib/learning-paths";
+import { LearningPathItemType, LearningPathPaginationType } from "@/schemaValidations/learning-path.schema";
+
+const LEARNING_PATH_PAGE_SIZE = 9;
 
 interface LearningPathsClientProps {
   initialPaths: LearningPathItemType[];
-  initialPagination: any;
+  initialPagination: LearningPathPaginationType | null;
 }
 
 export default function LearningPathsClient({
@@ -29,18 +33,23 @@ export default function LearningPathsClient({
   // Fetch learning paths (use initial data if not filtering)
   const { data, isLoading } = useGetLearningPathList({
     page,
-    size: 9,
+    size: LEARNING_PATH_PAGE_SIZE,
     sortBy: "created",
     sortDirection: "DESC",
   });
+  const clientLearningPaths = normalizeLearningPathListPayload(data?.payload);
 
   // Use SSR data for initial render, client data after filtering
   const paths = isClientFiltering 
-    ? (data?.payload?.data || [])
-    : (data?.payload?.data || initialPaths);
+    ? clientLearningPaths.data
+    : data
+      ? clientLearningPaths.data
+      : initialPaths;
   const pagination = isClientFiltering 
-    ? data?.payload?.pagination
-    : (data?.payload?.pagination || initialPagination);
+    ? clientLearningPaths.pagination
+    : data
+      ? clientLearningPaths.pagination
+      : initialPagination;
 
   const filteredPaths = paths.filter((path: LearningPathItemType) => {
     if (!searchKeyword) return true;
@@ -52,6 +61,7 @@ export default function LearningPathsClient({
 
   const handleSearch = () => {
     setIsClientFiltering(true);
+    setPage(0);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -83,7 +93,7 @@ export default function LearningPathsClient({
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
-            src="/learningPath/Background.png"
+            src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1920&q=80"
             alt="Background"
             fill
             className="object-cover"
@@ -95,7 +105,7 @@ export default function LearningPathsClient({
 
         {/* Content */}
         <div className="relative z-10 flex min-h-[400px] flex-col items-center justify-center px-4 text-center md:min-h-[500px]">
-          <h1 className="mb-4 text-3xl font-bold italic text-white md:text-4xl lg:text-5xl">
+          <h1 className="mb-4 text-3xl font-semibold text-white md:text-4xl lg:text-5xl">
             {t("heroTitle")}
           </h1>
           <p className="mb-12 text-base text-white/90 md:text-lg max-w-3xl">
@@ -103,8 +113,8 @@ export default function LearningPathsClient({
           </p>
 
           {/* Search Box */}
-          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-left text-lg font-semibold text-gray-800">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="mb-4 text-left text-lg font-semibold text-foreground">
               {t("searchTitle") || "What learning path are you looking for?"}
             </h3>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -116,15 +126,14 @@ export default function LearningPathsClient({
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="h-12 pl-10 border-gray-200 bg-gray-50 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600"
+                  className="h-12 pl-10 border-input bg-muted"
                 />
               </div>
 
               {/* Search Button */}
               <Button
                 onClick={handleSearch}
-                className="h-12 px-8 text-base font-semibold text-white hover:opacity-90"
-                style={{ backgroundColor: "#3dcbb1" }}
+                className="h-12 px-8 text-base font-semibold"
               >
                 <Search className="mr-2 h-5 w-5" />
                 Search
@@ -139,7 +148,10 @@ export default function LearningPathsClient({
         {/* Results Count */}
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            {t("showingResults", { count: filteredPaths.length, total: paths.length })}
+            {t("showingResults", {
+              count: filteredPaths.length,
+              total: pagination?.totalElements ?? paths.length,
+            })}
           </p>
         </div>
 
@@ -220,25 +232,14 @@ export default function LearningPathsClient({
 
         {/* Pagination */}
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-8">
-            <Button
-              variant="outline"
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page === 0}
-            >
-              {t("previous")}
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              {t("page")} {page + 1} {t("of")} {pagination.totalPages}
-            </span>
-            <Button
-              variant="outline"
-              onClick={() => handlePageChange(page + 1)}
-              disabled={page >= pagination.totalPages - 1}
-            >
-              {t("next")}
-            </Button>
-          </div>
+          <PublicPagination
+            page={page}
+            totalPages={pagination.totalPages}
+            onPageChange={handlePageChange}
+            previousLabel={t("previous")}
+            nextLabel={t("next")}
+            className="pt-8"
+          />
         )}
       </div>
     </>

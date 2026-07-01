@@ -27,6 +27,8 @@ import { useGetAccount, useUpdateAccountMutation, useAccountProfile } from "@/qu
 import { useGetRoles } from "@/queries/useRole";
 import MediaLibraryDialog from "@/components/common/media-library-dialog";
 import fileApiRequest from "@/apiRequests/file";
+import { normalizePersistedMediaUrl, resolveManagedFileUrl } from "@/lib/file-media";
+import PermissionOverrides from "./permission-overrides";
 
 type EditEmployeeProps = {
   id: string; // UUID
@@ -97,7 +99,7 @@ export default function EditEmployee({
       setPreviewUrl(url);
       return url;
     }
-    return avatar;
+    return normalizePersistedMediaUrl(avatar);
   }, [file, avatar]);
 
   useEffect(() => {
@@ -192,8 +194,14 @@ export default function EditEmployee({
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        form.setValue('avatar', response.payload.data.cloudinarySecureUrl);
+      // Use the authenticated proxy URL (/api/proxy/files/{id}/...) instead of a
+      // raw MinIO/presigned URL, which would 403 when rendered in the table.
+      const avatarUrl = response.payload?.data
+        ? resolveManagedFileUrl(response.payload.data, userId, "content")
+        : null;
+
+      if (avatarUrl) {
+        form.setValue('avatar', avatarUrl);
         setFile(undefined);
         toast({ description: "Avatar uploaded successfully" });
       }
@@ -231,7 +239,7 @@ export default function EditEmployee({
       }}
     >
       <DialogContent
-        className="sm:max-w-[600px] max-h-screen overflow-auto"
+        className="sm:max-w-[980px] max-h-screen overflow-auto"
         onCloseAutoFocus={reset}
       >
         <DialogHeader>
@@ -257,7 +265,7 @@ export default function EditEmployee({
                   <FormItem>
                     <div className="flex gap-2 items-start justify-start">
                       <Avatar className="aspect-square w-[100px] h-[100px] rounded-md object-cover">
-                        <AvatarImage src={previewAvatarFromFile} className="object-cover" />
+                        <AvatarImage src={previewAvatarFromFile || undefined} className="object-cover" />
                         <AvatarFallback className="rounded-none">
                           {username || t("AvatarFallback")}
                         </AvatarFallback>
@@ -270,7 +278,7 @@ export default function EditEmployee({
                         className="hidden"
                       />
                       <button
-                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed"
+                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed border-input"
                         type="button"
                         onClick={() => avatarInputRef.current?.click()}
                         disabled={isUploading}
@@ -279,7 +287,7 @@ export default function EditEmployee({
                         <span className="sr-only">{t("UploadAvatar")}</span>
                       </button>
                       <button
-                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed"
+                        className="flex aspect-square w-[100px] items-center justify-center rounded-md border border-dashed border-input"
                         type="button"
                         onClick={() => setShowAvatarLibrary(true)}
                         disabled={isUploading}
@@ -298,7 +306,7 @@ export default function EditEmployee({
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="username">{t("Name")}</Label>
                       <div className="col-span-3 w-full space-y-2">
                         <Input
@@ -319,7 +327,7 @@ export default function EditEmployee({
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="email">{t("Email")}</Label>
                       <div className="col-span-3 w-full space-y-2">
                         <Input
@@ -341,7 +349,7 @@ export default function EditEmployee({
                 name="roles"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="roles">{t("Role")}</Label>
                       <div className="col-span-3 w-full space-y-2">
                         <select
@@ -366,12 +374,13 @@ export default function EditEmployee({
                   </FormItem>
                 )}
               />
+              <PermissionOverrides userId={id} enabled={Boolean(id)} />
               <FormField
                 control={form.control}
                 name="changePassword"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                       <Label htmlFor="changePassword">
                         {t("ChangePassword")}
                       </Label>
@@ -392,7 +401,7 @@ export default function EditEmployee({
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                         <Label htmlFor="password">{t("Password")}</Label>
                         <div className="col-span-3 w-full space-y-2">
                           <Input
@@ -416,7 +425,7 @@ export default function EditEmployee({
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="grid grid-cols-4 items-center justify-items-start gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-4 items-center justify-items-start gap-4">
                         <Label htmlFor="confirmPassword">
                           {t("ConfirmPassword")}
                         </Label>
@@ -462,7 +471,10 @@ export default function EditEmployee({
         open={showAvatarLibrary}
         onOpenChange={setShowAvatarLibrary}
         onSelectFile={(file) => {
-          form.setValue('avatar', file.cloudinarySecureUrl);
+          const avatarUrl = resolveManagedFileUrl(file, userId, "content");
+          if (avatarUrl) {
+            form.setValue('avatar', avatarUrl);
+          }
           setFile(undefined);
           setShowAvatarLibrary(false);
         }}

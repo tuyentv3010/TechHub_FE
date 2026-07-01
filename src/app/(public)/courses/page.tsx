@@ -19,7 +19,7 @@ async function getAccessToken() {
 }
 
 async function getCourses(accessToken?: string) {
-  const url = `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/app/api/proxy/courses?page=0&size=12`;
+  const url = `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/app/api/proxy/courses?page=0&size=100`;
 
   try {
     const headers: Record<string, string> = {

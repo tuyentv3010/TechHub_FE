@@ -100,6 +100,18 @@ export const useRecommendScheduledMutation = () => {
   });
 };
 
+export const useGetRecommendationHistory = (
+  userId: string,
+  mode?: "REALTIME" | "SCHEDULED",
+  limit: number = 20
+) => {
+  return useQuery({
+    queryKey: ["recommendation-history", userId, mode, limit],
+    queryFn: () => aiApiRequest.getRecommendationHistory(userId, mode, limit),
+    enabled: !!userId,
+  });
+};
+
 // ============================================
 // CHAT HOOKS
 // ============================================
@@ -127,7 +139,7 @@ export const useSendChatMessageMutation = () => {
 export const useCreateSessionMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, mode }: { userId: string; mode?: "GENERAL" | "ADVISOR" }) =>
+    mutationFn: ({ userId, mode }: { userId: string; mode?: "AUTO" | "GENERAL" | "ADVISOR" }) =>
       aiApiRequest.createSession(userId, mode),
     onSuccess: (_data, variables) => {
       // Invalidate user sessions to refresh the list
@@ -146,11 +158,11 @@ export const useGetUserSessions = (userId: string) => {
 };
 
 // Get session messages
-export const useGetSessionMessages = (sessionId: string) => {
+export const useGetSessionMessages = (sessionId: string, enabled: boolean = true) => {
   return useQuery({
     queryKey: ["session-messages", sessionId],
     queryFn: () => aiApiRequest.getSessionMessages(sessionId),
-    enabled: !!sessionId,
+    enabled: !!sessionId && enabled,
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes to avoid duplicate calls
     refetchOnWindowFocus: false,
   });
@@ -187,6 +199,13 @@ export const useReindexLessonsMutation = () => {
   });
 };
 
+// Reindex blogs mutation
+export const useReindexBlogsMutation = () => {
+  return useMutation({
+    mutationFn: () => aiApiRequest.reindexBlogs(),
+  });
+};
+
 // Reindex all mutation
 export const useReindexAllMutation = () => {
   return useMutation({
@@ -203,10 +222,21 @@ export const useGetQdrantStats = () => {
   });
 };
 
+export const useGetAiRuntimeStats = () => {
+  return useQuery({
+    queryKey: ["ai-runtime-stats"],
+    queryFn: () => aiApiRequest.getRuntimeStats(),
+    refetchInterval: 30000,
+    refetchOnWindowFocus: false,
+  });
+};
+
 export const useGetAiProviderConfig = () => {
   return useQuery({
     queryKey: ["ai-provider-config"],
     queryFn: () => aiApiRequest.getProviderConfig(),
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 };
 
@@ -218,6 +248,49 @@ export const useUpdateAiProviderConfigMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ai-provider-config"] });
     },
+  });
+};
+
+export const useGetProviderHealth = () => {
+  return useQuery({
+    queryKey: ["provider-health"],
+    queryFn: () => aiApiRequest.getProviderHealth(),
+    refetchInterval: 60000,
+  });
+};
+
+export const useGetAvailableModels = () => {
+  return useQuery({
+    queryKey: ["available-models"],
+    queryFn: () => aiApiRequest.getAvailableModels(),
+  });
+};
+
+// ============================================
+// LANGFUSE ANALYTICS HOOKS
+// ============================================
+
+export const useGetLangfuseTraces = (page: number = 1, limit: number = 10) => {
+  return useQuery({
+    queryKey: ["langfuse-traces", page, limit],
+    queryFn: () => aiApiRequest.getLangfuseTraces(page, limit),
+    refetchInterval: 30000,
+  });
+};
+
+export const useGetLangfuseTraceDetail = (traceId: string) => {
+  return useQuery({
+    queryKey: ["langfuse-trace", traceId],
+    queryFn: () => aiApiRequest.getLangfuseTraceDetail(traceId),
+    enabled: !!traceId,
+  });
+};
+
+export const useGetLangfuseAnalytics = (days: number = 7) => {
+  return useQuery({
+    queryKey: ["langfuse-analytics", days],
+    queryFn: () => aiApiRequest.getLangfuseAnalytics(days),
+    refetchInterval: 60000,
   });
 };
 

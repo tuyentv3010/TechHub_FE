@@ -13,7 +13,7 @@ import { SkillsSection } from "@/components/organisms/NewSkillsSection";
 import { CommunitySection } from "@/components/organisms/CommunitySectionNew";
 import { InstructorsSection } from "@/components/organisms/InstructorsSection";
 import { BlogSection } from "@/components/organisms/BlogSection";
-import Footer from "@/components/footer";
+import { normalizePublicMediaUrl } from "@/lib/file-media";
 
 export default function Home() {
   const t = useTranslations("HomePage");
@@ -23,6 +23,7 @@ export default function Home() {
     page: 0,
     size: 6,
     status: "PUBLISHED", // Only show published courses
+    redirectOnUnauthorized: false,
   });
 
   // Fetch instructors from public API (limit to 4)
@@ -32,16 +33,24 @@ export default function Home() {
   const coursesWithInstructorIds = coursesData?.payload?.data?.map((course: any) => ({
     id: course.id, // Add course ID for creating slug
     title: course.title,
+    description: course.description,
     instructorId: course.instructorId, // Keep ID for fetching
-    image: course.thumbnail?.secureUrl || course.thumbnail?.url || "/courses/default.png",
+    image: normalizePublicMediaUrl(course.thumbnail?.secureUrl || course.thumbnail?.url) || null,
     rating: course.averageRating || 0,
     reviews: course.ratingCount || 0,
     price: course.discountPrice || course.price || 0,
+    originalPrice: course.price || 0,
+    currency: course.currency,
     badge: course.categories?.[0] || "",
+    level: course.level,
+    language: course.language,
     hours: 0, // Will be calculated from lessons if needed
     lectures: 0, // Will be calculated from lessons if needed
     lessons: 0, // Will be calculated from chapters if needed
     students: course.totalEnrollments || 0,
+    skills: course.skills || [],
+    promoEndDate: course.promoEndDate,
+    createdAt: course.created,
   })) || [];
   const communityStats = {
     totalStudents: t("community.stats.totalStudents"),
@@ -71,22 +80,22 @@ export default function Home() {
 
       {/* Courses Section */}
       {isLoading ? (
-        <section className="py-16 bg-gray-50 dark:bg-gray-800">
+        <section className="bg-app-subtle py-16">
           <div className="container mx-auto px-4">
             <div className="flex justify-between items-center mb-12">
-              <div className="h-10 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-              <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-10 w-64 animate-pulse rounded bg-muted" />
+              <div className="h-10 w-32 animate-pulse rounded bg-muted" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden">
-                  <div className="h-48 bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                <div key={i} className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                  <div className="h-48 animate-pulse bg-muted" />
                   <div className="p-6 space-y-4">
-                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse" />
+                    <div className="h-6 animate-pulse rounded bg-muted" />
+                    <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
                     <div className="flex gap-2">
-                      <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                      <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                      <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+                      <div className="h-4 w-16 animate-pulse rounded bg-muted" />
                     </div>
                   </div>
                 </div>
@@ -101,10 +110,10 @@ export default function Home() {
           coursesWithInstructorIds={coursesWithInstructorIds}
         />
       ) : (
-        <section className="py-16 bg-gray-50 dark:bg-gray-800">
+        <section className="bg-app-subtle py-16">
           <div className="container mx-auto px-4">
             <div className="text-center">
-              <p className="text-gray-600 dark:text-gray-400">No courses available at the moment.</p>
+              <p className="text-muted-foreground">No courses available at the moment.</p>
             </div>
           </div>
         </section>
@@ -138,14 +147,14 @@ export default function Home() {
 
       {/* Instructors Section */}
       {isLoadingInstructors ? (
-        <section className="py-16 bg-gray-50 dark:bg-gray-900">
+        <section className="bg-app-subtle py-16">
           <div className="container mx-auto px-4">
-            <div className="h-10 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-4" />
-            <div className="h-6 w-96 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-12" />
+            <div className="mb-4 h-10 w-64 animate-pulse rounded bg-muted" />
+            <div className="mb-12 h-6 w-96 animate-pulse rounded bg-muted" />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-                  <div className="h-80 bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                <div key={i} className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                  <div className="h-80 animate-pulse bg-muted" />
                 </div>
               ))}
             </div>
@@ -156,6 +165,7 @@ export default function Home() {
           title={t("instructors.title")}
           subtitle={t("instructors.subtitle")}
           instructors={instructorsData?.payload?.data || []}
+          viewAllLabel={t("instructors.viewAll")}
         />
       )}
 
@@ -165,8 +175,6 @@ export default function Home() {
         subtitle={t("blog.mostPopular")}
       />
 
-      {/* Newsletter Section */}
-      <Footer />
     </div>
   );
 }

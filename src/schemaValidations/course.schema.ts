@@ -54,6 +54,7 @@ export const CourseItemRes = z.object({
   title: z.string(),
   description: z.string().nullable(),
   price: z.number(),
+  currency: z.string().nullable().optional(),
   discountPrice: z.number().nullable(),
   promoEndDate: z.string().nullable(),
   status: CourseStatus,
@@ -124,6 +125,17 @@ export const CourseListRes = z.object({
 
 export type CourseListResponseType = z.TypeOf<typeof CourseListRes>;
 
+export const LearningStreakRes = z.object({
+  userId: z.string().optional(),
+  currentStreak: z.number(),
+  longestStreak: z.number(),
+  lastActivityDate: z.string().nullable().optional(),
+  lastActivityAt: z.string().nullable().optional(),
+  completedToday: z.boolean().optional(),
+});
+
+export type LearningStreakResType = z.TypeOf<typeof LearningStreakRes>;
+
 // Course Detail Response (with API wrapper and nested structure)
 export const CourseDetailRes = z.object({
   success: z.boolean(),
@@ -143,6 +155,7 @@ export const CourseDetailRes = z.object({
     currentChapterId: z.string().nullable().optional(),
     lockedChapterIds: z.array(z.string()).optional(),
     unlockedChapterIds: z.array(z.string()).optional(),
+    learningStreak: LearningStreakRes.nullable().optional(),
   }),
   timestamp: z.string(),
   path: z.string(),
@@ -155,6 +168,7 @@ export const CreateCourseBody = z.object({
   title: z.string().min(1, "Title is required").max(255),
   description: z.string().optional(),
   price: z.number().min(0, "Price must be >= 0"),
+  currency: z.enum(["VND", "USD"]).optional(),
   discountPrice: z.number().min(0).optional(),
   level: CourseLevel,
   language: Language,
@@ -176,6 +190,7 @@ export const UpdateCourseBody = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
   price: z.number().min(0).optional(),
+  currency: z.enum(["VND", "USD"]).optional(),
   discountPrice: z.number().min(0).optional(),
   level: CourseLevel.optional(),
   language: Language.optional(),
@@ -320,11 +335,16 @@ export const AssetItem = z.object({
 
 export type AssetItemType = z.TypeOf<typeof AssetItem>;
 
+// Accept an absolute URL (http/https) or an app-relative path (e.g. "/api/proxy/files/..."),
+// since uploaded assets are stored as relative paths, not full URLs.
+const isUrlOrPath = (value: string) =>
+  /^https?:\/\//i.test(value) || value.startsWith("/");
+
 // Create Asset Body
 export const CreateAssetBody = z.object({
   assetType: AssetType,
   title: z.string().min(1, "Title is required").max(255),
-  externalUrl: z.string().url("Invalid URL"),
+  externalUrl: z.string().min(1, "Invalid URL").refine(isUrlOrPath, "Invalid URL"),
   orderIndex: z.number().min(1, "Order must be at least 1").optional(),
 });
 
@@ -334,7 +354,7 @@ export type CreateAssetBodyType = z.TypeOf<typeof CreateAssetBody>;
 export const UpdateAssetBody = z.object({
   assetType: AssetType.optional(),
   title: z.string().min(1).max(255).optional(),
-  externalUrl: z.string().url().optional(),
+  externalUrl: z.string().refine(isUrlOrPath, "Invalid URL").optional(),
   orderIndex: z.number().min(1).optional(),
 });
 
@@ -405,11 +425,44 @@ export type UpdateExerciseBodyType = z.TypeOf<typeof UpdateExerciseBody>;
 
 // Submit Exercise Body
 export const SubmitExerciseBody = z.object({
+  exerciseId: z.string().optional(),
   answer: z.string().min(1, "Answer is required"),
   submissionData: z.any().optional(),
 });
 
 export type SubmitExerciseBodyType = z.TypeOf<typeof SubmitExerciseBody>;
+
+export const QuizReviewSuggestion = z.object({
+  lessonId: z.string().nullable().optional(),
+  title: z.string(),
+  reason: z.string(),
+  action: z.string(),
+});
+
+export const QuizFeedback = z.object({
+  correct: z.boolean(),
+  summary: z.string(),
+  explanation: z.string(),
+  selectedAnswers: z.array(z.string()).optional(),
+  correctAnswers: z.array(z.string()).optional(),
+  weakConcepts: z.array(z.string()).optional(),
+  reviewSuggestions: z.array(QuizReviewSuggestion).optional(),
+  nextAction: z.string().optional(),
+  source: z.string().optional(),
+});
+
+export const SubmitExerciseResponse = z.object({
+  submissionId: z.string(),
+  status: z.string(),
+  grade: z.number().nullable().optional(),
+  gradedAt: z.string().nullable().optional(),
+  passed: z.boolean().nullable().optional(),
+  testCaseResults: z.array(z.any()).optional(),
+  feedback: QuizFeedback.nullable().optional(),
+});
+
+export type QuizFeedbackType = z.TypeOf<typeof QuizFeedback>;
+export type SubmitExerciseResponseType = z.TypeOf<typeof SubmitExerciseResponse>;
 
 // ============================================
 // PROGRESS SCHEMAS

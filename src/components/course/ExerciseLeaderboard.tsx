@@ -1,8 +1,12 @@
 "use client";
 
-import { Share2, RotateCcw, CheckCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Share2, RotateCcw, CheckCircle, RefreshCcw } from "lucide-react";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 import envConfig from "@/config";
+import courseApiRequest from "@/apiRequests/course";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 // Types
 interface LeaderboardPlayer {
@@ -22,17 +26,13 @@ interface ExerciseLeaderboardProps {
   onComplete?: () => void;
   exerciseId?: string;
   lessonSlug?: string;
+  currentUserId?: string;
+  currentUserAvatar?: string;
+  courseId?: string;
+  lessonId?: string;
 }
 
-// Mock data - replace with API call later
-const mockData: LeaderboardPlayer[] = [
-  { id: "1", rank: 1, name: "Maryam1", avatar: "/exercise/exercise-1.png", score: 20, totalQuestions: 20 },
-  { id: "2", rank: 2, name: "Amina", avatar: "/exercise/exercise-2.png", score: 19, totalQuestions: 20 },
-  { id: "3", rank: 3, name: "Areej", avatar: "/exercise/exercise-3.png", score: 18, totalQuestions: 20 },
-  { id: "4", rank: 4, name: "Mohammed Ali", avatar: "/exercise/exercise-4.png", score: 17, totalQuestions: 20 },
-  { id: "5", rank: 5, name: "Salwa", avatar: "/exercise/exercise-5.png", score: 15, totalQuestions: 20 },
-  { id: "6", rank: 6, name: "Karima", avatar: "/exercise/exercise-6.png", score: 15, totalQuestions: 20 },
-];
+const mockData: LeaderboardPlayer[] = [];
 
 // Medal images for top 3
 const MEDAL_IMAGES = {
@@ -106,7 +106,7 @@ function TopThreePodium({
               height={80}
               className="w-full h-full object-cover"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = '/avatars/default.png';
+                (e.target as HTMLImageElement).src = '/avatars/default-avatar.svg';
               }}
             />
           </div>
@@ -260,7 +260,7 @@ function LeaderboardItem({ player }: { player: LeaderboardPlayer }) {
             height={40}
             className="w-full h-full object-cover"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = '/avatars/default.png';
+              (e.target as HTMLImageElement).src = '/avatars/default-avatar.svg';
             }}
           />
         </div>
@@ -283,14 +283,90 @@ function LeaderboardItem({ player }: { player: LeaderboardPlayer }) {
 
 // Main Leaderboard Component
 export default function ExerciseLeaderboard({
-  players = mockData,
+  players: playersProp,
   totalQuestions = 20,
   onShare,
   onRetry,
   onComplete,
   exerciseId,
   lessonSlug,
+  currentUserId,
+  currentUserAvatar,
+  courseId,
+  lessonId,
 }: ExerciseLeaderboardProps) {
+  const [fetched, setFetched] = useState<LeaderboardPlayer[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(!!(courseId && lessonId) && !playersProp);
+  const [fetchError, setFetchError] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const normalizedCurrentAvatar = normalizePersistedMediaUrl(currentUserAvatar);
+
+  const resolveAvatar = (row: any) => {
+    const isCurrentUser = !!currentUserId && String(row.userId) === currentUserId;
+
+    return (isCurrentUser ? normalizedCurrentAvatar : undefined)
+      || normalizePersistedMediaUrl(row.avatar)
+      || "/avatars/default-avatar.svg";
+  };
+
+  useEffect(() => {
+    if (playersProp || !courseId || !lessonId) return;
+    let cancelled = false;
+    const wait = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+    (async () => {
+      try {
+        setLoading(true);
+        setFetchError(false);
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+          try {
+            const res: any = await courseApiRequest.getLessonLeaderboard(courseId, lessonId, 10);
+            const rows =
+              res?.payload?.data
+              ?? res?.payload?.payload?.data
+              ?? res?.payload
+              ?? [];
+            if (cancelled) return;
+            const mapped: LeaderboardPlayer[] = (Array.isArray(rows) ? rows : []).map((r: any, i: number) => ({
+              id: r.userId || String(i),
+              rank: r.rank ?? i + 1,
+              name: r.username || "Người dùng",
+              avatar: resolveAvatar(r),
+              score: Math.round(r.score || 0),
+              totalQuestions,
+            }));
+            setFetched(mapped);
+            if (mapped.length > 0 || attempt === 3) return;
+          } catch (error) {
+            if (attempt === 3) throw error;
+          }
+          await wait(750);
+        }
+      } catch (e) {
+        console.error("[Leaderboard] fetch failed", {
+          error: e,
+          status: (e as any)?.status,
+          payload: (e as any)?.payload,
+        });
+        if (!cancelled) {
+          setFetched([]);
+          setFetchError(true);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, currentUserAvatar, currentUserId, lessonId, playersProp, refreshKey, totalQuestions]);
+
+  // Có courseId+lessonId → bám data thật, kể cả khi rỗng (KHÔNG fallback mockData).
+  // Không có (preview / design) → dùng mockData để UI không trống.
+  const usingRealApi = !!(courseId && lessonId) && !playersProp;
+  const players: LeaderboardPlayer[] = playersProp
+    ?? (usingRealApi ? (fetched ?? []) : mockData);
+
   const top3 = players.slice(0, 3);
   const restPlayers = players.slice(3);
 
@@ -330,8 +406,84 @@ export default function ExerciseLeaderboard({
     onComplete?.();
   };
 
+  // Loading / empty states (chỉ khi đang dùng real API)
+  if (usingRealApi && loading) {
+    return (
+      <div
+        className="relative w-full min-h-[600px] rounded-2xl overflow-hidden p-6 flex items-center justify-center"
+        style={{ backgroundColor: "#FFF8DD" }}
+      >
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-orange-300 border-t-orange-600" />
+          <p className="text-sm font-medium text-orange-900/70">Đang tải bảng xếp hạng...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (usingRealApi && fetchError) {
+    return (
+      <div
+        className="relative flex min-h-[600px] w-full items-center justify-center rounded-2xl p-6"
+        style={{ backgroundColor: "#FFF8DD" }}
+      >
+        <div className="max-w-sm text-center">
+          <h3 className="mb-2 text-xl font-bold text-orange-900">Không tải được bảng xếp hạng</h3>
+          <p className="mb-5 text-sm text-orange-900/70">Vui lòng thử tải lại bảng xếp hạng.</p>
+          <Button onClick={() => setRefreshKey(key => key + 1)} className="rounded-full px-5 py-2.5 font-semibold">
+            <RefreshCcw className="h-4 w-4" />
+            Tải lại
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (players.length === 0) {
+    return (
+      <div
+        className="relative w-full min-h-[600px] rounded-2xl overflow-hidden p-6"
+        style={{ backgroundColor: "#FFF8DD" }}
+      >
+        <DecorativeFlower color="#FF6B35" className="absolute top-8 left-8 w-10 h-10" />
+        <DecorativeFlower color="#F7B731" className="absolute top-20 right-16 w-8 h-8" />
+        <DecorativeFlower color="#4ECDC4" className="absolute bottom-12 right-8 w-10 h-10" />
+        <div className="relative z-10 flex h-full min-h-[500px] flex-col items-center justify-center text-center max-w-md mx-auto">
+          <Image
+            src="/leaderboard/medal-gold.png"
+            alt="empty"
+            width={120}
+            height={120}
+            className="opacity-30 mb-6"
+          />
+          <h3 className="text-xl font-bold text-orange-900 mb-2">Chưa có bảng xếp hạng</h3>
+          <p className="text-sm text-orange-900/70 mb-6 max-w-xs">
+            Chưa có lượt trả lời nào được ghi nhận. Hãy làm bài tập để xuất hiện trên bảng xếp hạng.
+          </p>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={handleRetry}
+              className="rounded-full px-5 py-2.5 font-semibold"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Làm lại
+            </Button>
+            <Button
+              onClick={handleComplete}
+              className="rounded-full px-5 py-2.5 font-semibold shadow-md"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Hoàn thành
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div 
+    <div
       className="relative w-full min-h-[600px] rounded-2xl overflow-hidden p-6"
       style={{ backgroundColor: '#FFF8DD' }}
     >
@@ -360,27 +512,29 @@ export default function ExerciseLeaderboard({
 
         {/* Action buttons */}
         <div className="flex justify-center gap-3 mt-6">
-          <button
+          <Button
+            variant="outline"
             onClick={handleRetry}
-            className="px-5 py-2.5 bg-white border-2 border-[#8B7355] text-[#8B7355] font-semibold rounded-lg hover:bg-[#8B7355] hover:text-white transition-colors flex items-center gap-2"
+            className="px-5 py-2.5 font-semibold"
           >
             <RotateCcw className="w-4 h-4" />
             Làm lại
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleComplete}
-            className="px-5 py-2.5 bg-[#22C55E] text-white font-semibold rounded-lg hover:bg-[#16A34A] transition-colors flex items-center gap-2"
+            className="px-5 py-2.5 font-semibold"
           >
             <CheckCircle className="w-4 h-4" />
             Hoàn thành
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
             onClick={handleShare}
-            className="px-5 py-2.5 bg-[#8B7355] text-white font-semibold rounded-lg hover:bg-[#7A6548] transition-colors flex items-center gap-2"
+            className="px-5 py-2.5 font-semibold"
           >
             <Share2 className="w-4 h-4" />
             Chia sẻ
-          </button>
+          </Button>
         </div>
       </div>
     </div>

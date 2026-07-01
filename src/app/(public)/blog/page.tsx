@@ -4,6 +4,8 @@ import envConfig from "@/config";
 import { normalizeTags } from "@/lib/blog";
 import BlogListClient from "./BlogListClient";
 
+const BLOG_FETCH_SIZE = 100;
+
 export const metadata: Metadata = {
   title: "Blog - TechHub",
   description: "Khám phá các bài viết về công nghệ, lập trình và nhiều chủ đề thú vị khác.",
@@ -20,7 +22,7 @@ async function getAccessToken() {
 }
 
 async function getBlogs(accessToken?: string) {
-  const url = `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/app/api/proxy/blogs?page=0&size=20`;
+  const url = `${envConfig.NEXT_PUBLIC_API_ENDPOINT}/app/api/proxy/blogs?page=0&size=${BLOG_FETCH_SIZE}`;
   
   try {
     const headers: Record<string, string> = {

@@ -3,7 +3,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  useApproveExerciseDraftMutation,
   useRejectDraftMutation,
   useGetExerciseDraftsBatch,
 } from "@/queries/useAi";
@@ -31,7 +30,6 @@ export default function AiExercisePanel({
   const tCommon = useTranslations("common");
   const tAiDrafts = useTranslations("AiDrafts");
 
-  const approveDraftMutation = useApproveExerciseDraftMutation();
   const rejectDraftMutation = useRejectDraftMutation();
 
   // Collect all lesson IDs from chapters
@@ -53,23 +51,6 @@ export default function AiExercisePanel({
   const { data: draftsData, isLoading: draftsLoading } = useGetExerciseDraftsBatch(lessonIds);
   const exerciseDrafts = draftsData?.payload?.data || [];
 
-  const handleApproveDraft = async (taskId: string) => {
-    try {
-      await approveDraftMutation.mutateAsync(taskId);
-      toast({
-        title: tCommon("success"),
-        description: tAiDrafts("approveSuccess"),
-      });
-      // Refresh would need to be handled by parent component
-    } catch {
-      toast({
-        title: tCommon("error"),
-        description: tAiDrafts("approveError"),
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleRejectDraft = async (taskId: string) => {
     try {
       await rejectDraftMutation.mutateAsync({ taskId });
@@ -90,19 +71,19 @@ export default function AiExercisePanel({
   return (
     <div className="space-y-6">
       {/* Generate AI Exercise Button */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-500" />
+            <Sparkles className="h-5 w-5 text-primary" />
             {t("title")}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
             {t("description")}
           </p>
         </div>
-        <GenerateAiExercise 
-          courseId={courseId} 
-          chapters={chapters} 
+        <GenerateAiExercise
+          courseId={courseId}
+          chapters={chapters}
         />
       </div>
 
@@ -139,7 +120,7 @@ export default function AiExercisePanel({
                   metadata?: { lessonTitle?: string };
                 }>).map((draft) => (
                   <Card key={draft.taskId}>
-                    <CardContent className="py-3 flex items-center justify-between">
+                    <CardContent className="py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{draft.taskType}</Badge>

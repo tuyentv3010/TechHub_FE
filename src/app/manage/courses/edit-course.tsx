@@ -39,6 +39,7 @@ import fileApiRequest from "@/apiRequests/file";
 import SkillManager from "@/components/manage/SkillManager";
 import TagManager from "@/components/manage/TagManager";
 import { CurrencyInputWithSwitch } from "@/components/ui/currency-input-with-switch";
+import { normalizePersistedMediaUrl, resolvePersistentFileUrl } from "@/lib/file-media";
 
 export default function EditCourse({
   id,
@@ -90,6 +91,7 @@ export default function EditCourse({
       title: "",
       description: "",
       price: 0,
+      currency: "VND",
       level: "BEGINNER",
       language: "VI",
       status: "DRAFT",
@@ -114,10 +116,18 @@ export default function EditCourse({
       const skillNames = (course.skills || []).map((s: any) => typeof s === 'string' ? s : s.name);
       const tagNames = (course.tags || []).map((t: any) => typeof t === 'string' ? t : t.name);
       
+      const thumbnailUrl = normalizePersistedMediaUrl(
+        course.thumbnail?.secureUrl || course.thumbnail?.url
+      ) || "";
+      const introVideoUrl = normalizePersistedMediaUrl(
+        course.introVideo?.secureUrl || course.introVideo?.url
+      ) || "";
+
       form.reset({
         title: course.title,
         description: course.description || "",
         price: course.price,
+        currency: (course.currency as "VND" | "USD") || "VND",
         discountPrice: course.discountPrice || undefined,
         level: course.level,
         language: course.language,
@@ -127,11 +137,11 @@ export default function EditCourse({
         tags: tagNames,
         objectives: course.objectives || [],
         requirements: course.requirements || [],
-        thumbnail: course.thumbnail?.url || "",
-        introVideo: course.introVideo?.url || "",
+        thumbnail: thumbnailUrl,
+        introVideo: introVideoUrl,
       });
-      setThumbnailPreview(course.thumbnail?.url || "");
-      setVideoPreview(course.introVideo?.url || "");
+      setThumbnailPreview(thumbnailUrl);
+      setVideoPreview(introVideoUrl);
     }
   }, [data, form]);
 
@@ -192,9 +202,13 @@ export default function EditCourse({
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        form.setValue('thumbnail', response.payload.data.cloudinarySecureUrl);
-        setThumbnailPreview(response.payload.data.cloudinarySecureUrl);
+      const thumbnailUrl = response.payload?.data
+        ? resolvePersistentFileUrl(response.payload.data, "thumbnail")
+        : null;
+
+      if (thumbnailUrl) {
+        form.setValue('thumbnail', thumbnailUrl);
+        setThumbnailPreview(thumbnailUrl);
         toast({ description: t("ThumbnailUploadSuccess") });
       }
     } catch (error: any) {
@@ -244,9 +258,13 @@ export default function EditCourse({
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        form.setValue('introVideo', response.payload.data.cloudinarySecureUrl);
-        setVideoPreview(response.payload.data.cloudinarySecureUrl);
+      const videoUrl = response.payload?.data
+        ? resolvePersistentFileUrl(response.payload.data, "content")
+        : null;
+
+      if (videoUrl) {
+        form.setValue('introVideo', videoUrl);
+        setVideoPreview(videoUrl);
         toast({ description: t("VideoUploadSuccess") });
       }
     } catch (error: any) {
@@ -295,7 +313,7 @@ export default function EditCourse({
       open={Boolean(id)}
       onOpenChange={(value) => !value && setId(undefined)}
     >
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="manage-dialog-panel max-w-3xl max-h-[90vh] overflow-y-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle>{t("EditCourse")}</DialogTitle>
           <DialogDescription>{t("EditCourseDescription")}</DialogDescription>
@@ -314,7 +332,7 @@ export default function EditCourse({
                 {...form.register("title")}
               />
               {form.formState.errors.title && (
-                <p className="text-sm text-red-500">
+                <p className="text-sm text-destructive">
                   {form.formState.errors.title.message}
                 </p>
               )}
@@ -360,7 +378,9 @@ export default function EditCourse({
                     id="price"
                     placeholder="49 000"
                     value={field.value}
+                    currency={(form.watch("currency") as "VND" | "USD") || "VND"}
                     onChange={(numericValue) => field.onChange(numericValue)}
+                    onCurrencyChange={(c) => form.setValue("currency", c)}
                   />
                 )}
               />
@@ -376,7 +396,9 @@ export default function EditCourse({
                     id="discountPrice"
                     placeholder="29 000"
                     value={field.value}
+                    currency={(form.watch("currency") as "VND" | "USD") || "VND"}
                     onChange={(numericValue) => field.onChange(numericValue)}
+                    onCurrencyChange={(c) => form.setValue("currency", c)}
                   />
                 )}
               />
@@ -408,7 +430,7 @@ export default function EditCourse({
                   type="button"
                   variant="ghost"
                   onClick={() => setShowSkillManager(true)}
-                  className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                  className="manage-secondary-button ml-2"
                 >
                   {t("ManageSkills") || "Manage"}
                 </Button>
@@ -434,7 +456,7 @@ export default function EditCourse({
                 type="button"
                 variant="ghost"
                 onClick={() => setShowTagManager(true)}
-                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                className="manage-secondary-button ml-2"
               >
                 {t("ManageTags") || "Manage tags"}
               </Button>
@@ -471,6 +493,7 @@ export default function EditCourse({
               <Button
                 type="button"
                 variant="outline"
+                className="manage-secondary-button"
                 onClick={() => {
                   addItem('objectives', objectiveInput);
                   setObjectiveInput("");
@@ -511,6 +534,7 @@ export default function EditCourse({
               <Button
                 type="button"
                 variant="outline"
+                className="manage-secondary-button"
                 onClick={() => {
                   addItem('requirements', requirementInput);
                   setRequirementInput("");
@@ -539,7 +563,7 @@ export default function EditCourse({
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => setShowThumbnailLibrary(true)}
                 disabled={isUploadingThumbnail}
               >
@@ -549,7 +573,7 @@ export default function EditCourse({
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => thumbnailFileInputRef.current?.click()}
                 disabled={isUploadingThumbnail}
               >
@@ -594,7 +618,7 @@ export default function EditCourse({
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => setShowVideoLibrary(true)}
                 disabled={isUploadingVideo}
               >
@@ -604,7 +628,7 @@ export default function EditCourse({
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => videoFileInputRef.current?.click()}
                 disabled={isUploadingVideo}
               >
@@ -666,11 +690,16 @@ export default function EditCourse({
             <Button
               type="button"
               variant="outline"
+              className="manage-secondary-button"
               onClick={() => setId(undefined)}
             >
               {t("Cancel")}
             </Button>
-            <Button type="submit" disabled={updateCourseMutation.isPending}>
+            <Button
+              type="submit"
+              className="manage-primary-button"
+              disabled={updateCourseMutation.isPending}
+            >
               {updateCourseMutation.isPending ? t("Updating") : t("Update")}
             </Button>
           </DialogFooter>
@@ -687,8 +716,11 @@ export default function EditCourse({
             mediaType="IMAGE"
             title={t("SelectThumbnail") || "Select Thumbnail"}
             onSelectFile={(file) => {
-              form.setValue("thumbnail", file.cloudinarySecureUrl);
-              setThumbnailPreview(file.cloudinarySecureUrl);
+              const thumbnailUrl = resolvePersistentFileUrl(file, "thumbnail");
+              if (thumbnailUrl) {
+                form.setValue("thumbnail", thumbnailUrl);
+                setThumbnailPreview(thumbnailUrl);
+              }
               setShowThumbnailLibrary(false);
             }}
           />
@@ -699,8 +731,11 @@ export default function EditCourse({
             mediaType="VIDEO"
             title={t("SelectIntroVideo") || "Select Intro Video"}
             onSelectFile={(file) => {
-              form.setValue("introVideo", file.cloudinarySecureUrl);
-              setVideoPreview(file.cloudinarySecureUrl);
+              const videoUrl = resolvePersistentFileUrl(file, "content");
+              if (videoUrl) {
+                form.setValue("introVideo", videoUrl);
+                setVideoPreview(videoUrl);
+              }
               setShowVideoLibrary(false);
             }}
           />

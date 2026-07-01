@@ -39,6 +39,7 @@ import CourseSelector from "../../course-selector";
 import courseApiRequest from "@/apiRequests/course";
 import { CourseItemResType } from "@/schemaValidations/course.schema";
 import Image from "next/image";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 interface PathDesignerProps {
   pathId: string;
@@ -82,7 +83,7 @@ const CourseNode = ({ data }: any) => {
       <Handle
         type="target"
         position={Position.Top}
-        className="w-4 h-4 !bg-blue-500"
+        className="w-4 h-4 !bg-primary"
       />
       
       <Card className="p-3 min-w-[280px] max-w-[320px] border-2 shadow-md">
@@ -134,7 +135,7 @@ const CourseNode = ({ data }: any) => {
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-4 h-4 !bg-blue-500"
+        className="w-4 h-4 !bg-primary"
       />
     </>
   );
@@ -220,6 +221,9 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
         console.log('🏗️ Starting to create nodes...');
         const courseNodes: Node[] = courses.map((course: CourseInPathType, index: number) => {
           const courseDetail = detailsMap.get(course.courseId);
+          const thumbnailUrl = normalizePersistedMediaUrl(
+            courseDetail?.thumbnail?.secureUrl || courseDetail?.thumbnail?.url
+          );
           
           // Use saved position if available, otherwise use grid layout
           const position = course.positionX !== undefined && course.positionY !== undefined
@@ -230,7 +234,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
             courseId: course.courseId,
             hasCourseDetail: !!courseDetail,
             title: courseDetail?.title || course.title,
-            thumbnailUrl: courseDetail?.thumbnail?.secureUrl || courseDetail?.thumbnail?.url,
+            thumbnailUrl,
             position,
             usingSavedPosition: course.positionX !== undefined,
           });
@@ -242,7 +246,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
             data: {
               title: courseDetail?.title || course.title || "Untitled Course",
               description: courseDetail?.description || course.description || "",
-              thumbnail: courseDetail?.thumbnail?.secureUrl || courseDetail?.thumbnail?.url,
+              thumbnail: thumbnailUrl,
               order: course.order,
               isOptional: course.isOptional === "Y",
               isCompleted: course.isCompleted || false,
@@ -271,7 +275,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
             target: edge.target,
             animated: true,
             type: 'smoothstep',
-            style: { stroke: '#3b82f6', strokeWidth: 2 },
+            style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
           }));
           
           console.log('🔗 Restored edges:', restoredEdges);
@@ -296,7 +300,7 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
         animated: true,
         type: "smoothstep",
         style: { 
-          stroke: "#3b82f6",
+          stroke: "hsl(var(--primary))",
           strokeWidth: 2,
         },
       };
@@ -502,9 +506,9 @@ export default function PathDesigner({ pathId }: PathDesignerProps) {
         defaultEdgeOptions={{
           animated: true,
           type: 'smoothstep',
-          style: { strokeWidth: 2, stroke: '#3b82f6' },
+          style: { strokeWidth: 2, stroke: 'hsl(var(--primary))' },
         }}
-        connectionLineStyle={{ strokeWidth: 2, stroke: '#3b82f6' }}
+        connectionLineStyle={{ strokeWidth: 2, stroke: 'hsl(var(--primary))' }}
         connectionLineType={ConnectionLineType.SmoothStep}
       >
         <Panel position="top-left" className="space-y-2">

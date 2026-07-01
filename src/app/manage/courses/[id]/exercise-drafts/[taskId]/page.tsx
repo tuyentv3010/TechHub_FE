@@ -1,10 +1,13 @@
 "use client";
 
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Accordion,
   AccordionContent,
@@ -12,23 +15,39 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useTranslations } from "next-intl";
-import { useGetDraftById, useApproveExerciseDraftMutation, useRejectDraftMutation } from "@/queries/useAi";
+import {
+  useApproveExerciseDraftMutation,
+  useGetDraftById,
+  useRejectDraftMutation,
+} from "@/queries/useAi";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import TableSkeleton from "@/components/Skeleton";
 import courseApiRequest from "@/apiRequests/course";
-import { useState, useCallback, useMemo, memo } from "react";
 
-// Memoized MCQ Option component to prevent re-renders
-const MCQOption = memo(function MCQOption({ 
-  option, 
-  optIdx, 
-  isSelected, 
-  onToggle 
-}: { 
-  option: string; 
-  optIdx: number; 
-  isSelected: boolean; 
+type DraftExerciseType = "MCQ" | "ESSAY" | "CODING";
+
+interface DraftExercise {
+  id: string;
+  type: DraftExerciseType;
+  question: string;
+  options?: string[];
+  explanation?: string;
+  rubric?: string[];
+  testCases?: Array<{ input: string; expectedOutput: string }>;
+  suggestedCorrectIndices?: number[];
+  difficulty?: string;
+}
+
+const MCQOption = memo(function MCQOption({
+  option,
+  optIdx,
+  isSelected,
+  onToggle,
+}: {
+  option: string;
+  optIdx: number;
+  isSelected: boolean;
   onToggle: () => void;
 }) {
   return (
@@ -50,27 +69,24 @@ const MCQOption = memo(function MCQOption({
           {String.fromCharCode(65 + optIdx)}.
         </span>
         <span className="flex-1">{option}</span>
-        {isSelected && (
-          <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
-        )}
+        {isSelected && <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />}
       </div>
     </div>
   );
 });
 
-// Memoized MCQ Options list component
 const MCQOptionsList = memo(function MCQOptionsList({
-  exerciseIdx,
+  exerciseId,
   options,
   selectedOptions,
   onToggle,
   selectLabel,
-  selectedLabel
+  selectedLabel,
 }: {
-  exerciseIdx: number;
+  exerciseId: string;
   options: string[];
   selectedOptions: number[];
-  onToggle: (exerciseIdx: number, optionIdx: number) => void;
+  onToggle: (exerciseId: string, optionIdx: number) => void;
   selectLabel: string;
   selectedLabel: string;
 }) {
@@ -92,7 +108,7 @@ const MCQOptionsList = memo(function MCQOptionsList({
             option={option}
             optIdx={optIdx}
             isSelected={selectedOptions.includes(optIdx)}
-            onToggle={() => onToggle(exerciseIdx, optIdx)}
+            onToggle={() => onToggle(exerciseId, optIdx)}
           />
         ))}
       </div>
@@ -100,12 +116,118 @@ const MCQOptionsList = memo(function MCQOptionsList({
   );
 });
 
+function normalizeExercises(rawPayload: any): DraftExercise[] {
+  const parseLegacyChoices = (payload: any) => {
+    if (payload?.choices?.[0]?.message?.content) {
+      try {
+        return JSON.parse(payload.choices[0].message.content);
+      } catch {
+        return null;
+      }
+    }
+    return payload;
+  };
+
+  const payload = parseLegacyChoices(rawPayload);
+  const source = payload?.exercises || payload?.drafts || payload;
+  if (!source || typeof source !== "object") {
+    return [];
+  }
+
+  const normalized: DraftExercise[] = [];
+
+  const pushExercise = (type: DraftExerciseType, item: any, index: number) => {
+    if (!item || typeof item !== "object") {
+      return;
+    }
+    if (type === "MCQ") {
+      const rawOptions = Array.isArray(item.options) ? item.options : item.options?.choices;
+      const options = Array.isArray(rawOptions)
+        ? rawOptions.map((option: any) => (typeof option === "string" ? option : String(option?.text || "")))
+        : [];
+      const suggestedCorrectIndices = Array.isArray(rawOptions)
+        ? rawOptions
+            .map((option: any, optionIndex: number) =>
+              option?.correct === true || option?.isCorrect === true ? optionIndex : -1
+            )
+            .filter((optionIndex: number) => optionIndex >= 0)
+        : [];
+
+      normalized.push({
+        id: `mcq-${index}`,
+        type,
+        question: String(item.question || item.prompt || ""),
+        options,
+        explanation: item.explanation ? String(item.explanation) : undefined,
+        suggestedCorrectIndices,
+        difficulty: item.difficulty ? String(item.difficulty) : undefined,
+      });
+      return;
+    }
+
+    if (type === "ESSAY") {
+      normalized.push({
+        id: `essay-${index}`,
+        type,
+        question: String(item.question || item.prompt || ""),
+        explanation: item.explanation ? String(item.explanation) : undefined,
+        rubric: Array.isArray(item.rubric || item.guidelines)
+          ? (item.rubric || item.guidelines).map((entry: any) => String(entry))
+          : [],
+        difficulty: item.difficulty ? String(item.difficulty) : undefined,
+      });
+      return;
+    }
+
+    normalized.push({
+      id: `coding-${index}`,
+      type,
+      question: String(item.question || item.title || item.description || ""),
+      explanation: item.explanation ? String(item.explanation) : undefined,
+      testCases: Array.isArray(item.testCases)
+        ? item.testCases.map((testCase: any) => ({
+            input: String(testCase?.input || ""),
+            expectedOutput: String(testCase?.expectedOutput || ""),
+          }))
+        : [],
+      difficulty: item.difficulty ? String(item.difficulty) : undefined,
+    });
+  };
+
+  (Array.isArray(source.mcq) ? source.mcq : []).forEach((item: any, index: number) => pushExercise("MCQ", item, index));
+  (Array.isArray(source.essay) ? source.essay : []).forEach((item: any, index: number) =>
+    pushExercise("ESSAY", item, index)
+  );
+  (Array.isArray(source.coding) ? source.coding : []).forEach((item: any, index: number) =>
+    pushExercise("CODING", item, index)
+  );
+
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  if (Array.isArray(source)) {
+    source.forEach((item: any, index: number) => {
+      const type = String(item?.type || "MCQ").toUpperCase();
+      if (type === "CODING") {
+        pushExercise("CODING", item, index);
+      } else if (type === "ESSAY" || type === "OPEN_ENDED") {
+        pushExercise("ESSAY", item, index);
+      } else {
+        pushExercise("MCQ", item, index);
+      }
+    });
+  }
+
+  return normalized;
+}
+
 export default function ExerciseDraftDetailPage() {
   const params = useParams();
   const router = useRouter();
   const courseId = params.id as string;
   const taskId = params.taskId as string;
-  
+
   const { toast } = useToast();
   const t = useTranslations("AiExercise");
   const tCommon = useTranslations("common");
@@ -115,140 +237,198 @@ export default function ExerciseDraftDetailPage() {
   const approveDraftMutation = useApproveExerciseDraftMutation();
   const rejectDraftMutation = useRejectDraftMutation();
 
-  // Parse draft and exercises - memoized to prevent re-parsing on each render
   const draft = draftData?.payload?.data;
-  
-  const exercises = useMemo(() => {
-    try {
-      if (draft?.resultPayload?.choices?.[0]?.message?.content) {
-        const contentStr = draft.resultPayload.choices[0].message.content;
-        const parsedContent = JSON.parse(contentStr);
-        return parsedContent.exercises || null;
-      }
-    } catch (e) {
-      console.error("Failed to parse exercise content:", e);
-    }
-    return null;
-  }, [draft?.resultPayload]);
+  const generatedExercises = useMemo(
+    () => normalizeExercises(draft?.resultPayload),
+    [draft?.resultPayload]
+  );
 
-  // State to track selected correct answers for each exercise
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number[]>>({});
+  // Editable working copy of the generated exercises so the instructor can
+  // tweak/remove AI content before approving.
+  const [exercises, setExercises] = useState<DraftExercise[]>([]);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number[]>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const toggleAnswer = useCallback((exerciseIdx: number, optionIdx: number) => {
-    setSelectedAnswers(prev => {
-      const current = prev[exerciseIdx] || [];
-      if (current.includes(optionIdx)) {
-        return {
-          ...prev,
-          [exerciseIdx]: current.filter(idx => idx !== optionIdx)
-        };
-      } else {
-        return {
-          ...prev,
-          [exerciseIdx]: [...current, optionIdx]
-        };
+  useEffect(() => {
+    const nextSelectedAnswers: Record<string, number[]> = {};
+    generatedExercises.forEach((exercise) => {
+      if (exercise.type === "MCQ" && exercise.suggestedCorrectIndices?.length) {
+        nextSelectedAnswers[exercise.id] = exercise.suggestedCorrectIndices;
       }
     });
+    setExercises(generatedExercises.map((exercise) => ({ ...exercise })));
+    setSelectedAnswers(nextSelectedAnswers);
+    setEditingId(null);
+  }, [generatedExercises]);
+
+  const toggleAnswer = useCallback((exerciseId: string, optionIdx: number) => {
+    setSelectedAnswers((prev) => {
+      const current = prev[exerciseId] || [];
+      return current.includes(optionIdx)
+        ? { ...prev, [exerciseId]: current.filter((idx) => idx !== optionIdx) }
+        : { ...prev, [exerciseId]: [...current, optionIdx] };
+    });
+  }, []);
+
+  const updateExercise = useCallback(
+    (exerciseId: string, patch: Partial<DraftExercise>) => {
+      setExercises((prev) =>
+        prev.map((exercise) => (exercise.id === exerciseId ? { ...exercise, ...patch } : exercise))
+      );
+    },
+    []
+  );
+
+  const updateOption = useCallback((exerciseId: string, optionIdx: number, value: string) => {
+    setExercises((prev) =>
+      prev.map((exercise) => {
+        if (exercise.id !== exerciseId || !exercise.options) {
+          return exercise;
+        }
+        const options = exercise.options.map((option, idx) => (idx === optionIdx ? value : option));
+        return { ...exercise, options };
+      })
+    );
+  }, []);
+
+  const addOption = useCallback((exerciseId: string) => {
+    setExercises((prev) =>
+      prev.map((exercise) =>
+        exercise.id === exerciseId
+          ? { ...exercise, options: [...(exercise.options || []), ""] }
+          : exercise
+      )
+    );
+  }, []);
+
+  const removeOption = useCallback((exerciseId: string, optionIdx: number) => {
+    setExercises((prev) =>
+      prev.map((exercise) => {
+        if (exercise.id !== exerciseId || !exercise.options) {
+          return exercise;
+        }
+        return {
+          ...exercise,
+          options: exercise.options.filter((_, idx) => idx !== optionIdx),
+        };
+      })
+    );
+    // Keep correct-answer selection in sync after an option is removed.
+    setSelectedAnswers((prev) => {
+      const current = prev[exerciseId];
+      if (!current) {
+        return prev;
+      }
+      const next = current
+        .filter((idx) => idx !== optionIdx)
+        .map((idx) => (idx > optionIdx ? idx - 1 : idx));
+      return { ...prev, [exerciseId]: next };
+    });
+  }, []);
+
+  const deleteExercise = useCallback((exerciseId: string) => {
+    setExercises((prev) => prev.filter((exercise) => exercise.id !== exerciseId));
+    setSelectedAnswers((prev) => {
+      const next = { ...prev };
+      delete next[exerciseId];
+      return next;
+    });
+    setEditingId((current) => (current === exerciseId ? null : current));
   }, []);
 
   const handleApprove = async () => {
     try {
-      console.log("🚀 handleApprove started");
-      console.log("📋 Exercises:", exercises);
-      console.log("📋 Selected answers:", selectedAnswers);
-      
-      // Validate that all MCQ exercises have correct answers selected
-      if (exercises && exercises.length > 0) {
-        for (let i = 0; i < exercises.length; i++) {
-          const exercise = exercises[i];
-          console.log(`📝 Exercise ${i}: type=${exercise.type}`);
-          if (exercise.type === "MCQ") {
-            const selected = selectedAnswers[i] || [];
-            console.log(`📝 MCQ ${i}: selected answers = ${JSON.stringify(selected)}`);
-            if (selected.length === 0) {
-              console.log(`❌ MCQ ${i} has no selected answers - showing error toast`);
-              toast({
-                title: tCommon("error"),
-                description: `${t("pleaseSelectCorrectAnswer") || "Vui lòng chọn đáp án đúng cho"} ${t("mcq")} ${i + 1}`,
-                variant: "destructive",
-              });
-              return;
-            }
+      if (exercises.length === 0) {
+        toast({
+          title: tCommon("error"),
+          description: t("noExercises") || "Vui lòng giữ lại ít nhất một bài tập để duyệt.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      for (const [index, exercise] of exercises.entries()) {
+        if (!exercise.question.trim()) {
+          toast({
+            title: tCommon("error"),
+            description:
+              `${t("pleaseEnterQuestion") || "Vui lòng nhập nội dung câu hỏi cho"} ${t(exercise.type.toLowerCase())} ${index + 1}`,
+            variant: "destructive",
+          });
+          return;
+        }
+        if (exercise.type === "MCQ") {
+          const validOptions = (exercise.options || []).filter((option) => option.trim());
+          if (validOptions.length < 2) {
+            toast({
+              title: tCommon("error"),
+              description:
+                `${t("pleaseAddOptions") || "Vui lòng nhập ít nhất 2 đáp án cho"} ${t("mcq")} ${index + 1}`,
+              variant: "destructive",
+            });
+            return;
+          }
+          if ((selectedAnswers[exercise.id] || []).length === 0) {
+            toast({
+              title: tCommon("error"),
+              description:
+                `${t("pleaseSelectCorrectAnswer") || "Vui lòng chọn đáp án đúng cho"} ${t("mcq")} ${index + 1}`,
+              variant: "destructive",
+            });
+            return;
           }
         }
       }
 
-      // 1. Approve draft in AI service
       await approveDraftMutation.mutateAsync(taskId);
-      
-      // 2. Get lessonId from draft
       const lessonId = draft?.targetReference;
-      
-      console.log("🔍 Draft lessonId:", lessonId);
-      console.log("🔍 CourseId:", courseId);
-      console.log("🔍 Total exercises:", exercises?.length);
-      
       if (!lessonId) {
         throw new Error("Lesson ID not found in draft");
       }
 
-      // 3. Prepare ALL exercises to be created
-      const exercisesData = [];
-      if (exercises && exercises.length > 0) {
-        for (let idx = 0; idx < exercises.length; idx++) {
-          const exercise = exercises[idx];
-          
-          if (exercise.type === "MCQ") {
-            const correctAnswerIndices = selectedAnswers[idx] || [];
-            exercisesData.push({
-              type: "MULTIPLE_CHOICE",
-              question: exercise.question,
-              options: {
-                choices: exercise.options?.map((optText: string, optIdx: number) => ({
-                  id: String.fromCharCode(97 + optIdx), // a, b, c, d
-                  text: optText,
-                  isCorrect: correctAnswerIndices.includes(optIdx)
-                })) || []
-              }
-            });
-          } else if (exercise.type === "CODING") {
-            exercisesData.push({
-              type: "CODING",
-              question: exercise.question,
-              testCases: exercise.testCases || []
-            });
-          } else if (exercise.type === "ESSAY") {
-            exercisesData.push({
-              type: "OPEN_ENDED",
-              question: exercise.question,
-              options: {}
-            });
-          }
+      const exercisesData = exercises.map((exercise) => {
+        if (exercise.type === "MCQ") {
+          return {
+            type: "MULTIPLE_CHOICE",
+            question: exercise.question,
+            options: {
+              choices:
+                exercise.options?.map((option, optionIndex) => ({
+                  id: String.fromCharCode(97 + optionIndex),
+                  text: option,
+                  isCorrect: (selectedAnswers[exercise.id] || []).includes(optionIndex),
+                })) || [],
+            },
+          };
         }
-      }
 
-      console.log("🔍 Total exercises to create:", exercisesData.length);
-      console.log("🔍 Exercises data:", JSON.stringify(exercisesData, null, 2));
+        if (exercise.type === "CODING") {
+          return {
+            type: "CODING",
+            question: exercise.question,
+            testCases: exercise.testCases || [],
+          };
+        }
+
+        return {
+          type: "OPEN_ENDED",
+          question: exercise.question,
+          options: {},
+        };
+      });
 
       if (exercisesData.length > 0) {
-        // 4. Call proxy API to create all exercises at once
-        const result = await courseApiRequest.createExercises(courseId, lessonId, exercisesData);
-        console.log("✅ Exercises created:", result);
-        
-        toast({
-          title: tCommon("success"),
-          description: `${tAiDrafts("approveSuccessWithExercise") || "Đã duyệt draft và tạo"} ${exercisesData.length} ${t("exercises") || "bài tập"}`,
-        });
-      } else {
-        toast({
-          title: tCommon("success"),
-          description: tAiDrafts("approveSuccess"),
-        });
+        await courseApiRequest.createExercises(courseId, lessonId, exercisesData);
       }
-      
+
+      toast({
+        title: tCommon("success"),
+        description:
+          `${tAiDrafts("approveSuccessWithExercise") || "Đã duyệt draft và tạo"} ${exercisesData.length} ${t("exercises") || "bài tập"}`,
+      });
       router.push(`/manage/courses/${courseId}/content`);
-    } catch (error) {
-      console.error("Approval error:", error);
+    } catch (approvalError) {
+      console.error("Approval error:", approvalError);
       toast({
         title: tCommon("error"),
         description: tAiDrafts("approveError"),
@@ -280,18 +460,14 @@ export default function ExerciseDraftDetailPage() {
 
   if (!draft) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="manage-page">
         <div className="text-center space-y-4">
           <p className="text-muted-foreground">{t("noDraftFound") || "Không tìm thấy draft này"}</p>
           {error && (
-            <div className="text-xs text-red-500">
+            <div className="text-xs text-destructive">
               <p>Error: {JSON.stringify(error)}</p>
             </div>
           )}
-          <div className="text-xs text-muted-foreground">
-            <p>Task ID: {taskId}</p>
-            <p>Course ID: {courseId}</p>
-          </div>
           <Button onClick={() => router.push(`/manage/courses/${courseId}/content`)} className="mt-4">
             {tCommon("back")}
           </Button>
@@ -300,9 +476,9 @@ export default function ExerciseDraftDetailPage() {
     );
   }
 
-  if (!exercises) {
+  if (!generatedExercises.length) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="manage-page">
         <div className="text-center space-y-4">
           <p className="text-muted-foreground">Draft found but no exercises generated yet</p>
           <div className="text-xs text-muted-foreground">
@@ -319,7 +495,6 @@ export default function ExerciseDraftDetailPage() {
 
   return (
     <div className="container mx-auto py-8 space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -331,124 +506,227 @@ export default function ExerciseDraftDetailPage() {
           <h1 className="text-3xl font-bold">{tAiDrafts("draftDetail")}</h1>
           <div className="flex items-center gap-2 mt-2">
             <Badge variant="outline">{draft.taskType}</Badge>
-            <Badge variant={draft.status === "DRAFT" ? "secondary" : "default"}>
-              {draft.status}
-            </Badge>
-            <span className="text-sm text-muted-foreground">
-              {new Date(draft.createdAt).toLocaleString()}
-            </span>
+            <Badge variant={draft.status === "DRAFT" ? "secondary" : "default"}>{draft.status}</Badge>
+            <span className="text-sm text-muted-foreground">{new Date(draft.createdAt).toLocaleString()}</span>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            disabled={rejectDraftMutation.isPending}
-            onClick={handleReject}
-          >
-            {rejectDraftMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
+          <Button variant="outline" disabled={rejectDraftMutation.isPending} onClick={handleReject}>
+            {rejectDraftMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {tAiDrafts("reject")}
           </Button>
-          <Button
-            disabled={approveDraftMutation.isPending}
-            onClick={handleApprove}
-          >
-            {approveDraftMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
+          <Button disabled={approveDraftMutation.isPending} onClick={handleApprove}>
+            {approveDraftMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {tAiDrafts("approve")}
           </Button>
         </div>
       </div>
 
-      {/* Exercise Content */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">{t("generatedExercises")}</h2>
           <Badge variant="secondary" className="text-xs">
-            {exercises?.length || 0} {t("exercises") || "bài tập"}
+            {exercises.length} {t("exercises") || "bài tập"}
           </Badge>
         </div>
-        {exercises && exercises.length > 0 ? (
-          <Accordion type="single" collapsible className="w-full">
-            {exercises.map((exercise: {
-              type: string;
-              question: string;
-              options?: string[];
-              explanation?: string;
-              testCases?: Array<{ input: string; expectedOutput: string }>;
-            }, idx: number) => (
-              <AccordionItem key={idx} value={`exercise-${idx}`}>
-                <AccordionTrigger>
-                  <div className="flex items-center gap-3 w-full">
-                    <Badge variant="outline">
-                      {exercise.type}
-                    </Badge>
-                    <span className="text-sm font-medium">
-                      {t(exercise.type.toLowerCase())} {idx + 1}
-                    </span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <Card>
-                    <CardContent className="space-y-3 pt-4">
-                      <p className="font-medium">{exercise.question}</p>
-                      
-                      {/* MCQ Options - Using memoized component */}
-                      {exercise.type === "MCQ" && exercise.options && (
-                        <MCQOptionsList
-                          exerciseIdx={idx}
-                          options={exercise.options}
-                          selectedOptions={selectedAnswers[idx] || []}
-                          onToggle={toggleAnswer}
-                          selectLabel={t("selectCorrectAnswers") || "Chọn đáp án đúng"}
-                          selectedLabel={t("selected") || "đã chọn"}
-                        />
-                      )}
 
-                      {/* Test Cases for Coding */}
-                      {exercise.type === "CODING" && exercise.testCases && (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">{t("testCases")}:</p>
-                          {exercise.testCases.map((testCase, tcIdx) => (
-                            <div key={tcIdx} className="p-3 bg-muted rounded text-sm space-y-1">
-                              <div>
-                                <strong className="text-foreground">Input:</strong>{" "}
-                                <code className="bg-background px-1 py-0.5 rounded">{testCase.input}</code>
-                              </div>
-                              <div>
-                                <strong className="text-foreground">Expected:</strong>{" "}
-                                <code className="bg-background px-1 py-0.5 rounded">{testCase.expectedOutput}</code>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      
-                      {/* Explanation */}
-                      {exercise.explanation && (
-                        <Accordion type="single" collapsible className="w-full">
-                          <AccordionItem value="explanation" className="border-none">
-                            <AccordionTrigger className="text-sm font-medium hover:no-underline">
-                              {t("explanation") || "Giải thích"}
-                            </AccordionTrigger>
-                            <AccordionContent>
-                              <div className="p-3 bg-muted rounded">
-                                <p className="text-sm">{exercise.explanation}</p>
-                              </div>
-                            </AccordionContent>
-                          </AccordionItem>
-                        </Accordion>
-                      )}
-                    </CardContent>
-                  </Card>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+        {exercises.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              {t("allExercisesRemoved") ||
+                "Bạn đã xóa hết bài tập. Hãy từ chối draft hoặc tạo lại."}
+            </CardContent>
+          </Card>
         ) : (
-          <p className="text-muted-foreground">{t("noExercises")}</p>
+          <Accordion type="single" collapsible className="w-full">
+            {exercises.map((exercise, idx) => {
+              const isEditing = editingId === exercise.id;
+              return (
+                <AccordionItem key={exercise.id} value={exercise.id}>
+                  <AccordionTrigger>
+                    <div className="flex items-center gap-3 w-full">
+                      <Badge variant="outline">{exercise.type}</Badge>
+                      <span className="text-sm font-medium">
+                        {t(exercise.type.toLowerCase())} {idx + 1}
+                      </span>
+                      {exercise.difficulty && <Badge variant="secondary">{exercise.difficulty}</Badge>}
+                      <div className="ml-auto flex items-center gap-1 pr-2">
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label={isEditing ? tCommon("done") || "Xong" : tCommon("edit") || "Sửa"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setEditingId(isEditing ? null : exercise.id);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setEditingId(isEditing ? null : exercise.id);
+                            }
+                          }}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                        >
+                          {isEditing ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+                        </span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label={tCommon("delete") || "Xóa"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            deleteExercise(exercise.id);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              deleteExercise(exercise.id);
+                            }
+                          }}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </span>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <Card>
+                      <CardContent className="space-y-4 pt-4">
+                        {isEditing ? (
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">{t("question") || "Câu hỏi"}</p>
+                            <Textarea
+                              value={exercise.question}
+                              onChange={(event) =>
+                                updateExercise(exercise.id, { question: event.target.value })
+                              }
+                              placeholder={t("question") || "Câu hỏi"}
+                            />
+                          </div>
+                        ) : (
+                          <p className="font-medium">{exercise.question}</p>
+                        )}
+
+                        {exercise.type === "MCQ" && exercise.options && (
+                          isEditing ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium">
+                                  {t("selectCorrectAnswers") || "Chọn đáp án đúng"}:
+                                </p>
+                              </div>
+                              {exercise.options.map((option, optIdx) => {
+                                const isSelected = (selectedAnswers[exercise.id] || []).includes(optIdx);
+                                return (
+                                  <div key={optIdx} className="flex items-center gap-2">
+                                    <Checkbox
+                                      checked={isSelected}
+                                      onCheckedChange={() => toggleAnswer(exercise.id, optIdx)}
+                                      aria-label={t("markCorrect") || "Đánh dấu đáp án đúng"}
+                                    />
+                                    <span className="font-semibold text-primary min-w-[24px]">
+                                      {String.fromCharCode(65 + optIdx)}.
+                                    </span>
+                                    <Input
+                                      value={option}
+                                      onChange={(event) =>
+                                        updateOption(exercise.id, optIdx, event.target.value)
+                                      }
+                                      placeholder={`${t("option") || "Đáp án"} ${String.fromCharCode(65 + optIdx)}`}
+                                      className="flex-1"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="text-destructive"
+                                      onClick={() => removeOption(exercise.id, optIdx)}
+                                      aria-label={tCommon("delete") || "Xóa"}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addOption(exercise.id)}
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                {t("addOption") || "Thêm đáp án"}
+                              </Button>
+                            </div>
+                          ) : (
+                            <MCQOptionsList
+                              exerciseId={exercise.id}
+                              options={exercise.options}
+                              selectedOptions={selectedAnswers[exercise.id] || []}
+                              onToggle={toggleAnswer}
+                              selectLabel={t("selectCorrectAnswers") || "Chọn đáp án đúng"}
+                              selectedLabel={t("selected") || "đã chọn"}
+                            />
+                          )
+                        )}
+
+                        {exercise.type === "CODING" && exercise.testCases && exercise.testCases.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">{t("testCases")}:</p>
+                            {exercise.testCases.map((testCase, tcIdx) => (
+                              <div key={tcIdx} className="p-3 bg-muted rounded text-sm space-y-1">
+                                <div>
+                                  <strong className="text-foreground">Input:</strong>{" "}
+                                  <code className="bg-background px-1 py-0.5 rounded">{testCase.input}</code>
+                                </div>
+                                <div>
+                                  <strong className="text-foreground">Expected:</strong>{" "}
+                                  <code className="bg-background px-1 py-0.5 rounded">{testCase.expectedOutput}</code>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {exercise.type === "ESSAY" && exercise.rubric && exercise.rubric.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">Rubric:</p>
+                            <ul className="list-disc pl-5 text-sm text-muted-foreground">
+                              {exercise.rubric.map((entry, rubricIdx) => (
+                                <li key={`${exercise.id}-rubric-${rubricIdx}`}>{entry}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {isEditing ? (
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">{t("explanation") || "Giải thích"}</p>
+                            <Textarea
+                              value={exercise.explanation || ""}
+                              onChange={(event) =>
+                                updateExercise(exercise.id, { explanation: event.target.value })
+                              }
+                              placeholder={t("explanation") || "Giải thích"}
+                            />
+                          </div>
+                        ) : (
+                          exercise.explanation && (
+                            <div className="p-3 bg-muted rounded">
+                              <p className="text-sm">{exercise.explanation}</p>
+                            </div>
+                          )
+                        )}
+                      </CardContent>
+                    </Card>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
         )}
       </div>
     </div>

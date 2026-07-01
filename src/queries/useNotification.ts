@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import notificationApiRequest from "@/apiRequests/notification";
+import { getAccessTokenFromLocalStorage } from "@/lib/utils";
+
+const hasAccessToken = () =>
+  typeof window !== "undefined" && !!getAccessTokenFromLocalStorage();
 
 // Query key constants
 const NOTIFICATION_BASE_KEY = ["notifications"] as const;
@@ -37,9 +41,13 @@ export const useGetUnreadNotifications = (
   return useQuery({
     queryKey: NOTIFICATION_QUERY_KEYS.unread(page, size),
     queryFn: () => notificationApiRequest.getUnreadNotifications(page, size),
-    enabled,
+    enabled: enabled && hasAccessToken(),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000, // Refetch every 60 seconds
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401 || error?.status === 403 || error?.status === 503) return false;
+      return failureCount < 1;
+    },
   });
 };
 
@@ -51,9 +59,13 @@ export const useGetUnreadCount = (enabled: boolean = true) => {
       const response = await notificationApiRequest.getUnreadCount();
       return response.payload.data;
     },
-    enabled,
+    enabled: enabled && hasAccessToken(),
     staleTime: 30 * 1000,
     refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401 || error?.status === 403 || error?.status === 503) return false;
+      return failureCount < 1;
+    },
   });
 };
 
@@ -81,6 +93,36 @@ export const useMarkAllAsReadMutation = () => {
     mutationFn: () => notificationApiRequest.markAllAsRead(),
     onSuccess: () => {
       // Invalidate all notification queries to refetch
+      queryClient.invalidateQueries({
+        queryKey: NOTIFICATION_QUERY_KEYS.all,
+      });
+    },
+  });
+};
+
+// Soft-delete a single notification
+export const useDeleteNotificationMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (notificationId: string) =>
+      notificationApiRequest.deleteNotification(notificationId),
+    onSuccess: () => {
+      // Invalidate all notification queries to refetch (list + unread count)
+      queryClient.invalidateQueries({
+        queryKey: NOTIFICATION_QUERY_KEYS.all,
+      });
+    },
+  });
+};
+
+// Soft-delete all notifications for the current user
+export const useDeleteAllNotificationsMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => notificationApiRequest.deleteAllNotifications(),
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: NOTIFICATION_QUERY_KEYS.all,
       });

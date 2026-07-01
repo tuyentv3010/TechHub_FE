@@ -83,7 +83,7 @@ export default function PaymentResultPage() {
         <div className="container mx-auto max-w-2xl px-4">
           <Card>
             <CardContent className="flex flex-col items-center justify-center p-12">
-              <Loader2 className="h-16 w-16 animate-spin text-purple-600" />
+              <Loader2 className="h-16 w-16 animate-spin text-primary" />
               <p className="mt-4 text-lg text-muted-foreground">
                 Đang xác nhận thanh toán...
               </p>
@@ -186,7 +186,7 @@ export default function PaymentResultPage() {
               <div className="space-y-3">
                 <Button
                   onClick={handleViewCourse}
-                  className="w-full bg-purple-600 hover:bg-purple-700"
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                   size="lg"
                 >
                   {courseInfo ? "Vào học ngay" : "Xem khóa học của tôi"}
@@ -213,7 +213,7 @@ export default function PaymentResultPage() {
                       router.back();
                     }
                   }}
-                  className="w-full bg-purple-600 hover:bg-purple-700"
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                   size="lg"
                 >
                   Thử lại
@@ -231,8 +231,8 @@ export default function PaymentResultPage() {
             )}
 
             {/* Support Notice */}
-            <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
-              <p className="text-sm text-blue-900 dark:text-blue-100">
+            <div className="rounded-lg border border-border bg-muted p-4">
+              <p className="text-sm text-foreground">
                 <strong>Lưu ý:</strong> Nếu bạn có bất kỳ thắc mắc nào về giao dịch,
                 vui lòng liên hệ với bộ phận hỗ trợ của chúng tôi với mã giao dịch{" "}
                 <span className="font-mono font-semibold">{txnRef}</span>.

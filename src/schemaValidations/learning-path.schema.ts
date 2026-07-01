@@ -16,20 +16,38 @@ export const CourseInPath = z.object({
 
 export type CourseInPathType = z.TypeOf<typeof CourseInPath>;
 
+export const LearningPathPagination = z.object({
+  page: z.number(),
+  size: z.number(),
+  totalElements: z.number(),
+  totalPages: z.number(),
+  first: z.boolean(),
+  last: z.boolean(),
+  hasNext: z.boolean(),
+  hasPrevious: z.boolean(),
+});
+
+export type LearningPathPaginationType = z.TypeOf<typeof LearningPathPagination>;
+
 // Learning Path Item Response
 export const LearningPathItem = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string().nullable(),
   skills: z.array(z.string()), // JSON array
-  creatorId: z.string(),
+  createdBy: z.string().nullable().optional(),
+  updatedBy: z.string().nullable().optional(),
+  creatorId: z.string().optional(), // Legacy alias
   creatorName: z.string().optional(),
-  isActive: z.string(), // "Y" or "N"
+  isActive: z.union([z.boolean(), z.literal("Y"), z.literal("N")]).optional(),
   created: z.string(),
   updated: z.string(),
   createdAt: z.string().optional(), // Alias for created
   courses: z.array(CourseInPath).optional(),
   totalCourses: z.number().optional(),
+  // Not currently returned by the backend; derived on the client from member courses.
+  level: z.string().nullable().optional(),
+  estimatedDuration: z.number().nullable().optional(),
   layoutEdges: z.array(z.object({
     source: z.string(),
     target: z.string(),
@@ -45,16 +63,7 @@ export const LearningPathListRes = z.object({
   code: z.number(),
   message: z.string(),
   data: z.array(LearningPathItem),
-  pagination: z.object({
-    page: z.number(),
-    size: z.number(),
-    totalElements: z.number(),
-    totalPages: z.number(),
-    first: z.boolean(),
-    last: z.boolean(),
-    hasNext: z.boolean(),
-    hasPrevious: z.boolean(),
-  }),
+  pagination: LearningPathPagination,
   timestamp: z.string(),
   path: z.string(),
 });
@@ -108,6 +117,8 @@ export const AddCoursesToPathBody = z.object({
     z.object({
       courseId: z.string(),
       order: z.number().min(1),
+      positionX: z.number().optional(),
+      positionY: z.number().optional(),
       isOptional: z.string().default("N"), // "Y" or "N"
     })
   ).min(1, "At least one course is required"),
@@ -163,16 +174,7 @@ export const PathProgressListRes = z.object({
   code: z.number(),
   message: z.string(),
   data: z.array(PathProgress),
-  pagination: z.object({
-    page: z.number(),
-    size: z.number(),
-    totalElements: z.number(),
-    totalPages: z.number(),
-    first: z.boolean(),
-    last: z.boolean(),
-    hasNext: z.boolean(),
-    hasPrevious: z.boolean(),
-  }),
+  pagination: LearningPathPagination,
   timestamp: z.string(),
   path: z.string(),
 });

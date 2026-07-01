@@ -28,6 +28,23 @@ export const useGetLearningPathList = (params?: {
   });
 };
 
+// Get the current user's own learning paths (Manage page).
+// Admins get every author's paths; other roles only their own.
+export const useGetMyLearningPathList = (params?: {
+  page?: number;
+  size?: number;
+  sortBy?: string;
+  sortDirection?: string;
+  enabled?: boolean;
+}) => {
+  const { enabled = true, ...queryParams } = params || {};
+  return useQuery({
+    queryKey: ["my-learning-path-list", queryParams],
+    queryFn: () => learningPathApiRequest.getMyLearningPaths(queryParams),
+    enabled,
+  });
+};
+
 // Get learning path by ID
 export const useGetLearningPathById = (id: string) => {
   return useQuery({
@@ -45,6 +62,7 @@ export const useCreateLearningPathMutation = () => {
       learningPathApiRequest.createLearningPath(body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["learning-path-list"] });
+      queryClient.invalidateQueries({ queryKey: ["my-learning-path-list"] });
     },
   });
 };
@@ -57,6 +75,7 @@ export const useUpdateLearningPathMutation = () => {
       learningPathApiRequest.updateLearningPath(id, body),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["learning-path-list"] });
+      queryClient.invalidateQueries({ queryKey: ["my-learning-path-list"] });
       queryClient.invalidateQueries({ queryKey: ["learning-path", variables.id] });
     },
   });
@@ -69,6 +88,7 @@ export const useDeleteLearningPathMutation = () => {
     mutationFn: (id: string) => learningPathApiRequest.deleteLearningPath(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["learning-path-list"] });
+      queryClient.invalidateQueries({ queryKey: ["my-learning-path-list"] });
     },
   });
 };
@@ -124,6 +144,7 @@ export const useAddCoursesToPathMutation = () => {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["learning-path", variables.pathId] });
       queryClient.invalidateQueries({ queryKey: ["learning-path-list"] });
+      queryClient.invalidateQueries({ queryKey: ["my-learning-path-list"] });
     },
   });
 };
@@ -137,6 +158,7 @@ export const useRemoveCourseFromPathMutation = () => {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["learning-path", variables.pathId] });
       queryClient.invalidateQueries({ queryKey: ["learning-path-list"] });
+      queryClient.invalidateQueries({ queryKey: ["my-learning-path-list"] });
     },
   });
 };

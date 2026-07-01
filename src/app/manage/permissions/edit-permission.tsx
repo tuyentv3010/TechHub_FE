@@ -1,5 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,17 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
@@ -28,17 +22,25 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useUpdatePermissionMutation, useGetPermissionById } from "@/queries/usePermission";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
+import { handleErrorApi } from "@/lib/utils";
+import { useGetPermissionById, useUpdatePermissionMutation } from "@/queries/usePermission";
 import {
   UpdatePermissionBody,
   UpdatePermissionBodyType,
   HTTP_METHODS,
   RESOURCES,
 } from "@/schemaValidations/permission.schema";
-import { toast } from "@/components/ui/use-toast";
-import { handleErrorApi } from "@/lib/utils";
-import { useEffect } from "react";
 
 export default function EditPermission({
   id,
@@ -49,6 +51,7 @@ export default function EditPermission({
   setId: (value: string | undefined) => void;
   onSubmitSuccess?: () => void;
 }) {
+  const t = useTranslations("ManagePermission");
   const updatePermissionMutation = useUpdatePermissionMutation();
   const { data, isLoading } = useGetPermissionById(id);
   const permission = data?.payload?.data;
@@ -66,16 +69,16 @@ export default function EditPermission({
   });
 
   useEffect(() => {
-    if (permission) {
-      form.reset({
-        name: permission.name,
-        description: permission.description || "",
-        url: permission.url,
-        method: permission.method,
-        resource: permission.resource,
-        active: true, // Backend doesn't return active, default to true
-      });
-    }
+    if (!permission) return;
+
+    form.reset({
+      name: permission.name,
+      description: permission.description || "",
+      url: permission.url,
+      method: permission.method,
+      resource: permission.resource,
+      active: true,
+    });
   }, [permission, form]);
 
   const reset = () => {
@@ -85,15 +88,15 @@ export default function EditPermission({
 
   const onSubmit = async (values: UpdatePermissionBodyType) => {
     try {
-      const result = await updatePermissionMutation.mutateAsync({ id, body: values });
-      toast({ description: result.message });
+      await updatePermissionMutation.mutateAsync({ id, body: values });
+      toast({ description: t("PermissionUpdated") });
       reset();
-      if (onSubmitSuccess) onSubmitSuccess();
+      onSubmitSuccess?.();
     } catch (error) {
       handleErrorApi({ error, setError: form.setError });
       toast({
-        title: "Lỗi",
-        description: "Không thể cập nhật permission",
+        title: t("ErrorLabel"),
+        description: t("UpdateFailed"),
         variant: "destructive",
       });
     }
@@ -101,15 +104,13 @@ export default function EditPermission({
 
   return (
     <Dialog open={!!id} onOpenChange={(value) => !value && reset()}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="manage-dialog-panel sm:max-w-[600px] rounded-[1.35rem] border-border/50">
         <DialogHeader>
-          <DialogTitle>Chỉnh sửa Permission</DialogTitle>
-          <DialogDescription>
-            Cập nhật thông tin permission trong hệ thống phân quyền
-          </DialogDescription>
+          <DialogTitle>{t("EditPermission")}</DialogTitle>
+          <DialogDescription>{t("EditPermissionDescription")}</DialogDescription>
         </DialogHeader>
         {isLoading ? (
-          <div className="py-8 text-center">Đang tải...</div>
+          <div className="py-8 text-center">{t("Loading")}</div>
         ) : (
           <Form {...form}>
             <form
@@ -117,140 +118,136 @@ export default function EditPermission({
               className="grid gap-4 py-4"
               onSubmit={form.handleSubmit(onSubmit)}
             >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Tên <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="USER_READ_ALL" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mô tả</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Get all users" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="method"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Method <span className="text-red-500">*</span>
+                      {t("NameLabel")} <span className="text-destructive">*</span>
                     </FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Chọn method" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {HTTP_METHODS.map((method) => (
-                          <SelectItem key={method} value={method}>
-                            {method}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Input placeholder={t("NamePlaceholder")} {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <FormField
                 control={form.control}
-                name="resource"
+                name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Resource <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Chọn resource" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {RESOURCES.map((resource) => (
-                          <SelectItem key={resource} value={resource}>
-                            {resource}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>{t("DescriptionLabel")}</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder={t("DescriptionPlaceholder")} {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
-            <FormField
-              control={form.control}
-              name="url"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    URL <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="/api/users" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="active"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2">
-                  <FormLabel>Trạng thái</FormLabel>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <span className="text-sm">
-                    {field.value ? "Active" : "Inactive"}
-                  </span>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </form>
-        </Form>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="method"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t("MethodLabel")} <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t("MethodPlaceholder")} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {HTTP_METHODS.map((method) => (
+                            <SelectItem key={method} value={method}>
+                              {method}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="resource"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t("ResourceLabel")} <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t("ResourcePlaceholder")} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {RESOURCES.map((resource) => (
+                            <SelectItem key={resource} value={resource}>
+                              {resource}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t("UrlLabel")} <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder={t("UrlPlaceholder")} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="active"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2">
+                    <FormLabel>{t("StatusLabel")}</FormLabel>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <span className="text-sm">{field.value ? t("Active") : t("Inactive")}</span>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </form>
+          </Form>
         )}
         <DialogFooter>
           <Button
             type="submit"
             form="edit-permission-form"
+            className="manage-primary-button"
             disabled={updatePermissionMutation.isPending || isLoading}
           >
-            Cập nhật Permission
+            {t("UpdatePermission")}
           </Button>
         </DialogFooter>
       </DialogContent>

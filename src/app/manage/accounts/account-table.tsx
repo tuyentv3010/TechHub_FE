@@ -38,6 +38,7 @@ import AddEmployee from "@/app/manage/accounts/add-employee";
 import EditEmployee from "@/app/manage/accounts/edit-employee";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createContext, useContext, useEffect, useState } from "react";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +57,7 @@ import {
 } from "@/queries/useAccount";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
+import { getManageTableColumnClass } from "@/lib/manage-table";
 import TableSkeleton from "@/components/Skeleton";
 import {
   Select,
@@ -117,7 +119,7 @@ function AlertDialogDeleteAccount({
         }
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent className="manage-dialog-panel rounded-[1.35rem] border-border/50">
         <AlertDialogHeader>
           <AlertDialogTitle>{t("Del")}</AlertDialogTitle>
           <AlertDialogDescription>
@@ -172,28 +174,31 @@ export default function AccountTable() {
 
   const columns: ColumnDef<AccountType>[] = [
     {
-      accessorKey: "id",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
+      id: "rowNumber",
+      header: () => (
+        <div>
           {t("ID")}
-          <CaretSortIcon className="ml-2 h-4 w-4" />
-        </Button>
+        </div>
       ),
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row, table }) => {
+        const visibleIndex = table.getRowModel().rows.findIndex((visibleRow) => visibleRow.id === row.id);
+        const rowNumber = pageIndex * pageSize + (visibleIndex >= 0 ? visibleIndex : row.index) + 1;
+
+        return <div className="font-medium text-muted-foreground">{rowNumber}</div>;
+      },
     },
     {
       accessorKey: "avatar",
       header: t("Avatar"),
       cell: ({ row }) => {
-        const avatarUrl = row.getValue("avatar") as string | null;
-        const imageSrc = avatarUrl ? avatarUrl : "/default-avatar.png";
+        const avatarUrl = normalizePersistedMediaUrl(row.getValue("avatar"));
         return (
           <div>
             <Avatar className="aspect-square w-[100px] h-[100px] rounded-md object-cover">
               <AvatarImage
-                src={imageSrc}
+                src={avatarUrl || undefined}
                 alt={`${row.original.username}'s avatar`}
               />
               <AvatarFallback className="rounded-none">
@@ -349,7 +354,7 @@ export default function AccountTable() {
         setEmployeeDelete,
       }}
     >
-      <div className="w-full">
+      <div className="manage-data-table w-full">
         {employeeIdEdit !== undefined && hasEditPermission && (
           <EditEmployee
             id={employeeIdEdit}
@@ -368,12 +373,12 @@ export default function AccountTable() {
         {accountListQuery.isLoading || isPermissionsLoading ? (
           <TableSkeleton />
         ) : accountListQuery.error ? (
-          <div className="text-red-500">
+          <div className="text-destructive">
             {t("Error")}: {accountListQuery.error.message}
           </div>
         ) : (
           <>
-            <div className="flex items-center py-4 gap-5">
+            <div className="manage-toolbar py-2">
               <Input
                 placeholder={t("FilterEmails")}
                 value={
@@ -382,32 +387,35 @@ export default function AccountTable() {
                 onChange={(event) =>
                   table.getColumn("email")?.setFilterValue(event.target.value)
                 }
-                className="max-w-sm w-[150px]"
+                className="manage-field max-w-sm w-[150px]"
               />
               <Input
-                placeholder={t("FilterNames")}
+                placeholder={t("FilterName")}
                 value={
-                  (table.getColumn("fullName")?.getFilterValue() as string) ??
+                  (table.getColumn("username")?.getFilterValue() as string) ??
                   ""
                 }
                 onChange={(event) =>
                   table
-                    .getColumn("fullName")
+                    .getColumn("username")
                     ?.setFilterValue(event.target.value)
                 }
-                className="max-w-sm w-[150px]"
+                className="manage-field max-w-sm w-[150px]"
               />
-              <div className="ml-auto flex items-center gap-2">
+              <div className="manage-toolbar-spacer flex items-center gap-2">
                 {hasAddPermission && <AddEmployee />}
               </div>
             </div>
-            <div className="rounded-md border">
+            <div className="manage-table-shell">
               <Table>
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
+                        <TableHead
+                          key={header.id}
+                          className={getManageTableColumnClass(header.column.id)}
+                        >
                           {header.isPlaceholder
                             ? null
                             : flexRender(
@@ -427,7 +435,10 @@ export default function AccountTable() {
                         data-state={row.getIsSelected() && "selected"}
                       >
                         {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
+                          <TableCell
+                            key={cell.id}
+                            className={getManageTableColumnClass(cell.column.id)}
+                          >
                             {flexRender(
                               cell.column.columnDef.cell,
                               cell.getContext()
@@ -449,17 +460,18 @@ export default function AccountTable() {
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-between py-4">
+            <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-xs text-muted-foreground">
                 {paginationT("Pagi1")}{" "}
                 <strong>{table.getRowModel().rows.length}</strong>{" "}
                 {paginationT("Pagi2")} <strong>{totalItems}</strong>{" "}
                 {paginationT("Pagi3")}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="manage-secondary-button"
                   onClick={() => goToPage(page - 1)}
                   disabled={page === 1}
                 >
@@ -471,6 +483,7 @@ export default function AccountTable() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="manage-secondary-button"
                   onClick={() => goToPage(page + 1)}
                   disabled={page === totalPages}
                 >
@@ -483,10 +496,10 @@ export default function AccountTable() {
                     goToPage(1);
                   }}
                 >
-                  <SelectTrigger className="w-[100px]">
+                  <SelectTrigger className="manage-filter-trigger w-[100px]">
                     <SelectValue placeholder={paginationT("RowsPerPage")} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="manage-popover-panel">
                     <SelectItem value="10">10</SelectItem>
                     <SelectItem value="20">20</SelectItem>
                     <SelectItem value="50">50</SelectItem>

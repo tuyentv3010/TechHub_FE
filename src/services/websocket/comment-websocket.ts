@@ -109,7 +109,7 @@ export class CommentWebSocketService {
     this.client = createStompClient({
       service: this.service,
       debug: options?.debug,
-      directConnection: options?.directConnection ?? true,
+      directConnection: options?.directConnection ?? false,
       onConnect: () => {
         this.isConnected = true;
         options?.onConnect?.();

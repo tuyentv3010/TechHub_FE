@@ -45,6 +45,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "@/components/ui/use-toast";
 import { handleErrorApi } from "@/lib/utils";
+import { getManageTableColumnClass } from "@/lib/manage-table";
 import TableSkeleton from "@/components/Skeleton";
 import {
   Select,
@@ -108,7 +109,7 @@ function AlertDialogDeleteBlog({
         if (!value) setBlogDelete(null);
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent className="manage-dialog-panel rounded-[1.35rem] border-border/50">
         <AlertDialogHeader>
           <AlertDialogTitle>{t("Del")}</AlertDialogTitle>
           <AlertDialogDescription>
@@ -160,14 +161,20 @@ export default function BlogTable() {
 
   const columns: ColumnDef<BlogType>[] = [
     {
-      accessorKey: "id",
-      header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+      id: "rowNumber",
+      header: () => (
+        <div>
           {t("ID")}
-          <CaretSortIcon className="ml-2 h-4 w-4" />
-        </Button>
+        </div>
       ),
-      cell: ({ row }) => <div className="truncate max-w-[100px]">{row.getValue("id")}</div>,
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row, table }) => {
+        const visibleIndex = table.getRowModel().rows.findIndex((visibleRow) => visibleRow.id === row.id);
+        const rowNumber = pageIndex * pageSize + (visibleIndex >= 0 ? visibleIndex : row.index) + 1;
+
+        return <div className="font-medium text-muted-foreground">{rowNumber}</div>;
+      },
     },
     {
       accessorKey: "thumbnail",
@@ -311,7 +318,7 @@ export default function BlogTable() {
     <BlogTableContext.Provider
       value={{ blogIdEdit, setBlogIdEdit, blogDelete, setBlogDelete }}
     >
-      <div className="w-full">
+      <div className="manage-data-table w-full">
         {blogIdEdit !== undefined && (
           <EditBlog
             id={blogIdEdit}
@@ -331,35 +338,38 @@ export default function BlogTable() {
         {blogListQuery.isLoading ? (
           <TableSkeleton />
         ) : blogListQuery.error ? (
-          <div className="text-red-500">
+          <div className="text-destructive">
             {t("Error")}: {(blogListQuery.error as any).message}
           </div>
         ) : (
           <>
-            <div className="flex items-center py-4 gap-5">
+            <div className="manage-toolbar py-2">
               <Input
                 placeholder={t("FilterTitle")}
                 value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
                 onChange={(e) => table.getColumn("title")?.setFilterValue(e.target.value)}
-                className="max-w-sm w-[200px]"
+                className="manage-field w-full max-w-sm sm:w-[200px]"
               />
               <Input
                 placeholder={t("FilterStatus")}
                 value={(table.getColumn("status")?.getFilterValue() as string) ?? ""}
                 onChange={(e) => table.getColumn("status")?.setFilterValue(e.target.value)}
-                className="max-w-sm w-[160px]"
+                className="manage-field w-full max-w-sm sm:w-[160px]"
               />
-              <div className="ml-auto flex items-center gap-2">
+              <div className="manage-toolbar-spacer flex items-center gap-2">
                 {hasAddPermission && <AddBlog />}
               </div>
             </div>
-            <div className="rounded-md border">
+            <div className="manage-table-shell">
               <Table>
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
+                        <TableHead
+                          key={header.id}
+                          className={getManageTableColumnClass(header.column.id)}
+                        >
                           {header.isPlaceholder
                             ? null
                             : flexRender(
@@ -376,7 +386,10 @@ export default function BlogTable() {
                     table.getRowModel().rows.map((row) => (
                       <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                         {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
+                          <TableCell
+                            key={cell.id}
+                            className={getManageTableColumnClass(cell.column.id)}
+                          >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </TableCell>
                         ))}
@@ -392,16 +405,17 @@ export default function BlogTable() {
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-between py-4">
+            <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-xs text-muted-foreground">
                 {paginationT("Pagi1")} <strong>{table.getRowModel().rows.length}</strong>{" "}
                 {paginationT("Pagi2")} <strong>{totalItems}</strong>{" "}
                 {paginationT("Pagi3")}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="manage-secondary-button"
                   onClick={() => goToPage(page - 1)}
                   disabled={page === 1}
                 >
@@ -413,6 +427,7 @@ export default function BlogTable() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="manage-secondary-button"
                   onClick={() => goToPage(page + 1)}
                   disabled={page === totalPages}
                 >
@@ -425,10 +440,10 @@ export default function BlogTable() {
                     goToPage(1);
                   }}
                 >
-                  <SelectTrigger className="w-[100px]">
+                  <SelectTrigger className="manage-filter-trigger w-[100px]">
                     <SelectValue placeholder={paginationT("RowsPerPage")} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="manage-popover-panel">
                     <SelectItem value="10">10</SelectItem>
                     <SelectItem value="20">20</SelectItem>
                     <SelectItem value="50">50</SelectItem>

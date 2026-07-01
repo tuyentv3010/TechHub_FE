@@ -1,8 +1,48 @@
 "use client";
-import Footer from "@/components/footer";
 import { DropdownProfile } from "@/components/organisms/DropdownProfile";
 import { AiLearningPathProvider } from "@/contexts/AiLearningPathContext";
+import { PublicShell } from "@/components/layout";
+import Footer from "@/components/footer";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
+
+const AUTH_HEADER_PATHS = [
+  "/login",
+  "/login/oauth",
+  "/logout",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/refresh-token",
+  "/oauth2/redirect",
+  "/terms",
+  "/terms-of-service",
+  "/privacy",
+  "/privacy-policy",
+  "/policy",
+];
+
+function isAuthHeaderPath(pathname: string | null) {
+  return AUTH_HEADER_PATHS.some(
+    (path) => pathname === path || pathname?.startsWith(`${path}/`)
+  );
+}
+
+function isFooterPath(pathname: string | null) {
+  if (!pathname) return false;
+  return (
+    pathname === "/" ||
+    pathname === "/about" ||
+    pathname === "/contact" ||
+    pathname === "/courses" ||
+    pathname.startsWith("/courses/") ||
+    pathname === "/learning-paths" ||
+    pathname.startsWith("/learning-paths/") ||
+    pathname === "/blog" ||
+    pathname.startsWith("/blog/")
+  );
+}
 
 export default function Layout({
   children,
@@ -11,28 +51,37 @@ export default function Layout({
   children: React.ReactNode;
   modal: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const useAuthHeader = isAuthHeaderPath(pathname);
+  const showFooter = isFooterPath(pathname);
+  const showAiShortcut = !(pathname === "/ai-chat" || pathname?.startsWith("/ai-chat/"));
+
   return (
     <AiLearningPathProvider>
-      <div className="flex min-h-screen w-full flex-col">
-        <DropdownProfile />
-        <main className="flex-1">{children}</main>
+      <PublicShell
+        floatingAction={
+          showAiShortcut ? (
+            <a
+              href="/ai-chat"
+              className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2"
+            >
+              <Image
+                src="/ai/TechHub_Logo.png"
+                alt="AI Chat Assistant"
+                width={56}
+                height={56}
+                className="rounded-xl border border-border bg-card object-cover shadow-sm"
+                priority={true}
+              />
+            </a>
+          ) : null
+        }
+      >
+        <DropdownProfile variant={useAuthHeader ? "auth" : "default"} />
+        {children}
         {modal}
-        
-        {/* AI Chat Button */}
-        <a
-          href="/ai-chat"
-          className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2"
-        >
-          <Image
-            src="/ai/TechHub_Logo.png"
-            alt="AI Chat Assistant"
-            width={60}
-            height={60}
-            className="rounded-full object-cover shadow-2xl"
-            priority={true}
-          />
-        </a>
-      </div>
+        {showFooter ? <Footer /> : null}
+      </PublicShell>
     </AiLearningPathProvider>
   );
 }

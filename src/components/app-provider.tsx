@@ -1,11 +1,20 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
-import { RoleType, Permission, TokenPayload } from "@/types/jwt.types";
-import { getAccessTokenFromLocalStorage, decodeToken } from "@/lib/utils";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { RoleType, Permission } from "@/types/jwt.types";
+import {
+  checkAndRefreshToken,
+  decodeToken,
+  getAccessTokenFromLocalStorage,
+  getRefreshTokenFromLocalStorage,
+  hasAuthSessionCookie,
+  removeTokenFromLocalStorage,
+  setUserInfoToAuthStorage,
+} from "@/lib/utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import RefreshToken from "@/components/refresh-token";
 import { SocketProvider } from "@/providers/SocketProvider";
+import accountApiRequest from "@/apiRequests/account";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,53 +35,167 @@ type AppContextType = {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const ROLE_PRIORITY: RoleType[] = [
+  "SUPER_ADMIN",
+  "ADMIN",
+  "INSTRUCTOR",
+  "STAFF",
+  "LEARNER",
+  "CUSTOMER",
+  "GUEST",
+];
+
+const resolvePrimaryRole = (roles?: unknown): RoleType | null => {
+  const roleList = Array.isArray(roles)
+    ? roles.map((item) => String(item).toUpperCase())
+    : roles
+      ? [String(roles).toUpperCase()]
+      : [];
+
+  for (const role of ROLE_PRIORITY) {
+    if (roleList.includes(role)) {
+      return role;
+    }
+  }
+
+  return (roleList[0] as RoleType | undefined) ?? null;
+};
+
+const isTokenFresh = (token: string) => {
+  try {
+    const decoded = decodeToken(token);
+    const now = Math.round(Date.now() / 1000);
+    return Boolean(decoded?.exp && decoded.exp > now);
+  } catch {
+    return false;
+  }
+};
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isAuth, setIsAuth] = useState(false);
   const [role, setRole] = useState<RoleType | null>(null);
   const [permissions, setPermissions] = useState<Permission[] | null>(null);
+  // Ensures the new-tab cookie rehydrate (below) runs at most once per mount,
+  // even though a failed refresh clears storage and emits "auth-logout", which
+  // re-enters applyProfileRole.
+  const cookieRehydrateAttempted = useRef(false);
 
   useEffect(() => {
-    const checkAuth = () => {
+    let isMounted = true;
+
+    const applyProfileRole = async () => {
+      // A tab opened by pasting the URL starts with an empty sessionStorage, so
+      // web storage looks logged-out even though the shared httpOnly cookie
+      // session is still alive. If a prior login left an authStorageMode cookie,
+      // try ONE silent cookie-based refresh to rehydrate web storage (into the
+      // same storage kind the original tab used) before concluding logged-out.
+      if (
+        !cookieRehydrateAttempted.current &&
+        hasAuthSessionCookie() &&
+        !getAccessTokenFromLocalStorage() &&
+        !getRefreshTokenFromLocalStorage()
+      ) {
+        cookieRehydrateAttempted.current = true;
+        try {
+          await checkAndRefreshToken({ force: true, redirectOnError: false });
+        } catch {
+          // No live cookie session — fall through to the logged-out branch.
+        }
+        if (!isMounted) return;
+      }
+
       const token = getAccessTokenFromLocalStorage();
+      const refreshToken = getRefreshTokenFromLocalStorage();
       if (token) {
+        if (!isTokenFresh(token)) {
+          if (refreshToken) {
+            if (isMounted) {
+              setIsAuth(true);
+              setPermissions(null);
+            }
+            return;
+          }
+
+          removeTokenFromLocalStorage();
+          if (isMounted) {
+            setIsAuth(false);
+            setRole(null);
+            setPermissions(null);
+          }
+          return;
+        }
+
         try {
           setIsAuth(true);
-          const decoded = decodeToken(token);
-          setRole(decoded?.role || null);
-          // Permissions are fetched separately after login
+          const profileResponse = await accountApiRequest.getProfile({
+            redirectOnUnauthorized: false,
+          });
+          const profile = profileResponse?.payload?.data;
+          const primaryRole = resolvePrimaryRole(profile?.roles);
+
+          if (isMounted) {
+            setRole(primaryRole);
+            if (profile) {
+              setUserInfoToAuthStorage(profile);
+            }
+          }
         } catch (error) {
-          console.error("Failed to decode token:", error);
+          console.error("Failed to load profile for auth role:", error);
+
+          if ((error as { status?: number })?.status === 401) {
+            removeTokenFromLocalStorage();
+            if (isMounted) {
+              setIsAuth(false);
+              setRole(null);
+              setPermissions(null);
+            }
+            return;
+          }
+
+          try {
+            const decoded = decodeToken(token);
+            if (isMounted) {
+              setRole(resolvePrimaryRole(decoded?.roles ?? decoded?.role));
+            }
+          } catch (decodeError) {
+            console.error("Failed to decode token:", decodeError);
+            if (isMounted) {
+              setIsAuth(false);
+              setRole(null);
+              setPermissions(null);
+            }
+          }
+        }
+      } else {
+        // No token - user is logged out
+        if (isMounted) {
           setIsAuth(false);
           setRole(null);
           setPermissions(null);
         }
-      } else {
-        // No token - user is logged out
-        setIsAuth(false);
-        setRole(null);
-        setPermissions(null);
       }
     };
 
     // Check on mount
-    checkAuth();
+    applyProfileRole();
 
     // Listen to storage changes (for logout in other tabs or auto-logout)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "accessToken" || e.key === "refreshToken") {
-        checkAuth();
+        applyProfileRole();
       }
     };
 
     // Listen to custom event for same-tab logout
     const handleLogout = () => {
-      checkAuth();
+      applyProfileRole();
     };
 
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("auth-logout", handleLogout);
 
     return () => {
+      isMounted = false;
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("auth-logout", handleLogout);
     };

@@ -1,262 +1,342 @@
 "use client";
 
-import { useGetSkills } from "@/queries/useCourse";
+import { useGetCourseList, useGetSkills } from "@/queries/useCourse";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useMemo } from "react";
 
 interface Skill {
   id: string;
   name: string;
   thumbnail: string | null;
   category: string | null;
+  href?: string;
+}
+
+interface CourseLike {
+  skills?: Array<Partial<Skill> | string> | null;
+  categories?: string[] | null;
 }
 
 interface OrbitCategoriesSectionProps {
   title?: string;
 }
 
-// Single skill icon component with hover tooltip
-function SkillIcon({ skill }: { skill: Skill }) {
-  return (
-    <Link href={`/skills/${skill.id}`} className="block">
-      <div className="relative group cursor-pointer">
-        {/* Skill Icon Circle */}
-        <div className="w-14 h-14 md:w-16 md:h-16 lg:w-[72px] lg:h-[72px] rounded-full bg-white dark:bg-gray-800 shadow-lg border-2 border-gray-100 dark:border-gray-700 flex items-center justify-center overflow-hidden hover:shadow-xl hover:border-purple-400 dark:hover:border-purple-500 hover:scale-110 transition-all duration-300">
-          {skill.thumbnail ? (
-            <Image
-              src={skill.thumbnail}
-              alt={skill.name}
-              width={64}
-              height={64}
-              className="w-9 h-9 md:w-10 md:h-10 lg:w-11 lg:h-11 object-contain"
-            />
-          ) : (
-            <span className="text-xl md:text-2xl font-bold text-purple-600 dark:text-purple-400">
-              {skill.name.charAt(0).toUpperCase()}
-            </span>
-          )}
-        </div>
+const MAX_VISIBLE_CATEGORIES = 6;
 
-        {/* Tooltip on hover */}
-        <div className="absolute left-1/2 -translate-x-1/2 -bottom-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 pointer-events-none">
-          <div className="px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-xs font-medium rounded-lg whitespace-nowrap shadow-lg">
-            {skill.name}
-            <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45" />
+function buildCoursesUrl(params: Record<string, string>) {
+  const searchParams = new URLSearchParams(params);
+  return `/courses?${searchParams.toString()}`;
+}
+
+function normalizeSkillItem(item: Partial<Skill> | string): Skill | null {
+  if (typeof item === "string") {
+    const name = item.trim();
+    if (!name) return null;
+
+    return {
+      id: name,
+      name,
+      thumbnail: null,
+      category: null,
+      href: buildCoursesUrl({ search: name }),
+    };
+  }
+
+  const name = item.name?.trim();
+  if (!name) return null;
+
+  const id = item.id?.trim() || name;
+
+  return {
+    id,
+    name,
+    thumbnail: item.thumbnail ?? null,
+    category: item.category ?? null,
+    href: item.id
+      ? buildCoursesUrl({ skillIds: id })
+      : buildCoursesUrl({ search: name }),
+  };
+}
+
+function buildFallbackSkillsFromCourses(courses: CourseLike[]) {
+  const skillMap = new Map<string, Skill>();
+
+  courses.forEach((course) => {
+    const sourceItems =
+      course.skills && course.skills.length > 0
+        ? course.skills
+        : course.categories ?? [];
+
+    sourceItems.forEach((item) => {
+      const skill = normalizeSkillItem(item);
+      if (!skill) return;
+
+      const key = `${skill.id}-${skill.name}`.toLowerCase();
+      if (!skillMap.has(key)) {
+        skillMap.set(key, skill);
+      }
+    });
+  });
+
+  return Array.from(skillMap.values());
+}
+
+function buildOrbitItems(skills: Skill[]) {
+  return skills.map((skill, index) => ({
+    skill,
+    orbitKey: `${skill.id}-${skill.name}-${index}`,
+  }));
+}
+
+function SkillIcon({ skill, compact = false }: { skill: Skill; compact?: boolean }) {
+  const thumbnailUrl = normalizePersistedMediaUrl(skill.thumbnail);
+
+  return (
+    <Link href={skill.href ?? buildCoursesUrl({ skillIds: skill.id })} className="block">
+      <div
+        className={
+          compact
+            ? "group flex h-16 w-28 cursor-pointer flex-col items-center justify-center rounded-lg border border-border bg-card px-2 py-2 text-center shadow-sm transition-colors hover:border-primary/40"
+            : "group flex h-[78px] w-[142px] cursor-pointer flex-col items-center justify-center rounded-xl border border-border bg-card px-3 py-2 text-center shadow-sm transition-colors hover:border-primary/40"
+        }
+      >
+        {thumbnailUrl ? (
+          <div
+            className={
+              compact
+                ? "mb-1 flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-primary"
+                : "mb-1 flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary"
+            }
+          >
+            <Image
+              src={thumbnailUrl}
+              alt={skill.name}
+              width={32}
+              height={32}
+              className={compact ? "h-5 w-5 object-contain" : "h-6 w-6 object-contain"}
+            />
           </div>
-        </div>
+        ) : null}
+        <span
+          className={
+            compact
+              ? "line-clamp-2 max-w-full text-[10px] font-semibold leading-tight text-foreground"
+              : "line-clamp-2 max-w-full text-xs font-semibold leading-tight text-foreground"
+          }
+        >
+          {skill.name}
+        </span>
       </div>
     </Link>
   );
 }
 
-// Rotating Arc with skills
-function RotatingArc({
+function RotatingSemiCircle({
   radius,
   skills,
-  color,
   duration,
-  reverse = false,
   centerX,
   centerY,
+  containerWidth,
+  containerHeight,
+  itemWidth = 142,
+  itemHeight = 78,
+  compact = false,
 }: {
   radius: number;
   skills: Skill[];
-  color: string;
   duration: number;
-  reverse?: boolean;
   centerX: number;
   centerY: number;
+  containerWidth: number;
+  containerHeight: number;
+  itemWidth?: number;
+  itemHeight?: number;
+  compact?: boolean;
 }) {
-  // Full 360° circle - distribute skills evenly
-  const initialAngles = skills.map((skill, index) => {
-    // Start from top (-90°) and go clockwise
-    const angle = -90 + (360 / skills.length) * index;
-    return { skill, initialAngle: angle };
-  });
+  const orbitItems = buildOrbitItems(skills);
+  const animationKey = orbitItems
+    .map(({ skill }) => `${skill.id}:${skill.name}`)
+    .join("|");
 
   return (
     <>
-      {/* Full circle - static, centered */}
-      <circle
-        cx={centerX}
-        cy={centerY}
-        r={radius}
-        fill="none"
-        stroke={color}
-        strokeWidth={2}
-        strokeDasharray="8 4"
-        opacity={0.4}
-        className="pointer-events-none"
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute rounded-full border-2 border-dashed border-primary/35"
+        style={{
+          left: `${((centerX - radius) / containerWidth) * 100}%`,
+          top: `${((centerY - radius) / containerHeight) * 100}%`,
+          width: `${((radius * 2) / containerWidth) * 100}%`,
+          height: `${((radius * 2) / containerHeight) * 100}%`,
+        }}
       />
 
-      {/* Rotating container - centered at the same point */}
-      <motion.g
+      <div
+        key={animationKey}
+        className="orbit-categories-spin absolute inset-0"
         style={{
-          transformOrigin: `${centerX}px ${centerY}px`,
-        }}
-        animate={{
-          rotate: reverse ? -360 : 360,
-        }}
-        transition={{
-          rotate: {
-            duration: duration,
-            repeat: Infinity,
-            ease: "linear",
-          },
+          transformOrigin: `${(centerX / containerWidth) * 100}% ${(centerY / containerHeight) * 100}%`,
+          animationDuration: `${duration}s`,
         }}
       >
-        {/* Skills positioned relative to center */}
-        {initialAngles.map(({ skill, initialAngle }) => {
+        {orbitItems.map(({ skill, orbitKey }, index) => {
+          const initialAngle = -180 + (360 / orbitItems.length) * index;
           const angleRad = (initialAngle * Math.PI) / 180;
           const x = centerX + Math.cos(angleRad) * radius;
           const y = centerY + Math.sin(angleRad) * radius;
-          
+
           return (
-            <foreignObject
-              key={skill.id}
-              x={x - 36}
-              y={y - 36}
-              width={72}
-              height={72}
-              style={{ overflow: 'visible' }}
+            <div
+              key={orbitKey}
+              className="absolute flex items-center justify-center"
+              style={{
+                left: `${(x / containerWidth) * 100}%`,
+                top: `${(y / containerHeight) * 100}%`,
+                width: itemWidth,
+                height: itemHeight,
+                transform: "translate(-50%, -50%)",
+              }}
             >
-              <motion.div
-                className="w-full h-full flex items-center justify-center"
-                animate={{
-                  rotate: reverse ? 360 : -360,
-                }}
-                transition={{
-                  rotate: {
-                    duration: duration,
-                    repeat: Infinity,
-                    ease: "linear",
-                  },
+              <div
+                className="orbit-categories-counter-spin flex h-full w-full items-center justify-center"
+                style={{
+                  animationDuration: `${duration}s`,
                 }}
               >
-                <SkillIcon skill={skill} />
-              </motion.div>
-            </foreignObject>
+                <SkillIcon skill={skill} compact={compact} />
+              </div>
+            </div>
           );
         })}
-      </motion.g>
+      </div>
     </>
   );
 }
 
-// Loading Skeleton
 function LoadingSkeleton() {
   return (
-    <section className="py-16 md:py-24 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 overflow-hidden">
+    <section className="overflow-hidden bg-background py-16 md:py-20">
       <div className="container mx-auto px-4">
-        <div className="h-10 w-64 bg-gray-200 dark:bg-gray-700 rounded-lg mx-auto mb-16 animate-pulse" />
-        <div className="relative h-[500px]">
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full flex justify-center">
-            {[280, 400, 520].map((radius, i) => (
-              <div
-                key={i}
-                className="absolute rounded-full border-2 border-gray-200 dark:border-gray-700"
-                style={{
-                  width: radius * 2,
-                  height: radius * 2,
-                  bottom: -radius,
-                }}
-              />
-            ))}
-          </div>
+        <div className="mx-auto mb-10 h-10 w-64 animate-pulse rounded-lg bg-muted" />
+        <div className="relative mx-auto h-[420px] max-w-[1120px] overflow-hidden">
+          <div className="absolute bottom-[-36px] left-1/2 h-[780px] w-[780px] -translate-x-1/2 rounded-full border-2 border-dashed border-border" />
         </div>
       </div>
     </section>
   );
 }
 
-// Mobile Grid View
-function MobileGrid({ skills, title }: { skills: Skill[]; title?: string }) {
+function MobileOrbit({ skills, title }: { skills: Skill[]; title?: string }) {
+  const containerWidth = 390;
+  const containerHeight = 310;
+  const centerX = containerWidth / 2;
+  const centerY = containerHeight - 10;
+  const radius = 215;
+
   return (
-    <section className="py-12 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+    <section className="overflow-hidden bg-background py-10">
       <div className="container mx-auto px-4">
         {title && (
-          <h2 className="text-2xl font-bold text-center mb-8 text-gray-900 dark:text-white">
+          <motion.h2
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-5 text-center text-2xl font-bold text-foreground"
+          >
             {title}
-          </h2>
+          </motion.h2>
         )}
-        <div className="grid grid-cols-4 gap-3">
-          {skills.slice(0, 16).map((skill, index) => (
-            <motion.div
-              key={skill.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.03 }}
-            >
-              <Link
-                href={`/skills/${skill.id}`}
-                className="flex flex-col items-center p-3 bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all group"
-              >
-                <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center overflow-hidden group-hover:scale-110 transition-transform">
-                  {skill.thumbnail ? (
-                    <Image
-                      src={skill.thumbnail}
-                      alt={skill.name}
-                      width={48}
-                      height={48}
-                      className="w-8 h-8 object-contain"
-                    />
-                  ) : (
-                    <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                      {skill.name.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <span className="mt-2 text-[10px] font-medium text-center text-gray-600 dark:text-gray-400 line-clamp-1">
-                  {skill.name}
-                </span>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.45 }}
+          className="relative mx-auto w-full max-w-[390px] overflow-hidden"
+          style={{
+            aspectRatio: `${containerWidth} / ${containerHeight}`,
+          }}
+        >
+          <div className="absolute inset-x-0 bottom-0 h-px bg-border" />
+          <RotatingSemiCircle
+            radius={radius}
+            skills={skills}
+            duration={28}
+            centerX={centerX}
+            centerY={centerY}
+            containerWidth={containerWidth}
+            containerHeight={containerHeight}
+            itemWidth={112}
+            itemHeight={64}
+            compact
+          />
+        </motion.div>
       </div>
     </section>
   );
 }
 
-// Main Component
 export function OrbitCategoriesSection({ title }: OrbitCategoriesSectionProps) {
-  const { data: skillsData, isLoading } = useGetSkills();
-  const skills = ((skillsData?.payload?.data ?? []) as Skill[]).slice(0, 16);
+  const { data: skillsData, isLoading: isSkillsLoading } = useGetSkills({
+    redirectOnUnauthorized: false,
+    suppressErrorLog: true,
+    retry: false,
+  });
+  const { data: coursesData, isLoading: isCoursesLoading } = useGetCourseList({
+    page: 0,
+    size: 50,
+    status: "PUBLISHED",
+    redirectOnUnauthorized: false,
+    suppressErrorLog: true,
+    retry: false,
+  });
 
-  // Distribute skills across arcs
-  const { arc1Skills, arc2Skills, arc3Skills } = useMemo(() => {
-    if (skills.length === 0) return { arc1Skills: [], arc2Skills: [], arc3Skills: [] };
+  const apiSkills = ((skillsData?.payload?.data ?? []) as Partial<Skill>[])
+    .map((skill) => normalizeSkillItem(skill))
+    .filter((skill): skill is Skill => Boolean(skill));
+  const courseList = (coursesData?.payload?.data ?? []) as CourseLike[];
+  const fallbackSkills = buildFallbackSkillsFromCourses(courseList);
 
-    const total = skills.length;
-    
-    if (total <= 5) {
-      return {
-        arc1Skills: skills,
-        arc2Skills: [],
-        arc3Skills: [],
-      };
-    } else if (total <= 10) {
-      const innerCount = Math.ceil(total * 0.4);
-      return {
-        arc1Skills: skills.slice(0, innerCount),
-        arc2Skills: skills.slice(innerCount),
-        arc3Skills: [],
-      };
-    } else {
-      const innerCount = Math.min(5, Math.ceil(total * 0.25));
-      const middleCount = Math.min(7, Math.ceil(total * 0.35));
-      const outerCount = total - innerCount - middleCount;
-      
-      return {
-        arc1Skills: skills.slice(0, innerCount),
-        arc2Skills: skills.slice(innerCount, innerCount + middleCount),
-        arc3Skills: skills.slice(innerCount + middleCount, innerCount + middleCount + Math.min(9, outerCount)),
-      };
-    }
-  }, [skills]);
+  // Skills actually used by at least one PUBLISHED course in the response.
+  // Without this, the orbit can surface skills that have no courses, and
+  // clicking them leads to an empty `/courses` page.
+  const usedSkillKeys = new Set<string>();
+  courseList.forEach((course) => {
+    (course.skills ?? []).forEach((item) => {
+      if (typeof item === "string") {
+        if (item) usedSkillKeys.add(item.toLowerCase());
+        return;
+      }
+      if (item?.id) usedSkillKeys.add(String(item.id).toLowerCase());
+      if (item?.name) usedSkillKeys.add(String(item.name).toLowerCase());
+    });
+    (course.categories ?? []).forEach((category) => {
+      if (category) usedSkillKeys.add(category.toLowerCase());
+    });
+  });
+
+  const filteredApiSkills =
+    usedSkillKeys.size > 0
+      ? apiSkills.filter(
+          (skill) =>
+            usedSkillKeys.has(skill.id.toLowerCase()) ||
+            usedSkillKeys.has(skill.name.toLowerCase())
+        )
+      : apiSkills;
+
+  const sourceSkills =
+    filteredApiSkills.length > 0
+      ? filteredApiSkills
+      : fallbackSkills.length > 0
+        ? fallbackSkills
+        : apiSkills;
+  const skills = sourceSkills.slice(0, MAX_VISIBLE_CATEGORIES);
+  const isLoading =
+    skills.length === 0 &&
+    (isSkillsLoading || (apiSkills.length === 0 && isCoursesLoading));
 
   if (isLoading) {
     return <LoadingSkeleton />;
@@ -266,85 +346,55 @@ export function OrbitCategoriesSection({ title }: OrbitCategoriesSectionProps) {
     return null;
   }
 
-  // Container dimensions - center at bottom to show top 1/4 of circles
-  const containerHeight = 450;
-  const containerWidth = 1200;
+  const containerHeight = 500;
+  const containerWidth = 1180;
   const centerX = containerWidth / 2;
-  const centerY = containerHeight + 150; // Push center below visible area to show top portion
-
-  // Arc configurations - larger circles
-  const arcConfigs = [
-    { radius: 280, color: "#22d3ee", skills: arc1Skills, duration: 25, reverse: false },
-    { radius: 450, color: "#a855f7", skills: arc2Skills, duration: 35, reverse: true },
-    { radius: 580, color: "#3b82f6", skills: arc3Skills, duration: 45, reverse: false },
-  ].filter(arc => arc.skills.length > 0);
+  const centerY = containerHeight - 36;
+  const radius = 420;
 
   return (
     <>
-      {/* Desktop/Tablet View */}
-      <section className="hidden md:block py-8 lg:py-12 bg-gradient-to-b from-white via-gray-50/30 to-white dark:from-gray-900 dark:via-gray-800/30 dark:to-gray-900 overflow-hidden">
+      <section className="hidden overflow-hidden bg-background py-10 md:block lg:py-14">
         <div className="container mx-auto px-4">
           {title && (
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-3xl md:text-4xl lg:text-5xl font-bold text-center mb-4 text-gray-900 dark:text-white"
+              className="mb-8 text-center text-3xl font-bold text-foreground md:text-4xl lg:text-5xl"
             >
               {title}
             </motion.h2>
           )}
 
-          {/* Arc Container */}
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="relative mx-auto overflow-hidden"
-            style={{ 
-              height: containerHeight,
+            className="relative mx-auto w-full overflow-hidden"
+            style={{
+              aspectRatio: `${containerWidth} / ${containerHeight}`,
               maxWidth: containerWidth,
             }}
           >
-            {/* Background grid */}
-            <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]">
-              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-900 dark:bg-white" />
-              {[...Array(8)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute left-0 right-0 h-px bg-gray-900 dark:bg-white"
-                  style={{ top: `${i * 12.5}%` }}
-                />
-              ))}
-            </div>
+            <div className="absolute inset-x-0 bottom-0 h-px bg-border" />
 
-            {/* All orbits in a single SVG - ensures same center */}
-            <svg 
-              className="absolute inset-0 w-full h-full overflow-visible"
-              viewBox={`0 0 ${containerWidth} ${containerHeight}`}
-              preserveAspectRatio="xMidYMid meet"
-            >
-              {arcConfigs.map((arc, index) => (
-                <RotatingArc
-                  key={index}
-                  radius={arc.radius}
-                  skills={arc.skills}
-                  color={arc.color}
-                  duration={arc.duration}
-                  reverse={arc.reverse}
-                  centerX={centerX}
-                  centerY={centerY}
-                />
-              ))}
-            </svg>
+            <RotatingSemiCircle
+              radius={radius}
+              skills={skills}
+              duration={34}
+              centerX={centerX}
+              centerY={centerY}
+              containerWidth={containerWidth}
+              containerHeight={containerHeight}
+            />
           </motion.div>
         </div>
       </section>
 
-      {/* Mobile Grid View */}
       <div className="md:hidden">
-        <MobileGrid skills={skills} title={title} />
+        <MobileOrbit skills={skills} title={title} />
       </div>
     </>
   );

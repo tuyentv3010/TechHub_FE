@@ -1,0 +1,1406 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { format } from "date-fns";
+import {
+  ArrowUpRight,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  CircleDollarSign,
+  Copy,
+  Download,
+  Eye,
+  FileText,
+  Landmark,
+  Layers3,
+  MessageSquareText,
+  RefreshCcw,
+  Send,
+  ShieldCheck,
+  WalletCards,
+  XCircle,
+} from "lucide-react";
+
+import { useAppContext } from "@/components/app-provider";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/use-toast";
+import { decodeToken, formatCurrency, getAccessTokenFromLocalStorage } from "@/lib/utils";
+import { useLocale, useTranslations } from "next-intl";
+import {
+  useApprovePayoutRequest,
+  useCreatePayoutRequest,
+  useMarkPayoutRequestPaid,
+  usePayoutBalance,
+  usePayoutInvoiceDetail,
+  usePayoutInvoices,
+  usePayoutOperationsSummary,
+  usePayoutRequestDetail,
+  usePayoutRequests,
+  useRejectPayoutRequest,
+} from "@/queries/usePayment";
+import type {
+  PayoutInvoiceResponse,
+  PayoutRequestResponse,
+} from "@/apiRequests/payment";
+import paymentApiRequest from "@/apiRequests/payment";
+
+const statusTone: Record<string, string> = {
+  REQUESTED: "border-blue-400/30 bg-blue-500/15 text-blue-200",
+  PENDING: "border-blue-400/30 bg-blue-500/15 text-blue-200",
+  APPROVED: "border-emerald-400/30 bg-emerald-500/15 text-emerald-200",
+  REJECTED: "border-rose-400/30 bg-rose-500/15 text-rose-200",
+  MARKED_PAID: "border-amber-400/30 bg-amber-500/15 text-amber-100",
+  PAID: "border-amber-400/30 bg-amber-500/15 text-amber-100",
+  DRAFT: "border-slate-500/40 bg-slate-500/15 text-slate-200",
+  PROCESSING: "border-cyan-400/30 bg-cyan-500/15 text-cyan-100",
+  COMPLETED: "border-emerald-400/30 bg-emerald-500/15 text-emerald-200",
+};
+
+const typeTone: Record<string, string> = {
+  REQUEST: "border-blue-400/30 bg-blue-500/15 text-blue-200",
+  APPROVAL: "border-emerald-400/30 bg-emerald-500/15 text-emerald-200",
+  PAID: "border-amber-400/30 bg-amber-500/15 text-amber-100",
+  BATCH: "border-slate-500/40 bg-slate-500/15 text-slate-200",
+};
+
+type NormalizedPayoutRequest = {
+  id: string;
+  instructorId: string;
+  batchId?: string | null;
+  invoiceId?: string | null;
+  invoiceNumber?: string | null;
+  amount: number;
+  status: string;
+  note?: string | null;
+  reviewNote?: string | null;
+  paymentReference?: string | null;
+  approvedAt?: string | null;
+  markedPaidAt?: string | null;
+  created?: string | null;
+  updated?: string | null;
+};
+
+type NormalizedPayoutInvoice = {
+  id: string;
+  invoiceNumber: string;
+  payoutRequestId: string;
+  instructorId: string;
+  amount: number;
+  transferReference?: string | null;
+  status: string;
+  emailSent: boolean;
+  created?: string | null;
+  updated?: string | null;
+};
+
+type LedgerRow = {
+  ref: string;
+  type: string;
+  description: string;
+  amount: number;
+  status: string;
+  timestamp: string;
+  // Source ids so a ledger row can open the related request detail.
+  requestId?: string | null;
+  invoiceId?: string | null;
+};
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return format(date, "dd/MM/yyyy HH:mm");
+};
+
+const formatDateShort = (value?: string | null) => {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return format(date, "dd/MM/yyyy");
+};
+
+const shortId = (value?: string | null) => {
+  if (!value) return "N/A";
+  return value.length > 10 ? `${value.slice(0, 6)}…${value.slice(-4)}` : value;
+};
+
+const toNumber = (value: unknown) => {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizeRequest = (item: PayoutRequestResponse): NormalizedPayoutRequest => ({
+  id: String(item.id || ""),
+  instructorId: String(item.instructorId || ""),
+  batchId: item.batchId || null,
+  invoiceId: item.invoiceId || null,
+  invoiceNumber: item.invoiceNumber || null,
+  amount: toNumber(item.amount),
+  status: String(item.status || "REQUESTED").toUpperCase(),
+  note: item.note || null,
+  reviewNote: item.reviewNote || null,
+  paymentReference: item.paymentReference || null,
+  approvedAt: item.approvedAt || null,
+  markedPaidAt: item.markedPaidAt || null,
+  created: item.created || null,
+  updated: item.updated || null,
+});
+
+const normalizeInvoice = (item: PayoutInvoiceResponse): NormalizedPayoutInvoice => ({
+  id: String(item.id || ""),
+  invoiceNumber: String(item.invoiceNumber || "N/A"),
+  payoutRequestId: String(item.payoutRequestId || ""),
+  instructorId: String(item.instructorId || ""),
+  amount: toNumber(item.amount),
+  transferReference: item.transferReference || null,
+  status: String(item.status || "GENERATED").toUpperCase(),
+  emailSent: Boolean(item.emailSent),
+  created: item.created || null,
+  updated: item.updated || null,
+});
+
+export default function PayoutManagementPage() {
+  const { role, isAuth } = useAppContext();
+  const { toast } = useToast();
+  const locale = useLocale();
+  const t = useTranslations("ManagePayout");
+  const notAvailable = t("NotAvailable");
+  const approveLabel = t("Approve");
+  const dashboardRole: "ADMIN" | "INSTRUCTOR" | null =
+    role === "ADMIN" || role === "SUPER_ADMIN" ? "ADMIN" : role === "INSTRUCTOR" ? "INSTRUCTOR" : null;
+
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [selectedInstructorId, setSelectedInstructorId] = useState("");
+  const [queueFilter, setQueueFilter] = useState<"ALL" | "PENDING">("ALL");
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState("");
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
+  const [requestAmount, setRequestAmount] = useState("");
+  const [requestNote, setRequestNote] = useState("");
+  const [requestCurrency, setRequestCurrency] = useState<"VND" | "USD">("VND");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [reviewNote, setReviewNote] = useState("");
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState("");
+
+  const formatDateTimeValue = (value?: string | null) => {
+    if (!value) return notAvailable;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(date);
+  };
+
+  const formatDateShortValue = (value?: string | null) => {
+    if (!value) return notAvailable;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: "short",
+    }).format(date);
+  };
+
+  const shortIdValue = (value?: string | null) => {
+    if (!value) return notAvailable;
+    return value.length > 10 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
+  };
+
+  useEffect(() => {
+    document.body.classList.add("manage-payout-page");
+
+    return () => {
+      document.body.classList.remove("manage-payout-page");
+    };
+  }, []);
+
+  useEffect(() => {
+    const token = getAccessTokenFromLocalStorage();
+    if (!token) return;
+
+    try {
+      const decoded = decodeToken(token);
+      const userId = (decoded as any)?.userId || (decoded as any)?.user?.id;
+      if (userId) {
+        setCurrentUserId(String(userId));
+        setSelectedInstructorId((current) => current || String(userId));
+      }
+    } catch (error) {
+      console.error("Failed to decode token for payout page", error);
+    }
+  }, []);
+
+  const balanceQueryInstructorId = dashboardRole === "ADMIN" ? selectedInstructorId.trim() : currentUserId;
+  const balanceQueryEnabled = !!balanceQueryInstructorId;
+  const isAdminView = dashboardRole === "ADMIN";
+
+  const { data: balance, isFetching: isBalanceFetching, refetch: refetchBalance } = usePayoutBalance(
+    balanceQueryEnabled ? balanceQueryInstructorId : undefined
+  );
+  const { data: requests = [], isFetching: isRequestsFetching, refetch: refetchRequests } = usePayoutRequests();
+  const { data: operationsSummary, refetch: refetchOperationsSummary } = usePayoutOperationsSummary();
+  const { data: invoices = [], isFetching: isInvoicesFetching, refetch: refetchInvoices } = usePayoutInvoices(
+    isAdminView ? selectedInstructorId.trim() || undefined : undefined
+  );
+  const { data: requestDetail, isFetching: isDetailFetching, refetch: refetchDetail } = usePayoutRequestDetail(
+    selectedRequestId || undefined
+  );
+  const { data: invoiceDetail } = usePayoutInvoiceDetail(selectedInvoiceId || undefined);
+
+  const createRequestMutation = useCreatePayoutRequest();
+  const approveRequestMutation = useApprovePayoutRequest();
+  const rejectRequestMutation = useRejectPayoutRequest();
+  const markPaidMutation = useMarkPayoutRequestPaid();
+
+  const normalizedRequests = useMemo(
+    () => (requests as PayoutRequestResponse[]).map(normalizeRequest),
+    [requests]
+  );
+  const normalizedInvoices = useMemo(
+    () => (invoices as PayoutInvoiceResponse[]).map(normalizeInvoice),
+    [invoices]
+  );
+
+  const activeRequest = useMemo(
+    () => normalizedRequests.find((request) => request.id === selectedRequestId) || null,
+    [normalizedRequests, selectedRequestId]
+  );
+  const detail = requestDetail ? normalizeRequest(requestDetail) : activeRequest;
+  const activeInvoice = useMemo(
+    () => normalizedInvoices.find((invoice) => invoice.id === selectedInvoiceId) || null,
+    [normalizedInvoices, selectedInvoiceId]
+  );
+  const detailInvoice = invoiceDetail ? normalizeInvoice(invoiceDetail) : activeInvoice;
+
+  const visibleRequests = useMemo(() => {
+    const source =
+      dashboardRole === "ADMIN"
+        ? normalizedRequests
+        : normalizedRequests.filter((request) => request.instructorId === currentUserId);
+    if (queueFilter === "PENDING") {
+      return source.filter((request) => request.status === "REQUESTED");
+    }
+    return source.filter((request) => ["REQUESTED", "APPROVED"].includes(request.status));
+  }, [currentUserId, dashboardRole, normalizedRequests, queueFilter]);
+
+  const getBatchDisplayId = (batchId?: string | null) => {
+    if (!batchId) return t("Unassigned");
+    return shortIdValue(batchId);
+  };
+
+  const isReviewableRequest = (status: string) => status === "REQUESTED";
+  const canApproveRequest = (status: string) => status === "REQUESTED";
+
+  const summary = useMemo(() => {
+    const totalEarned = toNumber(balance?.totalEarned);
+    const pendingAmount = toNumber(balance?.pendingAmount);
+    const availableAmount = toNumber(balance?.availableAmount);
+    const totalEarnedUsd = toNumber((balance as any)?.totalEarnedUsd);
+    const pendingAmountUsd = toNumber((balance as any)?.pendingAmountUsd);
+    const availableAmountUsd = toNumber((balance as any)?.availableAmountUsd);
+    const usdRate = toNumber((balance as any)?.usdRate);
+    const totalRequested = toNumber(operationsSummary?.totalRequested);
+    const pendingRequests = visibleRequests.filter((request) => request.status === "REQUESTED").length;
+    const approvedRequests = toNumber(operationsSummary?.approvedRequests);
+    return {
+      totalEarned,
+      pendingAmount,
+      availableAmount,
+      totalEarnedUsd,
+      pendingAmountUsd,
+      availableAmountUsd,
+      usdRate,
+      totalRequested,
+      pendingRequests,
+      approvedRequests,
+      loadedRequests: toNumber(operationsSummary?.loadedRequests),
+    };
+  }, [balance, operationsSummary, visibleRequests]);
+
+  const ledgerRows = useMemo<LedgerRow[]>(() => {
+    const requestRows: LedgerRow[] = normalizedRequests.flatMap((request, requestIndex) => {
+      const rows: LedgerRow[] = [
+        {
+          ref: "REQUEST",
+          type: "REQUEST",
+          description: request.note || t("RequestForInstructor", { id: String(requestIndex + 1) }),
+          amount: request.amount,
+          status: request.status,
+          timestamp: request.created || request.updated || "",
+          requestId: request.id,
+          invoiceId: request.invoiceId,
+        },
+      ];
+
+      if (request.approvedAt) {
+        rows.push({
+          ref: "APPROVAL",
+          type: "APPROVAL",
+          description: request.reviewNote || t("ApprovedDescription"),
+          amount: request.amount,
+          status: "APPROVED",
+          timestamp: request.approvedAt,
+          requestId: request.id,
+          invoiceId: request.invoiceId,
+        });
+      }
+
+      if (request.markedPaidAt) {
+        rows.push({
+          ref: "PAID",
+          type: "PAID",
+          description: request.paymentReference
+            ? t("PaidVia", { reference: request.paymentReference })
+            : t("MarkedAsPaid"),
+          amount: request.amount,
+          status: "PAID",
+          timestamp: request.markedPaidAt,
+          requestId: request.id,
+          invoiceId: request.invoiceId,
+        });
+      }
+
+      return rows;
+    });
+
+    return requestRows
+      .sort((left, right) => new Date(right.timestamp || 0).getTime() - new Date(left.timestamp || 0).getTime())
+      .slice(0, 12)
+      .map((row, index) => ({
+        ...row,
+        ref: `${row.type}-${index + 1}`,
+      }));
+  }, [normalizedRequests, t]);
+
+  const openRequestDetail = (requestId: string, invoiceId?: string | null) => {
+    setSelectedRequestId(requestId);
+    setSelectedInvoiceId(invoiceId || "");
+    setDetailSheetOpen(true);
+    setReviewNote("");
+    setPaymentReference("");
+  };
+
+  // Open detail from a ledger row. BATCH rows have no request detail.
+  const openLedgerDetail = (row: LedgerRow) => {
+    if (!row.requestId) return;
+    openRequestDetail(row.requestId, row.invoiceId);
+  };
+
+  const refreshAll = async () => {
+    try {
+      await Promise.all([
+        refetchBalance(),
+        refetchRequests(),
+        refetchOperationsSummary(),
+        refetchInvoices(),
+        refetchDetail(),
+      ]);
+    } catch (error: any) {
+      toast({
+        title: t("RefreshErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateRequest = async () => {
+    const amount = Number(requestAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast({
+        title: t("InvalidAmountTitle"),
+        description: t("InvalidAmountDescription"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Quy đổi sang VND để so sánh với available (canonical là VND).
+    const amountVnd = requestCurrency === "USD" && summary.usdRate > 0
+      ? amount / summary.usdRate
+      : amount;
+    if (summary.availableAmount > 0 && amountVnd > summary.availableAmount) {
+      toast({
+        title: t("ExceedAvailableTitle"),
+        description: t("ExceedAvailableDescription"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createRequestMutation.mutateAsync({ amount, note: requestNote.trim() || undefined, currency: requestCurrency } as any);
+      toast({
+        title: t("CreateRequestSuccessTitle"),
+        description: t("CreateRequestSuccessDescription"),
+      });
+      setRequestAmount("");
+      setRequestNote("");
+      await refreshAll();
+    } catch (error: any) {
+      toast({
+        title: t("CreateRequestErrorTitle"),
+        description: error?.message || t("CreateRequestErrorDescription"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleIssueInvoiceAndTransfer = async (
+    requestId = selectedRequestId,
+    requestStatus = detail?.status || "REQUESTED"
+  ) => {
+    if (!requestId || requestStatus !== "REQUESTED") return;
+    try {
+      const payload = { note: reviewNote.trim() || undefined };
+      await approveRequestMutation.mutateAsync({ requestId, payload });
+      toast({ title: t("ApproveSuccessTitle") });
+      await refreshAll();
+      setDetailSheetOpen(false);
+    } catch (error: any) {
+      toast({
+        title: t("ApproveErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReject = async (requestId = selectedRequestId) => {
+    if (!requestId) return;
+    try {
+      await rejectRequestMutation.mutateAsync({
+        requestId,
+        payload: { note: reviewNote.trim() || undefined },
+      });
+      toast({ title: t("RejectSuccessTitle") });
+      await refreshAll();
+      setDetailSheetOpen(false);
+    } catch (error: any) {
+      toast({
+        title: t("RejectErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMarkPaid = async () => {
+    if (!selectedRequestId || !paymentReference.trim()) {
+      toast({
+        title: t("MissingPaymentReferenceTitle"),
+        description: t("MissingPaymentReferenceDescription"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await markPaidMutation.mutateAsync({
+        requestId: selectedRequestId,
+        payload: {
+          paymentReference: paymentReference.trim(),
+          note: reviewNote.trim() || undefined,
+        },
+      });
+      toast({ title: t("MarkPaidSuccessTitle") });
+      await refreshAll();
+      setDetailSheetOpen(false);
+    } catch (error: any) {
+      toast({
+        title: t("MarkPaidErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCopyRequestId = async (value?: string | null) => {
+    if (!value) return;
+    await navigator.clipboard.writeText(value);
+    toast({ title: t("CopyRequestIdSuccess") });
+  };
+
+  const handleDownloadInvoicePdf = async (invoice: NormalizedPayoutInvoice) => {
+    if (!invoice.id) return;
+    try {
+      setDownloadingInvoiceId(invoice.id);
+      const blob = await paymentApiRequest.downloadPayoutInvoicePdf(invoice.id);
+      const fileName = `${invoice.invoiceNumber || invoice.id}.pdf`;
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      toast({ title: t("DownloadInvoiceSuccessTitle") });
+    } catch (error: any) {
+      toast({
+        title: t("DownloadInvoiceErrorTitle"),
+        description: error?.message || t("RefreshErrorDescription"),
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingInvoiceId("");
+    }
+  };
+
+  if (!isAuth || !dashboardRole) {
+    return (
+      <main className="manage-finance-root manage-payout-root min-h-screen bg-background p-4 text-foreground sm:px-6 sm:py-4 md:p-8">
+        <Card className="border border-border bg-card">
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            {t("Unauthenticated")}
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
+  return (
+    <main className="manage-page manage-finance-root manage-payout-root space-y-6 text-foreground">
+      <section className="manage-finance-surface relative overflow-hidden">
+        <div className="relative flex flex-col gap-6 p-5 sm:p-6 md:flex-row md:items-center md:justify-between md:p-8">
+          <div className="space-y-3">
+            <div className="manage-page-eyebrow inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1 shadow-sm">
+              <Landmark className="h-3.5 w-3.5" />
+              {t("PageEyebrow")}
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">{t("Title")}</h1>
+              <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
+                {t("Description")}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex items-center justify-center gap-2 rounded-full border border-border/60 bg-background/80 px-4 py-2 text-sm text-muted-foreground sm:justify-start">
+              <CalendarDays className="h-4 w-4 text-[#adc6ff]" />
+              {new Intl.DateTimeFormat(locale, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              }).format(new Date())}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {[
+          { title: t("SummaryTotalEarned"), value: formatCurrency(summary.totalEarned), sub: summary.totalEarnedUsd > 0 ? `≈ $${summary.totalEarnedUsd.toFixed(2)} USD` : "", icon: CircleDollarSign, accent: "text-[#adc6ff]" },
+          { title: t("SummaryPendingPayout"), value: formatCurrency(summary.pendingAmount), sub: summary.pendingAmountUsd > 0 ? `≈ $${summary.pendingAmountUsd.toFixed(2)} USD` : "", icon: WalletCards, accent: "text-[#ffddb8]" },
+          { title: t("SummaryAvailableBalance"), value: formatCurrency(summary.availableAmount), sub: summary.availableAmountUsd > 0 ? `≈ $${summary.availableAmountUsd.toFixed(2)} USD` : "", icon: CheckCircle2, accent: "text-[#4edea3]" },
+          { title: t("SummaryOpenRequests"), value: String(summary.pendingRequests), sub: "", icon: Layers3, accent: "text-muted-foreground" },
+        ].map((card) => {
+          const Icon = card.icon;
+          return (
+            <Card key={card.title} className="relative overflow-hidden border border-border bg-card shadow-sm">
+              <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-[#adc6ff]/8 blur-2xl" />
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
+                <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{card.title}</CardTitle>
+                <div className={`rounded-xl bg-muted/60 p-2 ${card.accent}`}>
+                  <Icon className="h-4 w-4" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">{card.value}</div>
+                {card.sub && <div className="mt-1 text-xs text-muted-foreground">{card.sub}</div>}
+                <div className="mt-2 text-[11px] text-muted-foreground">{t("UpdatedProjection")}</div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </section>
+
+      <section className="mt-6 rounded-xl border border-border bg-card p-5 shadow-sm md:p-6">
+        <div className="grid gap-6 xl:grid-cols-[minmax(18rem,0.9fr)_minmax(0,1.8fr)] xl:items-start">
+          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="relative shrink-0">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 text-emerald-200">
+                <WalletCards className="h-7 w-7" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-background bg-emerald-400 text-[#0a0e1a]">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              </div>
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="min-w-0 text-2xl font-bold text-foreground">
+                  {dashboardRole === "ADMIN"
+                    ? t("BalanceTitleAdmin", { id: shortIdValue(balanceQueryInstructorId) })
+                    : t("BalanceTitleInstructor")}
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                  onClick={() => handleCopyRequestId(balanceQueryInstructorId)}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="max-w-md text-sm leading-6 text-muted-foreground">
+                {dashboardRole === "ADMIN"
+                  ? "Chọn instructor để xem balance và duyệt payout request."
+                  : "Theo dõi số dư khả dụng và tạo payout request từ dữ liệu sandbox."}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="min-w-0 rounded-2xl border border-border bg-muted/60 p-4">
+              <div className="text-[10px] font-bold uppercase leading-5 tracking-[0.2em] text-muted-foreground">{t("LifetimeEarned")}</div>
+              <div className="mt-2 break-words text-2xl font-bold leading-tight text-foreground">{formatCurrency(summary.totalEarned)}</div>
+              {summary.totalEarnedUsd > 0 && (
+                <div className="text-xs text-muted-foreground">≈ ${summary.totalEarnedUsd.toFixed(2)} USD</div>
+              )}
+            </div>
+            <div className="min-w-0 rounded-2xl border border-border bg-muted/60 p-4">
+              <div className="text-[10px] font-bold uppercase leading-5 tracking-[0.2em] text-muted-foreground">{t("CurrentPending")}</div>
+              <div className="mt-2 break-words text-2xl font-bold leading-tight text-[#ffddb8]">{formatCurrency(summary.pendingAmount)}</div>
+              {summary.pendingAmountUsd > 0 && (
+                <div className="text-xs text-muted-foreground">≈ ${summary.pendingAmountUsd.toFixed(2)} USD</div>
+              )}
+            </div>
+            <div className="min-w-0 rounded-2xl border border-border bg-muted/60 p-4 sm:col-span-2 lg:col-span-1">
+              <div className="flex items-center gap-1 text-[10px] font-bold uppercase leading-5 tracking-[0.2em] text-emerald-300">
+                {t("Available")} <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              </div>
+              <div className="mt-2 break-words text-2xl font-extrabold leading-tight text-foreground">{formatCurrency(summary.availableAmount)}</div>
+              {summary.availableAmountUsd > 0 && (
+                <div className="text-xs text-emerald-200/70">≈ ${summary.availableAmountUsd.toFixed(2)} USD</div>
+              )}
+            </div>
+            </div>
+
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            {dashboardRole === "ADMIN" && (
+              <Input
+                value={selectedInstructorId}
+                onChange={(event) => setSelectedInstructorId(event.target.value)}
+                placeholder={t("InstructorIdPlaceholder")}
+                className="manage-finance-input h-12 w-full sm:max-w-md"
+              />
+            )}
+
+            {dashboardRole === "INSTRUCTOR" && (
+              <Button
+                onClick={handleCreateRequest}
+                disabled={createRequestMutation.isPending}
+                  className="manage-finance-secondary"
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {createRequestMutation.isPending ? t("Sending") : t("RequestPayout")}
+              </Button>
+            )}
+          </div>
+          </div>
+        </div>
+
+        {dashboardRole === "INSTRUCTOR" && (
+          <div className="mt-5 grid gap-3 xl:grid-cols-[1.1fr_auto_1fr_auto]">
+            <Input
+              value={requestAmount}
+              onChange={(event) => setRequestAmount(event.target.value)}
+              placeholder={requestCurrency === "USD" ? "49.99" : t("AmountPlaceholder")}
+              inputMode="decimal"
+              className="manage-finance-input h-12"
+            />
+            <select
+              value={requestCurrency}
+              onChange={(e) => setRequestCurrency(e.target.value as "VND" | "USD")}
+              className="manage-finance-input h-12 rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground"
+            >
+              <option value="VND">VNĐ</option>
+              <option value="USD">USD</option>
+            </select>
+            <Input
+              value={requestNote}
+              onChange={(event) => setRequestNote(event.target.value)}
+              placeholder={t("NotePlaceholder")}
+              className="manage-finance-input h-12"
+            />
+            <Button
+              onClick={handleCreateRequest}
+              disabled={createRequestMutation.isPending}
+              className="manage-finance-primary h-12 px-6 font-semibold"
+            >
+              <ArrowUpRight className="mr-2 h-4 w-4" />
+              {t("Submit")}
+            </Button>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-6 grid gap-6 xl:grid-cols-12">
+        <Card className="xl:col-span-12 min-w-0 border border-border bg-card shadow-sm">
+          <CardHeader className="flex flex-col gap-4 border-b border-border md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-foreground">{t("QueueTitle")}</CardTitle>
+              <CardDescription className="text-muted-foreground">{t("QueueDescription")}</CardDescription>
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button
+                variant={queueFilter === "ALL" ? "default" : "outline"}
+                className={
+                  queueFilter === "ALL"
+                    ? "manage-finance-primary"
+                    : "manage-finance-secondary"
+                }
+                onClick={() => setQueueFilter("ALL")}
+              >
+                {t("AllRequests")}
+              </Button>
+              <Button
+                variant={queueFilter === "PENDING" ? "default" : "outline"}
+                className={
+                  queueFilter === "PENDING"
+                    ? "manage-finance-primary"
+                    : "manage-finance-secondary"
+                }
+                onClick={() => setQueueFilter("PENDING")}
+              >
+                {t("PendingOnly")}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-5">
+            <div className="space-y-3 2xl:hidden">
+              {isRequestsFetching &&
+                Array.from({ length: 3 }).map((_, index) => (
+                  <div key={`request-card-${index}`} className="rounded-2xl border border-border bg-muted p-4">
+                    <Skeleton className="h-24 rounded-2xl bg-muted/60" />
+                  </div>
+                ))}
+
+              {!isRequestsFetching && visibleRequests.length === 0 && (
+                <div className="rounded-2xl border border-border bg-muted p-4 text-center text-sm text-muted-foreground">
+                  {t("NoRequests")}
+                </div>
+              )}
+
+              {!isRequestsFetching &&
+                visibleRequests.map((request, index) => (
+                  <div key={`mobile-${request.id}`} className="space-y-4 rounded-2xl border border-border bg-muted p-4 sm:p-5">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-foreground">
+                          {t("BalanceTitleAdmin", { id: String(index + 1) })}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">{request.note || t("NoNoteProvided")}</div>
+                      </div>
+                      <Badge className={`w-fit border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[request.status] || statusTone.REQUESTED}`}>
+                        {request.status.replaceAll("_", " ")}
+                      </Badge>
+                    </div>
+
+                    <div className="grid gap-3 rounded-2xl bg-muted/60 p-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="min-w-0">
+                        <span className="text-muted-foreground">Requested</span>
+                        <div className="mt-1 font-semibold text-foreground">{formatCurrency(request.amount)}</div>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-muted-foreground">Batch</span>
+                        <div className="mt-1 text-foreground/80">
+                          {getBatchDisplayId(request.batchId)}
+                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-muted-foreground">Invoice</span>
+                        <div className="mt-1 truncate text-foreground/80">{request.invoiceNumber || notAvailable}</div>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-muted-foreground">Date</span>
+                        <div className="mt-1 text-foreground/80">{formatDateShortValue(request.created || request.updated)}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="manage-finance-secondary justify-center sm:w-auto"
+                        onClick={() => openRequestDetail(request.id, request.invoiceId)}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        {t("DetailTitle")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="manage-finance-secondary justify-center sm:w-auto"
+                        onClick={() => handleCopyRequestId(request.id)}
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        ID
+                      </Button>
+                    </div>
+
+                    {dashboardRole === "ADMIN" && canApproveRequest(request.status) && (
+                      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="manage-finance-secondary justify-center sm:w-auto"
+                          onClick={() => handleReject(request.id)}
+                          disabled={rejectRequestMutation.isPending}
+                        >
+                          <XCircle className="mr-2 h-4 w-4" />
+                          {t("Reject")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="manage-finance-primary justify-center sm:w-auto"
+                          onClick={() => handleIssueInvoiceAndTransfer(request.id, request.status)}
+                          disabled={approveRequestMutation.isPending}
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          {approveLabel}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-2xl border border-border 2xl:block">
+              <table className="w-full min-w-[980px] text-left text-sm">
+                <thead className="bg-muted text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-4 font-semibold">Instructor</th>
+                    <th className="px-4 py-4 font-semibold">Requested</th>
+                    <th className="px-4 py-4 font-semibold">Invoice</th>
+                    <th className="px-4 py-4 font-semibold">Batch</th>
+                    <th className="px-4 py-4 font-semibold">Date</th>
+                    <th className="px-4 py-4 font-semibold">Status</th>
+                    <th className="w-[260px] px-4 py-4 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border text-foreground/80">
+                  {isRequestsFetching &&
+                    Array.from({ length: 4 }).map((_, index) => (
+                      <tr key={index}>
+                        <td colSpan={7} className="px-4 py-4">
+                          <Skeleton className="h-7 rounded-full bg-muted/60" />
+                        </td>
+                      </tr>
+                    ))}
+
+                  {!isRequestsFetching && visibleRequests.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
+                        {t("NoRequests")}
+                      </td>
+                    </tr>
+                  )}
+
+                  {!isRequestsFetching &&
+                    visibleRequests.map((request, index) => (
+                      <tr key={request.id} className="group hover:bg-muted/60">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted/60 text-xs font-bold text-[#adc6ff]">
+                              {String(index + 1).padStart(2, "0")}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-foreground">{t("BalanceTitleAdmin", { id: String(index + 1) })}</div>
+                              <div className="text-[11px] text-muted-foreground">{request.note || t("NoNoteProvided")}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 font-semibold text-foreground">{formatCurrency(request.amount)}</td>
+                        <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">{request.invoiceNumber || notAvailable}</td>
+                        <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">{getBatchDisplayId(request.batchId)}</td>
+                        <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">{formatDateShortValue(request.created || request.updated)}</td>
+                        <td className="px-4 py-4">
+                          <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[request.status] || statusTone.REQUESTED}`}>
+                            {request.status.replaceAll("_", " ")}
+                          </Badge>
+                        </td>
+                        <td className="w-[260px] whitespace-nowrap px-4 py-4 text-right">
+                          <div className="flex justify-end gap-2 opacity-90 transition group-hover:opacity-100">
+                            {dashboardRole === "ADMIN" && canApproveRequest(request.status) && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 rounded-full border-border px-3 text-xs text-foreground/80 hover:bg-accent hover:text-foreground"
+                                  onClick={() => handleReject(request.id)}
+                                  disabled={rejectRequestMutation.isPending}
+                                >
+                                  <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                                  {t("Reject")}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="h-8 rounded-full bg-primary px-3 text-xs text-primary-foreground hover:bg-primary/90"
+                                  onClick={() => handleIssueInvoiceAndTransfer(request.id, request.status)}
+                                  disabled={approveRequestMutation.isPending}
+                                >
+                                  <FileText className="mr-1.5 h-3.5 w-3.5" />
+                                  {approveLabel}
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                              onClick={() => openRequestDetail(request.id, request.invoiceId)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                              onClick={() => handleCopyRequestId(request.id)}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-6 grid gap-6 xl:grid-cols-12">
+        <Card className="xl:col-span-12 border border-border bg-card shadow-sm">
+          <CardHeader className="flex flex-col gap-3 border-b border-border md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <FileText className="h-4 w-4 text-[#adc6ff]" />
+                {t("InvoiceListTitle")}
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">{t("InvoiceListDescription")}</CardDescription>
+            </div>
+            <div className="text-xs text-muted-foreground">{normalizedInvoices.length} invoice(s)</div>
+          </CardHeader>
+          <CardContent className="pt-5">
+            <div className="space-y-3 md:hidden">
+              {isInvoicesFetching &&
+                Array.from({ length: 2 }).map((_, index) => (
+                  <div key={`invoice-card-${index}`} className="rounded-2xl border border-border bg-muted p-4">
+                    <Skeleton className="h-20 rounded-2xl bg-muted/60" />
+                  </div>
+                ))}
+
+              {!isInvoicesFetching && normalizedInvoices.length === 0 && (
+                <div className="rounded-2xl border border-border bg-muted p-4 text-center text-sm text-muted-foreground">
+                  {t("NoInvoices")}
+                </div>
+              )}
+
+              {!isInvoicesFetching &&
+                normalizedInvoices.map((invoice) => (
+                  <div key={`invoice-mobile-${invoice.id}`} className="rounded-2xl border border-border bg-muted p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{invoice.invoiceNumber}</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">{formatCurrency(invoice.amount)}</p>
+                      </div>
+                      <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[invoice.status] || statusTone.DRAFT}`}>
+                        {invoice.status}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 text-xs text-muted-foreground">
+                      {t("PaymentReferenceLabel")}: {invoice.transferReference || notAvailable}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">{formatDateTimeValue(invoice.created || invoice.updated)}</div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="manage-finance-secondary mt-3 w-full"
+                      onClick={() => handleDownloadInvoicePdf(invoice)}
+                      disabled={downloadingInvoiceId === invoice.id}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      {downloadingInvoiceId === invoice.id ? t("DownloadingInvoice") : t("DownloadInvoicePdf")}
+                    </Button>
+                  </div>
+                ))}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-2xl border border-border md:block">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-muted text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-4 font-semibold">Invoice</th>
+                    <th className="px-4 py-4 font-semibold">Instructor</th>
+                    <th className="px-4 py-4 font-semibold">Amount</th>
+                    <th className="px-4 py-4 font-semibold">Transfer Ref</th>
+                    <th className="px-4 py-4 font-semibold">Status</th>
+                    <th className="px-4 py-4 font-semibold">Created</th>
+                    <th className="px-4 py-4 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border text-foreground/80">
+                  {isInvoicesFetching &&
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <tr key={`invoice-row-${index}`}>
+                        <td colSpan={7} className="px-4 py-4">
+                          <Skeleton className="h-7 rounded-full bg-muted/60" />
+                        </td>
+                      </tr>
+                    ))}
+
+                  {!isInvoicesFetching && normalizedInvoices.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
+                        {t("NoInvoices")}
+                      </td>
+                    </tr>
+                  )}
+
+                  {!isInvoicesFetching &&
+                    normalizedInvoices.map((invoice) => (
+                      <tr key={invoice.id} className="hover:bg-muted/60">
+                        <td className="px-4 py-4 font-mono text-xs text-[#adc6ff]">{invoice.invoiceNumber}</td>
+                        <td className="px-4 py-4">{shortIdValue(invoice.instructorId)}</td>
+                        <td className="px-4 py-4 font-semibold text-foreground">{formatCurrency(invoice.amount)}</td>
+                        <td className="px-4 py-4 font-mono text-xs text-muted-foreground">{invoice.transferReference || notAvailable}</td>
+                        <td className="px-4 py-4">
+                          <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[invoice.status] || statusTone.DRAFT}`}>
+                            {invoice.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-4 text-muted-foreground">{formatDateTimeValue(invoice.created || invoice.updated)}</td>
+                        <td className="px-4 py-4 text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="manage-finance-secondary"
+                            onClick={() => handleDownloadInvoicePdf(invoice)}
+                            disabled={downloadingInvoiceId === invoice.id}
+                          >
+                            <Download className="mr-2 h-3.5 w-3.5" />
+                            {downloadingInvoiceId === invoice.id ? t("DownloadingInvoice") : t("DownloadInvoicePdf")}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-6 grid gap-6 xl:grid-cols-12">
+        <Card className="xl:col-span-12 border border-border bg-card shadow-[0_12px_40px_rgba(0,0,0,0.22)]">
+          <CardHeader className="flex flex-col gap-3 border-b border-border md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <FileText className="h-4 w-4 text-[#adc6ff]" />
+                {t("LedgerTitle")}
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">{t("LedgerDescription")}</CardDescription>
+            </div>
+            <Button
+              variant="ghost"
+              className="manage-finance-secondary w-full sm:w-auto"
+              onClick={refreshAll}
+            >
+              <RefreshCcw className={`mr-2 h-4 w-4 ${isBalanceFetching || isRequestsFetching ? "animate-spin" : ""}`} />
+              {t("Refresh")}
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-5">
+            <div className="space-y-3 md:hidden">
+              {ledgerRows.map((row) => (
+                <div
+                  key={`mobile-ledger-${row.type}-${row.ref}-${row.timestamp}`}
+                  className={`space-y-3 rounded-2xl border border-border bg-muted p-4 ${row.requestId ? "cursor-pointer transition hover:border-[#adc6ff]/30 hover:bg-accent" : ""}`}
+                  onClick={() => openLedgerDetail(row)}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="break-all font-mono text-xs text-muted-foreground">{row.ref}</div>
+                      <div className="mt-1 text-sm text-foreground/80">{row.description}</div>
+                    </div>
+                    <Badge className={`w-fit border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${typeTone[row.type] || typeTone.BATCH}`}>
+                      {row.type}
+                    </Badge>
+                  </div>
+
+                  <div className="grid gap-2 rounded-2xl bg-muted/60 p-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">{t("AmountColumn")}</span>
+                      <span className="font-semibold text-foreground">{formatCurrency(row.amount)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">Status</span>
+                      <span className="text-right text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{row.status}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">Timestamp</span>
+                      <span className="text-right font-mono text-xs text-muted-foreground">{formatDateTimeValue(row.timestamp)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {ledgerRows.length === 0 && (
+                <div className="rounded-2xl border border-border bg-muted p-4 text-center text-sm text-muted-foreground">
+                  {t("NoLedgerRows")}
+                </div>
+              )}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-2xl border border-border md:block">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-muted text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-4 font-semibold">Ref</th>
+                    <th className="px-4 py-4 font-semibold">{t("TypeColumn")}</th>
+                    <th className="px-4 py-4 font-semibold">Description</th>
+                    <th className="px-4 py-4 font-semibold">{t("AmountColumn")}</th>
+                    <th className="px-4 py-4 font-semibold">Status</th>
+                    <th className="px-4 py-4 text-right font-semibold">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border text-foreground/80">
+                  {ledgerRows.map((row) => (
+                    <tr
+                      key={`${row.type}-${row.ref}-${row.timestamp}`}
+                      className={`hover:bg-muted/60 ${row.requestId ? "cursor-pointer" : ""}`}
+                      onClick={() => openLedgerDetail(row)}
+                    >
+                      <td className="px-4 py-4 font-mono text-xs text-muted-foreground">{row.ref}</td>
+                      <td className="px-4 py-4">
+                        <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${typeTone[row.type] || typeTone.BATCH}`}>
+                          {row.type}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-4 text-foreground/80">{row.description}</td>
+                      <td className="px-4 py-4 font-semibold text-foreground">{formatCurrency(row.amount)}</td>
+                      <td className="px-4 py-4 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{row.status}</td>
+                      <td className="px-4 py-4 text-right font-mono text-xs text-muted-foreground">{formatDateTimeValue(row.timestamp)}</td>
+                    </tr>
+                  ))}
+
+                  {ledgerRows.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
+                        {t("NoLedgerRows")}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <Sheet
+        open={detailSheetOpen}
+        onOpenChange={(open) => {
+          setDetailSheetOpen(open);
+          if (!open) {
+            setSelectedRequestId("");
+            setSelectedInvoiceId("");
+            setReviewNote("");
+            setPaymentReference("");
+          }
+        }}
+      >
+        <SheetContent side="right" className="w-full max-h-screen overflow-y-auto border-l border-border bg-background text-foreground sm:max-w-xl">
+          <SheetHeader className="space-y-3 border-b border-border pb-4 text-left">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className={`border px-2.5 py-1 text-[10px] uppercase tracking-[0.22em] ${statusTone[detail?.status || "REQUESTED"] || statusTone.REQUESTED}`}>
+                {(detail?.status || "REQUESTED").replaceAll("_", " ")}
+              </Badge>
+              <button
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:bg-accent hover:text-foreground"
+                onClick={() => handleCopyRequestId(detail?.id)}
+              >
+                {shortIdValue(detail?.id)}
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <SheetTitle className="text-foreground">{t("DetailTitle")}</SheetTitle>
+            <SheetDescription className="text-muted-foreground">
+              {t("DetailDescription")}
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-6 pb-6">
+            <Card className="border border-border bg-card">
+              <CardContent className="space-y-4 p-5">
+                <div className="grid gap-3 text-center text-xs sm:grid-cols-3">
+                  <div className="rounded-2xl border border-border bg-muted p-3">
+                    <div className="text-muted-foreground">{t("CreatedLabel")}</div>
+                    <div className="mt-1 font-semibold text-foreground">{formatDateTimeValue(detail?.created)}</div>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-muted p-3">
+                    <div className="text-muted-foreground">{t("ApprovedLabel")}</div>
+                    <div className="mt-1 font-semibold text-foreground">{formatDateTimeValue(detail?.approvedAt)}</div>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-muted p-3">
+                    <div className="text-muted-foreground">{t("PaidLabel")}</div>
+                    <div className="mt-1 font-semibold text-foreground">{formatDateTimeValue(detail?.markedPaidAt)}</div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-muted p-4">
+                  <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{t("MethodLabel")}</div>
+                      <div className="mt-1 flex items-center gap-2 text-foreground"><Landmark className="h-4 w-4 text-[#4edea3]" />{t("AutoTransferMode")}</div>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{t("TypeLabel")}</div>
+                      <div className="mt-1 text-foreground">{t("InvoiceDrivenSettlement")}</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
+                    <div className="flex flex-col gap-1 text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                      <span>{t("RequestedAmountLabel")}</span>
+                      <span className="font-semibold text-foreground">{formatCurrency(detail?.amount || 0)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span>{t("ReviewNoteLabel")}</span>
+                      <span className="max-w-full text-left text-foreground/80 sm:max-w-[70%] sm:text-right">{detail?.reviewNote || t("NoReviewNote")}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span>{t("PaymentReferenceLabel")}</span>
+                      <span className="max-w-[70%] text-right font-mono text-foreground/80">{detail?.paymentReference || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span>{t("InvoiceLabel")}</span>
+                      <span className="max-w-[70%] text-right font-mono text-foreground/80">{detail?.invoiceNumber || detailInvoice?.invoiceNumber || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span>{t("InvoiceStatusLabel")}</span>
+                      <span className="max-w-[70%] text-right text-foreground/80">{detailInvoice?.status || "—"}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm text-foreground">{t("RequestNotesTitle")}</CardTitle>
+                <CardDescription className="text-muted-foreground">{t("RequestNotesDescription")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="rounded-2xl border border-border bg-muted p-4 text-sm text-foreground/80">
+                  {detail?.note || t("NoRequestNote")}
+                </div>
+                <Input
+                  value={reviewNote}
+                  onChange={(event) => setReviewNote(event.target.value)}
+                  placeholder={t("AddReviewNotePlaceholder")}
+                  className="manage-finance-input"
+                />
+                <Input
+                  value={paymentReference}
+                  onChange={(event) => setPaymentReference(event.target.value)}
+                  placeholder={t("PaymentReferencePlaceholder")}
+                  className="manage-finance-input"
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          <SheetFooter className="mt-6 grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-3 sm:justify-stretch">
+            <Button
+              variant="outline"
+              className="manage-finance-secondary"
+              onClick={() => handleReject()}
+              disabled={rejectRequestMutation.isPending}
+              hidden={dashboardRole !== "ADMIN" || !detail || !isReviewableRequest(detail.status)}
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              {t("Reject")}
+            </Button>
+              <Button
+                variant="outline"
+                className="manage-finance-secondary"
+                onClick={() => handleIssueInvoiceAndTransfer()}
+                disabled={approveRequestMutation.isPending}
+                hidden={dashboardRole !== "ADMIN" || !detail || !canApproveRequest(detail.status)}
+              >
+              <FileText className="mr-2 h-4 w-4" />
+              {approveLabel}
+            </Button>
+            <Button
+              className="manage-finance-primary"
+              onClick={handleMarkPaid}
+              disabled={markPaidMutation.isPending}
+              hidden={dashboardRole !== "ADMIN" || !detail || detail.status !== "APPROVED"}
+            >
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              {t("MarkPaid")}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      <section className="mt-6 grid gap-6 xl:grid-cols-12">
+        <Card className="xl:col-span-12 border border-border bg-card shadow-sm">
+          <CardHeader className="flex flex-col gap-3 border-b border-border md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-foreground">{t("OverviewStatsTitle")}</CardTitle>
+              <CardDescription className="text-muted-foreground">{t("OverviewStatsDescription")}</CardDescription>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <MessageSquareText className="h-4 w-4 text-[#adc6ff]" />
+              {t("ApprovedRequestsCount", { count: summary.approvedRequests })}
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-muted p-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{t("RequestedSum")}</div>
+              <div className="mt-2 text-2xl font-bold text-foreground">{formatCurrency(summary.totalRequested)}</div>
+            </div>
+            <div className="rounded-2xl border border-border bg-muted p-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{t("LoadedRequests")}</div>
+              <div className="mt-2 text-2xl font-bold text-foreground">{summary.loadedRequests}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <ChevronRight className="h-4 w-4 text-[#adc6ff]" />
+          {t("FooterBanner")}
+        </div>
+        <Button
+          variant="ghost"
+          className="manage-finance-secondary w-full sm:w-auto"
+          onClick={refreshAll}
+        >
+          <RefreshCcw className={`mr-2 h-4 w-4 ${isBalanceFetching || isRequestsFetching || isDetailFetching ? "animate-spin" : ""}`} />
+          {t("RefreshAll")}
+        </Button>
+      </div>
+    </main>
+  );
+}

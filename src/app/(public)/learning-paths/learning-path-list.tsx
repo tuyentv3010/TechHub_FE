@@ -7,23 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { 
   BookOpen, 
-  Clock, 
   TrendingUp, 
   ArrowRight,
   Search,
-  Filter,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { normalizeLearningPathListPayload } from "@/lib/learning-paths";
 import { LearningPathItemType } from "@/schemaValidations/learning-path.schema";
 
 export default function LearningPathList() {
@@ -38,9 +30,9 @@ export default function LearningPathList() {
     sortBy: "created",
     sortDirection: "DESC",
   });
-
-  const paths = data?.payload?.data || [];
-  const pagination = data?.payload?.pagination;
+  const learningPathList = normalizeLearningPathListPayload(data?.payload);
+  const paths = learningPathList.data;
+  const pagination = learningPathList.pagination;
 
   const filteredPaths = paths.filter((path: LearningPathItemType) => {
     const matchesSearch = 
@@ -75,7 +67,7 @@ export default function LearningPathList() {
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
-            src="/learningPath/Background.png"
+            src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1920&q=80"
             alt="Background"
             fill
             className="object-cover"
@@ -87,7 +79,7 @@ export default function LearningPathList() {
 
         {/* Content */}
         <div className="relative z-10 flex min-h-[400px] flex-col items-center justify-center px-4 text-center md:min-h-[500px]">
-          <h1 className="mb-4 text-3xl font-bold italic text-white md:text-4xl lg:text-5xl">
+          <h1 className="mb-4 text-3xl font-semibold text-white md:text-4xl lg:text-5xl">
             {t("heroTitle")}
           </h1>
           <p className="mb-12 text-base text-white/90 md:text-lg max-w-3xl">
@@ -95,8 +87,8 @@ export default function LearningPathList() {
           </p>
 
           {/* Search Box */}
-          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-left text-lg font-semibold text-gray-800">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="mb-4 text-left text-lg font-semibold text-foreground">
               {t("searchTitle") || "What learning path are you looking for?"}
             </h3>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -108,15 +100,14 @@ export default function LearningPathList() {
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="h-12 pl-10 border-gray-200 bg-gray-50 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:border-gray-600"
+                  className="h-12 pl-10 border-input bg-muted"
                 />
               </div>
 
               {/* Search Button */}
               <Button
                 onClick={handleSearch}
-                className="h-12 px-8 text-base font-semibold text-white hover:opacity-90"
-                style={{ backgroundColor: '#3dcbb1' }}
+                className="h-12 px-8 text-base font-semibold"
               >
                 <Search className="mr-2 h-5 w-5" />
                 Search

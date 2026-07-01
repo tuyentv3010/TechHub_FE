@@ -1,103 +1,187 @@
 "use client";
-import { Role } from "@/constants/type";
+
 import {
+  Activity,
+  BarChart3,
+  Cpu,
+  FolderOpen,
+  HandCoins,
   Home,
   Newspaper,
+  Route,
+  School,
   UserCog,
   UserRoundPen,
   Users2,
-  FolderOpen,
-  School,
-  Route
+  WalletCards,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 export interface MenuItem {
   title: string;
-  Icon: any;
+  titleKey?: string;
+  Icon: LucideIcon;
   href: string;
-  roles?: string[];
-  // Permission required to view this menu (method and URL for permission check)
-  requiredPermission?: {
-    method: "GET" | "POST" | "PUT" | "DELETE";
+  baseAccess?: boolean;
+  requiredPermission: {
+    method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
     url: string;
   };
+}
+
+type PermissionChecker = (
+  method: MenuItem["requiredPermission"]["method"],
+  url: string
+) => boolean;
+
+export function canAccessMenuItem(item: MenuItem, hasPermission: PermissionChecker) {
+  if (item.baseAccess) {
+    return true;
+  }
+
+  return hasPermission(item.requiredPermission.method, item.requiredPermission.url);
 }
 
 const menuItems: MenuItem[] = [
   {
     title: "Dashboard",
+    titleKey: "dashboard",
     Icon: Home,
     href: "/manage/dashboard",
-    roles: [Role.Admin], // Chỉ ADMIN
+    baseAccess: true,
+    requiredPermission: {
+      method: "GET",
+      url: "/manage/dashboard",
+    },
   },
   {
-    title: "Nhân viên",
+    title: "AI Analytics",
+    titleKey: "aiAnalytics",
+    Icon: BarChart3,
+    href: "/manage/ai-analytics",
+    requiredPermission: {
+      method: "GET",
+      url: "/manage/ai-analytics",
+    },
+  },
+  {
+    title: "AI Traces",
+    titleKey: "aiTraces",
+    Icon: Activity,
+    href: "/manage/ai-traces",
+    requiredPermission: {
+      method: "GET",
+      url: "/manage/ai-traces",
+    },
+  },
+  {
+    title: "AI Providers",
+    titleKey: "aiProviders",
+    Icon: Cpu,
+    href: "/manage/ai-providers",
+    requiredPermission: {
+      method: "GET",
+      url: "/manage/ai-providers",
+    },
+  },
+  {
+    title: "Revenue",
+    titleKey: "revenue",
+    Icon: HandCoins,
+    href: "/manage/revenue",
+    requiredPermission: {
+      method: "GET",
+      url: "/manage/revenue",
+    },
+  },
+  {
+    title: "Payouts",
+    titleKey: "payouts",
+    Icon: WalletCards,
+    href: "/manage/payouts",
+    requiredPermission: {
+      method: "GET",
+      url: "/manage/payouts",
+    },
+  },
+  {
+    title: "Accounts",
+    titleKey: "accounts",
     Icon: Users2,
     href: "/manage/accounts",
-    roles: [Role.Admin], // Chỉ ADMIN
     requiredPermission: {
       method: "GET",
-      url: "/api/users",
+      url: "/manage/accounts",
     },
   },
   {
-    title: "Vai trò",
+    title: "Instructor Applications",
+    titleKey: "instructorApplications",
+    Icon: Users2,
+    href: "/manage/instructor-applications",
+    requiredPermission: {
+      method: "GET",
+      url: "/manage/instructor-applications",
+    },
+  },
+  {
+    title: "Roles",
+    titleKey: "roles",
     Icon: UserRoundPen,
     href: "/manage/roles",
-    roles: [Role.Admin], // Chỉ ADMIN
     requiredPermission: {
       method: "GET",
-      url: "/api/admin/roles",
+      url: "/manage/roles",
     },
   },
   {
-    title: "Bài viết",
+    title: "Blogs",
+    titleKey: "blogsAdmin",
     Icon: Newspaper,
     href: "/manage/blogs",
-    roles: [Role.Admin], // Chỉ ADMIN
     requiredPermission: {
       method: "GET",
-      url: "/api/blogs",
+      url: "/manage/blogs",
     },
   },
   {
-    title: "Quản lý File",
+    title: "Files",
+    titleKey: "filesAdmin",
     Icon: FolderOpen,
     href: "/manage/files",
-    roles: [Role.Admin, Role.Instructor], // ADMIN và INSTRUCTOR
     requiredPermission: {
       method: "GET",
-      url: "/api/files",
+      url: "/manage/files",
     },
   },
   {
-    title: "Quyền hạn",
+    title: "Permissions",
+    titleKey: "permissions",
     href: "/manage/permissions",
     Icon: UserCog,
-    roles: [Role.Admin], // Chỉ ADMIN
     requiredPermission: {
       method: "GET",
-      url: "/api/admin/permissions",
+      url: "/manage/permissions",
     },
   },
   {
-    title: "Khóa Học",
+    title: "Courses",
+    titleKey: "manageCourses",
     href: "/manage/courses",
     Icon: School,
-    roles: [Role.Admin, Role.Instructor], // ADMIN và INSTRUCTOR
     requiredPermission: {
       method: "GET",
-      url: "/api/courses",
+      url: "/manage/courses",
     },
   },
   {
-    title: "Lộ trình Học tập",
+    title: "Learning Paths",
+    titleKey: "learningPathsAdmin",
     href: "/manage/learning-paths",
     Icon: Route,
-    roles: [Role.Admin, Role.Instructor], // ADMIN và INSTRUCTOR
     requiredPermission: {
       method: "GET",
-      url: "/api/learning-paths",
+      url: "/manage/learning-paths",
     },
   },
 ];

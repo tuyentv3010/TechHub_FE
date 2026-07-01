@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Check, CheckCheck, ExternalLink } from "lucide-react";
+import { Bell, CheckCheck, ExternalLink, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { vi, enUS } from "date-fns/locale";
@@ -20,13 +20,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  useGetUnreadNotifications,
+  useGetNotifications,
   useGetUnreadCount,
   useMarkAsReadMutation,
   useMarkAllAsReadMutation,
+  useDeleteAllNotificationsMutation,
 } from "@/queries/useNotification";
 import { NotificationType } from "@/schemaValidations/notification.schema";
 import { cn } from "@/lib/utils";
+import { NotificationAvatar } from "@/components/organisms/NotificationAvatar";
 
 interface NotificationBellProps {
   className?: string;
@@ -41,23 +43,17 @@ export function NotificationBell({ className }: NotificationBellProps) {
   // Fetch unread count
   const { data: unreadCount = 0, isLoading: isLoadingCount } = useGetUnreadCount();
 
-  // Fetch unread notifications (limit to 5 for dropdown)
+  // Keep recent notifications visible after they are marked as read.
   const { data: notificationsData, isLoading: isLoadingNotifications } =
-    useGetUnreadNotifications(0, 5, isOpen);
+    useGetNotifications(0, 5, undefined, isOpen);
 
   const notifications: NotificationType[] = notificationsData?.payload?.data || [];
-  const totalUnread = notificationsData?.payload?.pagination?.totalElements || unreadCount;
-  console.log("sadasdasdasdasda" , notificationsData);
-  // Debug logs
-  console.log("🔔 [NotificationBell] isOpen:", isOpen);
-  console.log("🔔 [NotificationBell] unreadCount:", unreadCount, "isLoadingCount:", isLoadingCount);
-  console.log("🔔 [NotificationBell] notificationsData:", notificationsData);
-  console.log("🔔 [NotificationBell] notifications:", notifications);
-  console.log("🔔 [NotificationBell] totalUnread:", totalUnread);
+  const totalUnread = unreadCount;
 
   // Mutations
   const markAsReadMutation = useMarkAsReadMutation();
   const markAllAsReadMutation = useMarkAllAsReadMutation();
+  const deleteAllNotificationsMutation = useDeleteAllNotificationsMutation();
 
   // Format time ago
   const formatTimeAgo = (dateString: string) => {
@@ -68,48 +64,6 @@ export function NotificationBell({ className }: NotificationBellProps) {
       });
     } catch {
       return dateString;
-    }
-  };
-
-  // Get notification icon/color based on type
-  const getNotificationStyle = (type: string) => {
-    switch (type) {
-      case "ACCOUNT":
-        return {
-          bgColor: "bg-blue-100 dark:bg-blue-900/30",
-          textColor: "text-blue-600 dark:text-blue-400",
-          icon: "👤",
-        };
-      case "BLOG":
-        return {
-          bgColor: "bg-green-100 dark:bg-green-900/30",
-          textColor: "text-green-600 dark:text-green-400",
-          icon: "📝",
-        };
-      case "PROGRESS":
-        return {
-          bgColor: "bg-purple-100 dark:bg-purple-900/30",
-          textColor: "text-purple-600 dark:text-purple-400",
-          icon: "📊",
-        };
-      case "COMMENT":
-        return {
-          bgColor: "bg-yellow-100 dark:bg-yellow-900/30",
-          textColor: "text-yellow-600 dark:text-yellow-400",
-          icon: "💬",
-        };
-      case "SYSTEM":
-        return {
-          bgColor: "bg-gray-100 dark:bg-gray-800",
-          textColor: "text-gray-600 dark:text-gray-400",
-          icon: "⚙️",
-        };
-      default:
-        return {
-          bgColor: "bg-gray-100 dark:bg-gray-800",
-          textColor: "text-gray-600 dark:text-gray-400",
-          icon: "🔔",
-        };
     }
   };
 
@@ -138,6 +92,17 @@ export function NotificationBell({ className }: NotificationBellProps) {
     markAllAsReadMutation.mutate();
   };
 
+  // Handle delete all (with confirmation)
+  const handleDeleteAll = () => {
+    const ok = window.confirm(
+      t("deleteAllConfirmDesc") ||
+        "This will remove all your notifications. You can't undo this."
+    );
+    if (ok) {
+      deleteAllNotificationsMutation.mutate();
+    }
+  };
+
   // Handle view all
   const handleViewAll = () => {
     router.push("/notifications");
@@ -150,14 +115,14 @@ export function NotificationBell({ className }: NotificationBellProps) {
         <Button
           variant="ghost"
           size="icon"
-          className={cn("relative", className)}
+          className={cn("app-control app-control-icon relative", className)}
           aria-label={t("notifications") || "Notifications"}
         >
           <Bell className="h-5 w-5" />
           {!isLoadingCount && totalUnread > 0 && (
             <Badge
               variant="destructive"
-              className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-xs flex items-center justify-center"
+              className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center px-1 text-xs"
             >
               {totalUnread > 99 ? "99+" : totalUnread}
             </Badge>
@@ -165,24 +130,44 @@ export function NotificationBell({ className }: NotificationBellProps) {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-80" align="end" forceMount>
+      <DropdownMenuContent
+        className="app-control-menu w-[calc(100vw-2rem)] max-w-80 sm:w-80"
+        align="end"
+        sideOffset={8}
+        collisionPadding={16}
+        forceMount
+      >
         {/* Header */}
-        <DropdownMenuLabel className="flex items-center justify-between">
+        <DropdownMenuLabel className="flex items-center justify-between gap-1">
           <span className="font-semibold">
             {t("notifications") || "Notifications"}
           </span>
-          {totalUnread > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
-              onClick={handleMarkAllAsRead}
-              disabled={markAllAsReadMutation.isPending}
-            >
-              <CheckCheck className="h-3 w-3 mr-1" />
-              {t("markAllRead") || "Mark all read"}
-            </Button>
-          )}
+          <div className="flex items-center gap-0.5">
+            {totalUnread > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={handleMarkAllAsRead}
+                disabled={markAllAsReadMutation.isPending}
+              >
+                <CheckCheck className="h-3 w-3 mr-1" />
+                {t("markAllRead") || "Mark all read"}
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
+                title={t("deleteAll") || "Delete all"}
+                onClick={handleDeleteAll}
+                disabled={deleteAllNotificationsMutation.isPending}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         </DropdownMenuLabel>
 
         <DropdownMenuSeparator />
@@ -193,9 +178,9 @@ export function NotificationBell({ className }: NotificationBellProps) {
             // Loading skeleton
             <div className="p-2 space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="flex gap-3 p-2">
-                  <Skeleton className="h-10 w-10 rounded-full" />
-                  <div className="flex-1 space-y-2">
+                <div key={i} className="flex gap-3 p-2.5">
+                  <Skeleton className="h-11 w-11 rounded-xl" />
+                  <div className="flex-1 space-y-2 pt-0.5">
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-3 w-1/2" />
                   </div>
@@ -212,50 +197,44 @@ export function NotificationBell({ className }: NotificationBellProps) {
             </div>
           ) : (
             // Notifications list
-            <div className="p-1">
-              {notifications.map((notification) => {
-                const style = getNotificationStyle(notification.type);
-                return (
-                  <DropdownMenuItem
-                    key={notification.id}
-                    className={cn(
-                      "flex items-start gap-3 p-3 cursor-pointer rounded-lg mb-1",
-                      !notification.read && "bg-accent/50"
-                    )}
-                    onClick={() => handleNotificationClick(notification)}
-                  >
-                    {/* Icon */}
-                    <div
+            <div className="p-1.5 space-y-1">
+              {notifications.map((notification) => (
+                <DropdownMenuItem
+                  key={notification.id}
+                  className={cn(
+                    "group flex items-start gap-3 rounded-xl p-2.5 cursor-pointer transition-colors",
+                    "focus:bg-accent data-[highlighted]:bg-accent",
+                    !notification.read && "bg-primary/[0.06]"
+                  )}
+                  onClick={() => handleNotificationClick(notification)}
+                >
+                  {/* Avatar: course thumbnail or type icon */}
+                  <NotificationAvatar notification={notification} size={44} />
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <p
                       className={cn(
-                        "flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-lg",
-                        style.bgColor
+                        "text-sm line-clamp-1",
+                        notification.read ? "font-medium" : "font-semibold"
                       )}
                     >
-                      {style.icon}
-                    </div>
+                      {notification.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
+                      {notification.message}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground/80 mt-1">
+                      {formatTimeAgo(notification.createdAt)}
+                    </p>
+                  </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium line-clamp-1">
-                        {notification.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                        {notification.message}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatTimeAgo(notification.createdAt)}
-                      </p>
-                    </div>
-
-                    {/* Unread indicator */}
-                    {!notification.read && (
-                      <div className="flex-shrink-0">
-                        <div className="h-2 w-2 rounded-full bg-primary" />
-                      </div>
-                    )}
-                  </DropdownMenuItem>
-                );
-              })}
+                  {/* Unread indicator */}
+                  {!notification.read && (
+                    <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
+                  )}
+                </DropdownMenuItem>
+              ))}
             </div>
           )}
         </ScrollArea>
@@ -268,7 +247,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full justify-center text-sm"
+                className="h-9 w-full justify-center rounded-lg text-sm"
                 onClick={handleViewAll}
               >
                 {t("viewAll") || "View all notifications"}

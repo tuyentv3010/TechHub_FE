@@ -9,14 +9,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-const themes = [
-  { name: "Default", value: "default", color: "bg-blue-500" },
-  { name: "Purple", value: "purple", color: "bg-purple-500" },
-  { name: "Green", value: "green", color: "bg-green-500" },
-  { name: "Orange", value: "orange", color: "bg-orange-500" },
-  { name: "Pink", value: "pink", color: "bg-pink-500" },
-];
+import {
+  applyColorTheme,
+  COLOR_THEME_EVENT,
+  COLOR_THEME_STORAGE_KEY,
+  COLOR_THEMES,
+  CUSTOM_COLOR_THEME_STORAGE_KEY,
+  getStoredColorTheme,
+  persistColorTheme,
+} from "@/lib/color-theme";
 
 export function ThemeColorToggle() {
   const [colorTheme, setColorTheme] = React.useState("default");
@@ -24,34 +25,38 @@ export function ThemeColorToggle() {
 
   React.useEffect(() => {
     setMounted(true);
-    const savedTheme = localStorage.getItem("color-theme") || "default";
-    setColorTheme(savedTheme);
-    applyTheme(savedTheme);
+    setColorTheme(applyColorTheme(getStoredColorTheme()));
+
+    const handleColorThemeChange = (event: Event) => {
+      const theme = (event as CustomEvent<{ theme?: string }>).detail?.theme;
+      setColorTheme(applyColorTheme(theme));
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key === COLOR_THEME_STORAGE_KEY ||
+        event.key === CUSTOM_COLOR_THEME_STORAGE_KEY
+      ) {
+        setColorTheme(applyColorTheme(getStoredColorTheme()));
+      }
+    };
+
+    window.addEventListener(COLOR_THEME_EVENT, handleColorThemeChange);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener(COLOR_THEME_EVENT, handleColorThemeChange);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
-  const applyTheme = (themeName: string) => {
-    const root = document.documentElement;
-    
-    // Remove all theme classes
-    themes.forEach(t => {
-      root.classList.remove(`theme-${t.value}`);
-    });
-    
-    // Add new theme class
-    if (themeName !== "default") {
-      root.classList.add(`theme-${themeName}`);
-    }
-  };
-
   const handleThemeChange = (themeName: string) => {
-    setColorTheme(themeName);
-    localStorage.setItem("color-theme", themeName);
-    applyTheme(themeName);
+    setColorTheme(persistColorTheme(themeName));
   };
 
   if (!mounted) {
     return (
-      <Button variant="outline" size="sm" disabled>
+      <Button variant="outline" size="icon" className="app-control app-control-icon" disabled>
         <Palette className="h-4 w-4" />
       </Button>
     );
@@ -60,19 +65,19 @@ export function ThemeColorToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="icon" className="app-control app-control-icon">
           <Palette className="h-4 w-4" />
           <span className="sr-only">Toggle color theme</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {themes.map((themeOption) => (
+      <DropdownMenuContent align="end" className="app-control-menu">
+        {COLOR_THEMES.map((themeOption) => (
           <DropdownMenuItem
             key={themeOption.value}
             onClick={() => handleThemeChange(themeOption.value)}
             className="flex items-center gap-2"
           >
-            <div className={`w-4 h-4 rounded-full ${themeOption.color}`} />
+            <div className={`h-4 w-4 rounded-full ${themeOption.colorClass}`} />
             <span>{themeOption.name}</span>
             {colorTheme === themeOption.value && <Check className="h-4 w-4 ml-auto" />}
           </DropdownMenuItem>

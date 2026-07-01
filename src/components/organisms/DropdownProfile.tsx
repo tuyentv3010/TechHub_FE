@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
-import { BookOpen, Menu, X, User, LogOut, Settings, BookText, BarChart3 } from "lucide-react";
+import { BookOpen, Menu, User, LogOut, Settings, BookText, BarChart3, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/components/app-provider";
 import { NotificationBell } from "@/components/organisms/NotificationBell";
@@ -20,10 +20,13 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SwitchLanguage } from "@/components/switch-language";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import { useLogoutMutation } from "@/queries/useAuth";
 import { useAccountProfile } from "@/queries/useAccount";
+import manageMenuItems, { canAccessMenuItem } from "@/app/manage/menuItems";
+import { usePermissions } from "@/hooks/usePermissions";
+import { getUserInfoFromStorage, removeTokenFromLocalStorage } from "@/lib/utils";
+import { normalizePersistedMediaUrl } from "@/lib/file-media";
 
 interface MenuItem {
   title: string;
@@ -40,21 +43,34 @@ interface UserInfo {
   avatar?: string;
 }
 
-export function DropdownProfile() {
+type DropdownProfileProps = {
+  variant?: "default" | "auth";
+};
+
+export function DropdownProfile({ variant = "default" }: DropdownProfileProps) {
   const t = useTranslations("NavItem");
   const { isAuth, role, setIsAuth, setRole, setPermissions } = useAppContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const router = useRouter();
   const logoutMutation = useLogoutMutation();
-  const { data, isLoading, isError } = useAccountProfile();
+  const { data } = useAccountProfile();
+  const { hasPermission, isLoading: isPermissionsLoading } = usePermissions();
+  const isAuthHeader = variant === "auth";
   
   const account = data?.payload?.data;
-  console.log("🔐 [userInfo?.roles] Account data:", userInfo?.roles);
+  const currentRoles = userInfo?.roles || account?.roles || [];
+  const canAccessManageDashboard =
+    isAuth && !currentRoles.includes("GUEST");
+  const manageCoursesItem = manageMenuItems.find((item) => item.href === "/manage/courses");
+  const canAccessManageCourses =
+    currentRoles.includes("SUPER_ADMIN") ||
+    (!!manageCoursesItem &&
+      !isPermissionsLoading &&
+      canAccessMenuItem(manageCoursesItem, hasPermission));
   // Load user info from localStorage on mount
   useEffect(() => {
     if (isAuth) {
-      const storedUserInfo = localStorage.getItem("userInfo");
+      const storedUserInfo = getUserInfoFromStorage();
       if (storedUserInfo) {
         try {
           setUserInfo(JSON.parse(storedUserInfo));
@@ -96,9 +112,7 @@ export function DropdownProfile() {
       await logoutMutation.mutateAsync();
       
       // Clear all auth data
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("userInfo");
+      removeTokenFromLocalStorage();
       
       // Update context
       setIsAuth(false);
@@ -112,15 +126,12 @@ export function DropdownProfile() {
         description: t("logoutSuccessMessage") || "Bạn đã đăng xuất khỏi hệ thống",
       });
       
-      // Redirect to home
-      router.push("/");
-    } catch (error: any) {
+      window.location.replace("/login");
+    } catch (error: unknown) {
       console.error("Logout error:", error);
       
       // Even if API fails, clear local data
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("userInfo");
+      removeTokenFromLocalStorage();
       setIsAuth(false);
       setRole(null);
       setPermissions(null);
@@ -131,56 +142,81 @@ export function DropdownProfile() {
         description: t("logoutSuccessMessage") || "Bạn đã đăng xuất khỏi hệ thống",
       });
       
-      router.push("/");
+      window.location.replace("/login");
     }
   };
 
+  // Accept both public URLs and internal proxy URLs (the minio bucket is private,
+  // so avatars are served through /api/proxy/files/...).
+  const avatarUrl =
+    normalizePersistedMediaUrl(userInfo?.avatar) ||
+    normalizePersistedMediaUrl(account?.avatar) ||
+    undefined;
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95">
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <Image src="/logo.png" alt="TechHub Logo" width={80} height={80} />
+        <Link
+          href="/"
+          className="flex min-w-0 items-center gap-2.5"
+          aria-label="TechHub home"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white shadow-sm">
+            <Image
+              src="/brand-mark.png"
+              alt=""
+              width={34}
+              height={34}
+              className="h-8 w-8 object-contain"
+              priority
+            />
+          </span>
+          <span className="hidden text-lg font-extrabold leading-none tracking-normal text-foreground sm:inline-flex">
+            Tech<span className="text-primary">Hub</span>
+          </span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-          {navigationItems.map((item) => {
-            const canShow = !item.role || (role && item.role.includes(role));
-            if (canShow) {
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="transition-colors hover:text-primary text-foreground/80 hover:text-foreground"
-                >
-                  {item.title}
-                </Link>
-              );
-            }
-            return null;
-          })}
-        </nav>
+        {!isAuthHeader && (
+          <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+            {navigationItems.map((item) => {
+              const canShow = !item.role || (role && item.role.includes(role));
+              if (canShow) {
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="transition-colors hover:text-primary text-foreground/80 hover:text-foreground"
+                  >
+                    {item.title}
+                  </Link>
+                );
+              }
+              return null;
+            })}
+          </nav>
+        )}
 
         {/* Right Side Actions */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           {/* Language Switcher */}
-          <SwitchLanguage />
+          <SwitchLanguage compactOnMobile />
           
           {/* Theme Toggle */}
           <ThemeToggle />
 
           {/* Notification Bell - Only show when authenticated */}
-          {isAuth && <NotificationBell />}
+          {!isAuthHeader && isAuth && <NotificationBell />}
 
           {/* Auth Section */}
-          {isAuth ? (
+          {!isAuthHeader && (isAuth ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage 
-                      src={userInfo?.avatar || account?.avatar || "/placeholder-avatar.jpg"} 
+                <Button variant="ghost" size="icon" className="app-control app-control-icon relative">
+                    <Avatar className="app-control-avatar">
+                      <AvatarImage
+                      src={avatarUrl}
                       alt={userInfo?.username || account?.username || "User"}
                       className="object-cover"
                     />
@@ -193,7 +229,7 @@ export function DropdownProfile() {
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuContent className="app-control-menu w-56 p-2" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">
@@ -204,7 +240,7 @@ export function DropdownProfile() {
                     </p>
                     {(userInfo?.roles || account?.roles) && (userInfo?.roles || account?.roles).length > 0 && (
                       <p className="text-xs leading-none text-muted-foreground mt-1">
-                        <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+                        <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                           {(userInfo?.roles || account?.roles)?.[0]}
                         </span>
                       </p>
@@ -212,19 +248,30 @@ export function DropdownProfile() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {userInfo?.roles?.includes("ADMIN") && (
+                {canAccessManageDashboard && (
                   <DropdownMenuItem asChild>
-                    <Link href="/manage/accounts" className="cursor-pointer">
+                    <Link href="/manage/dashboard" className="cursor-pointer">
                       <BarChart3 className="mr-2 h-4 w-4" />
                       {t("dashboard") || "Dashboard"}
                     </Link>
                   </DropdownMenuItem>
                 )}
-                {(userInfo?.roles?.includes("ADMIN") || userInfo?.roles?.includes("INSTRUCTOR")) && (
+                {canAccessManageCourses && (
                   <DropdownMenuItem asChild>
                     <Link href="/manage/courses" className="cursor-pointer">
                       <BookOpen className="mr-2 h-4 w-4" />
                       {t("manageCourses") || "Manage Courses"}
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {/* Chỉ LEARNER chưa có role INSTRUCTOR mới thấy nút này */}
+                {(userInfo?.roles || account?.roles)?.includes("LEARNER") &&
+                  !(userInfo?.roles || account?.roles)?.includes("INSTRUCTOR") &&
+                  !(userInfo?.roles || account?.roles)?.includes("ADMIN") && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/account/instructor-application" className="cursor-pointer text-primary font-medium">
+                      <GraduationCap className="mr-2 h-4 w-4" />
+                      Trở thành Giảng viên
                     </Link>
                   </DropdownMenuItem>
                 )}
@@ -249,7 +296,7 @@ export function DropdownProfile() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={handleLogout} 
-                  className="cursor-pointer text-red-600 dark:text-red-400"
+                  className="cursor-pointer text-destructive"
                   disabled={logoutMutation.isPending}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
@@ -259,67 +306,69 @@ export function DropdownProfile() {
             </DropdownMenu>
           ) : (
             <div className="hidden md:flex items-center space-x-2">
-              <Button variant="ghost" asChild>
+              <Button variant="outline" asChild className="app-control px-4">
                 <Link href="/login">{t("signIn")}</Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="h-10 rounded-lg px-4">
                 <Link href="/register">{t("signUp")}</Link>
               </Button>
             </div>
-          )}
+          ))}
 
           {/* Mobile Menu Trigger */}
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                className="md:hidden"
-                size="icon"
-              >
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-              <div className="flex flex-col space-y-4 mt-4">
-                {/* Mobile Navigation */}
-                <nav className="flex flex-col space-y-2">
-                  {navigationItems.map((item) => {
-                    const canShow = !item.role || (role && item.role.includes(role));
-                    if (canShow) {
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          className="block px-3 py-2 rounded-md text-base font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          {item.title}
-                        </Link>
-                      );
-                    }
-                    return null;
-                  })}
-                </nav>
+          {!isAuthHeader && (
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="app-control app-control-icon md:hidden"
+                >
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <div className="flex flex-col space-y-4 mt-4">
+                  {/* Mobile Navigation */}
+                  <nav className="flex flex-col space-y-2">
+                    {navigationItems.map((item) => {
+                      const canShow = !item.role || (role && item.role.includes(role));
+                      if (canShow) {
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className="block px-3 py-2 rounded-md text-base font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            {item.title}
+                          </Link>
+                        );
+                      }
+                      return null;
+                    })}
+                  </nav>
 
-                {/* Mobile Auth Section */}
-                {!isAuth && (
-                  <div className="flex flex-col space-y-2 pt-4 border-t">
-                    <Button variant="outline" asChild className="w-full">
-                      <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                        {t("signIn")}
-                      </Link>
-                    </Button>
-                    <Button asChild className="w-full">
-                      <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
-                        {t("signUp")}
-                      </Link>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
+                  {/* Mobile Auth Section */}
+                  {!isAuth && (
+                    <div className="flex flex-col space-y-2 pt-4 border-t">
+                      <Button variant="outline" asChild className="w-full">
+                        <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                          {t("signIn")}
+                        </Link>
+                      </Button>
+                      <Button asChild className="w-full">
+                        <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
+                          {t("signUp")}
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </div>
     </header>

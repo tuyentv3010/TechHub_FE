@@ -1,9 +1,10 @@
 import { useState, useCallback, useRef } from "react";
-import aiApiRequest from "@/apiRequests/ai";
+import aiApiRequest, { StreamingChatEvent } from "@/apiRequests/ai";
 import { ChatMessageRequestType } from "@/schemaValidations/ai.schema";
 
 interface UseStreamingChatOptions {
-  onComplete?: (fullMessage: string) => void;
+  onEvent?: (event: StreamingChatEvent) => void;
+  onComplete?: (result: { fullMessage: string; finalEvent?: StreamingChatEvent }) => void;
   onError?: (error: Error) => void;
 }
 
@@ -49,11 +50,13 @@ export function useStreamingChat(
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const fullMessageRef = useRef<string>("");
+  const lastEventRef = useRef<StreamingChatEvent | undefined>(undefined);
 
   const resetStream = useCallback(() => {
     setStreamingMessage("");
     setError(null);
     fullMessageRef.current = "";
+    lastEventRef.current = undefined;
   }, []);
 
   const cancelStream = useCallback(() => {
@@ -79,26 +82,32 @@ export function useStreamingChat(
       try {
         await aiApiRequest.sendStreamingChatMessage(
           body,
-          // On each chunk
-          (chunk: string) => {
-            console.log("🎯 [useStreamingChat] Chunk received:", chunk);
-            fullMessageRef.current += chunk;
-            console.log("🎯 [useStreamingChat] Full message so far:", fullMessageRef.current);
-            setStreamingMessage(fullMessageRef.current);
-          },
-          // On complete
-          () => {
-            console.log("🎯 [useStreamingChat] ===== STREAM COMPLETE =====");
-            console.log("🎯 [useStreamingChat] Final message:", fullMessageRef.current);
-            setIsStreaming(false);
-            options.onComplete?.(fullMessageRef.current);
-          },
-          // On error
-          (err: Error) => {
-            console.error("🎯 [useStreamingChat] ===== STREAM ERROR =====", err);
-            setError(err);
-            setIsStreaming(false);
-            options.onError?.(err);
+          {
+            onChunk: (chunk: string) => {
+              console.log("🎯 [useStreamingChat] Chunk received:", chunk);
+              fullMessageRef.current += chunk;
+              console.log("🎯 [useStreamingChat] Full message so far:", fullMessageRef.current);
+              setStreamingMessage(fullMessageRef.current);
+            },
+            onEvent: (event: StreamingChatEvent) => {
+              lastEventRef.current = event;
+              options.onEvent?.(event);
+            },
+            onComplete: (event?: StreamingChatEvent) => {
+              console.log("🎯 [useStreamingChat] ===== STREAM COMPLETE =====");
+              console.log("🎯 [useStreamingChat] Final message:", fullMessageRef.current);
+              setIsStreaming(false);
+              options.onComplete?.({
+                fullMessage: fullMessageRef.current,
+                finalEvent: event || lastEventRef.current,
+              });
+            },
+            onError: (err: Error) => {
+              console.error("🎯 [useStreamingChat] ===== STREAM ERROR =====", err);
+              setError(err);
+              setIsStreaming(false);
+              options.onError?.(err);
+            },
           }
         );
       } catch (err) {

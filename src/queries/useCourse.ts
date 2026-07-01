@@ -5,12 +5,24 @@ import {
   UpdateCourseBodyType,
 } from "@/schemaValidations/course.schema";
 import { CoursesResponse, transformApiCourse } from "@/types/course";
+import { normalizePublicMediaUrl } from "@/lib/file-media";
+
+type CoursesHttpResponse = {
+  payload?: CoursesResponse;
+} & Partial<CoursesResponse>;
 
 // Get instructor's own courses for Manage page (all statuses including DRAFT)
 export const useGetMyCourses = (params?: {
   page?: number;
   size?: number;
   search?: string;
+  status?: string;
+  level?: string;
+  language?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  skillIds?: string[];
+  tagIds?: string[];
 }) => {
   return useQuery({
     queryKey: ["my-courses", params],
@@ -35,11 +47,14 @@ export const useGetCourses = (params?: {
   return useQuery({
     queryKey: ["courses", params],
     queryFn: () => courseApiRequest.getCourses(params),
-    select: (response: CoursesResponse) => ({
-      ...response,
-      // Transform ApiCourse[] to Course[] for backward compatibility
-      transformedData: response.data.map(transformApiCourse),
-    }),
+    select: (response: CoursesHttpResponse) => {
+      const payload = response.payload ?? response;
+      return {
+        ...payload,
+        // Transform ApiCourse[] to Course[] for backward compatibility
+        transformedData: (payload.data || []).map(transformApiCourse),
+      };
+    },
   });
 };
 
@@ -57,12 +72,29 @@ export const useGetCourseList = (params?: {
   maxPrice?: number;
   instructorId?: string;
   enabled?: boolean;
+  auth?: boolean;
+  redirectOnUnauthorized?: boolean;
+  suppressErrorLog?: boolean;
+  retry?: boolean | number;
 }) => {
-  const { enabled = true, ...queryParams } = params || {};
+  const {
+    auth,
+    enabled = true,
+    redirectOnUnauthorized,
+    suppressErrorLog,
+    retry,
+    ...queryParams
+  } = params || {};
   return useQuery({
     queryKey: ["course-list", queryParams],
-    queryFn: () => courseApiRequest.getCourseList(queryParams),
+    queryFn: () =>
+      courseApiRequest.getCourseList(queryParams, {
+        auth,
+        redirectOnUnauthorized,
+        suppressErrorLog,
+      }),
     enabled,
+    retry: retry ?? (auth === false ? false : undefined),
   });
 };
 
@@ -73,6 +105,28 @@ export const useGetCourseById = (id: string) => {
     queryFn: () => courseApiRequest.getCourseById(id),
     enabled: !!id,
   });
+};
+
+// Lightweight hook to resolve a course thumbnail URL by courseId.
+// Used by notifications to show the related course's image. Shares the
+// React Query cache so multiple notifications for the same course only
+// trigger one fetch, and is cached generously since thumbnails rarely change.
+export const useCourseThumbnail = (courseId?: string | null) => {
+  const { data, isLoading } = useQuery({
+    queryKey: ["course", courseId],
+    queryFn: () => courseApiRequest.getCourseById(courseId as string),
+    enabled: !!courseId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: false,
+  });
+
+  const thumbnail = data?.payload?.data?.summary?.thumbnail;
+  const thumbnailUrl = normalizePublicMediaUrl(
+    thumbnail?.secureUrl || thumbnail?.url
+  );
+
+  return { thumbnailUrl, isLoading };
 };
 
 // Create course mutation
@@ -142,10 +196,20 @@ export const useGetChapters = (courseId: string) => {
 // ============================================
 
 // Get all skills
-export const useGetSkills = () => {
+export const useGetSkills = (options?: {
+  enabled?: boolean;
+  auth?: boolean;
+  redirectOnUnauthorized?: boolean;
+  suppressErrorLog?: boolean;
+  retry?: boolean | number;
+}) => {
+  const { enabled = true, retry, ...requestOptions } = options || {};
+
   return useQuery({
-    queryKey: ["skills"],
-    queryFn: () => courseApiRequest.getSkills(),
+    queryKey: ["skills", requestOptions.auth === false ? "public" : "default"],
+    queryFn: () => courseApiRequest.getSkills(requestOptions),
+    enabled,
+    retry: retry ?? (requestOptions.auth === false ? false : undefined),
   });
 };
 
@@ -183,10 +247,20 @@ export const useDeleteSkillMutation = () => {
 };
 
 // Get all tags
-export const useGetTags = () => {
+export const useGetTags = (options?: {
+  enabled?: boolean;
+  auth?: boolean;
+  redirectOnUnauthorized?: boolean;
+  suppressErrorLog?: boolean;
+  retry?: boolean | number;
+}) => {
+  const { enabled = true, retry, ...requestOptions } = options || {};
+
   return useQuery({
-    queryKey: ["tags"],
-    queryFn: () => courseApiRequest.getTags(),
+    queryKey: ["tags", requestOptions.auth === false ? "public" : "default"],
+    queryFn: () => courseApiRequest.getTags(requestOptions),
+    enabled,
+    retry: retry ?? (requestOptions.auth === false ? false : undefined),
   });
 };
 
@@ -403,6 +477,65 @@ export const useCreateExercisesMutation = () => {
   });
 };
 
+export const useSubmitExerciseMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      courseId,
+      lessonId,
+      body,
+    }: {
+      courseId: string;
+      lessonId: string;
+      body: any;
+    }) => courseApiRequest.submitExercise(courseId, lessonId, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["exercises", variables.courseId, variables.lessonId] });
+      queryClient.invalidateQueries({ queryKey: ["course-progress", variables.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["progress", variables.courseId] });
+    },
+  });
+};
+
+// Instructor: list the latest submission per learner for an exercise
+export const useGetExerciseSubmissions = (
+  courseId: string,
+  lessonId: string,
+  exerciseId: string,
+  enabled = true,
+) => {
+  return useQuery({
+    queryKey: ["exercise-submissions", courseId, lessonId, exerciseId],
+    queryFn: () => courseApiRequest.getExerciseSubmissions(courseId, lessonId, exerciseId),
+    enabled: enabled && !!courseId && !!lessonId && !!exerciseId,
+  });
+};
+
+// Instructor: grade a submission (score + feedback)
+export const useGradeSubmissionMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      courseId,
+      lessonId,
+      submissionId,
+      body,
+    }: {
+      courseId: string;
+      lessonId: string;
+      submissionId: string;
+      body: { grade?: number | null; feedback?: string | null; status?: string };
+    }) => courseApiRequest.gradeSubmission(courseId, lessonId, submissionId, body),
+    onSuccess: (_data, variables) => {
+      // Prefix match invalidates every exercise's submission list under this lesson.
+      queryClient.invalidateQueries({
+        queryKey: ["exercise-submissions", variables.courseId, variables.lessonId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["exercises", variables.courseId, variables.lessonId] });
+    },
+  });
+};
+
 // Update exercise
 export const useUpdateExerciseMutation = () => {
   const queryClient = useQueryClient();
@@ -479,6 +612,7 @@ export const useUpdateProgressMutation = () => {
       courseApiRequest.updateProgress(courseId, lessonId, body),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["progress", variables.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["learning-streak"] });
     },
   });
 };
@@ -492,6 +626,7 @@ export const useMarkLessonCompleteMutation = () => {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["progress", variables.courseId] });
       queryClient.invalidateQueries({ queryKey: ["course", variables.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["learning-streak"] });
     },
   });
 };

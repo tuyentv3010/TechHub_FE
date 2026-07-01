@@ -7,6 +7,12 @@ import {
   AssignPermissionsBodyType,
   AssignRolesBodyType,
 } from "@/schemaValidations/role.schema";
+import {
+  PermissionDetailResType,
+  PermissionListResType,
+  PermissionPageResType,
+  UpsertUserPermissionBodyType,
+} from "@/schemaValidations/permission.schema";
 
 const roleApiRequest = {
   // List all roles
@@ -93,7 +99,29 @@ const roleApiRequest = {
 
   // Get effective permissions for user
   getUserEffectivePermissions: (userId: string) =>
-    http.get<any>(`/app/api/proxy/users/${userId}/permissions/effective`),
+    http.get<PermissionListResType>(`/app/api/proxy/users/${userId}/permissions/effective`),
+
+  // Get active user-level permission overrides, including deny overrides
+  getUserPermissionOverrides: (userId: string) =>
+    http.get<PermissionListResType>(`/app/api/proxy/users/${userId}/permissions/overrides`),
+
+  // Get a paged permission catalog with the user's effective/override state
+  getUserPermissionCatalog: (
+    userId: string,
+    params: { page: number; size: number; search?: string }
+  ) =>
+    http.get<PermissionPageResType>(
+      `/app/api/proxy/users/${userId}/permissions/catalog`,
+      { params }
+    ),
+
+  // Create or update a user-level permission override
+  upsertUserPermission: (userId: string, body: UpsertUserPermissionBodyType) =>
+    http.post<PermissionDetailResType>(`/app/api/proxy/users/${userId}/permissions`, body),
+
+  // Reset a user-level permission override so role permissions apply again
+  deleteUserPermissionOverride: (userId: string, permissionId: string) =>
+    http.delete<any>(`/app/api/proxy/users/${userId}/permissions/${permissionId}`),
 
   // Check user permission
   checkUserPermission: (userId: string, body: { url: string; method: string }) =>

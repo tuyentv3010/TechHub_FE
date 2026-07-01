@@ -1,5 +1,11 @@
-import { useMutation } from "@tanstack/react-query";
-import paymentApiRequest, { VNPayPaymentRequest } from "@/apiRequests/payment";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import paymentApiRequest, {
+  CreateManualPayoutBatchPayload,
+  CreatePayoutRequestPayload,
+  MarkPaidPayoutRequestPayload,
+  ReviewPayoutRequestPayload,
+  VNPayPaymentRequest,
+} from "@/apiRequests/payment";
 
 export const useCreateVNPayPayment = () => {
   return useMutation({
@@ -10,7 +16,177 @@ export const useCreateVNPayPayment = () => {
 
 export const useCreatePayPalPayment = () => {
   return useMutation({
-    mutationFn: ({ amount, userId, courseId }: { amount: number; userId: string; courseId: string }) =>
-      paymentApiRequest.createPayPalPayment(amount, userId, courseId),
+    mutationFn: ({ userId, courseId }: { userId: string; courseId: string }) =>
+      paymentApiRequest.createPayPalPayment(userId, courseId),
+  });
+};
+
+export const usePayoutBalance = (instructorId?: string) => {
+  return useQuery({
+    queryKey: ["payout-balance", instructorId || "me"],
+    queryFn: async () => {
+      const response = await paymentApiRequest.getPayoutBalance(instructorId);
+      return response.payload?.data;
+    },
+  });
+};
+
+export const usePayoutRequests = () => {
+  return useQuery({
+    queryKey: ["payout-requests"],
+    queryFn: async () => {
+      const response = await paymentApiRequest.listPayoutRequests();
+      return response.payload?.data || [];
+    },
+  });
+};
+
+export const usePayoutOperationsSummary = () => {
+  return useQuery({
+    queryKey: ["payout-operations-summary"],
+    queryFn: async () => {
+      const response = await paymentApiRequest.getPayoutOperationsSummary();
+      return response.payload?.data;
+    },
+  });
+};
+
+export const usePayoutBatches = (enabled = true) => {
+  return useQuery({
+    queryKey: ["payout-batches"],
+    queryFn: async () => {
+      const response = await paymentApiRequest.listPayoutBatches();
+      return response.payload?.data || [];
+    },
+    enabled,
+  });
+};
+
+export const usePayoutInvoices = (instructorId?: string) => {
+  return useQuery({
+    queryKey: ["payout-invoices", instructorId || "me"],
+    queryFn: async () => {
+      const response = await paymentApiRequest.listPayoutInvoices(instructorId);
+      return response.payload?.data || [];
+    },
+  });
+};
+
+export const usePayoutInvoiceDetail = (invoiceId?: string) => {
+  return useQuery({
+    queryKey: ["payout-invoice-detail", invoiceId],
+    queryFn: async () => {
+      if (!invoiceId) {
+        return null;
+      }
+      const response = await paymentApiRequest.getPayoutInvoice(invoiceId);
+      return response.payload?.data || null;
+    },
+    enabled: !!invoiceId,
+  });
+};
+
+export const useCreatePayoutRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreatePayoutRequestPayload) => paymentApiRequest.createPayoutRequest(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-operations-summary"] });
+    },
+  });
+};
+
+export const usePayoutRequestDetail = (requestId?: string) => {
+  return useQuery({
+    queryKey: ["payout-request-detail", requestId],
+    queryFn: async () => {
+      if (!requestId) {
+        return null;
+      }
+      const response = await paymentApiRequest.getPayoutRequest(requestId);
+      return response.payload?.data || null;
+    },
+    enabled: !!requestId,
+  });
+};
+
+export const useApprovePayoutRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, payload }: { requestId: string; payload?: ReviewPayoutRequestPayload }) =>
+      paymentApiRequest.approvePayoutRequest(requestId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-operations-summary"] });
+    },
+  });
+};
+
+export const useSettleApprovedPayoutRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, payload }: { requestId: string; payload?: ReviewPayoutRequestPayload }) =>
+      paymentApiRequest.settleApprovedPayoutRequest(requestId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-operations-summary"] });
+    },
+  });
+};
+
+export const useRejectPayoutRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, payload }: { requestId: string; payload?: ReviewPayoutRequestPayload }) =>
+      paymentApiRequest.rejectPayoutRequest(requestId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-operations-summary"] });
+    },
+  });
+};
+
+export const useMarkPayoutRequestPaid = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, payload }: { requestId: string; payload: MarkPaidPayoutRequestPayload }) =>
+      paymentApiRequest.markPayoutRequestPaid(requestId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payout-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-operations-summary"] });
+    },
+  });
+};
+
+export const useCreateMonthlyPayoutBatch = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (period?: string) => paymentApiRequest.createMonthlyPayoutBatch(period),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payout-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-operations-summary"] });
+    },
+  });
+};
+
+export const useCreateManualPayoutBatch = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateManualPayoutBatchPayload) => paymentApiRequest.createManualPayoutBatch(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payout-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["payout-operations-summary"] });
+    },
   });
 };

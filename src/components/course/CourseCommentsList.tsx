@@ -2,12 +2,20 @@
 
 import { useState, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { Loader2, MessageCircle, Smile } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Loader2, MessageCircle, Send, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CourseCommentItem } from "./CourseCommentItem";
 import type { CourseComment } from "@/types/course-comment.types";
 
@@ -29,6 +37,7 @@ export function CourseCommentsList({
   onSubmitComment,
   onSubmitReply,
 }: CommentsListProps) {
+  const t = useTranslations("CourseComments");
   const { toast } = useToast();
   const [commentContent, setCommentContent] = useState("");
   const [replyContent, setReplyContent] = useState("");
@@ -57,7 +66,7 @@ export function CourseCommentsList({
   const handleSubmitComment = () => {
     if (!commentContent.trim()) {
       toast({
-        title: "Vui lòng nhập nội dung bình luận",
+        title: t("emptyCommentTitle"),
         variant: "destructive",
       });
       return;
@@ -70,7 +79,7 @@ export function CourseCommentsList({
   const handleSubmitReply = (parentId: string, content: string) => {
     if (!content.trim()) {
       toast({
-        title: "Vui lòng nhập nội dung phản hồi",
+        title: t("emptyReplyTitle"),
         variant: "destructive",
       });
       return;
@@ -115,65 +124,75 @@ export function CourseCommentsList({
   }, [comments]);
 
   return (
-    <section className="space-y-6 rounded-2xl border border-muted/40 bg-card/60 p-6">
+    <section className="space-y-5 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
       {/* Header with count and sort */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-lg font-semibold">
-          <MessageCircle className="h-5 w-5" />
-          <span>{totalCommentCount} Bình luận</span>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-base font-semibold">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <MessageCircle className="h-4 w-4" />
+          </span>
+          <span>{t("count", { count: totalCommentCount })}</span>
         </div>
-        <select
+        <Select
           value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value as "newest" | "oldest")}
-          className="text-sm rounded-lg border border-muted bg-background px-3 py-1.5 text-muted-foreground hover:bg-muted/50 transition"
+          onValueChange={(value) => setSortOrder(value as "newest" | "oldest")}
         >
-          <option value="newest">Mới nhất</option>
-          <option value="oldest">Cũ nhất</option>
-        </select>
+          <SelectTrigger
+            aria-label="Comment sort order"
+            className="h-9 w-[140px] rounded-lg text-sm"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">{t("sortNewest")}</SelectItem>
+            <SelectItem value="oldest">{t("sortOldest")}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* New Comment Input */}
-      <div className="space-y-3">
-        <div className="relative">
-          <Textarea
-            placeholder="Chia sẻ cảm nhận của bạn..."
-            value={commentContent}
-            onChange={(event) => setCommentContent(event.target.value)}
-            rows={3}
-            ref={mainTextareaRef}
-          />
-
-          <button
-            type="button"
-            onClick={() => setShowEmojiPickerMain((s) => !s)}
-            className="absolute right-2 bottom-2 inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:text-foreground"
-            title="Chèn emoji"
-          >
-            <Smile className="h-5 w-5" />
-          </button>
-
-          {showEmojiPickerMain && (
-            <div className="absolute right-0 bottom-12 z-50">
-              <EmojiPicker
-                onEmojiClick={(e: any) => {
-                  insertEmojiAtCursor(
-                    mainTextareaRef.current,
-                    e.emoji,
-                    setCommentContent
-                  );
-                  setShowEmojiPickerMain(false);
-                }}
-              />
-            </div>
-          )}
-        </div>
-        <div className="flex justify-end">
+      <div className="rounded-xl border bg-background transition focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring/30">
+        <Textarea
+          placeholder={t("commentPlaceholder")}
+          value={commentContent}
+          onChange={(event) => setCommentContent(event.target.value)}
+          rows={3}
+          ref={mainTextareaRef}
+          className="min-h-[92px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
+        />
+        <div className="flex items-center justify-between border-t border-border/60 px-3 py-2">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowEmojiPickerMain((s) => !s)}
+              className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              title={t("insertEmoji")}
+            >
+              <Smile className="h-5 w-5" />
+            </button>
+            {showEmojiPickerMain && (
+              <div className="absolute bottom-full left-0 z-50 mb-2">
+                <EmojiPicker
+                  onEmojiClick={(e: any) => {
+                    insertEmojiAtCursor(
+                      mainTextareaRef.current,
+                      e.emoji,
+                      setCommentContent
+                    );
+                    setShowEmojiPickerMain(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
           <Button
             onClick={handleSubmitComment}
             disabled={isSubmitting || !commentContent.trim()}
+            className="min-w-28"
           >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Bình luận
+            {!isSubmitting && <Send className="mr-2 h-4 w-4" />}
+            {t("submitComment")}
           </Button>
         </div>
       </div>
@@ -181,17 +200,18 @@ export function CourseCommentsList({
       <Separator />
 
       {/* Comments List */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {isLoading ? (
           <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={index} className="h-28 w-full rounded-2xl" />
+              <Skeleton key={index} className="h-24 w-full rounded-xl" />
             ))}
           </div>
         ) : sortedComments.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Hãy là người đầu tiên chia sẻ cảm nghĩ của bạn.
-          </p>
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-10 text-center text-sm text-muted-foreground">
+            <MessageCircle className="h-6 w-6 opacity-40" />
+            <span>{t("empty")}</span>
+          </div>
         ) : (
           sortedComments.map((comment: CourseComment) => (
             <CourseCommentItem

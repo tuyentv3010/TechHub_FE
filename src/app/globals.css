@@ -1,10 +1,39 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap&subset=latin,latin-ext,vietnamese");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "liga";
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Instructor profile layout tokens */
+    --content-max: 1180px;
+    --nav-height: 68px;
+    --background: 216 45% 98%;
+    --app-bg: 216 45% 98%;
+    --app-surface: 0 0% 100%;
+    --app-surface-subtle: 210 40% 96.1%;
+    --app-border: 214.3 31.8% 91.4%;
+    --learning-accent: 176 77% 26%;
+    --learning-accent-foreground: 0 0% 100%;
+    --warning: 32 95% 44%;
 
     --foreground: 222.2 84% 4.9%;
 
@@ -16,7 +45,7 @@
 
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 224 76% 48%;
 
     --primary-foreground: 210 40% 98%;
 
@@ -28,9 +57,9 @@
 
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
+    --accent: 176 58% 94%;
 
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent-foreground: 176 77% 26%;
 
     --destructive: 0 84.2% 60.2%;
 
@@ -40,7 +69,7 @@
 
     --input: 214.3 31.8% 91.4%;
 
-    --ring: 222.2 84% 4.9%;
+    --ring: 224 76% 48%;
 
     --chart-1: 12 76% 61%;
 
@@ -53,6 +82,80 @@
     --chart-5: 27 87% 67%;
 
     --radius: 0.5rem;
+
+    /* ─────────────────────────────────────────────
+       Unified motion & interaction tokens
+       Use these via the .th-* utility classes below
+       or directly in component styles. Keep durations
+       and easings consistent across the entire FE.
+       ───────────────────────────────────────────── */
+    --motion-fast: 140ms;
+    --motion-base: 220ms;
+    --motion-slow: 360ms;
+    --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-in-out-soft: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --hover-lift: -2px;
+    --hover-zoom: 1.04;
+    --press-scale: 0.97;
+    /* Card depth tokens ─ default (rest) and on-hover.
+       Light theme uses a soft, low-opacity ambient shadow so cards
+       "float" gently above the page; the lift version is slightly
+       stronger but still uses very high blur + low opacity to stay
+       modern. */
+    --card-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 4px 16px -6px rgba(15, 23, 42, 0.06);
+    --card-border: hsl(var(--border) / 0.7);
+    --lift-shadow:
+      0 6px 18px -8px rgba(15, 23, 42, 0.12),
+      0 14px 32px -16px rgba(15, 23, 42, 0.16);
+    --lift-shadow-strong:
+      0 10px 26px -12px rgba(15, 23, 42, 0.14),
+      0 22px 44px -20px rgba(15, 23, 42, 0.18);
+    --focus-ring-shadow: 0 0 0 3px hsl(var(--ring) / 0.32);
+
+    /* "Money" colour — warm amber for prices / CTA emphasis instead
+       of the cool primary. Keeps the eye away from neon-blue while
+       still feeling premium. */
+    --money: 38 92% 50%;          /* amber-500 */
+    --money-foreground: 26 83% 32%; /* amber-700 */
+
+    /* Placeholder (no-thumbnail) palette — LIGHT MODE.
+       Base is a neutral muted gradient; the accent radial-glow uses
+       the active theme's --primary so the placeholder follows the
+       user's theme (blue / green / orange / purple / pink / ocean /
+       forest) without us hardcoding one gradient per theme. */
+    --placeholder-base: linear-gradient(
+      135deg,
+      hsl(var(--background)) 0%,
+      hsl(var(--secondary)) 55%,
+      hsl(var(--muted)) 100%
+    );
+    --placeholder-accent: hsl(var(--primary) / 0.14);
+    --placeholder-fg: var(--foreground);            /* HSL triplet ref */
+    --placeholder-fg-muted: var(--muted-foreground);
+    --placeholder-chip-bg: hsl(var(--foreground) / 0.05);
+    --placeholder-chip-border: hsl(var(--foreground) / 0.08);
+    --placeholder-watermark: 0.05;
+    --placeholder-texture: hsl(var(--foreground) / 0.06);
+
+    /* Glass badges that sit on top of thumbnails — LIGHT MODE.
+       Frosted-white with theme-neutral text. The two semantic tones
+       (emerald = "enrolled", rose = "discount %") are fixed: they
+       carry a universal meaning (positive / warning) and shouldn't
+       morph with theme. */
+    --glass-badge-bg: hsl(var(--card) / 0.85);
+    --glass-badge-fg: var(--foreground);
+    --glass-badge-border: hsl(var(--foreground) / 0.08);
+    --glass-badge-shadow: 0 4px 14px -8px hsl(var(--foreground) / 0.18);
+    --glass-badge-emerald-fg: 161 94% 24%;  /* emerald-700 */
+    --glass-badge-emerald-border: rgba(16, 185, 129, 0.35);
+    --glass-badge-emerald-bg: rgba(209, 250, 229, 0.85);
+    --glass-badge-rose-fg: 350 89% 40%;     /* rose-700 */
+    --glass-badge-rose-border: rgba(244, 63, 94, 0.35);
+    --glass-badge-rose-bg: rgba(255, 228, 230, 0.85);
+
     --color-chrome: #ff0000; /* Red */
     --color-safari: #00ff00; /* Green */
     --color-firefox: #0000ff; /* Blue */
@@ -68,21 +171,28 @@
   }
   .dark {
     --navColor: 222.2 84% 4.9%;
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 8%;
+    --app-bg: 222 47% 8%;
+    --app-surface: 222 35% 12%;
+    --app-surface-subtle: 217.2 32.6% 17.5%;
+    --app-border: 217.2 32.6% 22%;
+    --learning-accent: 173 58% 42%;
+    --learning-accent-foreground: 222 47% 8%;
+    --warning: 35 92% 58%;
 
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222 35% 12%;
 
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222 35% 12%;
 
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
+    --primary: 217 91% 60%;
 
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary-foreground: 222 47% 8%;
 
     --secondary: 217.2 32.6% 17.5%;
 
@@ -100,9 +210,9 @@
 
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
+    --border: 217.2 32.6% 22%;
 
-    --input: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 22%;
 
     --ring: 212.7 26.8% 83.9%;
 
@@ -115,64 +225,1423 @@
     --chart-4: 280 65% 60%;
 
     --chart-5: 340 75% 55%;
+
+    /* Motion tokens stay constant; depth tokens use deeper falloff on dark.
+       In dark mode, card surface is lifted ~1 tone above the page so the
+       card detaches from the background even without a strong border. */
+    --app-surface: 222 38% 14%;            /* a notch lighter than --background 222 47% 8% */
+    --card: 222 38% 14%;
+    --card-border: hsl(0 0% 100% / 0.06);   /* near-invisible high-transparency border */
+    --border: 217 32% 22%;
+    --card-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.04) inset,
+      0 10px 30px -16px rgba(0, 0, 0, 0.55),
+      0 2px 8px -4px rgba(0, 0, 0, 0.45);
+    --lift-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 18px 40px -18px rgba(0, 0, 0, 0.7),
+      0 8px 18px -8px rgba(0, 0, 0, 0.55);
+    --lift-shadow-strong:
+      0 1px 0 rgba(255, 255, 255, 0.08) inset,
+      0 26px 56px -22px rgba(0, 0, 0, 0.78),
+      0 12px 24px -10px rgba(0, 0, 0, 0.6);
+
+    /* Slightly muted money colour for dark mode (less harsh). */
+    --money: 38 95% 60%;            /* amber-400 */
+    --money-foreground: 36 90% 78%; /* amber-200 */
+
+    /* Placeholder (no-thumbnail) palette — DARK MODE.
+       Same theme-driven approach: base uses the page's neutral
+       dark surfaces, middle stop tints toward the active --primary.
+       So picking "theme-green" gives a teal glow, "theme-pink"
+       gives a magenta glow, etc. */
+    --placeholder-base: linear-gradient(
+      135deg,
+      hsl(var(--background)) 0%,
+      hsl(var(--primary) / 0.18) 55%,
+      hsl(var(--card)) 100%
+    );
+    --placeholder-accent: hsl(var(--primary) / 0.22);
+    --placeholder-fg: 0 0% 100%;
+    --placeholder-fg-muted: 215 20% 75%;
+    --placeholder-chip-bg: rgba(255, 255, 255, 0.1);
+    --placeholder-chip-border: rgba(255, 255, 255, 0.15);
+    --placeholder-watermark: 0.07;
+    --placeholder-texture: rgba(255, 255, 255, 0.12);
+
+    /* Glass badges — DARK MODE: dark frosted glass so white text
+       reads against any photo / placeholder. Semantic tones unchanged. */
+    --glass-badge-bg: hsl(var(--background) / 0.55);
+    --glass-badge-fg: 0 0% 100%;
+    --glass-badge-border: rgba(255, 255, 255, 0.1);
+    --glass-badge-shadow: 0 4px 14px -8px rgba(0, 0, 0, 0.5);
+    --glass-badge-emerald-fg: 152 76% 80%;
+    --glass-badge-emerald-border: rgba(110, 231, 183, 0.45);
+    --glass-badge-emerald-bg: hsl(var(--background) / 0.55);
+    --glass-badge-rose-fg: 351 95% 86%;
+    --glass-badge-rose-border: rgba(253, 164, 175, 0.5);
+    --glass-badge-rose-bg: hsl(var(--background) / 0.55);
   }
 }
 
-/* Color Theme Variations */
-.theme-purple {
-  --primary: 262.1 83.3% 57.8%;
-  --primary-foreground: 210 40% 98%;
-  --ring: 262.1 83.3% 57.8%;
-}
+/* ─────────────────────────────────────────────
+   Named theme palettes (.theme-green, .theme-orange, …)
+   ARE NO LONGER DEFINED HERE.
 
-.theme-green {
-  --primary: 142.1 76.2% 36.3%;
-  --primary-foreground: 355.7 100% 97.3%;
-  --ring: 142.1 76.2% 36.3%;
-}
+   They live as data in `src/lib/theme-palettes.ts` and get
+   injected as a single <style id="techhub-named-theme-palettes">
+   block by <ColorThemeScript /> (server-rendered in app/layout).
 
-.theme-orange {
-  --primary: 24.6 95% 53.1%;
-  --primary-foreground: 60 9.1% 97.8%;
-  --ring: 24.6 95% 53.1%;
-}
-
-.theme-pink {
-  --primary: 322.2 84% 60.5%;
-  --primary-foreground: 210 40% 98%;
-  --ring: 322.2 84% 60.5%;
-}
-
-.dark .theme-purple {
-  --primary: 263.4 70% 50.4%;
-  --primary-foreground: 210 40% 98%;
-  --ring: 263.4 70% 50.4%;
-}
-
-.dark .theme-green {
-  --primary: 142.1 70.6% 45.3%;
-  --primary-foreground: 144.9 80.4% 10%;
-  --ring: 142.1 70.6% 45.3%;
-}
-
-.dark .theme-orange {
-  --primary: 20.5 90.2% 48.2%;
-  --primary-foreground: 60 9.1% 97.8%;
-  --ring: 20.5 90.2% 48.2%;
-}
-
-.dark .theme-pink {
-  --primary: 322.2 84% 60.5%;
-  --primary-foreground: 210 40% 98%;
-  --ring: 322.2 84% 60.5%;
-}
-
+   To add a new theme:
+     1. Add an entry to NAMED_THEME_PALETTES in theme-palettes.ts
+     2. Add a row to COLOR_THEMES in lib/color-theme.ts
+   No CSS edit required.
+   ───────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+  }
+}
+
+@layer components {
+  body.manage-command-theme {
+    --background: 223 52% 10%;
+    --foreground: 220 72% 91%;
+    --card: 222 34% 15%;
+    --card-foreground: 220 72% 91%;
+    --popover: 222 30% 18%;
+    --popover-foreground: 220 72% 91%;
+    --primary: 224 100% 84%;
+    --primary-foreground: 221 81% 18%;
+    --secondary: 221 29% 22%;
+    --secondary-foreground: 220 72% 91%;
+    --muted: 221 29% 19%;
+    --muted-foreground: 224 22% 74%;
+    --accent: 221 30% 22%;
+    --accent-foreground: 220 72% 94%;
+    --destructive: 6 82% 77%;
+    --destructive-foreground: 0 0% 12%;
+    --border: 224 17% 28%;
+    --input: 222 48% 12%;
+    --ring: 224 100% 84%;
+    background:
+      radial-gradient(circle at top left, rgba(51, 92, 255, 0.16), transparent 26%),
+      radial-gradient(circle at top right, rgba(185, 195, 255, 0.12), transparent 22%),
+      hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  body.manage-course-studio-theme {
+    --background: 225 100% 99%;
+    --foreground: 214 56% 12%;
+    --card: 223 100% 97%;
+    --card-foreground: 214 56% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 214 56% 12%;
+    --primary: 245 63% 44%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 100% 96%;
+    --secondary-foreground: 214 56% 12%;
+    --muted: 219 100% 96%;
+    --muted-foreground: 224 10% 37%;
+    --accent: 228 100% 95%;
+    --accent-foreground: 214 56% 12%;
+    --destructive: 0 72% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 227 24% 84%;
+    --input: 0 0% 100%;
+    --ring: 245 63% 44%;
+    background:
+      radial-gradient(circle at top left, rgba(83, 74, 217, 0.11), transparent 24%),
+      radial-gradient(circle at top right, rgba(108, 248, 187, 0.08), transparent 18%),
+      hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  .manage-shell {
+    min-height: 100vh;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  .dark .manage-shell {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  .manage-shell .manage-glass {
+    background: hsl(var(--card) / 0.96);
+    border-color: hsl(var(--border));
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+    backdrop-filter: none;
+  }
+
+  .dark .manage-shell .manage-glass {
+    background: hsl(var(--card) / 0.96);
+    border-color: hsl(var(--border));
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+  }
+
+  .manage-shell .manage-display {
+    font-family: "Manrope", "Inter", sans-serif;
+    letter-spacing: 0;
+  }
+
+  .manage-shell .manage-page {
+    padding: 1.5rem;
+    /* Prevent page-level horizontal scroll on mobile so opening overlays
+       (e.g. the avatar dropdown) can't reflow/squish the layout.
+       `clip` avoids creating a scroll container, keeping the sticky header
+       (rendered above this element) working. */
+    overflow-x: clip;
+  }
+
+  @media (min-width: 1024px) {
+    .manage-shell .manage-page {
+      padding: 2rem;
+    }
+  }
+
+  .manage-shell .manage-page-frame {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .manage-shell .manage-page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .manage-shell .manage-page-title {
+    font-family: "Manrope", "Inter", sans-serif;
+    font-size: clamp(1.8rem, 2vw, 2.7rem);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: 0;
+    color: hsl(var(--foreground));
+  }
+
+  .dark .manage-shell .manage-page-title {
+    color: hsl(var(--foreground));
+  }
+
+  .manage-shell .manage-page-eyebrow {
+    color: #334155;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+
+  .dark .manage-shell .manage-page-eyebrow {
+    color: rgba(226, 232, 240, 0.78);
+  }
+
+  .manage-shell .manage-page-description {
+    max-width: 52rem;
+    color: #334155;
+    font-size: 0.97rem;
+  }
+
+  .dark .manage-shell .manage-page-description {
+    color: rgba(226, 232, 240, 0.84);
+  }
+
+  .manage-shell .manage-surface {
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+    backdrop-filter: none;
+  }
+
+  .dark .manage-shell .manage-surface {
+    border-color: hsl(var(--border));
+    background: hsl(var(--card));
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.22);
+  }
+
+  .manage-shell .manage-subsurface {
+    border: 1px solid rgba(191, 219, 254, 0.5);
+    background: rgba(248, 250, 252, 0.82);
+    border-radius: 1rem;
+  }
+
+  .dark .manage-shell .manage-subsurface {
+    border-color: rgba(148, 163, 184, 0.16);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .manage-shell .manage-data-table {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .manage-shell .manage-data-table .manage-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .manage-shell .manage-data-table .manage-toolbar-spacer {
+    margin-left: auto;
+  }
+
+  .manage-shell .manage-table-shell {
+    /* Let wide tables scroll horizontally inside the card on small screens
+       instead of being clipped (overflow:hidden) or pushing page overflow. */
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid rgba(191, 219, 254, 0.55);
+    background: rgba(255, 255, 255, 0.88);
+    border-radius: 1.15rem;
+    box-shadow: 0 18px 50px -34px rgba(15, 23, 42, 0.24);
+  }
+
+  .dark .manage-shell .manage-table-shell {
+    border-color: rgba(148, 163, 184, 0.16);
+    background: rgba(15, 23, 42, 0.72);
+    box-shadow: 0 22px 64px -38px rgba(0, 0, 0, 0.58);
+  }
+
+  .manage-shell .manage-table-shell table {
+    min-width: 100%;
+  }
+
+  .manage-shell .manage-table-shell thead {
+    background: rgba(241, 245, 249, 0.92);
+  }
+
+  .dark .manage-shell .manage-table-shell thead {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .manage-shell .manage-table-shell th {
+    height: auto;
+    padding: 0.95rem 0.9rem;
+    color: #334155;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-align: left;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
+
+  .dark .manage-shell .manage-table-shell th {
+    color: rgba(226, 232, 240, 0.8);
+  }
+
+  .manage-shell .manage-table-shell td {
+    padding: 1rem 0.9rem;
+    text-align: left;
+    vertical-align: middle;
+    color: #0f172a;
+  }
+
+  .dark .manage-shell .manage-table-shell td {
+    color: #e5eefc;
+  }
+
+  .manage-shell .manage-table-shell th > button,
+  .manage-shell .manage-table-shell th > .button,
+  .manage-shell .manage-table-shell th [role="button"] {
+    justify-content: flex-start;
+  }
+
+  .manage-shell .manage-table-shell th.manage-table-number-cell > button,
+  .manage-shell .manage-table-shell th.manage-table-money-cell > button,
+  .manage-shell .manage-table-shell th.manage-table-actions-cell > button {
+    justify-content: flex-end;
+  }
+
+  .manage-shell .manage-table-shell .manage-table-index-cell {
+    width: 3.5rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .manage-shell .manage-table-shell .manage-table-number-cell,
+  .manage-shell .manage-table-shell .manage-table-money-cell,
+  .manage-shell .manage-table-shell .manage-table-actions-cell {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .manage-shell .manage-table-shell .manage-table-actions-cell {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  .manage-shell .manage-table-shell .manage-table-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.375rem;
+  }
+
+  .manage-shell .manage-table-shell tbody tr {
+    border-top: 1px solid rgba(191, 219, 254, 0.4);
+  }
+
+  .dark .manage-shell .manage-table-shell tbody tr {
+    border-top-color: rgba(148, 163, 184, 0.14);
+  }
+
+  .manage-shell .manage-table-shell tbody tr:nth-child(even) {
+    background: rgba(248, 250, 252, 0.55);
+  }
+
+  .dark .manage-shell .manage-table-shell tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .manage-shell .manage-table-shell tbody tr:hover {
+    background: rgba(219, 234, 254, 0.52);
+  }
+
+  .dark .manage-shell .manage-table-shell tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .manage-shell .manage-kpi-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .manage-shell .manage-kpi-card {
+    border-radius: 1.1rem;
+    border: 1px solid rgba(191, 219, 254, 0.5);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.88));
+    padding: 1.15rem 1.2rem;
+    box-shadow: 0 18px 50px -36px rgba(15, 23, 42, 0.24);
+  }
+
+  .dark .manage-shell .manage-kpi-card {
+    border-color: rgba(148, 163, 184, 0.16);
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.82));
+    box-shadow: 0 20px 60px -36px rgba(0, 0, 0, 0.55);
+  }
+
+  .manage-shell .manage-kpi-label {
+    color: #334155;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .dark .manage-shell .manage-kpi-label {
+    color: rgba(226, 232, 240, 0.8);
+  }
+
+  .manage-shell .manage-kpi-value {
+    font-family: "Manrope", "Inter", sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.06em;
+    color: #0f172a;
+  }
+
+  .dark .manage-shell .manage-kpi-value {
+    color: #f8fbff;
+  }
+
+  .manage-shell .manage-dialog-panel {
+    border: 1px solid hsl(var(--app-border));
+    background: hsl(var(--app-surface));
+    border-radius: 0.75rem;
+    box-shadow: 0 14px 38px -30px rgba(15, 23, 42, 0.28);
+    backdrop-filter: none;
+  }
+
+  .dark .manage-shell .manage-dialog-panel {
+    border-color: hsl(var(--app-border));
+    background: hsl(var(--app-surface));
+    box-shadow: 0 18px 44px -32px rgba(0, 0, 0, 0.55);
+  }
+
+  .manage-shell .manage-ghost-button {
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(191, 219, 254, 0.5);
+    color: #334155;
+  }
+
+  .dark .manage-shell .manage-ghost-button {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: rgba(226, 232, 240, 0.88);
+  }
+
+  .manage-shell .manage-field {
+    height: 2.75rem;
+    border: 1px solid rgba(191, 219, 254, 0.6);
+    background: rgba(255, 255, 255, 0.82);
+    border-radius: 0.95rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  }
+
+  .manage-shell .manage-field::placeholder {
+    color: #64748b;
+  }
+
+  .dark .manage-shell .manage-field {
+    border-color: rgba(148, 163, 184, 0.18);
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+    box-shadow: none;
+  }
+
+  .dark .manage-shell .manage-field::placeholder {
+    color: rgba(226, 232, 240, 0.42);
+  }
+
+  .manage-shell .manage-filter-trigger {
+    height: 2.75rem;
+    border: 1px solid rgba(191, 219, 254, 0.6);
+    background: rgba(255, 255, 255, 0.82);
+    border-radius: 0.95rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  }
+
+  .dark .manage-shell .manage-filter-trigger {
+    border-color: rgba(148, 163, 184, 0.18);
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+    box-shadow: none;
+  }
+
+  .manage-shell .manage-primary-button {
+    border-radius: 0.5rem;
+    background: hsl(var(--primary));
+    color: #ffffff;
+    box-shadow: none;
+  }
+
+  .dark .manage-shell .manage-primary-button {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: none;
+  }
+
+  .manage-shell .manage-secondary-button {
+    border-radius: 0.5rem;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+  }
+
+  .dark .manage-shell .manage-secondary-button {
+    border-color: hsl(var(--border));
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+  }
+
+  .manage-shell .manage-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .manage-shell .manage-pagination-copy {
+    color: #334155;
+    font-size: 0.8rem;
+    line-height: 1.45;
+  }
+
+  .dark .manage-shell .manage-pagination-copy {
+    color: rgba(226, 232, 240, 0.8);
+  }
+
+  .manage-shell .manage-pagination-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .manage-shell .manage-pagination-actions > * {
+    flex-shrink: 0;
+  }
+
+  .manage-shell .manage-pagination-button {
+    min-width: 6.75rem;
+    height: 2.5rem;
+    padding-inline: 1rem;
+  }
+
+  .manage-shell .manage-sidebar {
+    overflow: hidden;
+  }
+
+  .manage-shell .manage-sidebar-nav {
+    gap: 1.15rem;
+  }
+
+  .manage-shell .manage-sidebar-brand {
+    overflow: hidden;
+  }
+
+  .manage-shell .manage-sidebar-brand :is(p, span, div) {
+    max-width: 100%;
+  }
+
+  .manage-shell .manage-sidebar-scroll {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .manage-shell .manage-sidebar-scroll::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .manage-shell .manage-sidebar-link {
+    min-height: 3.9rem;
+    align-items: center;
+  }
+
+  .manage-shell .manage-sidebar-link[data-collapsed="true"] {
+    min-height: 3.35rem;
+  }
+
+  .manage-dialog-panel :is(
+      .ui-input,
+      .ui-select-trigger,
+      .ui-textarea,
+      .manage-field,
+      .manage-filter-trigger,
+      .manage-finance-input
+    ) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .manage-shell .manage-sidebar-icon {
+    flex-shrink: 0;
+  }
+
+  .manage-shell .manage-sidebar-session {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    overflow: hidden;
+    text-align: left;
+  }
+
+  .manage-shell .manage-sidebar-meta {
+    min-width: 0;
+  }
+
+  .manage-shell .manage-finance-root {
+    min-height: calc(100vh - 4rem);
+  }
+
+  .manage-shell .manage-finance-surface {
+    border: 1px solid hsl(var(--app-border));
+    background: hsl(var(--app-surface));
+    border-radius: 0.75rem;
+    box-shadow: 0 12px 34px -28px rgba(15, 23, 42, 0.24);
+    backdrop-filter: none;
+  }
+
+  .dark .manage-shell .manage-finance-surface {
+    border-color: hsl(var(--app-border));
+    background: hsl(var(--app-surface));
+    box-shadow: 0 16px 42px -32px rgba(0, 0, 0, 0.58);
+  }
+
+  .manage-shell .manage-finance-muted {
+    color: #1e293b;
+  }
+
+  .dark .manage-shell .manage-finance-muted {
+    color: rgba(226, 232, 240, 0.8);
+  }
+
+  .manage-shell .text-muted-foreground {
+    color: #334155;
+  }
+
+  .dark .manage-shell .text-muted-foreground {
+    color: #cbd5e1;
+  }
+
+  .manage-shell .manage-finance-table {
+    overflow-x: auto;
+    border-radius: 1rem;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card) / 0.9);
+  }
+
+  .dark .manage-shell .manage-finance-table {
+    border-color: hsl(var(--border));
+    background: hsl(var(--card) / 0.9);
+  }
+
+  .manage-shell .manage-finance-table table {
+    min-width: 100%;
+  }
+
+  .manage-shell .manage-finance-table thead {
+    background: hsl(var(--muted) / 0.8);
+  }
+
+  .manage-shell .manage-finance-table th,
+  .manage-shell .manage-finance-table td {
+    vertical-align: middle;
+  }
+
+  .dark .manage-shell .manage-finance-table thead {
+    background: hsl(var(--muted) / 0.8);
+  }
+
+  .manage-shell .manage-finance-table tbody tr:hover {
+    background: hsl(var(--accent) / 0.45);
+  }
+
+  .dark .manage-shell .manage-finance-table tbody tr:hover {
+    background: hsl(var(--accent) / 0.3);
+  }
+
+  .manage-shell .manage-finance-input {
+    height: 2.75rem;
+    border: 1px solid hsl(var(--input));
+    background: hsl(var(--card));
+    border-radius: 0.95rem;
+    color: hsl(var(--foreground));
+    box-shadow: 0 10px 30px -24px hsl(var(--primary) / 0.34);
+  }
+
+  .manage-shell .manage-finance-input::placeholder {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .dark .manage-shell .manage-finance-input {
+    border-color: hsl(var(--input));
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    box-shadow: 0 16px 36px -26px hsl(var(--background) / 0.6);
+  }
+
+  .dark .manage-shell .manage-finance-input::placeholder {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .manage-shell .manage-finance-primary {
+    border-radius: 0.5rem;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 10px 24px -20px rgba(37, 99, 235, 0.5);
+  }
+
+  .dark .manage-shell .manage-finance-primary {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 12px 26px -20px rgba(77, 142, 255, 0.5);
+  }
+
+  .manage-shell .manage-finance-secondary {
+    border-radius: 0.5rem;
+    border: 1px solid hsl(var(--app-border));
+    background: hsl(var(--app-surface));
+    color: hsl(var(--foreground));
+  }
+
+  .dark .manage-shell .manage-finance-secondary {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+  }
+
+  .manage-shell .manage-popover-panel {
+    border: 1px solid hsl(var(--app-border));
+    background: hsl(var(--app-surface));
+    box-shadow: 0 12px 30px -24px rgba(15, 23, 42, 0.24);
+    backdrop-filter: none;
+  }
+
+  .dark .manage-shell .manage-popover-panel {
+    border-color: rgba(148, 163, 184, 0.16);
+    background: rgba(15, 23, 42, 0.94);
+    box-shadow: 0 28px 60px -34px rgba(0, 0, 0, 0.62);
+  }
+
+  .manage-shell :is(
+      .ui-input,
+      .ui-select-trigger,
+      .ui-textarea,
+      .manage-field,
+      .manage-filter-trigger,
+      .manage-finance-input
+    ) {
+    border: 1px solid rgba(191, 219, 254, 0.62);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9));
+    color: #0f172a;
+    border-radius: 1rem;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      0 10px 30px -24px rgba(37, 99, 235, 0.34);
+    transition:
+      border-color var(--motion-base) var(--ease-out-soft),
+      box-shadow var(--motion-base) var(--ease-out-soft),
+      background-color var(--motion-base) var(--ease-out-soft),
+      color var(--motion-base) var(--ease-out-soft);
+  }
+
+  .manage-shell :is(
+      .ui-input,
+      .ui-select-trigger,
+      .manage-field,
+      .manage-filter-trigger,
+      .manage-finance-input
+    ) {
+    min-height: 2.875rem;
+    padding-inline: 0.95rem;
+  }
+
+  .manage-shell :is(.ui-textarea) {
+    min-height: 7rem;
+    padding: 0.9rem 1rem;
+    line-height: 1.55;
+  }
+
+  .manage-shell :is(.ui-input, .ui-textarea, .manage-field, .manage-finance-input)::placeholder {
+    color: #64748b;
+  }
+
+  .manage-shell :is(
+      .ui-input,
+      .ui-select-trigger,
+      .ui-textarea,
+      .manage-field,
+      .manage-filter-trigger,
+      .manage-finance-input
+    ):focus-visible,
+  .manage-shell :is(
+      .ui-input,
+      .ui-select-trigger,
+      .ui-textarea,
+      .manage-field,
+      .manage-filter-trigger,
+      .manage-finance-input
+    ):focus {
+    border-color: rgba(59, 130, 246, 0.58);
+    box-shadow:
+      0 0 0 3px rgba(96, 165, 250, 0.18),
+      0 14px 32px -24px rgba(37, 99, 235, 0.36);
+  }
+
+  .dark .manage-shell :is(
+      .ui-input,
+      .ui-select-trigger,
+      .ui-textarea,
+      .manage-field,
+      .manage-filter-trigger,
+      .manage-finance-input
+    ) {
+    border-color: rgba(148, 163, 184, 0.22);
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.84));
+    color: #e5eefc;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 16px 36px -26px rgba(2, 6, 23, 0.6);
+  }
+
+  .dark .manage-shell :is(.ui-input, .ui-textarea, .manage-field, .manage-finance-input)::placeholder {
+    color: rgba(226, 232, 240, 0.44);
+  }
+
+  .dark .manage-shell :is(
+      .ui-input,
+      .ui-select-trigger,
+      .ui-textarea,
+      .manage-field,
+      .manage-filter-trigger,
+      .manage-finance-input
+    ):focus-visible,
+  .dark .manage-shell :is(
+      .ui-input,
+      .ui-select-trigger,
+      .ui-textarea,
+      .manage-field,
+      .manage-filter-trigger,
+      .manage-finance-input
+    ):focus {
+    border-color: rgba(125, 211, 252, 0.42);
+    box-shadow:
+      0 0 0 3px rgba(59, 130, 246, 0.16),
+      0 18px 40px -28px rgba(37, 99, 235, 0.45);
+  }
+
+  .manage-shell :is(.manage-dialog-panel, .manage-surface, .manage-finance-surface) form label {
+    color: #0f172a;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .dark .manage-shell :is(.manage-dialog-panel, .manage-surface, .manage-finance-surface) form label {
+    color: #e5eefc;
+  }
+
+  .manage-shell :is(.manage-dialog-panel, .manage-surface, .manage-finance-surface) form .ui-button {
+    border-radius: 1rem;
+    min-height: 2.75rem;
+    font-weight: 600;
+  }
+
+  .manage-shell :is(.manage-dialog-panel, .manage-surface, .manage-finance-surface) form .ui-button.border {
+    border-color: rgba(191, 219, 254, 0.58);
+    background: rgba(255, 255, 255, 0.9);
+    color: #334155;
+  }
+
+  .dark .manage-shell :is(.manage-dialog-panel, .manage-surface, .manage-finance-surface) form .ui-button.border {
+    border-color: rgba(148, 163, 184, 0.18);
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+  }
+
+  .manage-shell :is(.manage-dialog-panel, .manage-surface, .manage-finance-surface) form [class*="DialogFooter"] {
+    padding-top: 0.5rem;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) :is(.manage-payout-root, .manage-revenue-root) {
+    background: transparent;
+    color: inherit;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) :is(.manage-payout-root, .manage-revenue-root) {
+    background: transparent;
+    color: inherit;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .bg-\[\#1b1f2c\] {
+    background-color: rgba(255, 255, 255, 0.88);
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) [class*="bg-[#1b1f2c]"] {
+    background-color: rgba(255, 255, 255, 0.88);
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .bg-\[\#1b1f2c\] {
+    background-color: #1b1f2c;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) [class*="bg-[#1b1f2c]"] {
+    background-color: #1b1f2c;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .bg-\[\#0f131f\] {
+    background-color: rgba(248, 250, 252, 0.96);
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) [class*="bg-[#0a0e1a]"] {
+    background-color: rgba(248, 250, 252, 0.94);
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .bg-\[\#0f131f\] {
+    background-color: #0f131f;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) [class*="bg-[#0a0e1a]"] {
+    background-color: rgba(10, 14, 26, 0.9);
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-\[\#f0f4ff\] {
+    color: #0f172a;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-\[\#f0f4ff\] {
+    color: #f0f4ff;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-\[\#dfe2f3\] {
+    color: #1e293b;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-\[\#dfe2f3\] {
+    color: #dfe2f3;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .border-white\/5,
+  body:is(.manage-payout-page, .manage-revenue-page) .border-white\/8,
+  body:is(.manage-payout-page, .manage-revenue-page) .border-white\/10 {
+    border-color: rgba(191, 219, 254, 0.55);
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .border-white\/5,
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .border-white\/8,
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .border-white\/10 {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .bg-white\/4,
+  body:is(.manage-payout-page, .manage-revenue-page) .bg-white\/5 {
+    background-color: rgba(255, 255, 255, 0.92);
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .bg-white\/4,
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .bg-white\/5 {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-white\/45 {
+    color: #334155;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-white\/50 {
+    color: #334155;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-white\/55 {
+    color: #1e293b;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-white\/60 {
+    color: #1e293b;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-white\/65 {
+    color: #1e293b;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-white\/70 {
+    color: #0f172a;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-white\/75 {
+    color: #0f172a;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-white\/80 {
+    color: #0f172a;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-white\/45 {
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-white\/50 {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-white\/55 {
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-white\/60 {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-white\/65 {
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-white\/70 {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-white\/75 {
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-white\/80 {
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-blue-200 {
+    color: #1d4ed8;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-emerald-200 {
+    color: #047857;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-amber-100 {
+    color: #b45309;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-rose-200 {
+    color: #be123c;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-cyan-100 {
+    color: #0f766e;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .text-slate-200 {
+    color: #475569;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-blue-200 {
+    color: #bfdbfe;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-emerald-200 {
+    color: #a7f3d0;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-amber-100 {
+    color: #fef3c7;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-rose-200 {
+    color: #fecdd3;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-cyan-100 {
+    color: #cffafe;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .text-slate-200 {
+    color: #e2e8f0;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .hover\:bg-white\/5:hover {
+    background-color: rgba(226, 232, 240, 0.9);
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .hover\:bg-white\/5:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) .hover\:text-white:hover {
+    color: #0f172a;
+  }
+
+  .dark body:is(.manage-payout-page, .manage-revenue-page) .hover\:text-white:hover {
+    color: #ffffff;
+  }
+
+  .manage-shell :is(.rounded-3xl, .rounded-\[28px\]) {
+    border-radius: 0.75rem !important;
+  }
+
+  .manage-shell :is(.shadow-xl, .shadow-2xl),
+  body:is(.manage-payout-page, .manage-revenue-page) :is(.shadow-xl, .shadow-2xl) {
+    box-shadow: 0 12px 34px -28px rgba(15, 23, 42, 0.28) !important;
+  }
+
+  .manage-shell :is(.backdrop-blur, .backdrop-blur-sm, .backdrop-blur-md, .backdrop-blur-xl),
+  body:is(.manage-payout-page, .manage-revenue-page) :is(.backdrop-blur, .backdrop-blur-sm, .backdrop-blur-md, .backdrop-blur-xl) {
+    backdrop-filter: none !important;
+  }
+
+  .manage-shell :is(.text-purple-500, .text-purple-600, .dark\:text-purple-400) {
+    color: hsl(var(--primary)) !important;
+  }
+
+  .manage-shell :is(.bg-purple-500, .bg-purple-600, .hover\:bg-purple-700:hover) {
+    background-color: hsl(var(--primary)) !important;
+  }
+
+  .manage-shell [class*="bg-gradient-to"] {
+    background-image: none !important;
+  }
+
+  body:is(.manage-payout-page, .manage-revenue-page) [class*="bg-gradient-to"],
+  body:is(.manage-payout-page, .manage-revenue-page) [class*="bg-[linear-gradient"] {
+    background-image: none !important;
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  .manage-shell .manage-status-chip {
+    border-radius: 999px;
+    padding: 0.25rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  @media (max-height: 860px) {
+    .manage-shell .manage-sidebar-nav {
+      gap: 0.85rem;
+      padding-top: 1rem;
+      padding-bottom: 1rem;
+    }
+
+    .manage-shell .manage-sidebar-link {
+      min-height: 3.45rem;
+    }
+
+    .manage-shell .manage-sidebar-session {
+      padding-top: 0.85rem;
+      padding-bottom: 0.85rem;
+    }
+  }
+
+  @media (max-height: 760px) {
+    .manage-shell .manage-sidebar-link {
+      min-height: 3.15rem;
+    }
+
+    .manage-shell .manage-sidebar-brand {
+      padding-top: 0.9rem;
+      padding-bottom: 0.9rem;
+    }
+
+    .manage-shell .manage-sidebar-icon {
+      height: 2.5rem;
+      width: 2.5rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .manage-shell .manage-pagination {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .manage-shell .manage-pagination-copy {
+      width: 100%;
+      text-align: center;
+    }
+
+    .manage-shell .manage-pagination-actions {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.5rem;
+    }
+
+    .manage-shell .manage-pagination-button {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .manage-shell .manage-pagination-actions > :last-child {
+      grid-column: 1 / -1;
+      width: 100%;
+    }
+
+    .manage-shell .manage-pagination-actions .manage-filter-trigger {
+      width: 100% !important;
+      justify-content: space-between;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .manage-dialog-panel {
+      width: calc(100vw - 1rem);
+      max-width: calc(100vw - 1rem);
+      max-height: calc(100dvh - 1rem);
+      padding: 1rem;
+      border-radius: 1rem;
+    }
+
+    .manage-dialog-panel [class~="grid-cols-2"],
+    .manage-dialog-panel [class~="grid-cols-3"],
+    .manage-dialog-panel [class~="grid-cols-12"] {
+      grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    .manage-shell .manage-pagination-copy {
+      font-size: 0.75rem;
+    }
+  }
+
+  @media (max-width: 960px) {
+    .manage-shell .manage-finance-root {
+      gap: 1rem;
+    }
+
+    .manage-shell .manage-finance-surface {
+      border-radius: 1.1rem;
+    }
+
+    .manage-shell .manage-finance-table table {
+      min-width: 820px;
+    }
+
+    .manage-shell .manage-finance-primary,
+    .manage-shell .manage-finance-secondary {
+      min-height: 2.75rem;
+      justify-content: center;
+      white-space: normal;
+      text-align: center;
+      line-height: 1.25;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .manage-shell .manage-finance-root {
+      padding-inline: 0.75rem;
+      padding-bottom: 1.25rem;
+    }
+
+    .manage-shell .manage-finance-root .manage-finance-table {
+      margin-inline: -0.15rem;
+    }
+
+    .manage-shell .manage-finance-root :is(.manage-finance-primary, .manage-finance-secondary) {
+      width: 100%;
+    }
+
+    .manage-shell .manage-finance-root .manage-finance-table {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .manage-shell .manage-finance-root .manage-finance-table table {
+      min-width: 900px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .manage-shell .manage-finance-root .manage-finance-surface {
+      border-radius: 1rem;
+    }
+
+    .manage-shell .manage-finance-root .manage-finance-table table {
+      min-width: 960px;
+    }
+
+    .manage-shell .manage-finance-root h1,
+    .manage-shell .manage-finance-root h2 {
+      word-break: break-word;
+    }
+  }
+
+  /* Below the lg breakpoint the sidebar is hidden and the content spans the
+     full viewport, so wide multi-column tables must scroll horizontally inside
+     their shell instead of overflowing the page (which made mobile browsers
+     zoom the whole layout out). */
+  @media (max-width: 1023px) {
+    .manage-shell .manage-table-shell {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .manage-shell .manage-table-shell table {
+      min-width: 48rem;
+    }
+  }
+
+  /* Radix ScrollArea wraps its children in an inline element with
+     `display: table; min-width: 100%`, which grows to the content's intrinsic
+     width. Because the ScrollArea root is `overflow: hidden` with only a
+     vertical scrollbar, any content wider than the viewport (long answers,
+     course cards, lesson video) gets clipped on mobile instead of wrapping.
+     Forcing the wrapper to block layout makes content wrap to the viewport
+     width. Done in plain CSS because a Tailwind arbitrary variant with nested
+     brackets (`[&_[data-...]>div]`) fails to compile. */
+  .ai-chat-scroll [data-radix-scroll-area-viewport] > div,
+  .course-learn-scroll [data-radix-scroll-area-viewport] > div {
+    display: block !important;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     Mobile compaction shared by every /manage page. Tightens the
+     type scale, spacing and padding on small screens so the admin
+     console stays usable on phones without each page shipping its
+     own breakpoints. Page-specific layouts already collapse to a
+     single column via their own responsive grid utilities.
+     ────────────────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .manage-shell .manage-page {
+      padding: 1rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .manage-shell .manage-page {
+      padding: 0.85rem;
+    }
+
+    .manage-shell .manage-page-frame {
+      gap: 1rem;
+    }
+
+    .manage-shell .manage-page-header {
+      gap: 0.65rem;
+    }
+
+    .manage-shell .manage-page-title {
+      font-size: 1.45rem;
+      line-height: 1.18;
+    }
+
+    .manage-shell .manage-page-eyebrow {
+      font-size: 0.62rem;
+      letter-spacing: 0.16em;
+    }
+
+    .manage-shell .manage-page-description {
+      font-size: 0.84rem;
+    }
+
+    /* KPI stat cards: two compact columns instead of one stretched card */
+    .manage-shell .manage-kpi-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem;
+    }
+
+    .manage-shell .manage-kpi-card {
+      padding: 0.8rem 0.85rem;
+      border-radius: 0.85rem;
+    }
+
+    .manage-shell .manage-kpi-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+    }
+
+    .manage-shell .manage-kpi-value {
+      font-size: 1.35rem;
+    }
+
+    /* Compact cells for the custom table shell and plain shadcn tables */
+    .manage-shell .manage-table-shell th,
+    .manage-shell .manage-table-shell td,
+    .manage-shell .manage-table-shell .manage-table-actions-cell {
+      padding: 0.6rem 0.6rem;
+    }
+
+    .manage-shell .manage-table-shell th {
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+    }
+
+    .manage-shell .manage-table-shell td {
+      font-size: 0.8rem;
+    }
+
+    /* Shorter inputs / selects to reclaim vertical space */
+    .manage-shell .manage-field,
+    .manage-shell .manage-filter-trigger {
+      height: 2.5rem;
+      border-radius: 0.75rem;
+    }
+
+    /* Toolbars and data-table stacks breathe less on phones */
+    .manage-shell .manage-data-table {
+      gap: 0.85rem;
+    }
+
+    .manage-shell .manage-data-table .manage-toolbar {
+      gap: 0.5rem;
+    }
   }
 }
 @layer base {
@@ -221,6 +1690,563 @@
 .animate-marquee-pause {
   animation: marqueePause 30s linear infinite; /* Chạy 40s nhưng nghỉ chỉ 5% thời gian */
   animation-play-state: running;
+}
+
+@keyframes orbitCategoriesSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbitCategoriesCounterSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.orbit-categories-spin {
+  animation-name: orbitCategoriesSpin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-play-state: running;
+  will-change: transform;
+}
+
+.orbit-categories-counter-spin {
+  animation-name: orbitCategoriesCounterSpin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-play-state: running;
+  will-change: transform;
+}
+
+@layer components {
+  .app-control {
+    height: 2.5rem !important;
+    min-height: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid hsl(var(--border)) !important;
+    border-radius: 0.625rem !important;
+    background: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+    transition:
+      background-color var(--motion-base) var(--ease-out-soft),
+      border-color var(--motion-base) var(--ease-out-soft),
+      color var(--motion-base) var(--ease-out-soft),
+      box-shadow var(--motion-base) var(--ease-out-soft);
+  }
+
+  .app-control:hover {
+    border-color: hsl(var(--primary) / 0.38) !important;
+    background: hsl(var(--muted)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .app-control:focus-visible,
+  .app-control[data-state="open"] {
+    border-color: hsl(var(--primary) / 0.62) !important;
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.14) !important;
+    outline: none;
+  }
+
+  .app-control-icon {
+    width: 2.5rem !important;
+    padding-inline: 0 !important;
+  }
+
+  .app-control-sm {
+    height: 2rem !important;
+    min-height: 2rem;
+    width: 2rem !important;
+    border-radius: 0.5rem !important;
+    padding-inline: 0 !important;
+  }
+
+  .app-control-select {
+    width: 10rem !important;
+    justify-content: space-between;
+  }
+
+  .app-control-select-compact-mobile {
+    width: 2.5rem !important;
+    padding-inline: 0 !important;
+    justify-content: center !important;
+  }
+
+  .app-control-select-compact-mobile > svg {
+    display: none;
+  }
+
+  @media (min-width: 640px) {
+    .app-control-select-compact-mobile {
+      width: 10rem !important;
+      padding-inline: 0.75rem !important;
+      justify-content: space-between !important;
+    }
+
+    .app-control-select-compact-mobile > svg {
+      display: block;
+    }
+  }
+
+  .app-control-menu {
+    border: 1px solid hsl(var(--border)) !important;
+    border-radius: 0.75rem !important;
+    background: hsl(var(--popover)) !important;
+    box-shadow: 0 12px 34px -28px rgba(15, 23, 42, 0.35) !important;
+  }
+
+  .app-control-avatar {
+    height: 2rem;
+    width: 2rem;
+    border-radius: 0.5rem;
+  }
+
+  .public-shell :is(.shadow-xl, .shadow-2xl) {
+    box-shadow: 0 12px 34px -28px rgba(15, 23, 42, 0.28) !important;
+  }
+
+  .public-shell :is(.rounded-3xl, .rounded-2xl) {
+    border-radius: 0.75rem !important;
+  }
+
+  .public-shell :is(.backdrop-blur, .backdrop-blur-sm, .backdrop-blur-md, .backdrop-blur-xl) {
+    backdrop-filter: none !important;
+  }
+
+  .public-shell :is(
+      .text-purple-500,
+      .text-purple-600,
+      .dark\:text-purple-400
+    ) {
+    color: hsl(var(--primary)) !important;
+  }
+
+  .public-shell .group:hover :is(.group-hover\:text-purple-600, .dark\:group-hover\:text-purple-400) {
+    color: hsl(var(--primary)) !important;
+  }
+
+  .public-shell :is(.bg-purple-50, .dark\:bg-purple-900\/20, .dark\:bg-purple-950\/30) {
+    background-color: hsl(var(--primary) / 0.08) !important;
+  }
+
+  .public-shell :is(
+      .bg-purple-500,
+      .bg-purple-600,
+      .hover\:bg-purple-700:hover,
+      .dark\:bg-purple-500
+    ) {
+    background-color: hsl(var(--primary)) !important;
+  }
+
+  .public-shell :is(.border-purple-500, .border-purple-600, .hover\:border-purple-500:hover) {
+    border-color: hsl(var(--primary)) !important;
+  }
+
+  .public-shell [class*="from-purple"],
+  .public-shell [class*="to-purple"] {
+    background-image: none !important;
+    background-color: hsl(var(--primary) / 0.1) !important;
+  }
+
+  .public-shell [class*="from-blue-50"][class*="to-indigo-100"],
+  .public-shell [class*="from-blue-600"][class*="to-indigo-900"],
+  .public-shell [class*="to-indigo"] {
+    background-image: none !important;
+    background-color: hsl(var(--app-surface-subtle)) !important;
+  }
+
+  /* Normalise legacy hover-scale / translate values inside the
+     public shell. Anywhere a card uses an arbitrary
+     `hover:-translate-y-{n}` or `group-hover:scale-[…]` we
+     remap it to the unified token so the feel stays consistent
+     even before each component is migrated to .th-* utilities. */
+  .public-shell .hover\:-translate-y-1:hover,
+  .public-shell .hover\:-translate-y-2:hover,
+  .public-shell .hover\:-translate-y-0\.5:hover {
+    --tw-translate-y: var(--hover-lift) !important;
+  }
+  .public-shell .group:hover .group-hover\:scale-105,
+  .public-shell .group:hover .group-hover\:scale-110,
+  .public-shell .group:hover .group-hover\:scale-\[1\.03\],
+  .public-shell .group:hover .group-hover\:scale-\[1\.05\],
+  .public-shell .group:hover .group-hover\:scale-\[1\.07\] {
+    --tw-scale-x: var(--hover-zoom) !important;
+    --tw-scale-y: var(--hover-zoom) !important;
+  }
+  .public-shell .duration-200,
+  .public-shell .duration-300,
+  .public-shell .duration-500,
+  .public-shell .duration-700 {
+    transition-duration: var(--motion-base) !important;
+  }
+  .public-shell .duration-1000 {
+    transition-duration: var(--motion-slow) !important;
+  }
+
+  /* ─────────────────────────────────────────────
+     Unified interaction utilities (.th-*)
+
+     One place to change the "feel" of the whole app.
+     Every clickable card / tile / icon / button should
+     lean on these so hover, press, focus, and selected
+     states stay consistent across pages.
+     ───────────────────────────────────────────── */
+
+  /* Base transition for any interactive element.
+     Animates colour, background, border, shadow and
+     transform together using the standard easing. */
+  .th-interactive {
+    transition-property: color, background-color, border-color, box-shadow,
+      transform, opacity;
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--ease-out-soft);
+    will-change: transform;
+  }
+
+  /* Pure colour-only interactive element (links, icons in text). */
+  .th-interactive-color {
+    transition: color var(--motion-base) var(--ease-out-soft),
+      background-color var(--motion-base) var(--ease-out-soft),
+      border-color var(--motion-base) var(--ease-out-soft);
+  }
+
+  /* Standard focus ring used on cards, tiles, links, custom buttons.
+     Pairs with focus-visible. */
+  .th-focus-ring:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring-shadow);
+    border-color: hsl(var(--ring)) !important;
+  }
+
+  /* Default elevated card surface. Applies the soft "floating"
+     shadow + a near-invisible border so cards read as a single
+     surface separated from the page bg even before any hover. */
+  .th-card-elevated {
+    background-color: hsl(var(--card));
+    border: 1px solid var(--card-border);
+    box-shadow: var(--card-shadow);
+  }
+
+  /* Card / tile lift used on every "clickable card" (course card,
+     blog card, learning-path card, category tile, instructor card,
+     skill tile, etc.). Apply alongside `group` so child elements
+     can react via group-hover. Pairs with .th-card-elevated for
+     the rest-state shadow. */
+  .th-hover-lift {
+    box-shadow: var(--card-shadow);
+    transition-property: transform, box-shadow, border-color,
+      background-color;
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--ease-out-soft);
+    will-change: transform;
+  }
+  .th-hover-lift:hover {
+    transform: translateY(var(--hover-lift));
+    box-shadow: var(--lift-shadow);
+    border-color: hsl(var(--primary) / 0.32) !important;
+  }
+  .th-hover-lift:focus-visible {
+    outline: none;
+    transform: translateY(var(--hover-lift));
+    box-shadow: var(--lift-shadow), var(--focus-ring-shadow);
+    border-color: hsl(var(--ring)) !important;
+  }
+  .th-hover-lift:active {
+    transform: translateY(0) scale(var(--press-scale));
+    transition-duration: var(--motion-fast);
+  }
+
+  /* Stronger lift for hero / featured cards. */
+  .th-hover-lift-strong {
+    transition-property: transform, box-shadow, border-color;
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--ease-out-soft);
+    will-change: transform;
+  }
+  .th-hover-lift-strong:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--lift-shadow-strong);
+    border-color: hsl(var(--primary) / 0.5) !important;
+  }
+
+  /* Image zoom inside a `.group` parent. Sits on the <img> /
+     <Image> directly. Replaces every ad-hoc
+     `group-hover:scale-[1.03|1.05|1.1] duration-300|500`. */
+  .th-hover-zoom {
+    transition: transform var(--motion-slow) var(--ease-out-soft);
+    will-change: transform;
+  }
+  .group:hover .th-hover-zoom,
+  .group:focus-visible .th-hover-zoom {
+    transform: scale(var(--hover-zoom));
+  }
+
+  /* Icon pop inside a `.group`. Replaces ad-hoc
+     `group-hover:scale-110 transition-transform`. */
+  .th-hover-icon {
+    transition: transform var(--motion-base) var(--ease-spring),
+      color var(--motion-base) var(--ease-out-soft);
+    will-change: transform;
+  }
+  .group:hover .th-hover-icon,
+  .group:focus-visible .th-hover-icon {
+    transform: scale(1.08);
+  }
+
+  /* Title colour swap inside a `.group`. Replaces ad-hoc
+     `transition-colors group-hover:text-primary`. */
+  .th-hover-title {
+    transition: color var(--motion-base) var(--ease-out-soft);
+  }
+  .group:hover .th-hover-title,
+  .group:focus-visible .th-hover-title {
+    color: hsl(var(--primary));
+  }
+
+  /* Arrow / chevron slide inside a `.group`. Replaces ad-hoc
+     `transition-transform group-hover:translate-x-1`. */
+  .th-hover-arrow {
+    transition: transform var(--motion-base) var(--ease-out-soft);
+  }
+  .group:hover .th-hover-arrow,
+  .group:focus-visible .th-hover-arrow {
+    transform: translateX(4px);
+  }
+
+  /* Press feedback for buttons / pill controls.
+     Adds a subtle scale-down on :active. */
+  .th-press {
+    transition: transform var(--motion-fast) var(--ease-out-soft);
+  }
+  .th-press:active {
+    transform: scale(var(--press-scale));
+  }
+
+  /* Hover overlay reveal (e.g. dark gradient on top of a thumbnail,
+     play icon on a video tile). Place on a child of `.group` that
+     starts at opacity-0. */
+  .th-reveal-on-hover {
+    opacity: 0;
+    transition: opacity var(--motion-base) var(--ease-out-soft);
+  }
+  .group:hover .th-reveal-on-hover,
+  .group:focus-visible .th-reveal-on-hover {
+    opacity: 1;
+  }
+
+  /* Selected / active state used by tabs, segmented controls,
+     nav items, list items, dropdown items, etc. Recognises
+     all the common Radix / ARIA / shadcn flags so designers
+     don't have to remember which one to use. */
+  .th-selectable {
+    transition-property: background-color, color, border-color,
+      box-shadow;
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--ease-out-soft);
+  }
+  .th-selectable:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+  }
+  .th-selectable[data-state="active"],
+  .th-selectable[data-state="open"],
+  .th-selectable[data-selected="true"],
+  .th-selectable[aria-selected="true"],
+  .th-selectable[aria-current="page"],
+  .th-selectable[aria-pressed="true"],
+  .th-selectable[data-active="true"] {
+    background-color: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+    border-color: hsl(var(--primary) / 0.35);
+  }
+
+  /* Glassmorphism badge — theme-aware via CSS variables. In light
+     mode it's a frosted-white pill (so it doesn't punch black holes
+     into the pastel placeholder); in dark mode it stays the dark
+     frosted glass we used before. Tone variants only tweak the
+     border + text colour, never a saturated fill, so the badge wall
+     stays calm. */
+  .th-glass-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: hsl(var(--glass-badge-fg));
+    background: var(--glass-badge-bg);
+    border: 1px solid var(--glass-badge-border);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    box-shadow: var(--glass-badge-shadow);
+  }
+  .th-glass-badge[data-tone="emerald"] {
+    color: hsl(var(--glass-badge-emerald-fg));
+    background: var(--glass-badge-emerald-bg);
+    border-color: var(--glass-badge-emerald-border);
+  }
+  .th-glass-badge[data-tone="rose"] {
+    color: hsl(var(--glass-badge-rose-fg));
+    background: var(--glass-badge-rose-bg);
+    border-color: var(--glass-badge-rose-border);
+  }
+  /* `amber` tone retained for back-compat — same calm look as
+     default; icon is the signal. */
+  .th-glass-badge[data-tone="amber"] {
+    color: hsl(var(--glass-badge-fg));
+    background: var(--glass-badge-bg);
+    border-color: var(--glass-badge-border);
+  }
+
+  /* Empty-state thumbnail surface. Driven entirely by the
+     `--placeholder-*` tokens so it switches automatically between
+     pastel (light) and deep slate/indigo (dark). The accent radial
+     position is passed as a runtime style via --placeholder-accent-pos. */
+  .th-placeholder-surface {
+    position: relative;
+    background-image:
+      radial-gradient(
+        circle at var(--placeholder-accent-pos, 50% 30%),
+        var(--placeholder-accent) 0%,
+        transparent 55%
+      ),
+      var(--placeholder-base);
+    color: hsl(var(--placeholder-fg));
+  }
+  .th-placeholder-chip {
+    background-color: var(--placeholder-chip-bg);
+    border: 1px solid var(--placeholder-chip-border);
+    color: hsl(var(--placeholder-fg));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .th-placeholder-muted {
+    color: hsl(var(--placeholder-fg-muted));
+  }
+
+  /* Price emphasis — uses neutral foreground (white in dark / near
+     black in light) rather than a saturated colour, so it never
+     competes with the primary CTA button for visual spotlight. */
+  .th-price {
+    color: hsl(var(--foreground));
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Opt-in warm variant when the design explicitly wants a money
+     accent (e.g. "free" highlight). Most callers shouldn't use it. */
+  .th-price[data-tone="money"] {
+    color: hsl(var(--money));
+  }
+
+  /* Soft separator that reads cleanly on both light and dark.
+     Use to split the lower "purchase" half of a card from the
+     upper "content" half. */
+  .th-divider {
+    border-top: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  /* Metadata pill — minimal, monochrome. No background, no border
+     by default; just spaced caps text in muted-foreground. This
+     is the right choice for secondary info (level, language) so
+     the card stays calm. Use `data-tone="ghost"` for a barely-
+     visible outlined version when separation is needed. */
+  .th-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+  .th-meta-pill + .th-meta-pill::before {
+    content: "·";
+    margin-right: 0.5rem;
+    color: hsl(var(--muted-foreground) / 0.5);
+  }
+  .th-meta-pill[data-tone="ghost"] {
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+  .th-meta-pill[data-tone="ghost"] + .th-meta-pill[data-tone="ghost"]::before {
+    content: none;
+  }
+
+  /* Global normalisation: any element using the legacy patterns
+     gets the standard easing automatically. This makes scattered
+     `transition-all` / `transition-colors` / `transition-transform`
+     calls converge on the same easing curve without having to
+     touch every component. */
+  .transition-colors,
+  .transition-opacity,
+  .transition-transform,
+  .transition-shadow,
+  .transition-all {
+    transition-timing-function: var(--ease-out-soft);
+  }
+}
+
+@layer utilities {
+  /* Shorthand duration / easing helpers compatible with Tailwind's
+     transition-* utilities. Use alongside `transition-colors` etc. */
+  .duration-snappy {
+    transition-duration: var(--motion-fast);
+  }
+  .duration-std {
+    transition-duration: var(--motion-base);
+  }
+  .duration-gentle {
+    transition-duration: var(--motion-slow);
+  }
+  .ease-out-soft {
+    transition-timing-function: var(--ease-out-soft);
+  }
+  .ease-in-out-soft {
+    transition-timing-function: var(--ease-in-out-soft);
+  }
+  .ease-spring {
+    transition-timing-function: var(--ease-spring);
+  }
+}
+
+/* Respect reduced-motion globally, not just inside .ai-chat-theme. */
+@media (prefers-reduced-motion: reduce) {
+  .th-interactive,
+  .th-interactive-color,
+  .th-hover-lift,
+  .th-hover-lift-strong,
+  .th-hover-zoom,
+  .th-hover-icon,
+  .th-hover-title,
+  .th-hover-arrow,
+  .th-press,
+  .th-reveal-on-hover,
+  .th-selectable {
+    transition-duration: 0.001ms !important;
+  }
+  .th-hover-lift:hover,
+  .th-hover-lift-strong:hover,
+  .group:hover .th-hover-zoom,
+  .group:hover .th-hover-icon,
+  .group:hover .th-hover-arrow {
+    transform: none !important;
+  }
 }
 
 /* TipTap Editor Styles */
@@ -306,4 +2332,142 @@
   font-size: 1.25rem;
   font-weight: 600;
   margin: 1rem 0 0.5rem;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   AI Chat - TechHub workspace theme (scoped to /ai-chat)
+   Activated by adding .ai-chat-theme to the page root.
+   ────────────────────────────────────────────────────────────── */
+.ai-chat-theme {
+  --data-pos: var(--learning-accent);
+  --data-neg: var(--destructive);
+  --data-info: var(--primary);
+
+  --font-ui: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-ui);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark .ai-chat-theme,
+.ai-chat-theme.dark {
+  --data-pos: var(--learning-accent);
+  --data-neg: var(--destructive);
+  --data-info: var(--primary);
+}
+
+.ai-chat-theme .rounded-sm {
+  border-radius: 0.5rem;
+}
+
+.ai-chat-theme .font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.ai-chat-theme .tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Selection */
+.ai-chat-theme ::selection {
+  background: hsl(var(--primary) / 0.16);
+  color: hsl(var(--foreground));
+}
+
+/* Focus ring override */
+.ai-chat-theme :focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Respect reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .ai-chat-theme *,
+  .ai-chat-theme *::before,
+  .ai-chat-theme *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Rendered rich HTML coming from the editor (blog articles and
+   course lesson bodies). The @tailwindcss/typography plugin is NOT
+   installed, so the `prose` classes are inert. These rules give the
+   rendered HTML sane, mobile-safe defaults and prevent horizontal
+   overflow on small screens (wide images, code blocks, tables and
+   long URLs).
+   ────────────────────────────────────────────────────────────── */
+.rich-content {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.rich-content img,
+.rich-content video,
+.rich-content iframe,
+.rich-content svg,
+.rich-content canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+.rich-content iframe {
+  width: 100%;
+}
+
+/* Code blocks scroll inside their own box instead of widening the page */
+.rich-content pre {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #1e1e1e;
+  color: #fff;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+}
+
+.rich-content pre code {
+  white-space: pre;
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+.rich-content :not(pre) > code {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  background: hsl(var(--muted));
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.875em;
+}
+
+.rich-content a {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Tables scroll horizontally rather than forcing the page wider */
+.rich-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: collapse;
+}
+
+@media (max-width: 640px) {
+  .rich-content {
+    font-size: 0.95rem;
+  }
 }

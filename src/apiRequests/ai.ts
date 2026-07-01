@@ -1,5 +1,6 @@
 import http from "@/lib/http";
 import envConfig from "@/config";
+import { getAccessTokenFromLocalStorage } from "@/lib/utils";
 import { EventSourceParserStream } from "eventsource-parser/stream";
 import {
   AiExerciseGenerateRequestType,
@@ -12,12 +13,19 @@ import {
   ChatMessageResponseType,
   ReindexResponseType,
   QdrantStatsResponseType,
+  AiRuntimeStatsResponseType,
   DraftItemType,
   type ChatSessionType,
   type ChatMessageType,
   AiProviderConfigResponseType,
   UpdateAiProviderRequestType,
+  RecommendationHistoryItemType,
 } from "@/schemaValidations/ai.schema";
+
+export type StreamingChatEvent = {
+  event: string;
+  data: any;
+};
 
 const aiApiRequest = {
   // ============================================
@@ -60,6 +68,11 @@ const aiApiRequest = {
       body
     ),
 
+  getRecommendationHistory: (userId: string, mode?: "REALTIME" | "SCHEDULED", limit: number = 20) =>
+    http.get<{ payload: { data: RecommendationHistoryItemType[] } }>(
+      `/app/api/proxy/ai/recommendations/history?userId=${userId}${mode ? `&mode=${mode}` : ""}&limit=${limit}`
+    ),
+
   // ============================================
   // CHAT
   // ============================================
@@ -71,12 +84,16 @@ const aiApiRequest = {
       body
     ),
 
+
   // Send streaming chat message (SSE)
   sendStreamingChatMessage: async (
     body: ChatMessageRequestType,
-    onChunk: (chunk: string) => void,
-    onComplete?: () => void,
-    onError?: (error: Error) => void
+    handlers: {
+      onChunk: (chunk: string) => void;
+      onEvent?: (event: StreamingChatEvent) => void;
+      onComplete?: (event?: StreamingChatEvent) => void;
+      onError?: (error: Error) => void;
+    }
   ): Promise<void> => {
     const baseUrl = envConfig.NEXT_PUBLIC_API_ENDPOINT;
     const url = `${baseUrl}/app/api/proxy/ai/chat/stream`;
@@ -86,12 +103,19 @@ const aiApiRequest = {
     console.log("🚀 [FE Streaming] Body:", JSON.stringify(body, null, 2));
 
     try {
+      const accessToken =
+        typeof window !== "undefined" ? getAccessTokenFromLocalStorage() : null;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      };
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
-        },
+        headers,
         body: JSON.stringify(body),
         credentials: "include",
       });
@@ -127,36 +151,53 @@ const aiApiRequest = {
 
         const data = event.data;
         const eventType = event.event;
-        
-        if (data === "[DONE]" || eventType === "done") {
-          console.log("🏁 [FE Streaming] Received [DONE] signal");
-          onComplete?.();
-          return;
+        let parsedData: any = data;
+        if (typeof data === "string") {
+          try {
+            parsedData = JSON.parse(data);
+          } catch {
+            parsedData = data;
+          }
         }
 
-        if (data) {
-          try {
-            // Parse JSON data: {"content":"..."}
-            // This preserves leading/trailing spaces that SSE might strip
-            const parsed = JSON.parse(data);
-            const content = parsed.content;
-            if (content !== undefined && content !== null) {
-              console.log("✍️ [FE Streaming] Sending chunk:", JSON.stringify(content));
-              onChunk(content);
-            }
-          } catch {
-            // If not JSON, use data as-is (fallback for plain text)
-            console.log("✍️ [FE Streaming] Sending raw chunk:", JSON.stringify(data));
-            onChunk(data);
+        if (eventType === "error") {
+          const message =
+            parsedData && typeof parsedData === "object"
+              ? parsedData.message || parsedData.detail || parsedData.error
+              : parsedData;
+          throw new Error(String(message || "Streaming error"));
+        }
+
+        if (eventType === "message") {
+          const content =
+            parsedData && typeof parsedData === "object" && "content" in parsedData
+              ? parsedData.content
+              : parsedData;
+          if (content !== undefined && content !== null) {
+            console.log("✍️ [FE Streaming] Sending chunk:", JSON.stringify(content));
+            handlers.onChunk(String(content));
           }
+          continue;
+        }
+
+        const structuredEvent = {
+          event: eventType || "message",
+          data: parsedData,
+        };
+        handlers.onEvent?.(structuredEvent);
+
+        if (data === "[DONE]" || eventType === "done") {
+          console.log("🏁 [FE Streaming] Received [DONE] signal");
+          handlers.onComplete?.(structuredEvent);
+          return;
         }
       }
 
       console.log("🏁 [FE Streaming] Stream completed normally");
-      onComplete?.();
+      handlers.onComplete?.();
     } catch (error) {
       console.error("❌ [FE Streaming] Error:", error);
-      onError?.(error instanceof Error ? error : new Error(String(error)));
+      handlers.onError?.(error instanceof Error ? error : new Error(String(error)));
     }
   },
 
@@ -211,6 +252,13 @@ const aiApiRequest = {
       {}
     ),
 
+  // Reindex blogs
+  reindexBlogs: () =>
+    http.post<{ payload: { data: ReindexResponseType } }>(
+      "/app/api/proxy/ai/admin/reindex-blogs",
+      {}
+    ),
+
   // Reindex all
   reindexAll: () =>
     http.post<{ payload: { data: ReindexResponseType } }>(
@@ -224,15 +272,52 @@ const aiApiRequest = {
       "/app/api/proxy/ai/admin/qdrant-stats"
     ),
 
+  getRuntimeStats: () =>
+    http.get<{ payload: { data: AiRuntimeStatsResponseType } }>(
+      "/app/api/proxy/ai/admin/runtime-stats"
+    ),
+
   getProviderConfig: () =>
     http.get<{ payload: { data: AiProviderConfigResponseType } }>(
-      "/app/api/proxy/ai/admin/provider-config"
+      "/app/api/proxy/ai/admin/provider-config",
+      {
+        suppressErrorLog: true,
+      }
     ),
 
   updateProviderConfig: (body: UpdateAiProviderRequestType) =>
     http.post<{ payload: { data: AiProviderConfigResponseType } }>(
       "/app/api/proxy/ai/admin/provider-config",
       body
+    ),
+
+  // ============================================
+  // LANGFUSE ANALYTICS
+  // ============================================
+
+  getLangfuseTraces: (page: number = 1, limit: number = 10) =>
+    http.get<{ payload: { data: { traces: any[]; total: number } } }>(
+      `/app/api/proxy/ai/admin/langfuse-traces?page=${page}&limit=${limit}`
+    ),
+
+  getLangfuseTraceDetail: (traceId: string) =>
+    http.get<{ payload: { data: any } }>(
+      `/app/api/proxy/ai/admin/langfuse-trace/${traceId}`
+    ),
+
+  getProviderHealth: () =>
+    http.get<{ payload: { data: any } }>(
+      "/app/api/proxy/ai/admin/provider-health"
+    ),
+
+  getAvailableModels: () =>
+    http.get<{ payload: { data: any } }>(
+      "/app/api/proxy/ai/admin/available-models"
+    ),
+
+  getLangfuseAnalytics: (days: number = 7) =>
+    http.get<{ payload: { data: any } }>(
+      `/app/api/proxy/ai/admin/langfuse-analytics?days=${days}`
     ),
 
   // ============================================
@@ -296,7 +381,7 @@ const aiApiRequest = {
   // ============================================
 
   // Create new empty session
-  createSession: (userId: string, mode?: "GENERAL" | "ADVISOR") =>
+  createSession: (userId: string, mode?: "AUTO" | "GENERAL" | "ADVISOR") =>
     http.post<{ payload: { data: ChatSessionType } }>(
       `/app/api/proxy/ai/chat/sessions?userId=${userId}${mode ? `&mode=${mode}` : ""}`,
       {}
@@ -322,4 +407,3 @@ const aiApiRequest = {
 };
 
 export default aiApiRequest;
-

@@ -12,16 +12,25 @@ import {
   Maximize2,
   HelpCircle,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Lightbulb,
+  BookOpenCheck,
+  Loader2,
+  RefreshCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import confetti from "canvas-confetti";
 import ExerciseLeaderboard from "./ExerciseLeaderboard";
+import courseApiRequest from "@/apiRequests/course";
 
 // Types
 interface Choice {
+  id?: string;
   text: string;
-  isCorrect: boolean;
+  isCorrect?: boolean;
+  correct?: boolean;
+  explanation?: string;
 }
 
 interface Exercise {
@@ -33,9 +42,12 @@ interface Exercise {
 }
 
 interface ExercisePlayerProps {
+  courseId?: string;
+  lessonId?: string;
   exercises: Exercise[];
   lessonTitle?: string;
   lessonSlug?: string;
+  currentUserId?: string;
   userAvatar?: string;
   onComplete?: (results: ExerciseResult[]) => void;
   onClose?: () => void;
@@ -47,6 +59,28 @@ interface ExerciseResult {
   isCorrect: boolean;
   selectedAnswers: string[];
   timeSpent: number;
+  feedback?: QuizFeedback | null;
+  grade?: number | null;
+  status?: string;
+}
+
+interface QuizReviewSuggestion {
+  lessonId?: string | null;
+  title: string;
+  reason: string;
+  action: string;
+}
+
+interface QuizFeedback {
+  correct: boolean;
+  summary: string;
+  explanation: string;
+  selectedAnswers?: string[];
+  correctAnswers?: string[];
+  weakConcepts?: string[];
+  reviewSuggestions?: QuizReviewSuggestion[];
+  nextAction?: string;
+  source?: string;
 }
 
 // Parse choices from exercise options
@@ -54,7 +88,12 @@ const parseChoices = (options: string | undefined): Choice[] => {
   if (!options) return [];
   try {
     const parsed = typeof options === 'string' ? JSON.parse(options) : options;
-    return parsed.choices || [];
+    const rawChoices = parsed.choices || [];
+    return rawChoices.map((choice: Choice, index: number) => ({
+      ...choice,
+      id: choice.id ?? String(index),
+      isCorrect: choice.isCorrect === true || choice.correct === true,
+    }));
   } catch {
     return [];
   }
@@ -150,7 +189,7 @@ function ExerciseStartScreen({
           {/* Central Play Button */}
           <button
             onClick={onStart}
-            className="w-20 h-20 bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/40 transition-all hover:scale-110 group"
+            className="group flex h-20 w-20 items-center justify-center rounded-full bg-white/30 transition-colors hover:bg-white/40"
           >
             <Play className="w-10 h-10 text-white fill-white ml-1 group-hover:scale-110 transition-transform" />
           </button>
@@ -169,8 +208,6 @@ const ANSWER_COLORS = [
 ];
 
 const TIME_LIMIT = 10; // 10 seconds per question
-const SHOW_ANSWER_DURATION = 5; // 5 seconds to show answer
-
 // Question Screen Component
 function QuestionScreen({
   exercise,
@@ -189,9 +226,12 @@ function QuestionScreen({
   submitted,
   selectedAnswers,
   isCorrect,
-  showAnswerCountdown,
   userAvatar,
   lessonTitle,
+  feedback,
+  feedbackLoading,
+  feedbackError,
+  onRetryFeedback,
 }: {
   exercise: Exercise;
   questionNumber: number;
@@ -209,9 +249,12 @@ function QuestionScreen({
   submitted: boolean;
   selectedAnswers: string[];
   isCorrect: boolean;
-  showAnswerCountdown: number;
   userAvatar?: string;
   lessonTitle?: string;
+  feedback?: QuizFeedback | null;
+  feedbackLoading?: boolean;
+  feedbackError?: string | null;
+  onRetryFeedback: () => void;
 }) {
   const choices = parseChoices(exercise.options);
   const correctCount = choices.filter(c => c.isCorrect).length;
@@ -284,7 +327,7 @@ function QuestionScreen({
             {/* User Avatar */}
             <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden shadow-md flex-shrink-0">
               <img 
-                src={userAvatar || "/avatars/default-avatar.png"}
+                src={userAvatar || "/avatars/default-avatar.svg"}
                 alt="Avatar"
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -358,7 +401,11 @@ function QuestionScreen({
                 ? "bg-red-500 text-white animate-pulse" 
                 : "bg-white text-gray-800"
           )}>
-            {submitted ? showAnswerCountdown : countdown}
+            {submitted
+              ? feedbackLoading
+                ? <Loader2 className="h-5 w-5 animate-spin" />
+                : <CheckCircle2 className="h-6 w-6" />
+              : countdown}
           </div>
         </div>
       </div>
@@ -379,7 +426,7 @@ function QuestionScreen({
 
       {/* Question Card */}
       <div className="relative z-10 pt-6 px-4 md:px-8">
-        <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 max-w-3xl mx-auto">
+        <div className="mx-auto mb-6 max-w-3xl rounded-xl bg-gray-900/80 p-4 md:p-6">
           {/* Question Text */}
           <h2 className="text-lg md:text-2xl font-bold text-white text-center">
             {exercise.question}
@@ -429,7 +476,7 @@ function QuestionScreen({
                   "relative min-h-[140px] md:min-h-[180px] rounded-lg flex flex-col items-center justify-center p-4 transition-all duration-300",
                   colorScheme.bg,
                   !submitted && colorScheme.hover,
-                  !submitted && "cursor-pointer hover:scale-105 hover:shadow-xl active:scale-95",
+                  !submitted && "cursor-pointer hover:shadow-lg active:scale-95",
                   submitted && "cursor-default",
                   extraClasses
                 )}
@@ -497,9 +544,85 @@ function QuestionScreen({
                 Đáp án đúng: {choices.filter(c => c.isCorrect).map(c => c.text).join(", ")}
               </p>
             )}
-            <p className="text-xs text-white mt-2">
-              Tự động chuyển sau {showAnswerCountdown}s...
-            </p>
+            {feedbackLoading && !feedback && (
+              <div className="mt-3 flex items-center justify-center gap-2 rounded-lg bg-white/20 px-3 py-2 text-sm text-white">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Đang tạo giải thích...
+              </div>
+            )}
+            {feedbackError && !feedbackLoading && !feedback && (
+              <div className="mt-3 rounded-lg bg-white/20 px-3 py-2 text-sm text-white">
+                <p>{feedbackError}</p>
+                <Button
+                  className="mt-2 bg-white text-gray-900 hover:bg-white/90"
+                  onClick={onRetryFeedback}
+                  size="sm"
+                >
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Thử lại giải thích
+                </Button>
+              </div>
+            )}
+            {feedback && (
+              <div className="mt-4 rounded-xl bg-white p-4 text-left text-gray-800 shadow-sm">
+                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-700">
+                  <Lightbulb className="h-4 w-4" />
+                  Phản hồi học tập
+                </div>
+                <p className="text-sm font-medium">{feedback.summary}</p>
+                <p className="mt-2 text-sm leading-relaxed text-gray-700">{feedback.explanation}</p>
+                {feedback.weakConcepts && feedback.weakConcepts.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {feedback.weakConcepts.map((concept) => (
+                      <span key={concept} className="rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                        {concept}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {feedback.reviewSuggestions && feedback.reviewSuggestions.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {feedback.reviewSuggestions.slice(0, 2).map((suggestion, index) => (
+                      <div key={`${suggestion.title}-${index}`} className="rounded-lg bg-gray-50 p-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                          <BookOpenCheck className="h-4 w-4 text-green-600" />
+                          {suggestion.title}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-600">{suggestion.reason}</p>
+                        <p className="mt-1 text-xs font-medium text-gray-800">{suggestion.action}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <Button
+              className="mt-4 w-full bg-white text-gray-900 hover:bg-white/90"
+              onClick={onNextQuestion}
+              disabled={feedbackLoading || !feedback}
+            >
+              {feedbackLoading
+                ? "Đang tạo giải thích..."
+                : !feedback
+                  ? "Chờ giải thích để tiếp tục"
+                : questionNumber >= totalQuestions
+                  ? "Xem kết quả"
+                  : "Câu tiếp theo"}
+              {!feedbackLoading && feedback && <ChevronRight className="ml-2 h-4 w-4" />}
+            </Button>
+            {/* Cho phép bỏ qua khi AI chưa tạo xong giải thích, nếu không muốn chờ. */}
+            {(feedbackLoading || !feedback) && (
+              <Button
+                variant="ghost"
+                className="mt-2 w-full text-white hover:bg-white/20"
+                onClick={onNextQuestion}
+              >
+                {questionNumber >= totalQuestions
+                  ? "Bỏ qua, xem kết quả"
+                  : "Bỏ qua, câu tiếp theo"}
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -552,7 +675,7 @@ function HelpModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/30"
         onClick={onClose}
       />
       
@@ -596,15 +719,15 @@ function HelpModal({
 
         {/* Side buttons */}
         <div className="absolute right-4 top-24 flex flex-col gap-2">
-          <button className="w-12 h-12 rounded-xl bg-[#FDDF2F] shadow-lg flex items-center justify-center">
-            <Clock className="w-6 h-6 text-gray-700" />
-          </button>
-          <button className="w-12 h-12 rounded-xl bg-[#4A90D9] shadow-lg flex items-center justify-center text-white">
+          <Button size="icon" className="w-12 h-12 rounded-xl shadow-lg">
+            <Clock className="w-6 h-6" />
+          </Button>
+          <Button size="icon" className="w-12 h-12 rounded-xl shadow-lg">
             <Volume2 className="w-6 h-6" />
-          </button>
-          <button className="w-12 h-12 rounded-xl bg-[#4A90D9] shadow-lg flex items-center justify-center text-white">
+          </Button>
+          <Button size="icon" className="w-12 h-12 rounded-xl shadow-lg">
             <Music className="w-6 h-6" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -618,12 +741,22 @@ function ResultScreen({
   onRetry,
   onComplete,
   lessonSlug,
+  currentUserId,
+  courseId,
+  lessonId,
+  totalQuestions,
+  userAvatar,
 }: {
   results: ExerciseResult[];
   totalTime: number;
   onRetry: () => void;
   onComplete: () => void;
   lessonSlug?: string;
+  currentUserId?: string;
+  courseId?: string;
+  lessonId?: string;
+  totalQuestions: number;
+  userAvatar?: string;
 }) {
   const correctCount = results.filter(r => r.isCorrect).length;
   const totalCount = results.length;
@@ -645,15 +778,23 @@ function ResultScreen({
       onRetry={onRetry}
       onComplete={onComplete}
       lessonSlug={lessonSlug}
+      currentUserId={currentUserId}
+      currentUserAvatar={userAvatar}
+      courseId={courseId}
+      lessonId={lessonId}
+      totalQuestions={totalQuestions}
     />
   );
 }
 
 // Main ExercisePlayer Component
 export default function ExercisePlayer({
+  courseId,
+  lessonId,
   exercises,
   lessonTitle,
   lessonSlug,
+  currentUserId,
   userAvatar,
   onComplete,
   onClose,
@@ -674,8 +815,22 @@ export default function ExercisePlayer({
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
   const [isCorrect, setIsCorrect] = useState(false);
   const [countdown, setCountdown] = useState(TIME_LIMIT);
-  const [showAnswerCountdown, setShowAnswerCountdown] = useState(SHOW_ANSWER_DURATION);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [currentFeedback, setCurrentFeedback] = useState<QuizFeedback | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [submissionMeta, setSubmissionMeta] = useState<{ grade?: number | null; status?: string }>({});
+  const feedbackRef = useRef<QuizFeedback | null>(null);
+  const submissionMetaRef = useRef<{ grade?: number | null; status?: string }>({});
+  const submissionStartedForExerciseRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    feedbackRef.current = currentFeedback;
+  }, [currentFeedback]);
+
+  useEffect(() => {
+    submissionMetaRef.current = submissionMeta;
+  }, [submissionMeta]);
 
   // Listen for fullscreen change
   useEffect(() => {
@@ -690,20 +845,16 @@ export default function ExercisePlayer({
   const multipleChoiceExercises = exercises.filter(e => e.type === 'MULTIPLE_CHOICE');
   const currentExercise = multipleChoiceExercises[currentIndex];
 
-  // Use ref to track if we're transitioning to prevent double execution
-  const isTransitioning = useRef(false);
-
   // Debug log
   useEffect(() => {
     console.log('[ExercisePlayer] State:', { 
       currentIndex, 
       submitted, 
       countdown, 
-      showAnswerCountdown,
       gameState,
       exerciseId: currentExercise?.id 
     });
-  }, [currentIndex, submitted, countdown, showAnswerCountdown, gameState, currentExercise?.id]);
+  }, [currentIndex, submitted, countdown, gameState, currentExercise?.id]);
 
   // Countdown timer for answering (10s)
   useEffect(() => {
@@ -734,69 +885,16 @@ export default function ExercisePlayer({
     };
   }, [gameState, submitted, currentIndex]);
 
-  // Show answer countdown (5s) then auto-next
-  useEffect(() => {
-    if (gameState !== 'playing' || !submitted) return;
-    
-    console.log('[ShowAnswer] Starting show answer countdown for question', currentIndex + 1);
-    isTransitioning.current = false;
-    let localCountdown = SHOW_ANSWER_DURATION;
-    setShowAnswerCountdown(SHOW_ANSWER_DURATION);
-    
-    const interval = setInterval(() => {
-      localCountdown -= 1;
-      console.log('[ShowAnswer] Countdown:', localCountdown);
-      setShowAnswerCountdown(localCountdown);
-      
-      if (localCountdown <= 0 && !isTransitioning.current) {
-        isTransitioning.current = true;
-        console.log('[ShowAnswer] Moving to next question. Current:', currentIndex + 1, 'Total:', multipleChoiceExercises.length);
-        
-        // Save result
-        const result: ExerciseResult = {
-          exerciseId: currentExercise?.id || '',
-          isCorrect,
-          selectedAnswers,
-          timeSpent,
-        };
-        
-        setResults(prev => [...prev, result]);
-        
-        // Check if last question
-        if (currentIndex >= multipleChoiceExercises.length - 1) {
-          console.log('[ShowAnswer] Last question - showing results');
-          setResults(prev => {
-            onComplete?.(prev);
-            return prev;
-          });
-          setGameState('result');
-        } else {
-          // Move to next question
-          console.log('[ShowAnswer] Moving to question', currentIndex + 2);
-          setCurrentIndex(currentIndex + 1);
-          setSubmitted(false);
-          setSelectedAnswers([]);
-          setIsCorrect(false);
-          setTimeSpent(0);
-          setCountdown(TIME_LIMIT);
-        }
-        
-        clearInterval(interval);
-      }
-    }, 1000);
-    
-    return () => {
-      console.log('[ShowAnswer] Clearing show answer interval');
-      clearInterval(interval);
-    };
-  }, [submitted, currentIndex, gameState]);
-
   // Handle timeout - auto submit as fail
   const handleTimeOut = useCallback(() => {
     if (submitted) return;
     setSelectedAnswers([]);
     setIsCorrect(false);
     setSubmitted(true);
+    setCurrentFeedback(null);
+    setSubmissionMeta({});
+    setFeedbackLoading(false);
+    setFeedbackError(null);
   }, [submitted]);
 
   // Start game
@@ -809,12 +907,72 @@ export default function ExercisePlayer({
     setSubmitted(false);
     setSelectedAnswers([]);
     setCountdown(TIME_LIMIT);
-    setShowAnswerCountdown(SHOW_ANSWER_DURATION);
+    setCurrentFeedback(null);
+    setSubmissionMeta({});
+    setFeedbackLoading(false);
+    setFeedbackError(null);
+    submissionStartedForExerciseRef.current = null;
   };
+
+  const submitCurrentAnswer = useCallback(async (
+    exercise: Exercise,
+    answers: string[],
+    correct: boolean
+  ) => {
+    if (!courseId || !lessonId || !exercise?.id) return;
+    if (submissionStartedForExerciseRef.current === exercise.id) return;
+    submissionStartedForExerciseRef.current = exercise.id;
+
+    setFeedbackLoading(true);
+    setFeedbackError(null);
+    setCurrentFeedback(null);
+    setSubmissionMeta({});
+
+    try {
+      const response: any = await courseApiRequest.submitExercise(courseId, lessonId, {
+        exerciseId: exercise.id,
+        answer: JSON.stringify(answers),
+        submissionData: {
+          selectedAnswers: answers,
+          clientCorrect: correct,
+          timeSpent,
+        },
+      });
+      const submission = response?.payload?.data;
+      const feedback = submission?.feedback ?? null;
+      if (!feedback) {
+        throw new Error('Không nhận được giải thích cho đáp án.');
+      }
+      feedbackRef.current = feedback;
+      setCurrentFeedback(feedback);
+      setSubmissionMeta({
+        grade: submission?.grade ?? null,
+        status: submission?.status,
+      });
+    } catch (error) {
+      console.error('[ExercisePlayer] Failed to submit exercise answer:', error);
+      submissionStartedForExerciseRef.current = null;
+      setCurrentFeedback(null);
+      setSubmissionMeta({});
+      setFeedbackError('Không tải được giải thích đáp án. Vui lòng thử lại.');
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }, [courseId, lessonId, timeSpent]);
+
+  const handleRetryFeedback = useCallback(() => {
+    if (!currentExercise || feedbackLoading) return;
+    void submitCurrentAnswer(currentExercise, selectedAnswers, isCorrect);
+  }, [currentExercise, feedbackLoading, isCorrect, selectedAnswers, submitCurrentAnswer]);
+
+  useEffect(() => {
+    if (gameState !== 'playing' || !submitted || countdown !== 0 || !currentExercise) return;
+    void submitCurrentAnswer(currentExercise, [], false);
+  }, [countdown, currentExercise, gameState, submitCurrentAnswer, submitted]);
 
   // Handle answer - auto submit on click
   const handleAnswer = useCallback((answers: string[]) => {
-    if (submitted) return;
+    if (submitted || !currentExercise) return;
     
     const choices = parseChoices(currentExercise.options);
     const correctCount = choices.filter(c => c.isCorrect).length;
@@ -835,7 +993,7 @@ export default function ExercisePlayer({
     setSelectedAnswers(answers);
     setIsCorrect(correct);
     setSubmitted(true);
-    setShowAnswerCountdown(SHOW_ANSWER_DURATION);
+    void submitCurrentAnswer(currentExercise, answers, correct);
 
     // Trigger confetti for correct answer
     if (correct) {
@@ -845,16 +1003,23 @@ export default function ExercisePlayer({
         origin: { y: 0.7 }
       });
     }
-  }, [submitted, currentExercise]);
+  }, [submitted, currentExercise, submitCurrentAnswer]);
 
   // Go to next question
   const handleNextQuestion = useCallback(() => {
+    // Require an answer to have been submitted, but allow skipping ahead even when
+    // the AI explanation is still loading (user opted not to wait).
+    if (!submitted) return;
+
     // Save result
     const result: ExerciseResult = {
       exerciseId: currentExercise.id,
       isCorrect,
       selectedAnswers,
       timeSpent,
+      feedback: feedbackRef.current,
+      grade: submissionMetaRef.current.grade,
+      status: submissionMetaRef.current.status,
     };
     setResults(prev => [...prev, result]);
 
@@ -866,12 +1031,16 @@ export default function ExercisePlayer({
       setIsCorrect(false);
       setTimeSpent(0);
       setCountdown(TIME_LIMIT);
-      setShowAnswerCountdown(SHOW_ANSWER_DURATION);
+      setCurrentFeedback(null);
+      setSubmissionMeta({});
+      setFeedbackLoading(false);
+      setFeedbackError(null);
+      submissionStartedForExerciseRef.current = null;
     } else {
       setGameState('result');
       onComplete?.([...results, result]);
     }
-  }, [currentExercise, isCorrect, selectedAnswers, timeSpent, currentIndex, multipleChoiceExercises.length, results, onComplete]);
+  }, [submitted, currentExercise, isCorrect, selectedAnswers, timeSpent, currentIndex, multipleChoiceExercises.length, results, onComplete]);
 
   // Fullscreen
   const handleFullscreen = async () => {
@@ -902,7 +1071,11 @@ export default function ExercisePlayer({
     setSubmitted(false);
     setSelectedAnswers([]);
     setCountdown(TIME_LIMIT);
-    setShowAnswerCountdown(SHOW_ANSWER_DURATION);
+    setCurrentFeedback(null);
+    setSubmissionMeta({});
+    setFeedbackLoading(false);
+    setFeedbackError(null);
+    submissionStartedForExerciseRef.current = null;
     setGameState('start');
   };
 
@@ -957,9 +1130,12 @@ export default function ExercisePlayer({
             submitted={submitted}
             selectedAnswers={selectedAnswers}
             isCorrect={isCorrect}
-            showAnswerCountdown={showAnswerCountdown}
             userAvatar={userAvatar}
             lessonTitle={lessonTitle}
+            feedback={currentFeedback}
+            feedbackLoading={feedbackLoading}
+            feedbackError={feedbackError}
+            onRetryFeedback={handleRetryFeedback}
           />
           <HelpModal
             isOpen={showHelp}
@@ -979,17 +1155,27 @@ export default function ExercisePlayer({
             onClose?.();
           }}
           lessonSlug={lessonSlug}
+          currentUserId={currentUserId}
+          userAvatar={userAvatar}
+          courseId={courseId}
+          lessonId={lessonId}
+          totalQuestions={multipleChoiceExercises.length}
         />
       )}
 
       {gameState === 'leaderboard' && (
-        <ExerciseLeaderboard 
+        <ExerciseLeaderboard
           onRetry={handleRetry}
           onComplete={() => {
             onNextLesson?.();
             onClose?.();
           }}
           lessonSlug={lessonSlug}
+          currentUserId={currentUserId}
+          currentUserAvatar={userAvatar}
+          courseId={courseId}
+          lessonId={lessonId ?? undefined}
+          totalQuestions={multipleChoiceExercises.length}
         />
       )}
     </div>

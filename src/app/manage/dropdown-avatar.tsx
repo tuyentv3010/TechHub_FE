@@ -11,13 +11,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useLogoutMutation } from "@/queries/useAuth";
-import { handleErrorApi } from "@/lib/utils";
-import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import { useTranslations } from "next-intl";
 import { useAppContext } from "@/components/app-provider";
 import { useAccountProfile } from "@/queries/useAccount";
-import { User, LogOut, Settings, BookText, BarChart3 } from "lucide-react";
+import { getUserInfoFromStorage, removeTokenFromLocalStorage } from "@/lib/utils";
+import { normalizePublicMediaUrl } from "@/lib/file-media";
+import { User, LogOut, BookText, BarChart3 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface UserInfo {
@@ -31,18 +31,20 @@ interface UserInfo {
 
 export default function DropdownAvatar() {
   const t = useTranslations("NavItem");
-  const router = useRouter();
   const logoutMutation = useLogoutMutation();
   const { data, isLoading, isError, error } = useAccountProfile();
-  const { isAuth, role, setIsAuth, setRole, setPermissions } = useAppContext();
+  const { isAuth, setIsAuth, setRole, setPermissions } = useAppContext();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   
   const account = data?.payload?.data;
+  const currentRoles = userInfo?.roles || account?.roles || [];
+  const canAccessManageDashboard =
+    isAuth && !currentRoles.includes("GUEST");
 
   // Load user info from localStorage on mount
   useEffect(() => {
     if (isAuth) {
-      const storedUserInfo = localStorage.getItem("userInfo");
+      const storedUserInfo = getUserInfoFromStorage();
       if (storedUserInfo) {
         try {
           setUserInfo(JSON.parse(storedUserInfo));
@@ -76,9 +78,7 @@ export default function DropdownAvatar() {
       await logoutMutation.mutateAsync();
       
       // Clear all auth data
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("userInfo");
+      removeTokenFromLocalStorage();
       
       // Update context
       setIsAuth(false);
@@ -91,14 +91,12 @@ export default function DropdownAvatar() {
         description: t("logoutSuccessMessage") || "Bạn đã đăng xuất khỏi hệ thống",
       });
       
-      router.push("/");
-    } catch (error: any) {
+      window.location.replace("/login");
+    } catch (error: unknown) {
       console.error("Logout error:", error);
       
       // Even if API fails, clear local data
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("userInfo");
+      removeTokenFromLocalStorage();
       setIsAuth(false);
       setRole(null);
       setPermissions(null);
@@ -109,14 +107,18 @@ export default function DropdownAvatar() {
         description: t("logoutSuccessMessage") || "Bạn đã đăng xuất khỏi hệ thống",
       });
       
-      router.push("/");
+      window.location.replace("/login");
     }
   };
 
   if (isLoading) {
     return (
-      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-        <Avatar className="h-8 w-8">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="app-control app-control-icon relative"
+      >
+        <Avatar className="app-control-avatar">
           <AvatarFallback>...</AvatarFallback>
         </Avatar>
       </Button>
@@ -126,21 +128,34 @@ export default function DropdownAvatar() {
   if (isError) {
     console.error("Account profile error:", error);
     return (
-      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-        <Avatar className="h-8 w-8">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="app-control app-control-icon relative"
+      >
+        <Avatar className="app-control-avatar">
           <AvatarFallback>??</AvatarFallback>
         </Avatar>
       </Button>
     );
   }
 
+  const avatarUrl =
+    normalizePublicMediaUrl(userInfo?.avatar) ||
+    normalizePublicMediaUrl(account?.avatar) ||
+    undefined;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
-            <AvatarImage 
-              src={userInfo?.avatar || account?.avatar || "/placeholder-avatar.jpg"} 
+        <Button
+          variant="ghost"
+          size="icon"
+          className="app-control app-control-icon relative"
+        >
+            <Avatar className="app-control-avatar">
+              <AvatarImage
+              src={avatarUrl}
               alt={userInfo?.username || account?.username || "User"}
               className="object-cover"
             />
@@ -153,9 +168,13 @@ export default function DropdownAvatar() {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
+      <DropdownMenuContent
+        className="app-control-menu w-64 p-2"
+        align="end"
+        forceMount
+      >
         <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
+          <div className="space-y-1 rounded-xl border border-border/40 bg-card/70 px-3 py-3">
             <p className="text-sm font-medium leading-none">
               {userInfo?.username || account?.username || "User"}
             </p>
@@ -164,7 +183,7 @@ export default function DropdownAvatar() {
             </p>
             {(userInfo?.roles || account?.roles) && (userInfo?.roles || account?.roles).length > 0 && (
               <p className="text-xs leading-none text-muted-foreground mt-1">
-                <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+                <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                   {(userInfo?.roles || account?.roles)?.[0]}
                 </span>
               </p>
@@ -172,9 +191,9 @@ export default function DropdownAvatar() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {role === "ADMIN" && (
+        {canAccessManageDashboard && (
           <DropdownMenuItem asChild>
-            <Link href="/manage/accounts" className="cursor-pointer">
+            <Link href="/manage/dashboard" className="cursor-pointer">
               <BarChart3 className="mr-2 h-4 w-4" />
               {t("dashboard") || "Dashboard"}
             </Link>
@@ -190,12 +209,6 @@ export default function DropdownAvatar() {
           <Link href="/my-learning" className="cursor-pointer">
             <BookText className="mr-2 h-4 w-4" />
             {t("myLearning") || "My Learning"}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/setting" className="cursor-pointer">
-            <Settings className="mr-2 h-4 w-4" />
-            {t("settings") || "Settings"}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

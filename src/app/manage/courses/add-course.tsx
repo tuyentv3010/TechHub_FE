@@ -42,6 +42,7 @@ import { useGetSkills, useGetTags } from "@/queries/useCourse";
 import SkillManager from "@/components/manage/SkillManager";
 import TagManager from "@/components/manage/TagManager";
 import { CurrencyInputWithSwitch } from "@/components/ui/currency-input-with-switch";
+import { resolvePersistentFileUrl } from "@/lib/file-media";
 
 export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   const t = useTranslations("ManageCourse");
@@ -81,6 +82,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
       title: "",
       description: "",
       price: 0,
+      currency: "VND",
       discountPrice: undefined,
       level: "BEGINNER",
       language: "VI",
@@ -168,9 +170,13 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        form.setValue('thumbnail', response.payload.data.cloudinarySecureUrl);
-        setThumbnailPreview(response.payload.data.cloudinarySecureUrl);
+      const thumbnailUrl = response.payload?.data
+        ? resolvePersistentFileUrl(response.payload.data, "thumbnail")
+        : null;
+
+      if (thumbnailUrl) {
+        form.setValue('thumbnail', thumbnailUrl);
+        setThumbnailPreview(thumbnailUrl);
         toast({ description: t("ThumbnailUploadSuccess") });
       }
     } catch (error: any) {
@@ -220,9 +226,13 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
 
       const response = await fileApiRequest.uploadFile(formData);
       
-      if (response.payload?.data?.cloudinarySecureUrl) {
-        form.setValue('introVideo', response.payload.data.cloudinarySecureUrl);
-        setVideoPreview(response.payload.data.cloudinarySecureUrl);
+      const videoUrl = response.payload?.data
+        ? resolvePersistentFileUrl(response.payload.data, "content")
+        : null;
+
+      if (videoUrl) {
+        form.setValue('introVideo', videoUrl);
+        setVideoPreview(videoUrl);
         toast({ description: t("VideoUploadSuccess") });
       }
     } catch (error: any) {
@@ -269,6 +279,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
         title: data.title,
         description: data.description,
         price: data.price,
+        currency: (data.currency as "VND" | "USD") || "VND",
         discountPrice: data.discountPrice,
         level: data.level,
         language: data.language,
@@ -313,14 +324,14 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="h-8 gap-1">
+        <Button size="sm" className="manage-primary-button h-10 gap-2 px-4">
           <PlusCircle className="h-3.5 w-3.5" />
           <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
             {t("AddCourse")}
           </span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="manage-dialog-panel max-w-3xl max-h-[90vh] overflow-y-auto rounded-[1.35rem] border-border/50">
         <DialogHeader>
           <DialogTitle>{t("AddCourse")}</DialogTitle>
           <DialogDescription>{t("AddCourseDescription")}</DialogDescription>
@@ -339,7 +350,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
                 {...form.register("title")}
               />
               {form.formState.errors.title && (
-                <p className="text-sm text-red-500">
+                <p className="text-sm text-destructive">
                   {String((form.formState.errors.title as any).message)}
                 </p>
               )}
@@ -373,7 +384,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               {...form.register("description")}
             />
             {form.formState.errors.description && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-destructive">
                 {String((form.formState.errors.description as any).message)}
               </p>
             )}
@@ -390,12 +401,14 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
                     id="price"
                     placeholder="49 000"
                     value={field.value}
+                    currency={(form.watch("currency") as "VND" | "USD") || "VND"}
                     onChange={(numericValue) => field.onChange(numericValue)}
+                    onCurrencyChange={(c) => form.setValue("currency", c)}
                   />
                 )}
               />
               {form.formState.errors.price && (
-                <p className="text-sm text-red-500">
+                <p className="text-sm text-destructive">
                   {String((form.formState.errors.price as any).message)}
                 </p>
               )}
@@ -411,7 +424,9 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
                     id="discountPrice"
                     placeholder="29 000"
                     value={field.value}
+                    currency={(form.watch("currency") as "VND" | "USD") || "VND"}
                     onChange={(numericValue) => field.onChange(numericValue)}
+                    onCurrencyChange={(c) => form.setValue("currency", c)}
                   />
                 )}
               />
@@ -439,12 +454,12 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
           <div className="space-y-2">
             <Label>{t("SkillsLabel")}</Label>
             <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setShowSkillManager(true)}
-                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
-              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShowSkillManager(true)}
+                  className="manage-secondary-button ml-2"
+                >
                 {t("ManageSkills") || "Manage"}
               </Button>
             </div>
@@ -473,7 +488,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
                 type="button"
                 variant="ghost"
                 onClick={() => setShowTagManager(true)}
-                className="ml-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                className="manage-secondary-button ml-2"
               >
                 {t("ManageTags") || "Manage tags"}
               </Button>
@@ -513,6 +528,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               <Button
                 type="button"
                 variant="outline"
+                className="manage-secondary-button"
                 onClick={() => {
                   addItem('objectives', objectiveInput);
                   setObjectiveInput("");
@@ -553,6 +569,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               <Button
                 type="button"
                 variant="outline"
+                className="manage-secondary-button"
                 onClick={() => {
                   addItem('requirements', requirementInput);
                   setRequirementInput("");
@@ -581,7 +598,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => setShowThumbnailLibrary(true)}
                 disabled={isUploadingThumbnail}
               >
@@ -591,7 +608,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => thumbnailFileInputRef.current?.click()}
                 disabled={isUploadingThumbnail}
               >
@@ -636,7 +653,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => setShowVideoLibrary(true)}
                 disabled={isUploadingVideo}
               >
@@ -646,7 +663,7 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="manage-secondary-button flex-1"
                 onClick={() => videoFileInputRef.current?.click()}
                 disabled={isUploadingVideo}
               >
@@ -707,11 +724,16 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             <Button
               type="button"
               variant="outline"
+              className="manage-secondary-button"
               onClick={() => setOpen(false)}
             >
               {t("Cancel")}
             </Button>
-            <Button type="submit" disabled={createCourseMutation.isPending}>
+            <Button
+              type="submit"
+              className="manage-primary-button"
+              disabled={createCourseMutation.isPending}
+            >
               {createCourseMutation.isPending ? t("Creating") : t("Create")}
             </Button>
           </DialogFooter>
@@ -728,8 +750,11 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             mediaType="IMAGE"
             title={t("SelectThumbnail") || "Select Thumbnail"}
             onSelectFile={(file) => {
-              form.setValue("thumbnail", file.cloudinarySecureUrl);
-              setThumbnailPreview(file.cloudinarySecureUrl);
+              const thumbnailUrl = resolvePersistentFileUrl(file, "thumbnail");
+              if (thumbnailUrl) {
+                form.setValue("thumbnail", thumbnailUrl);
+                setThumbnailPreview(thumbnailUrl);
+              }
               setShowThumbnailLibrary(false);
             }}
           />
@@ -740,8 +765,11 @@ export default function AddCourse({ onSuccess }: { onSuccess?: () => void }) {
             mediaType="VIDEO"
             title={t("SelectIntroVideo") || "Select Intro Video"}
             onSelectFile={(file) => {
-              form.setValue("introVideo", file.cloudinarySecureUrl);
-              setVideoPreview(file.cloudinarySecureUrl);
+              const videoUrl = resolvePersistentFileUrl(file, "content");
+              if (videoUrl) {
+                form.setValue("introVideo", videoUrl);
+                setVideoPreview(videoUrl);
+              }
               setShowVideoLibrary(false);
             }}
           />

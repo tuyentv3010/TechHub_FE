@@ -1,12 +1,6 @@
 import * as React from "react";
 import { Input } from "@/components/ui/input";
 import {
-  formatCurrencyByType,
-  parseCurrencyByType,
-  convertVNDtoUSD,
-  convertUSDtoVND
-} from "@/lib/utils";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -14,116 +8,86 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export type Currency = 'VND' | 'USD';
+export type Currency = "VND" | "USD";
 
 export interface CurrencyInputWithSwitchProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
-  value?: number; // Always in USD (backend format)
-  onChange?: (valueInUSD: number) => void;
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> {
+  /** Giá trị raw theo currency hiện tại (không tự convert). */
+  value?: number;
+  /** Currency hiện tại. Nếu không truyền sẽ dùng state nội bộ với defaultCurrency. */
+  currency?: Currency;
   defaultCurrency?: Currency;
+  onChange?: (value: number) => void;
+  onCurrencyChange?: (currency: Currency) => void;
 }
 
-/**
- * Currency input component with VND/USD switcher
- * - Displays value in selected currency
- * - Stores value in USD (backend format)
- * - Automatically converts between currencies
- */
+function formatNumber(value: number, currency: Currency): string {
+  if (!Number.isFinite(value)) return "";
+  if (currency === "USD") {
+    return value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+  return value.toLocaleString("vi-VN", { maximumFractionDigits: 0 });
+}
+
+function parseNumber(input: string): number {
+  if (!input) return 0;
+  const cleaned = input.replace(/[^\d.,]/g, "").replace(/\s/g, "");
+  // Cho phép dấu phẩy hoặc chấm là decimal separator
+  const normalized = cleaned.includes(",") && !cleaned.includes(".")
+    ? cleaned.replace(",", ".")
+    : cleaned.replace(/,/g, "");
+  const n = parseFloat(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
 const CurrencyInputWithSwitch = React.forwardRef<HTMLInputElement, CurrencyInputWithSwitchProps>(
-  ({ value, onChange, defaultCurrency = 'USD', className, ...props }, ref) => {
-    const [currency, setCurrency] = React.useState<Currency>(defaultCurrency);
-    const [displayValue, setDisplayValue] = React.useState<string>(() => {
-      if (value === undefined || value === null) return '';
+  (
+    {
+      value,
+      currency: currencyProp,
+      defaultCurrency = "VND",
+      onChange,
+      onCurrencyChange,
+      className,
+      ...props
+    },
+    ref
+  ) => {
+    const [internalCurrency, setInternalCurrency] = React.useState<Currency>(defaultCurrency);
+    const currency = currencyProp ?? internalCurrency;
 
-      // Convert USD (from backend) to display currency
-      const displayAmount = currency === 'VND' ? convertUSDtoVND(value) : value;
-      return formatCurrencyByType(displayAmount, currency);
-    });
-
+    const [displayValue, setDisplayValue] = React.useState<string>(() =>
+      value === undefined || value === null ? "" : formatNumber(value, currency)
+    );
     const [isUserTyping, setIsUserTyping] = React.useState(false);
 
-    // Update display value when prop value or currency changes (but not when user is typing)
     React.useEffect(() => {
-      if (isUserTyping) return; // Don't update while user is typing
-
+      if (isUserTyping) return;
       if (value === undefined || value === null) {
-        setDisplayValue('');
+        setDisplayValue("");
       } else {
-        // Convert USD (from backend) to display currency
-        const displayAmount = currency === 'VND' ? convertUSDtoVND(value) : value;
-        setDisplayValue(formatCurrencyByType(displayAmount, currency));
+        setDisplayValue(formatNumber(value, currency));
       }
     }, [value, currency, isUserTyping]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const inputValue = e.target.value;
       setIsUserTyping(true);
-
-      if (currency === 'USD') {
-        // For USD, allow raw input without immediate formatting
-        // Only allow digits and one decimal point
-        const cleaned = inputValue.replace(/[^\d.]/g, '');
-        const parts = cleaned.split('.');
-        let validInput = parts[0];
-        if (parts.length > 1) {
-          // Keep only first decimal point and limit to 2 decimal places
-          validInput = parts[0] + '.' + parts.slice(1).join('').slice(0, 2);
-        }
-
-        setDisplayValue(validInput);
-
-        // Parse and send to parent
-        const numericValue = parseFloat(validInput) || 0;
-        onChange?.(numericValue);
-      } else {
-        // For VND, format with spaces
-        const formatted = formatCurrencyByType(
-          parseCurrencyByType(inputValue, currency),
-          currency
-        );
-        setDisplayValue(formatted);
-
-        // Parse value in current currency
-        const numericValue = parseCurrencyByType(inputValue, currency);
-
-        // Convert to USD before sending to parent (backend expects USD)
-        const valueInUSD = convertVNDtoUSD(numericValue);
-        onChange?.(valueInUSD);
-      }
+      const raw = e.target.value;
+      setDisplayValue(raw);
+      onChange?.(parseNumber(raw));
     };
 
     const handleBlur = () => {
       setIsUserTyping(false);
-
-      // Format USD value on blur
-      if (currency === 'USD' && displayValue) {
-        const numericValue = parseFloat(displayValue) || 0;
-        setDisplayValue(formatCurrencyByType(numericValue, currency));
-      }
+      const numeric = parseNumber(displayValue);
+      setDisplayValue(numeric ? formatNumber(numeric, currency) : "");
     };
 
     const handleCurrencyChange = (newCurrency: Currency) => {
-      setIsUserTyping(false);
-      const currentNumeric = parseCurrencyByType(displayValue, currency);
-
-      if (currentNumeric === 0) {
-        setCurrency(newCurrency);
-        setDisplayValue('');
-        return;
+      if (currencyProp === undefined) {
+        setInternalCurrency(newCurrency);
       }
-
-      // Convert current value to the new currency
-      let convertedValue: number;
-      if (currency === 'VND' && newCurrency === 'USD') {
-        convertedValue = convertVNDtoUSD(currentNumeric);
-      } else if (currency === 'USD' && newCurrency === 'VND') {
-        convertedValue = convertUSDtoVND(currentNumeric);
-      } else {
-        convertedValue = currentNumeric;
-      }
-
-      setCurrency(newCurrency);
-      setDisplayValue(formatCurrencyByType(convertedValue, newCurrency));
+      onCurrencyChange?.(newCurrency);
     };
 
     return (
@@ -132,14 +96,14 @@ const CurrencyInputWithSwitch = React.forwardRef<HTMLInputElement, CurrencyInput
           {...props}
           ref={ref}
           type="text"
-          inputMode="numeric"
+          inputMode="decimal"
           value={displayValue}
           onChange={handleChange}
           onBlur={handleBlur}
           className={className}
-          placeholder={currency === 'USD' ? '49.99' : '1 225 000'}
+          placeholder={currency === "USD" ? "49.99" : "1 225 000"}
         />
-        <Select value={currency} onValueChange={handleCurrencyChange}>
+        <Select value={currency} onValueChange={(v) => handleCurrencyChange(v as Currency)}>
           <SelectTrigger className="w-[100px]">
             <SelectValue />
           </SelectTrigger>

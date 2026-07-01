@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Filter, X, ChevronDown } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -19,9 +21,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Filter, X, ChevronDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { SkillItemType, TagItemType } from "@/schemaValidations/course.schema";
+import {
+  SkillItemType,
+  TagItemType,
+} from "@/schemaValidations/course.schema";
 
 interface CourseFiltersProps {
   availableSkills?: SkillItemType[];
@@ -37,7 +41,6 @@ export default function CourseFilters({
   const pathname = usePathname();
   const router = useRouter();
 
-  // Get current filter values from URL
   const status = searchParams.get("status") || "";
   const level = searchParams.get("level") || "";
   const language = searchParams.get("language") || "";
@@ -46,21 +49,6 @@ export default function CourseFilters({
   const minPrice = searchParams.get("minPrice") || "";
   const maxPrice = searchParams.get("maxPrice") || "";
 
-  console.log("🔍 [CourseFilters] Current values:", {
-    status,
-    level,
-    language,
-    statusValue: status || "ALL",
-    levelValue: level || "ALL",
-    languageValue: language || "ALL",
-  });
-
-  console.log("🎯 [CourseFilters] Props:", {
-    availableSkillsLength: availableSkills.length,
-    availableTagsLength: availableTags.length,
-  });
-
-  // Local state for filters
   const [selectedSkills, setSelectedSkills] = useState<string[]>(
     skillIdsParam ? skillIdsParam.split(",").filter(Boolean) : []
   );
@@ -70,7 +58,6 @@ export default function CourseFilters({
   const [localMinPrice, setLocalMinPrice] = useState(minPrice);
   const [localMaxPrice, setLocalMaxPrice] = useState(maxPrice);
 
-  // Sync local state with URL params
   useEffect(() => {
     setSelectedSkills(skillIdsParam ? skillIdsParam.split(",").filter(Boolean) : []);
     setSelectedTags(tagIdsParam ? tagIdsParam.split(",").filter(Boolean) : []);
@@ -80,7 +67,7 @@ export default function CourseFilters({
 
   const updateUrlParams = (updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams);
-    
+
     Object.entries(updates).forEach(([key, value]) => {
       if (value && value !== "") {
         params.set(key, value);
@@ -88,51 +75,27 @@ export default function CourseFilters({
         params.delete(key);
       }
     });
-    
-    // Reset to page 1 when filters change
+
     params.set("page", "1");
-    
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  const handleStatusChange = (value: string) => {
-    console.log("🎯 [handleStatusChange] value:", value);
-    updateUrlParams({ status: value === "ALL" ? null : value });
-  };
-
-  const handleLevelChange = (value: string) => {
-    console.log("🎯 [handleLevelChange] value:", value);
-    updateUrlParams({ level: value === "ALL" ? null : value });
-  };
-
-  const handleLanguageChange = (value: string) => {
-    console.log("🎯 [handleLanguageChange] value:", value);
-    updateUrlParams({ language: value === "ALL" ? null : value });
-  };
-
   const handleSkillToggle = (skillId: string) => {
-    const newSkills = selectedSkills.includes(skillId)
+    const nextSkills = selectedSkills.includes(skillId)
       ? selectedSkills.filter((id) => id !== skillId)
       : [...selectedSkills, skillId];
-    
-    setSelectedSkills(newSkills);
-    updateUrlParams({ skillIds: newSkills.join(",") || null });
+
+    setSelectedSkills(nextSkills);
+    updateUrlParams({ skillIds: nextSkills.join(",") || null });
   };
 
   const handleTagToggle = (tagId: string) => {
-    const newTags = selectedTags.includes(tagId)
+    const nextTags = selectedTags.includes(tagId)
       ? selectedTags.filter((id) => id !== tagId)
       : [...selectedTags, tagId];
-    
-    setSelectedTags(newTags);
-    updateUrlParams({ tagIds: newTags.join(",") || null });
-  };
 
-  const handleApplyPriceFilter = () => {
-    updateUrlParams({
-      minPrice: localMinPrice || null,
-      maxPrice: localMaxPrice || null,
-    });
+    setSelectedTags(nextTags);
+    updateUrlParams({ tagIds: nextTags.join(",") || null });
   };
 
   const handleClearAllFilters = () => {
@@ -140,7 +103,6 @@ export default function CourseFilters({
     setSelectedTags([]);
     setLocalMinPrice("");
     setLocalMaxPrice("");
-    
     router.push(pathname);
   };
 
@@ -152,20 +114,20 @@ export default function CourseFilters({
     selectedTags.length,
     minPrice ? 1 : 0,
     maxPrice ? 1 : 0,
-  ].reduce((a, b) => a + b, 0);
+  ].reduce((sum, current) => sum + current, 0);
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      {/* Status Filter */}
-      <Select 
-        value={status || "ALL"} 
-        onValueChange={handleStatusChange}
-        key={`status-${status || "ALL"}`}
+    <div className="flex flex-wrap items-center gap-2">
+      <Select
+        value={status || "ALL"}
+        onValueChange={(value) =>
+          updateUrlParams({ status: value === "ALL" ? null : value })
+        }
       >
-        <SelectTrigger className="w-[150px]">
+        <SelectTrigger className="manage-filter-trigger w-[170px]">
           <SelectValue placeholder={t("AllStatus")} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="manage-popover-panel">
           <SelectItem value="ALL">{t("AllStatus")}</SelectItem>
           <SelectItem value="DRAFT">{t("Status.DRAFT")}</SelectItem>
           <SelectItem value="PUBLISHED">{t("Status.PUBLISHED")}</SelectItem>
@@ -173,33 +135,35 @@ export default function CourseFilters({
         </SelectContent>
       </Select>
 
-      {/* Level Filter */}
-      <Select 
-        value={level || "ALL"} 
-        onValueChange={handleLevelChange}
-        key={`level-${level || "ALL"}`}
+      <Select
+        value={level || "ALL"}
+        onValueChange={(value) =>
+          updateUrlParams({ level: value === "ALL" ? null : value })
+        }
       >
-        <SelectTrigger className="w-[150px]">
+        <SelectTrigger className="manage-filter-trigger w-[170px]">
           <SelectValue placeholder="All Levels" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="manage-popover-panel">
           <SelectItem value="ALL">All Levels</SelectItem>
           <SelectItem value="BEGINNER">{t("Level.BEGINNER")}</SelectItem>
-          <SelectItem value="INTERMEDIATE">{t("Level.INTERMEDIATE")}</SelectItem>
+          <SelectItem value="INTERMEDIATE">
+            {t("Level.INTERMEDIATE")}
+          </SelectItem>
           <SelectItem value="ADVANCED">{t("Level.ADVANCED")}</SelectItem>
         </SelectContent>
       </Select>
 
-      {/* Language Filter */}
-      <Select 
-        value={language || "ALL"} 
-        onValueChange={handleLanguageChange}
-        key={`language-${language || "ALL"}`}
+      <Select
+        value={language || "ALL"}
+        onValueChange={(value) =>
+          updateUrlParams({ language: value === "ALL" ? null : value })
+        }
       >
-        <SelectTrigger className="w-[150px]">
+        <SelectTrigger className="manage-filter-trigger w-[170px]">
           <SelectValue placeholder="All Languages" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="manage-popover-panel">
           <SelectItem value="ALL">All Languages</SelectItem>
           <SelectItem value="VI">Tiếng Việt</SelectItem>
           <SelectItem value="EN">English</SelectItem>
@@ -207,24 +171,30 @@ export default function CourseFilters({
         </SelectContent>
       </Select>
 
-      {/* Skills Filter */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="gap-2" disabled={availableSkills.length === 0}>
+          <Button
+            variant="outline"
+            className="manage-secondary-button h-11 gap-2 px-4"
+            disabled={availableSkills.length === 0}
+          >
             <Filter className="h-4 w-4" />
             Skills
-            {selectedSkills.length > 0 && (
+            {selectedSkills.length > 0 ? (
               <Badge variant="secondary" className="ml-1">
                 {selectedSkills.length}
               </Badge>
-            )}
-            <ChevronDown className="h-4 w-4 ml-1" />
+            ) : null}
+            <ChevronDown className="ml-1 h-4 w-4" />
           </Button>
         </PopoverTrigger>
-        {availableSkills.length > 0 && (
-          <PopoverContent className="w-80 max-h-96 overflow-y-auto" align="start">
+        {availableSkills.length > 0 ? (
+          <PopoverContent
+            align="start"
+            className="manage-popover-panel max-h-96 w-80 overflow-y-auto rounded-2xl"
+          >
             <div className="space-y-2">
-              <h4 className="font-medium mb-3">Select Skills</h4>
+              <h4 className="mb-3 font-medium">Select Skills</h4>
               {availableSkills.map((skill) => (
                 <div key={skill.id} className="flex items-center space-x-2">
                   <Checkbox
@@ -234,47 +204,53 @@ export default function CourseFilters({
                   />
                   <label
                     htmlFor={`skill-${skill.id}`}
-                    className="flex items-center gap-2 cursor-pointer flex-1"
+                    className="flex flex-1 cursor-pointer items-center gap-2"
                   >
-                    {skill.thumbnail && (
+                    {skill.thumbnail ? (
                       <img
                         src={skill.thumbnail}
                         alt={skill.name}
-                        className="w-6 h-6 rounded object-cover"
+                        className="h-6 w-6 rounded object-cover"
                       />
-                    )}
+                    ) : null}
                     <span className="text-sm">{skill.name}</span>
-                    {skill.category && (
+                    {skill.category ? (
                       <Badge variant="outline" className="ml-auto text-xs">
                         {skill.category}
                       </Badge>
-                    )}
+                    ) : null}
                   </label>
                 </div>
               ))}
             </div>
           </PopoverContent>
-        )}
+        ) : null}
       </Popover>
 
-      {/* Tags Filter */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="gap-2" disabled={availableTags.length === 0}>
+          <Button
+            variant="outline"
+            className="manage-secondary-button h-11 gap-2 px-4"
+            disabled={availableTags.length === 0}
+          >
             <Filter className="h-4 w-4" />
             Tags
-            {selectedTags.length > 0 && (
+            {selectedTags.length > 0 ? (
               <Badge variant="secondary" className="ml-1">
                 {selectedTags.length}
               </Badge>
-            )}
-            <ChevronDown className="h-4 w-4 ml-1" />
+            ) : null}
+            <ChevronDown className="ml-1 h-4 w-4" />
           </Button>
         </PopoverTrigger>
-        {availableTags.length > 0 && (
-          <PopoverContent className="w-64 max-h-96 overflow-y-auto" align="start">
+        {availableTags.length > 0 ? (
+          <PopoverContent
+            align="start"
+            className="manage-popover-panel max-h-96 w-64 overflow-y-auto rounded-2xl"
+          >
             <div className="space-y-2">
-              <h4 className="font-medium mb-3">Select Tags</h4>
+              <h4 className="mb-3 font-medium">Select Tags</h4>
               {availableTags.map((tag) => (
                 <div key={tag.id} className="flex items-center space-x-2">
                   <Checkbox
@@ -284,7 +260,7 @@ export default function CourseFilters({
                   />
                   <label
                     htmlFor={`tag-${tag.id}`}
-                    className="text-sm cursor-pointer flex-1"
+                    className="flex-1 cursor-pointer text-sm"
                   >
                     {tag.name}
                   </label>
@@ -292,36 +268,42 @@ export default function CourseFilters({
               ))}
             </div>
           </PopoverContent>
-        )}
+        ) : null}
       </Popover>
 
-      {/* Price Range Filter */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="gap-2">
+          <Button
+            variant="outline"
+            className="manage-secondary-button h-11 gap-2 px-4"
+          >
             <Filter className="h-4 w-4" />
             Price
-            {(minPrice || maxPrice) && (
+            {minPrice || maxPrice ? (
               <Badge variant="secondary" className="ml-1">
                 1
               </Badge>
-            )}
-            <ChevronDown className="h-4 w-4 ml-1" />
+            ) : null}
+            <ChevronDown className="ml-1 h-4 w-4" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80" align="start">
+        <PopoverContent
+          align="start"
+          className="manage-popover-panel w-80 rounded-2xl"
+        >
           <div className="space-y-4">
-            <h4 className="font-medium">Price Range (USD)</h4>
+            <h4 className="font-medium">Price Range</h4>
             <div className="grid gap-4">
               <div className="space-y-2">
                 <Label htmlFor="minPrice">Min Price</Label>
                 <Input
                   id="minPrice"
                   type="number"
+                  min="0"
                   placeholder="0"
                   value={localMinPrice}
-                  onChange={(e) => setLocalMinPrice(e.target.value)}
-                  min="0"
+                  onChange={(event) => setLocalMinPrice(event.target.value)}
+                  className="manage-field"
                 />
               </div>
               <div className="space-y-2">
@@ -329,13 +311,22 @@ export default function CourseFilters({
                 <Input
                   id="maxPrice"
                   type="number"
+                  min="0"
                   placeholder="999999"
                   value={localMaxPrice}
-                  onChange={(e) => setLocalMaxPrice(e.target.value)}
-                  min="0"
+                  onChange={(event) => setLocalMaxPrice(event.target.value)}
+                  className="manage-field"
                 />
               </div>
-              <Button onClick={handleApplyPriceFilter} className="w-full">
+              <Button
+                onClick={() =>
+                  updateUrlParams({
+                    minPrice: localMinPrice || null,
+                    maxPrice: localMaxPrice || null,
+                  })
+                }
+                className="manage-primary-button w-full"
+              >
                 Apply
               </Button>
             </div>
@@ -343,18 +334,17 @@ export default function CourseFilters({
         </PopoverContent>
       </Popover>
 
-      {/* Clear All Filters */}
-      {activeFiltersCount > 0 && (
+      {activeFiltersCount > 0 ? (
         <Button
           variant="ghost"
           size="sm"
           onClick={handleClearAllFilters}
-          className="gap-2"
+          className="manage-secondary-button h-10 gap-2 px-4"
         >
           <X className="h-4 w-4" />
           Clear All ({activeFiltersCount})
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }

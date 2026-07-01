@@ -14,6 +14,14 @@ export const useCourseProgress = (courseId?: string, enabled: boolean = true) =>
   });
 };
 
+export const useLearningStreak = (enabled: boolean = true) => {
+  return useQuery({
+    queryKey: ["learning-streak"],
+    queryFn: () => courseApiRequest.getLearningStreak(),
+    enabled,
+  });
+};
+
 export const useUpdateLessonProgressMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -28,6 +36,7 @@ export const useUpdateLessonProgressMutation = () => {
     }) => courseApiRequest.updateProgress(courseId, lessonId, body),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["course-progress", variables.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["learning-streak"] });
     },
   });
 };
@@ -39,6 +48,7 @@ export const useMarkLessonCompleteMutation = () => {
       courseApiRequest.markLessonComplete(courseId, lessonId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["course-progress", variables.courseId] });
+      queryClient.invalidateQueries({ queryKey: ["learning-streak"] });
     },
   });
 };

@@ -37,7 +37,8 @@ export default function OauthPage() {
         if (accessToken && refreshToken) {
           // Existing flow - tokens already generated
           console.log("🔐 Login OAuth - Processing existing OAuth flow with tokens");
-          const { role } = decodeToken(accessToken);
+          const decodedToken = decodeToken(accessToken);
+          const role = decodedToken.role ?? decodedToken.roles?.[0] ?? null;
           console.log("🔐 Login OAuth - Decoded role:", role);
           
           localStorage.setItem("accessToken", accessToken);
@@ -64,7 +65,7 @@ export default function OauthPage() {
           });
           
           console.log("🔐 Login OAuth - Redirecting, role:", role);
-          router.push(role === "ADMIN" ? "/manage/accounts" : "/");
+          router.push(role === "ADMIN" || role === "SUPER_ADMIN" ? "/manage/accounts" : "/");
           return;
         }
 
@@ -135,7 +136,7 @@ export default function OauthPage() {
           });
 
           // Redirect based on role
-          if (userRole === "ADMIN") {
+          if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
             router.push("/manage/accounts");
           } else {
             router.push("/");
@@ -143,12 +144,14 @@ export default function OauthPage() {
         } else {
           throw new Error("Invalid OAuth callback parameters");
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "An error occurred during login";
         console.error("OAuth processing error:", error);
         toast({
           variant: "destructive",
           title: "Login Failed",
-          description: error.message || "An error occurred during login",
+          description: message,
         });
         router.push("/login");
       } finally {
@@ -161,10 +164,10 @@ export default function OauthPage() {
 
   if (isProcessing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <p className="text-gray-700 text-lg">Processing login...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+          <p className="text-muted-foreground text-lg">Processing login...</p>
         </div>
       </div>
     );

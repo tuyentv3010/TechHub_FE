@@ -9,26 +9,31 @@ import {
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import dynamic from "next/dynamic";
+import { AdminPageFrame, AdminSurface } from "@/components/manage/admin-page-frame";
 
 const LearningPathTable = dynamic(() => import("./learning-path-table"));
 
 export default async function ManageLearningPathsPage() {
   const t = await getTranslations("ManageLearningPath");
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-      <div className="space-y-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("Title")}</CardTitle>
+    <AdminPageFrame
+      eyebrow={t("PageEyebrow")}
+      title={t("Title")}
+      description={t("Description")}
+    >
+      <AdminSurface className="p-4 sm:p-6">
+        <Card className="border-border/40 bg-transparent shadow-none">
+          <CardHeader className="px-0 pt-0">
+            <CardTitle className="text-xl">{t("Title")}</CardTitle>
             <CardDescription>{t("Description")}</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0 pb-0">
             <Suspense>
               <LearningPathTable />
             </Suspense>
           </CardContent>
         </Card>
-      </div>
-    </main>
+      </AdminSurface>
+    </AdminPageFrame>
   );
 }

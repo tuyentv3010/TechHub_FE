@@ -79,51 +79,136 @@ export const handleErrorApi = ({
   }
 };
 const isBrowser = typeof window !== "undefined";
+const ACCESS_TOKEN_KEY = "accessToken";
+const REFRESH_TOKEN_KEY = "refreshToken";
+const USER_INFO_KEY = "userInfo";
+const AUTH_STORAGE_MODE_KEY = "authStorageMode";
+type AuthStorageMode = "local" | "session";
+
+const getCookie = (name: string): string | null => {
+  if (!isBrowser) return null;
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
+const getAuthStorageMode = (): AuthStorageMode => {
+  if (!isBrowser) return "local";
+  if (sessionStorage.getItem(AUTH_STORAGE_MODE_KEY) === "session") {
+    return "session";
+  }
+  if (localStorage.getItem(AUTH_STORAGE_MODE_KEY) === "local") {
+    return "local";
+  }
+  if (sessionStorage.getItem(ACCESS_TOKEN_KEY)) {
+    return "session";
+  }
+  // Fresh tab (empty web storage) rehydrating from the shared httpOnly cookie
+  // session: the authStorageMode cookie records which storage the original tab
+  // used, so a "session" login stays in sessionStorage and "local" in localStorage.
+  if (getCookie(AUTH_STORAGE_MODE_KEY) === "session") {
+    return "session";
+  }
+  return "local";
+};
+
+const getAuthStorage = (mode = getAuthStorageMode()) =>
+  mode === "session" ? sessionStorage : localStorage;
+
+const getAuthStorageItem = (key: string) => {
+  if (!isBrowser) return null;
+  return sessionStorage.getItem(key) ?? localStorage.getItem(key);
+};
+
+const removeAuthStorageItems = (storage: Storage) => {
+  storage.removeItem(ACCESS_TOKEN_KEY);
+  storage.removeItem(REFRESH_TOKEN_KEY);
+  storage.removeItem(USER_INFO_KEY);
+  storage.removeItem(AUTH_STORAGE_MODE_KEY);
+};
+
+const setAuthCookie = (key: string, value: string, maxAge?: number) => {
+  if (!isBrowser) return;
+  const isSecure = window.location.protocol === "https:";
+  const cookieOptions = [
+    `${key}=${value}`,
+    "path=/",
+    ...(maxAge ? [`max-age=${maxAge}`] : []),
+    "sameSite=Lax",
+    ...(isSecure ? ["secure"] : []),
+  ].join("; ");
+  document.cookie = cookieOptions;
+};
 
 export const getAccessTokenFromLocalStorage = () => {
-  return isBrowser ? localStorage.getItem("accessToken") : null;
+  return getAuthStorageItem(ACCESS_TOKEN_KEY);
 };
 export const getRefreshTokenFromLocalStorage = () => {
-  return isBrowser ? localStorage.getItem("refreshToken") : null;
+  return getAuthStorageItem(REFRESH_TOKEN_KEY);
+};
+
+export const getUserInfoFromStorage = () => {
+  return getAuthStorageItem(USER_INFO_KEY);
+};
+
+// True when a prior login left an authStorageMode cookie — a JS-readable hint
+// that a (possibly cross-tab) httpOnly cookie session may still be alive, so a
+// new tab with empty web storage is worth trying to rehydrate via refresh.
+export const hasAuthSessionCookie = () => Boolean(getCookie(AUTH_STORAGE_MODE_KEY));
+
+export const persistAuthSession = ({
+  accessToken,
+  refreshToken,
+  userInfo,
+  remember,
+}: {
+  accessToken: string;
+  refreshToken: string;
+  userInfo?: unknown;
+  remember: boolean;
+}) => {
+  if (!isBrowser) return;
+  const mode: AuthStorageMode = remember ? "local" : "session";
+  const storage = getAuthStorage(mode);
+  const otherStorage = mode === "local" ? sessionStorage : localStorage;
+
+  removeAuthStorageItems(otherStorage);
+  storage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  storage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  storage.setItem(AUTH_STORAGE_MODE_KEY, mode);
+  if (userInfo !== undefined) {
+    storage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+  }
+
+  const accessTokenMaxAge = remember ? 24 * 60 * 60 : undefined;
+  const refreshTokenMaxAge = remember ? 7 * 24 * 60 * 60 : undefined;
+  setAuthCookie(ACCESS_TOKEN_KEY, accessToken, accessTokenMaxAge);
+  setAuthCookie(REFRESH_TOKEN_KEY, refreshToken, refreshTokenMaxAge);
+  setAuthCookie(AUTH_STORAGE_MODE_KEY, mode, refreshTokenMaxAge);
+};
+
+export const setUserInfoToAuthStorage = (userInfo: unknown) => {
+  if (!isBrowser) return;
+  getAuthStorage().setItem(USER_INFO_KEY, JSON.stringify(userInfo));
 };
 
 export const setAccessTokenToLocalStorage = (value: string) => {
   if (!isBrowser) return;
-  localStorage.setItem("accessToken", value);
-  // Also set in cookies for middleware
-  // Use secure and sameSite flags for better security
-  const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
-  const cookieOptions = [
-    `accessToken=${value}`,
-    "path=/",
-    `max-age=${24 * 60 * 60}`, // 24 hours
-    "sameSite=Lax",
-    ...(isSecure ? ["secure"] : []),
-  ].join("; ");
-  document.cookie = cookieOptions;
+  const mode = getAuthStorageMode();
+  getAuthStorage(mode).setItem(ACCESS_TOKEN_KEY, value);
+  setAuthCookie(ACCESS_TOKEN_KEY, value, mode === "local" ? 24 * 60 * 60 : undefined);
 };
 
 export const setRefreshTokenToLocalStorage = (value: string) => {
   if (!isBrowser) return;
-  localStorage.setItem("refreshToken", value);
-  // Also set in cookies for middleware
-  // Use secure and sameSite flags for better security
-  const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
-  const cookieOptions = [
-    `refreshToken=${value}`,
-    "path=/",
-    `max-age=${7 * 24 * 60 * 60}`, // 7 days
-    "sameSite=Lax",
-    ...(isSecure ? ["secure"] : []),
-  ].join("; ");
-  document.cookie = cookieOptions;
+  const mode = getAuthStorageMode();
+  getAuthStorage(mode).setItem(REFRESH_TOKEN_KEY, value);
+  setAuthCookie(REFRESH_TOKEN_KEY, value, mode === "local" ? 7 * 24 * 60 * 60 : undefined);
 };
 
 export const removeTokenFromLocalStorage = () => {
   if (!isBrowser) return;
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("userInfo"); // Also clear user info
+  removeAuthStorageItems(localStorage);
+  removeAuthStorageItems(sessionStorage);
   // Also remove from cookies - clear with all possible options
   const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
   const clearCookieOptions = [
@@ -135,15 +220,19 @@ export const removeTokenFromLocalStorage = () => {
   ].join("; ");
   document.cookie = `accessToken=; ${clearCookieOptions}`;
   document.cookie = `refreshToken=; ${clearCookieOptions}`;
+  document.cookie = `authStorageMode=; ${clearCookieOptions}`;
   
   // Dispatch custom event to notify app-provider
   window.dispatchEvent(new Event("auth-logout"));
 };
 ////
+let refreshTokenRequest: Promise<void> | null = null;
+
 export const checkAndRefreshToken = async (param?: {
   onError?: () => void;
   onSuccess?: () => void;
   force?: boolean;
+  redirectOnError?: boolean;
 }) => {
   // Khong nen dua logic lay access vs refresh token ra khoi cai function 'checkAndRefreshToken'
   // Vi de moi lan ma checkAndRefreshToken() duoc goi thi chung ta se co mot access va refresh token moi
@@ -157,36 +246,44 @@ export const checkAndRefreshToken = async (param?: {
     force: param?.force
   });
   
-  // Chua dang nhap thi cung khong cho chay
-  if (!accessToken || !refreshToken) {
+  // Chua dang nhap thi cung khong cho chay. When force=true, allow the
+  // Next.js refresh API to use httpOnly cookies even if storage is empty
+  // (for example opening a protected URL in a new tab).
+  if (!refreshToken && !param?.force) {
+    console.log('[checkAndRefreshToken] No refresh token found, skipping');
+    return;
+  }
+
+  if (!accessToken && !param?.force) {
     console.log('[checkAndRefreshToken] No tokens found, skipping');
     return;
   }
   
-  const decodedAccessToken = decodeToken(accessToken);
-  const decodedRefreshToken = decodeToken(refreshToken);
+  const decodedAccessToken = accessToken ? decodeToken(accessToken) : null;
+  const decodedRefreshToken = refreshToken ? decodeToken(refreshToken) : null;
   //Thoi diem het han cua token tinh theo epoch time(s)
   // Con khi cac ban dung cu phap new Date().getTime() thi no se tra ve epoch time (ms)
   const now = Math.round(new Date().getTime() / 1000);
   
   // Check if access token is already expired
-  const isAccessTokenExpired = decodedAccessToken.exp <= now;
+  const isAccessTokenExpired = !decodedAccessToken || decodedAccessToken.exp <= now;
   
   console.log('[checkAndRefreshToken] Token status:', {
-    accessTokenExp: new Date(decodedAccessToken.exp * 1000).toLocaleTimeString(),
-    refreshTokenExp: new Date(decodedRefreshToken.exp * 1000).toLocaleTimeString(),
+    accessTokenExp: decodedAccessToken ? new Date(decodedAccessToken.exp * 1000).toLocaleTimeString() : null,
+    refreshTokenExp: decodedRefreshToken ? new Date(decodedRefreshToken.exp * 1000).toLocaleTimeString() : null,
     now: new Date(now * 1000).toLocaleTimeString(),
     isAccessTokenExpired,
-    isRefreshTokenExpired: decodedRefreshToken.exp <= now,
-    timeUntilAccessExpiry: decodedAccessToken.exp - now,
-    timeUntilRefreshExpiry: decodedRefreshToken.exp - now
+    isRefreshTokenExpired: decodedRefreshToken ? decodedRefreshToken.exp <= now : null,
+    timeUntilAccessExpiry: decodedAccessToken ? decodedAccessToken.exp - now : null,
+    timeUntilRefreshExpiry: decodedRefreshToken ? decodedRefreshToken.exp - now : null
   });
   
   // Truong hop refresh token het han thi khong xu li nua
-  if (decodedRefreshToken.exp <= now) {
+  if (decodedRefreshToken && decodedRefreshToken.exp <= now) {
     console.log('[checkAndRefreshToken] Refresh token expired, logging out');
     removeTokenFromLocalStorage();
-    return param?.onError && param.onError();
+    param?.onError?.();
+    return;
   }
   
   // If access token expired but refresh token still valid, force refresh
@@ -201,6 +298,7 @@ export const checkAndRefreshToken = async (param?: {
   // thoi gian het han cua access token dua tren cong thuc : decodedAccessToken - decodeAccessToken.iat
   if (
     param?.force ||
+    !decodedAccessToken ||
     decodedAccessToken.exp - now <
       (decodedAccessToken.exp - decodedAccessToken.iat) / 3
   ) {
@@ -208,6 +306,13 @@ export const checkAndRefreshToken = async (param?: {
     // This allows server-side to clear httpOnly cookies when token is revoked
     console.log('[checkAndRefreshToken] Calling refresh token API...');
     try {
+      if (refreshTokenRequest) {
+        await refreshTokenRequest;
+        param?.onSuccess?.();
+        return;
+      }
+
+      refreshTokenRequest = (async () => {
       const response = await fetch("/api/auth/refresh-token", {
         method: "POST",
         headers: {
@@ -229,10 +334,13 @@ export const checkAndRefreshToken = async (param?: {
       if (result.success && result.data) {
         setAccessTokenToLocalStorage(result.data.accessToken);
         setRefreshTokenToLocalStorage(result.data.refreshToken);
-        param?.onSuccess && param.onSuccess();
       } else {
         throw new Error("Invalid refresh token response");
       }
+      })();
+
+      await refreshTokenRequest;
+      param?.onSuccess?.();
     } catch (error: any) {
       console.error("[checkAndRefreshToken] Failed to refresh token:", error);
       // Clear tokens immediately when refresh fails
@@ -242,7 +350,13 @@ export const checkAndRefreshToken = async (param?: {
       
       // If refresh token not found in database (revoked), force redirect to login
       // This happens when token was rotated but old token still in cookies
-      if (error?.status === 401 || error?.message?.includes("not found") || error?.message?.includes("revoked") || error?.message?.includes("Cant not find")) {
+      if (
+        param?.redirectOnError !== false &&
+        (error?.status === 401 ||
+          error?.message?.includes("not found") ||
+          error?.message?.includes("revoked") ||
+          error?.message?.includes("Cant not find"))
+      ) {
         console.log("[checkAndRefreshToken] Refresh token revoked or invalid, redirecting to login");
         // Use window.location for full page reload to clear all state
         if (typeof window !== "undefined") {
@@ -250,60 +364,32 @@ export const checkAndRefreshToken = async (param?: {
         }
       }
       
-      param?.onError && param.onError();
+      param?.onError?.();
+    } finally {
+      refreshTokenRequest = null;
     }
   } else {
     console.log('[checkAndRefreshToken] Token still valid, no refresh needed');
   }
 };
-///
-/**
- * Currency conversion rate (1 USD = 25000 VND approximately)
- */
-export const VND_TO_USD_RATE = 25000;
-
-/**
- * Convert VND to USD
- * @param vnd - Amount in VND
- * @returns Amount in USD
- */
-export function convertVNDtoUSD(vnd: number): number {
-  return vnd / VND_TO_USD_RATE;
-}
-
-/**
- * Convert USD to VND
- * @param usd - Amount in USD
- * @returns Amount in VND
- */
-export function convertUSDtoVND(usd: number): number {
-  return usd * VND_TO_USD_RATE;
-}
-
-/**
- * Format price to display (xx.xx USD)
- * @param price - Price in USD (from backend)
- * @returns Formatted string like "49.99 USD"
- */
-export function formatPriceUSD(price: number): string {
-  return `${price.toFixed(2)} USD`;
-}
-
-/**
- * Format price in VND with spaces (120 000 VND)
- * @param price - Price in VND
- * @returns Formatted string like "120 000 VND"
- */
-export function formatPriceVND(price: number): string {
-  return `${formatCurrencyInput(price)} VND`;
-}
-
 /**
  * Format currency input based on currency type
  * @param value - The numeric value
  * @param currency - The currency type ('VND' or 'USD')
  * @returns Formatted string
  */
+/**
+ * Format giá theo currency của course (BE-driven). Nếu currency null/undefined mặc định VND.
+ */
+export function formatPrice(value: number | null | undefined, currency?: string | null): string {
+  const amount = value ?? 0;
+  const code = (currency || "VND").toUpperCase();
+  if (code === "USD") {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+  }
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(amount);
+}
+
 export function formatCurrencyByType(value: number, currency: 'VND' | 'USD'): string {
   if (currency === 'USD') {
     return value.toFixed(2);

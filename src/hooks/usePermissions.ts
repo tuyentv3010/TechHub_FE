@@ -1,83 +1,82 @@
 import { useAccountProfile, useUserPermissions } from "@/queries/useAccount";
+import { getAccessTokenFromLocalStorage } from "@/lib/utils";
 import { useMemo } from "react";
 
 type PermissionMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+type PermissionMethodOrWildcard = PermissionMethod | "*";
 
 interface Permission {
   id: string;
   name: string;
   url: string;
-  method: PermissionMethod;
+  method: PermissionMethodOrWildcard;
   resource: string;
   source: string;
   allowed: boolean;
 }
 
 export const usePermissions = () => {
-  const { data: profileData } = useAccountProfile();
-  console.log("🔍 [usePermissions] Profile data:", profileData);
-  
+  const { data: profileData, isLoading: isProfileLoading } = useAccountProfile();
+  const hasAccessToken =
+    typeof window !== "undefined" && !!getAccessTokenFromLocalStorage();
   const userId = profileData?.payload?.data?.id;
-  console.log("👤 [usePermissions] User ID:", userId);
 
-  const { data: permissionsData, isLoading, error } = useUserPermissions(
-    userId || "",
-    !!userId
-  );
+  const {
+    data: permissionsData,
+    isLoading: isPermissionsLoading,
+    error,
+  } = useUserPermissions(userId || "", !!userId);
 
-  console.log("📋 [usePermissions] Permissions API response:", permissionsData);
-  console.log("⏳ [usePermissions] Loading:", isLoading);
-  console.log("❌ [usePermissions] Error:", error);
-
-  const permissions = useMemo(() => {
-    // React Query returns the API response directly, which has structure: { success: boolean, data: Permission[] }
-    const perms: Permission[] = permissionsData?.payload?.data || [];
-    console.log("✅ [usePermissions] Parsed permissions:", perms);
-    console.log("📊 [usePermissions] Total permissions count:", perms.length);
-    
-    if (perms.length > 0) {
-      console.log("📝 [usePermissions] User's permissions:");
-      perms.forEach((p: Permission, index: number) => {
-        console.log(`   ${index + 1}. ${p.method} ${p.url} - ${p.name} (allowed: ${p.allowed})`);
-      });
-    } else {
-      console.warn("⚠️ [usePermissions] No permissions found for user!");
-    }
-    
-    return perms;
+  const permissions = useMemo<Permission[]>(() => {
+    return permissionsData?.payload?.data || [];
   }, [permissionsData]);
 
   const hasPermission = (method: PermissionMethod, urlPattern: string) => {
-    const result = permissions.some(
-      (p: Permission) =>
-        p.method === method &&
-        p.allowed &&
-        (p.url === urlPattern || matchPattern(p.url, urlPattern))
+    return permissions.some(
+      (permission) =>
+        methodMatches(permission.method, method) &&
+        permission.allowed &&
+        (permission.url === urlPattern || matchPattern(permission.url, urlPattern))
     );
-    console.log(`🔐 [usePermissions] hasPermission(${method}, ${urlPattern}):`, result);
-    return result;
   };
 
   const hasPermissionByName = (permissionName: string) => {
-    const result = permissions.some((p: Permission) => p.name === permissionName && p.allowed);
-    console.log(`🔐 [usePermissions] hasPermissionByName(${permissionName}):`, result);
-    return result;
+    return permissions.some(
+      (permission) => permission.name === permissionName && permission.allowed
+    );
   };
 
   return {
     permissions,
-    isLoading,
+    error,
+    isLoading:
+      isProfileLoading ||
+      (!!userId && isPermissionsLoading) ||
+      (hasAccessToken && !userId && !error),
     hasPermission,
     hasPermissionByName,
   };
 };
 
-// Simple pattern matching for URLs
+function methodMatches(
+  permissionMethod: PermissionMethodOrWildcard,
+  requestedMethod: PermissionMethod
+): boolean {
+  return permissionMethod === "*" || permissionMethod === requestedMethod;
+}
+
 function matchPattern(pattern: string, url: string): boolean {
-  // Convert pattern like /api/users/{id} to regex
   const regexPattern = pattern
-    .replace(/\{[^}]+\}/g, "[^/]+") // Replace {id} with regex
-    .replace(/\//g, "\\/"); // Escape slashes
+    .replace(/\/\*\*$/g, "__TAIL_WILDCARD__")
+    .replace(/\*\*/g, "__DOUBLE_WILDCARD__")
+    .replace(/\*/g, "__WILDCARD__")
+    .replace(/\{[^/}]+\}/g, "__PATH_PARAM__")
+    .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\//g, "\\/")
+    .replaceAll("__TAIL_WILDCARD__", "(?:\\/.*)?")
+    .replaceAll("__DOUBLE_WILDCARD__", ".*")
+    .replaceAll("__WILDCARD__", "[^/]*")
+    .replaceAll("__PATH_PARAM__", "[^/]+");
   const regex = new RegExp(`^${regexPattern}$`);
   return regex.test(url);
 }

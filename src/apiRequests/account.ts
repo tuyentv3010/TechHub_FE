@@ -8,8 +8,8 @@ import {
 
 const accountApiRequest = {
   // Get user profile
-  getProfile: () =>
-    http.get<AccountResType>("/app/api/proxy/users/profile"),
+  getProfile: (options?: Parameters<typeof http.get>[1]) =>
+    http.get<AccountResType>("/app/api/proxy/users/profile", options),
 
   // Update current user profile
   updateProfile: (body: UpdateEmployeeAccountBodyType) =>
@@ -67,6 +67,12 @@ const accountApiRequest = {
 
   // Get public instructors (no auth required)
   getPublicInstructors: (page: number = 0, size: number = 4) =>
-    http.get<AccountListResType>(`/app/api/proxy/users/public/instructors?page=${page}&size=${size}`),
+    http.get<AccountListResType>(
+      `/app/api/proxy/users/public/instructors?page=${page}&size=${size}`,
+      {
+        auth: false,
+        redirectOnUnauthorized: false,
+      }
+    ),
 };
 export default accountApiRequest;
